@@ -163,6 +163,7 @@ impl OverlayManager {
             }
         };
 
+        super::set_overlay_fps(settings.overlay_fps);
         // Apply the global font family to the freshly-spawned overlay so it
         // matches the others (and survives restarts) before any runtime change.
         // Buffered into the command channel; processed once the loop starts.
@@ -1029,6 +1030,17 @@ impl OverlayManager {
         Ok(new_mode)
     }
 
+    /// Set the countdown overlays' locked redraw rate: persist it and apply it
+    /// to every overlay thread (they read it each loop)
+    pub async fn set_fps(service: &ServiceHandle, fps: u8) -> Result<(), String> {
+        let fps = fps.clamp(5, 30);
+        let mut config = service.config().await;
+        config.overlay_settings.overlay_fps = fps;
+        service.update_config(config).await?;
+        super::set_overlay_fps(fps);
+        Ok(())
+    }
+
     /// Set the global overlay font family: persist it to config and broadcast
     /// to all running overlays so the change applies immediately to every one.
     pub async fn set_font_family(
@@ -1103,6 +1115,7 @@ impl OverlayManager {
         let config = service.config().await;
         let settings = &config.overlay_settings;
         let globally_visible = settings.overlays_visible;
+        super::set_overlay_fps(settings.overlay_fps);
 
         // Handle each overlay type, collecting newly spawned overlays for initial data
         let mut newly_spawned: Vec<(OverlayType, tokio::sync::mpsc::Sender<OverlayCommand>)> = Vec::new();

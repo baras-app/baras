@@ -262,6 +262,7 @@ pub fn run() {
             commands::toggle_raid_rearrange,
             commands::list_system_fonts,
             commands::set_overlay_font_family,
+            commands::set_overlay_fps,
             commands::get_overlay_status,
             commands::refresh_overlay_settings,
             commands::reset_overlay_position,

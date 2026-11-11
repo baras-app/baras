@@ -192,6 +192,12 @@ pub async fn set_overlay_font_family(
     OverlayManager::set_font_family(&state, &service, family).await
 }
 
+/// Set the countdown overlays' redraw rate (5–30 FPS): persists and applies it.
+#[tauri::command]
+pub async fn set_overlay_fps(fps: u8, service: State<'_, ServiceHandle>) -> Result<(), String> {
+    OverlayManager::set_fps(&service, fps).await
+}
+
 #[tauri::command]
 pub async fn get_overlay_status(
     state: State<'_, SharedOverlayState>,

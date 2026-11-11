@@ -3,7 +3,7 @@
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::components::{ToastSeverity, use_toast};
+use crate::components::{Slider, ToastSeverity, use_toast};
 
 use super::draft::SettingsDraft;
 
@@ -49,6 +49,24 @@ pub fn GlobalTab(draft: SettingsDraft) -> Element {
                         }
                     }
                 }
+            }
+            Slider {
+                label: "Countdown Frame Rate",
+                value: current_settings.overlay_fps as f64,
+                min: 5.0,
+                max: 30.0,
+                suffix: "FPS",
+                tooltip: "How often timers, effects, raid frames, alerts, cooldowns and DoTs redraw. Higher is smoother but uses more CPU.",
+                on_change: move |v: f64| {
+                    let fps = v as u8;
+                    let mut new_settings = draft.current();
+                    new_settings.overlay_fps = fps;
+                    draft.update(new_settings);
+                    // Applies to all overlays immediately, independent of Save
+                    spawn(async move {
+                        let _ = api::set_overlay_fps(fps).await;
+                    });
+                },
             }
         }
 
