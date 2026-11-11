@@ -300,6 +300,67 @@
   color: var(--text-muted);
 }
 
+/* Folded encounter sidebar: the selected pull as a plain header strip */
+.selected-encounter-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  min-width: 0;
+  padding: 0.35em 0.2em 0.45em;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.enc-strip-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.enc-strip-result {
+  flex-shrink: 0;
+  padding: 0.05em 0.5em;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: var(--radius-sm);
+  border: 1px solid currentColor;
+}
+
+.enc-strip-result.kill { color: var(--lt-green, #2ecc71); }
+.enc-strip-result.wipe { color: var(--lt-red, #e74c3c); }
+
+.enc-strip-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  flex-shrink: 0;
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.enc-strip-meta > span + span::before {
+  content: "·";
+  margin-right: 0.5em;
+  color: var(--text-muted);
+}
+
+.enc-strip-duration {
+  font-variant-numeric: tabular-nums;
+}
+
+.enc-strip-duration i {
+  font-size: 0.9em;
+  opacity: 0.7;
+}
+
 /* Folded entity sidebar: the selection as a dropdown */
 .entity-picker {
   align-self: flex-start;
