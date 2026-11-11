@@ -2487,8 +2487,8 @@
   gap: var(--space-md) var(--space-lg);
   padding: var(--space-sm) var(--space-md);
   margin-bottom: var(--space-sm);
-  background: rgba(0, 0, 0, calc(0.2 * var(--recess-k)));
-  border: 1px solid var(--border-subtle);
+  background: var(--well-bg);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   font-size: 0.85em;
   text-align: left;
@@ -2539,7 +2539,7 @@
 
 .dt-summary-val {
   min-width: 5ch;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 /* DT (damage type) column in ability table */

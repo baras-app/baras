@@ -234,7 +234,8 @@
 
   --fg-rgb: 0, 0, 0;
   --recess-k: 0.4;
-  --well-bg: var(--bg-raised);
+  /* A faint top-to-bottom fall so wells aren't flat white */
+  --well-bg: linear-gradient(180deg, #ffffff 0%, #f5f5f8 100%);
   --border-strong: #bdbdc6;
   --border-accent: rgba(31, 111, 209, 0.18);
   --border-accent-medium: rgba(31, 111, 209, 0.28);
@@ -6417,7 +6418,9 @@ a.contributor-name:hover {
 }
 
 .entity-list {
-  flex: 1;
+  /* As tall as its rows; scrolls only once they outgrow the column */
+  flex: 0 1 auto;
+  min-height: 0;
   overflow-y: auto;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
