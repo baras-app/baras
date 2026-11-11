@@ -25,7 +25,7 @@ pub fn ProfileUnsavedHint(active_profile: Signal<Option<String>>, mut profile_di
     };
     rsx! {
         span { class: "header-unsaved-hint", title: "{title}",
-            span { class: "header-unsaved-dot" }
+            i { class: "fa-solid fa-layer-group" }
             "Unsaved"
             button {
                 class: "header-unsaved-save-btn",

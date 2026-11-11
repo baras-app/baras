@@ -10,6 +10,7 @@ use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
 use crate::components::editor_common::{ENCOUNTER_ORIGIN, FormCard, ItemActions, Origin, OriginBadge, OriginFilter, origin_counts};
 use crate::api;
 use crate::components::SoundPicker;
+use crate::components::ability_icon::ColorIcon;
 use crate::types::{
     AlertTrigger, AudioConfig, BossTimerDefinition, BossWithPath, Condition, EncounterItem,
     TimerDisplayTarget, Trigger, timer_alert_label,
@@ -285,11 +286,7 @@ fn TimerRow(
                 class: "list-item-header timer-row-header",
                 onclick: move |_| on_toggle.call(()),
 
-                // Color swatch
-                span {
-                    class: "color-swatch",
-                    style: "background: {color_hex};"
-                }
+                ColorIcon { icon_id: timer.icon_ability_id, color: color_hex.clone() }
 
                 // Name | ID grouped left-aligned
                 div { class: "row-col-name-id",
