@@ -437,26 +437,6 @@
   margin-bottom: var(--space-xs);
 }
 
-.filter-tab {
-  font-size: 10px;
-  padding: 3px 8px;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.filter-tab:hover {
-  color: var(--text-secondary);
-}
-
-.filter-tab.active {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-}
-
 /* NPC rows are slightly dimmed */
 .entity-row.npc {
   opacity: 0.7;
@@ -769,7 +749,6 @@
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  background: var(--bg-tertiary);
   border-bottom: 2px solid var(--border-subtle);
   white-space: nowrap;
 }
@@ -981,7 +960,6 @@
 }
 
 .overview-table th {
-  background: var(--bg-tertiary);
   font-weight: 600;
   color: var(--text-secondary);
   white-space: nowrap;
@@ -1074,7 +1052,6 @@
 
 /* Totals row styling */
 .overview-table tfoot .totals-row {
-  background: var(--bg-tertiary);
   border-top: 2px solid var(--border-subtle);
   font-weight: 600;
 }
@@ -1711,7 +1688,6 @@
 
 /* Effect sections — each table fills available space */
 .effects-section {
-  background: var(--bg-secondary);
   border-radius: var(--radius-sm);
   padding: var(--space-sm);
   display: flex;
@@ -1867,7 +1843,6 @@
   display: flex;
   gap: var(--space-sm);
   padding: var(--space-sm);
-  background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
   align-items: center;
@@ -1879,7 +1854,7 @@
 
 .log-filter-select {
   padding: 4px 8px;
-  background: var(--bg-tertiary);
+  background: var(--bg-input);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
@@ -1891,12 +1866,12 @@
 
 .log-filter-select:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--swtor-blue);
 }
 
 .log-search {
   padding: 4px 8px;
-  background: var(--bg-tertiary);
+  background: var(--bg-input);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
@@ -1907,7 +1882,7 @@
 
 .log-search:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--swtor-blue);
 }
 
 .log-search::placeholder {
@@ -2155,7 +2130,6 @@
   display: flex;
   gap: var(--space-sm);
   padding: var(--space-xs) var(--space-sm);
-  background: var(--bg-tertiary);
   border-bottom: 1px solid var(--border-subtle);
   flex-wrap: wrap;
   align-items: center;
@@ -2253,7 +2227,7 @@
 
 .log-find-input {
   padding: 4px 8px;
-  background: var(--bg-tertiary);
+  background: var(--bg-input);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
@@ -2272,7 +2246,6 @@
 
 .find-nav-btn {
   padding: 4px 6px;
-  background: var(--bg-tertiary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
@@ -2446,7 +2419,7 @@
    ───────────────────────────────────────────────────────────────────────────── */
 
 .log-context-menu {
-  background: var(--bg-secondary, var(--bg-light));
+  background: var(--bg-light);
   border: 1px solid var(--border-subtle, var(--border-strong));
   border-radius: var(--radius-sm, 4px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
@@ -2541,7 +2514,6 @@
 }
 
 .ability-table tfoot .totals-row {
-  background: var(--bg-tertiary);
   border-top: 2px solid var(--border-subtle);
   font-weight: 600;
 }
@@ -2586,7 +2558,6 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--bg-secondary);
   padding: 8px 10px;
   text-align: left;
   font-weight: 600;
@@ -2993,8 +2964,6 @@
 .challenge-card-header {
   margin-bottom: 0;
   padding: 0.5em 0.75em;
-  /* Same header band as the NPC health table beside it */
-  background: var(--bg-tertiary);
   border-bottom: 2px solid var(--border-subtle);
 }
 
@@ -3017,7 +2986,7 @@
   padding: 0 0.35em;
   border-radius: var(--radius-sm);
   background: rgba(var(--fg-rgb), 0.06);
-  font-family: var(--font-sans, inherit);
+  font-family: inherit;
   font-size: 10px;
   font-weight: 500;
   color: var(--text-muted);

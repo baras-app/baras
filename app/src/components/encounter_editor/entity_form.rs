@@ -11,7 +11,6 @@ use super::tabs::EncounterData;
 use super::triggers::ComposableTriggerEditor;
 use super::{DifficultiesEditor, NpcIdChipEditor};
 
-const DIFFICULTIES: [&str; 3] = ["story", "veteran", "master"];
 const GROUP_SIZES: [(&str, Option<u8>); 4] = [("All", None), ("4", Some(4)), ("8", Some(8)), ("16", Some(16))];
 
 #[component]
@@ -293,20 +292,9 @@ fn ShieldEditor(mut draft: Signal<EntityDefinition>, i: usize, shield: ShieldDef
                             class: "editor-subcard-row",
                             div { class: "flex items-center gap-xs",
                                 span { class: "field-unit", "Diff:" }
-                                for diff in DIFFICULTIES {
-                                    TogglePill {
-                                        label: diff,
-                                        active: entry.difficulties.iter().any(|d| d == diff),
-                                        on_click: move |_| {
-                                            let mut d = draft.write();
-                                            let e = &mut d.shields[i].hp[j];
-                                            if e.difficulties.iter().any(|x| x == diff) {
-                                                e.difficulties.retain(|x| x != diff);
-                                            } else {
-                                                e.difficulties.push(diff.to_string());
-                                            }
-                                        },
-                                    }
+                                DifficultiesEditor {
+                                    difficulties: entry.difficulties.clone(),
+                                    on_change: move |v: Vec<String>| draft.write().shields[i].hp[j].difficulties = v,
                                 }
                                 if entry.difficulties.is_empty() {
                                     span { class: "field-unit", "(all)" }
