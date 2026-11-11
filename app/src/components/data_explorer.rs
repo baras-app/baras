@@ -2391,7 +2391,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                         } as f64;
                                         let duration = if duration > 0.0 { duration } else { 1.0 };
                                         let mode = view_mode();
-                                        let show_values = !matches!(mode, ViewMode::Charts);
+                                        let show_values = !matches!(mode, ViewMode::Charts | ViewMode::Uptime);
                                         let overview_stats = overview_stats_lookup();
                                         let list = entity_list();
                                         let sel_name = selected_source.read().clone();
