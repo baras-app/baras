@@ -6,6 +6,7 @@
 use dioxus::prelude::*;
 
 use crate::components::editor_common::FormCard;
+use crate::components::form_fields::{CheckField, Field, NumberField, SubSection};
 
 use super::encounter_editor::triggers::{
     AbilitySelectorEditor, EffectSelectorEditor,
@@ -306,6 +307,7 @@ struct SingleModifierEditorProps {
 fn SingleModifierEditor(props: SingleModifierEditorProps) -> Element {
     let trigger_type = ModifierTriggerType::from_trigger(&props.modifier.trigger);
     let modifier = props.modifier.clone();
+    let on_update = props.on_update;
 
     rsx! {
         div { class: "modifier-entry",
@@ -335,216 +337,112 @@ fn SingleModifierEditor(props: SingleModifierEditorProps) -> Element {
                 }
             }
 
-            // ── Trigger conditions ──
-            div { class: "modifier-section",
-                div { class: "modifier-section-title", "Trigger" }
+            SubSection { title: "Trigger",
                 {render_trigger_fields(&modifier.trigger, EventHandler::new({
                     let modifier = modifier.clone();
-                    let on_update = props.on_update.clone();
-                    move |t: Trigger| {
-                        let mut m = modifier.clone();
-                        m.trigger = t;
-                        on_update.call(m);
-                    }
+                    move |t: Trigger| update(&modifier, on_update, |m| m.trigger = t)
                 }))}
-                {render_trigger_conditions(&modifier, &props.on_update)}
-            }
-
-            // ── Modifier effect ──
-            div { class: "modifier-section",
-            div { class: "modifier-section-title", "Modifier" }
-
-            // Cancel (remove effect instead of adjusting duration)
-            div { class: "form-row-hz",
-                label {
-                    "Cancel Effect"
-                    span { class: "help-icon", title: "Remove the effect when this modifier fires instead of adjusting its duration", "?" }
-                }
-                input {
-                    r#type: "checkbox",
-                    checked: modifier.cancel,
-                    onchange: {
-                        let modifier = modifier.clone();
-                        let on_update = props.on_update.clone();
-                        move |e: Event<FormData>| {
-                            let mut m = modifier.clone();
-                            m.cancel = e.checked();
-                            on_update.call(m);
-                        }
-                    }
-                }
-            }
-
-            // Common modifier fields
-            if !modifier.cancel {
-            div { class: "form-row-hz",
-                label { "Duration Adjust (s)" }
-                input {
-                    r#type: "number",
-                    class: "input-number",
-                    step: "0.1",
-                    value: "{modifier.adjust_duration_secs}",
-                    onchange: {
-                        let modifier = modifier.clone();
-                        let on_update = props.on_update.clone();
-                        move |e: Event<FormData>| {
-                            let mut m = modifier.clone();
-                            m.adjust_duration_secs = e.value().parse().unwrap_or(0.0);
-                            on_update.call(m);
-                        }
-                    }
-                }
-            }
-
-            // Refill Duration
-            div { class: "form-row-hz",
-                label {
-                    "Refill Duration"
-                    span { class: "help-icon", title: "Refill the effect to its maximum duration, including adjustment (if applicable).", "?" }
-                }
-                input {
-                    r#type: "checkbox",
-                    checked: modifier.refill_duration,
-                    onchange: {
-                        let modifier = modifier.clone();
-                        let on_update = props.on_update.clone();
-                        move |e: Event<FormData>| {
-                            let mut m = modifier.clone();
-                            m.refill_duration = e.checked();
-                            on_update.call(m);
-                        }
-                    }
-                }
-            }
-
-            // Max Duration
-            div { class: "form-row-hz",
-                label {
-                    "Max Duration (s)"
-                    span { class: "help-icon", title: "The maximum duration this effect can obtain through this modifier.", "?" }
-                }
-                input {
-                    r#type: "number",
-                    class: "input-number",
-                    step: "0.5",
+                NumberField {
+                    label: "ICD",
+                    help: "Internal Cooldown. Minimum time between trigger events that must elapse before this modifier can be applied again",
+                    value: modifier.icd_secs.map(|v| v.to_string()).unwrap_or_default(),
+                    unit: "sec",
                     min: "0",
+                    step: "0.1",
                     placeholder: "None",
-                    value: "{modifier.max_duration_secs.map(|v| v.to_string()).unwrap_or_default()}",
-                    onchange: {
+                    on_input: {
                         let modifier = modifier.clone();
-                        let on_update = props.on_update.clone();
-                        move |e: Event<FormData>| {
-                            let mut m = modifier.clone();
-                            m.max_duration_secs = e.value().parse::<f32>().ok().filter(|v| *v > 0.0);
-                            on_update.call(m);
-                        }
+                        move |v: String| update(&modifier, on_update, |m| m.icd_secs = v.parse::<f32>().ok().filter(|v| *v > 0.0))
+                    },
+                }
+                // Requires Crit only applies to damage/healing triggers
+                if supports_crit(&modifier.trigger) {
+                    CheckField {
+                        label: "Requires critical hit",
+                        checked: modifier.requires_crit,
+                        on_change: {
+                            let modifier = modifier.clone();
+                            move |v| update(&modifier, on_update, |m| m.requires_crit = v)
+                        },
+                    }
+                }
+                // The ICD options only mean something once an ICD is set
+                if modifier.icd_secs.is_some() {
+                    CheckField {
+                        label: "ICD from application",
+                        help: "Count the effect's initial application as an ICD proc, so the modifier cannot fire until the ICD has elapsed since the effect was applied",
+                        checked: modifier.icd_from_application,
+                        on_change: {
+                            let modifier = modifier.clone();
+                            move |v| update(&modifier, on_update, |m| m.icd_from_application = v)
+                        },
+                    }
+                    CheckField {
+                        label: "ICD affected by alacrity",
+                        help: "Scale the ICD by the effect holder's alacrity, using the same formula as effect duration",
+                        checked: modifier.icd_affected_by_alacrity,
+                        on_change: {
+                            let modifier = modifier.clone();
+                            move |v| update(&modifier, on_update, |m| m.icd_affected_by_alacrity = v)
+                        },
                     }
                 }
             }
-            }
+
+            SubSection { title: "Modifier",
+                CheckField {
+                    label: "Cancel effect",
+                    help: "Remove the effect when this modifier fires instead of adjusting its duration",
+                    checked: modifier.cancel,
+                    on_change: {
+                        let modifier = modifier.clone();
+                        move |v| update(&modifier, on_update, |m| m.cancel = v)
+                    },
+                }
+                if !modifier.cancel {
+                    CheckField {
+                        label: "Refill duration",
+                        help: "Refill the effect to its maximum duration, including adjustment (if applicable).",
+                        checked: modifier.refill_duration,
+                        on_change: {
+                            let modifier = modifier.clone();
+                            move |v| update(&modifier, on_update, |m| m.refill_duration = v)
+                        },
+                    }
+                    NumberField {
+                        label: "Duration Adjust",
+                        value: modifier.adjust_duration_secs.to_string(),
+                        unit: "sec",
+                        step: "0.1",
+                        on_input: {
+                            let modifier = modifier.clone();
+                            move |v: String| update(&modifier, on_update, |m| m.adjust_duration_secs = v.parse().unwrap_or(0.0))
+                        },
+                    }
+                    NumberField {
+                        label: "Max Duration",
+                        help: "The maximum duration this effect can obtain through this modifier.",
+                        value: modifier.max_duration_secs.map(|v| v.to_string()).unwrap_or_default(),
+                        unit: "sec",
+                        min: "0",
+                        step: "0.5",
+                        placeholder: "None",
+                        on_input: {
+                            let modifier = modifier.clone();
+                            move |v: String| update(&modifier, on_update, |m| m.max_duration_secs = v.parse::<f32>().ok().filter(|v| *v > 0.0))
+                        },
+                    }
+                }
             }
         }
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Trigger conditions (gating shared across trigger types)
-// ─────────────────────────────────────────────────────────────────────────────
-
-fn render_trigger_conditions(
-    modifier: &EffectModifier,
-    on_update: &EventHandler<EffectModifier>,
-) -> Element {
-    let modifier = modifier.clone();
-    let on_update = on_update.clone();
-    let has_crit = supports_crit(&modifier.trigger);
-    rsx! {
-            // Requires Crit (only for damage/healing triggers)
-            if has_crit {
-                div { class: "form-row-hz",
-                    label { "Requires Critical Hit" }
-                    input {
-                        r#type: "checkbox",
-                        checked: modifier.requires_crit,
-                        onchange: {
-                            let modifier = modifier.clone();
-                            let on_update = on_update.clone();
-                            move |e: Event<FormData>| {
-                                let mut m = modifier.clone();
-                                m.requires_crit = e.checked();
-                                on_update.call(m);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ICD
-            div { class: "form-row-hz",
-                label {
-                    "ICD (s)"
-                    span { class: "help-icon", title: "Internal Cooldown. Minimum time between trigger events that must elapse before this modifier can be applied again", "?" }
-                }
-                input {
-                    r#type: "number",
-                    class: "input-number",
-                    step: "0.1",
-                    min: "0",
-                    placeholder: "None",
-                    value: "{modifier.icd_secs.map(|v| v.to_string()).unwrap_or_default()}",
-                    onchange: {
-                        let modifier = modifier.clone();
-                        let on_update = on_update.clone();
-                        move |e: Event<FormData>| {
-                            let mut m = modifier.clone();
-                            m.icd_secs = e.value().parse::<f32>().ok().filter(|v| *v > 0.0);
-                            on_update.call(m);
-                        }
-                    }
-                }
-            }
-
-            div { class: "form-row-hz",
-                label {
-                    "ICD From Application"
-                    span { class: "help-icon", title: "Count the effect's initial application as an ICD proc, so the modifier cannot fire until the ICD has elapsed since the effect was applied", "?" }
-                }
-                input {
-                    r#type: "checkbox",
-                    checked: modifier.icd_from_application,
-                    disabled: modifier.icd_secs.is_none(),
-                    onchange: {
-                        let modifier = modifier.clone();
-                        let on_update = on_update.clone();
-                        move |e: Event<FormData>| {
-                            let mut m = modifier.clone();
-                            m.icd_from_application = e.checked();
-                            on_update.call(m);
-                        }
-                    }
-                }
-            }
-            div { class: "form-row-hz",
-                label {
-                    "ICD Affected by Alacrity"
-                    span { class: "help-icon", title: "Scale the ICD by the effect holder's alacrity, using the same formula as effect duration", "?" }
-                }
-                input {
-                    r#type: "checkbox",
-                    checked: modifier.icd_affected_by_alacrity,
-                    disabled: modifier.icd_secs.is_none(),
-                    onchange: {
-                        let modifier = modifier.clone();
-                        let on_update = on_update.clone();
-                        move |e: Event<FormData>| {
-                            let mut m = modifier.clone();
-                            m.icd_affected_by_alacrity = e.checked();
-                            on_update.call(m);
-                        }
-                    }
-                }
-            }
-    }
+/// Send `modifier` with one edit applied
+fn update(modifier: &EffectModifier, on_update: EventHandler<EffectModifier>, edit: impl FnOnce(&mut EffectModifier)) {
+    let mut m = modifier.clone();
+    edit(&mut m);
+    on_update.call(m);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -673,22 +571,16 @@ fn render_trigger_fields(trigger: &Trigger, on_change: EventHandler<Trigger>) ->
             render_direction_select(*direction, EventHandler::new(move |direction| on_change.call(Trigger::SelfChargesChanged { direction })))
         }
         Trigger::ResourceSpent { per_amount } => rsx! {
-            div { class: "form-row-hz",
-                label {
-                    "Per Amount"
-                    span { class: "help-icon", title: "Scale the duration adjust by (amount spent / this value). 0 = flat adjust per spend event", "?" }
-                }
-                input {
-                    r#type: "number",
-                    class: "input-number",
-                    step: "1",
-                    min: "0",
-                    placeholder: "0 (flat)",
-                    value: "{per_amount}",
-                    onchange: move |e: Event<FormData>| on_change.call(Trigger::ResourceSpent {
-                        per_amount: e.value().parse::<f32>().unwrap_or(0.0).max(0.0),
-                    }),
-                }
+            NumberField {
+                label: "Per Amount",
+                help: "Scale the duration adjust by (amount spent / this value). 0 = flat adjust per spend event",
+                value: per_amount.to_string(),
+                min: "0",
+                step: "1",
+                placeholder: "0 (flat)",
+                on_input: move |v: String| on_change.call(Trigger::ResourceSpent {
+                    per_amount: v.parse::<f32>().unwrap_or(0.0).max(0.0),
+                }),
             }
         },
         Trigger::AnyOf { conditions } => {
@@ -735,7 +627,7 @@ fn render_trigger_fields(trigger: &Trigger, on_change: EventHandler<Trigger>) ->
                         }
                     }
                     button {
-                        class: "btn-sm",
+                        class: "btn-dashed text-sm",
                         onclick: {
                             let conds = conds.clone();
                             move |_| {
@@ -744,8 +636,7 @@ fn render_trigger_fields(trigger: &Trigger, on_change: EventHandler<Trigger>) ->
                                 on_change.call(Trigger::AnyOf { conditions: c });
                             }
                         },
-                        i { class: "fa-solid fa-plus" }
-                        " Add Condition"
+                        "+ Add Condition"
                     }
                 }
             }
@@ -757,11 +648,9 @@ fn render_trigger_fields(trigger: &Trigger, on_change: EventHandler<Trigger>) ->
 fn render_mitigation(mitigation: &[MitigationType], on_change: EventHandler<Vec<MitigationType>>) -> Element {
     let mits = mitigation.to_vec();
     rsx! {
-        div { class: "form-row-hz",
-            label { "Mitigation Filter" }
-            div { class: "flex flex-wrap gap-xs",
+        Field { label: "Mitigation",
                 for mit_type in MitigationType::ALL {
-                    label { class: "flex items-center gap-xs text-sm",
+                    label { class: "field-check",
                         input {
                             r#type: "checkbox",
                             checked: mits.contains(mit_type),
@@ -779,20 +668,17 @@ fn render_mitigation(mitigation: &[MitigationType], on_change: EventHandler<Vec<
                                 }
                             }
                         }
-                        span { "{mit_type.display_name()}" }
+                        "{mit_type.display_name()}"
                     }
                 }
-            }
         }
     }
 }
 
 fn render_direction_select(direction: Option<ChargeDirection>, on_change: EventHandler<Option<ChargeDirection>>) -> Element {
     rsx! {
-        div { class: "form-row-hz",
-            label { "Direction" }
+        Field { label: "Direction",
             select {
-                class: "select-inline",
                 value: "{direction_label(direction)}",
                 onchange: move |e: Event<FormData>| {
                     on_change.call(match e.value().as_str() {

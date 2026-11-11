@@ -3,6 +3,7 @@
 use dioxus::prelude::*;
 
 use crate::components::editor_common::FormCard;
+use crate::components::form_fields::{Field, TextField, TogglePill};
 use crate::types::{AreaListItem, BossEditItem, NewAreaRequest};
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -134,56 +135,26 @@ pub fn NewBossForm(
                 }
             },
 
-            // Boss ID
-            div { class: "form-row-hz",
-                label { "Boss ID" }
-                input {
-                    r#type: "text",
-                    class: "flex-1",
-                    placeholder: "e.g., apex_vanguard (snake_case)",
-                    value: "{id}",
-                    oninput: move |e| id.set(e.value()),
-                }
+            TextField {
+                label: "Boss ID",
+                value: id(),
+                placeholder: "e.g., apex_vanguard (snake_case)",
+                on_input: move |v| id.set(v),
             }
-
-            // Name
-            div { class: "form-row-hz",
-                label { "Name" }
-                input {
-                    r#type: "text",
-                    class: "flex-1",
-                    placeholder: "e.g., Apex Vanguard",
-                    value: "{name}",
-                    oninput: move |e| name.set(e.value()),
-                }
-            }
-
-            // Difficulties
-            div { class: "form-row-hz",
-                label { "Difficulties" }
-                div { class: "flex gap-xs",
-                    for diff in ["story", "veteran", "master"] {
-                        {
-                            let diff_str = diff.to_string();
-                            let is_active = difficulties().contains(&diff_str);
-                            let diff_clone = diff_str.clone();
-
-                            rsx! {
-                                button {
-                                    class: if is_active { "toggle-btn active capitalize" } else { "toggle-btn capitalize" },
-                                    onclick: move |_| {
-                                        let mut d = difficulties();
-                                        if d.contains(&diff_clone) {
-                                            d.retain(|x| x != &diff_clone);
-                                        } else {
-                                            d.push(diff_clone.clone());
-                                        }
-                                        difficulties.set(d);
-                                    },
-                                    "{diff}"
-                                }
+            TextField { label: "Name", value: name(), placeholder: "e.g., Apex Vanguard", on_input: move |v| name.set(v) }
+            Field { label: "Difficulties",
+                for (diff, label) in [("story", "Story"), ("veteran", "Veteran"), ("master", "Master")] {
+                    TogglePill {
+                        label,
+                        active: difficulties().iter().any(|d| d == diff),
+                        on_click: move |_| {
+                            let mut d = difficulties.write();
+                            if d.iter().any(|x| x == diff) {
+                                d.retain(|x| x != diff);
+                            } else {
+                                d.push(diff.to_string());
                             }
-                        }
+                        },
                     }
                 }
             }
