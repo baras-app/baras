@@ -215,7 +215,7 @@ pub fn RunDetailView(
         if run.area_id == 0 {
             div { class: "history-pick",
                 i { class: "fa-solid fa-triangle-exclamation" }
-                " This log's history predates area ids, so boss order, clear status and the timed run are unknown. Re-scan it from Log Management."
+                " This log's history predates area ids, so boss order, clear status and the timed run are unknown. Re-scan it from the Logs tab."
             }
         }
         div { class: "history-cards",

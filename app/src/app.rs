@@ -737,10 +737,10 @@ pub fn App() -> Element {
                         div { class: "header-tabs",
                             button {
                                 class: if ui_state.read().active_tab == MainTab::DataExplorer { "tab-btn active" } else { "tab-btn" },
-                                title: "One fight at a time, from the loaded log",
+                                title: "Pull breakdowns for currently selected file",
                                 onclick: move |_| ui_state.write().active_tab = MainTab::DataExplorer,
                                 i { class: "fa-solid fa-magnifying-glass-chart" }
-                                span { class: "tab-label", " Data Explorer" }
+                                span { class: "tab-label", " Analysis" }
                             }
                             button {
                                 class: if ui_state.read().active_tab == MainTab::Overlays { "tab-btn active" } else { "tab-btn" },
@@ -750,8 +750,8 @@ pub fn App() -> Element {
                                 span { class: "tab-label", " Overlays" }
                             }
                             for (tab, icon, label, tip) in [
-                                (MainTab::EncounterBuilder, "fa-solid fa-hammer", "Encounter Builder", "Boss timers, phases and triggers"),
-                                (MainTab::Effects, "fa-solid fa-heart-pulse", "Effects", "Tracked buffs, debuffs and alerts"),
+                                (MainTab::EncounterBuilder, "fa-solid fa-stopwatch", "Timers", "Boss timers, phases, challenges and more"),
+                                (MainTab::Effects, "fa-solid fa-heart-pulse", "Effects", "HoTs, DoTs, DCDs and other effects that are tracked across all encounters"),
                             ] {
                                 button {
                                     class: if ui_state.read().active_tab == tab { "tab-btn active" } else { "tab-btn" },
@@ -772,8 +772,8 @@ pub fn App() -> Element {
                                 state: ui_state,
                             }
                             for (tab, icon, label, tip) in [
-                                (MainTab::LogManagement, "fa-solid fa-folder-tree", "Log Management", "Scan, archive, delete and tag your logs"),
-                                (MainTab::Characters, "fa-solid fa-users", "Characters", "Your characters across servers, with operation lockouts"),
+                                (MainTab::LogManagement, "fa-solid fa-folder-tree", "Logs", "Manage log files"),
+                                (MainTab::Characters, "fa-solid fa-users", "Characters", "Track character information and lockouts"),
                                 (MainTab::Settings, "fa-solid fa-gear", "Settings", "Log directory, hotkeys, audio and application options"),
                             ] {
                                 button {
@@ -2111,7 +2111,7 @@ pub fn App() -> Element {
                         }
 
                         div { class: "settings-section",
-                            h4 { "Log Management" }
+                            h4 { "Logs" }
                             CleanupRules {}
                         }
 

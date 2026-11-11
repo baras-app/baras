@@ -232,7 +232,7 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
                             div { class: "sidebar-empty",
                                 i { class: "fa-solid fa-dungeon" }
                                 p { "No operation runs" }
-                                p { class: "hint", "Widen the filters, or re-scan your logs from Log Management." }
+                                p { class: "hint", "Widen the filters, or re-scan your logs from the Logs tab." }
                             }
                         }
                         if !visible.is_empty() && query.is_empty() {

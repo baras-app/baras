@@ -227,7 +227,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                             div { class: "sidebar-empty",
                                 i { class: "fa-solid fa-clock-rotate-left" }
                                 p { "No recorded pulls" }
-                                p { class: "hint", "Widen the filters, or re-scan your logs from Log Management." }
+                                p { class: "hint", "Widen the filters, or re-scan your logs from the Logs tab." }
                             }
                         }
                         for (g, tree) in groups.iter() {
