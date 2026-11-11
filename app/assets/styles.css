@@ -5984,11 +5984,15 @@ a.contributor-name:hover {
   text-align: center;
 }
 
+/* Title, then any action right after it; the fold toggle keeps the right edge */
 .sidebar-header-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.5em;
+}
+
+.explorer-sidebar:not(.collapsed) .sidebar-header-row .sidebar-collapse-btn {
+  margin-left: auto;
 }
 
 /* Sidebar collapse toggle button */
@@ -6027,8 +6031,7 @@ a.contributor-name:hover {
 }
 
 .sidebar-header h3 {
-  /* Takes the slack, so an action button sits beside the fold toggle */
-  margin: 0 auto 0 0;
+  margin: 0;
   font-size: 0.95em;
   color: var(--swtor-blue);
   display: flex;
