@@ -18,7 +18,9 @@ use crate::components::class_icons::get_class_icon;
 use crate::components::combat_log::CombatLog;
 use crate::components::death_recap_drawer::DeathRecapDrawer;
 use crate::components::encounter_types::{ChallengeSummary, EncounterSummary, UploadState, group_by_area};
+use crate::components::effect_uptime::EffectUptimeView;
 use crate::components::overview_chart::OverviewGroupChart;
+use crate::components::tab_more_menu::TabMoreMenu;
 use crate::components::overview_table::{OverviewSort, OverviewTable, OverviewTotals};
 use crate::components::phase_timeline::PhaseTimelineFilter;
 use crate::components::toggle_switch::ToggleSwitch;
@@ -26,8 +28,8 @@ use crate::components::dt_summary::DtSummaryTable;
 use crate::components::entity_picker::EntityPicker;
 use crate::components::rotation_view::RotationView;
 use crate::components::{ToastSeverity, use_parsely_upload, use_toast};
-use crate::components::mirror_names::{self, ABILITY_NAMING, display_id, display_name};
-use crate::types::{AbilityNaming, DataTab, SortColumn, SortDirection, UiSessionState, UsageSortColumn, ViewMode};
+use crate::components::mirror_names::{self, display_id, display_name};
+use crate::types::{DataTab, SortColumn, SortDirection, UiSessionState, UsageSortColumn, ViewMode};
 use crate::utils::{LightTheme, css_var, js_set};
 use baras_types::formatting;
 
@@ -181,7 +183,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
     // Sidebar collapse states (not persisted - always start expanded)
     let mut sidebar_collapsed = use_signal(|| false);
     let mut entity_collapsed = use_signal(|| false);
-    let mut overview_fullscreen = use_signal(|| false);
+    let overview_fullscreen = use_signal(|| false);
 
     // NPC health table: which grouped NPC names are expanded (not persisted)
     let mut expanded_npc_groups = use_signal(HashSet::<String>::new);
@@ -790,7 +792,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
             let mode = *view_mode.peek();
             let tab = match mode {
                 ViewMode::Detailed(tab) => Some(tab),
-                ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts => Some(DataTab::Damage),
+                ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts | ViewMode::Uptime => Some(DataTab::Damage),
                 _ => None,
             };
             if let Some(tab) = tab {
@@ -800,7 +802,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                 }
 
                 // Load entity breakdown
-                let entity_data = if matches!(mode, ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts) {
+                let entity_data = if matches!(mode, ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts | ViewMode::Uptime) {
                     let (result, dmg_map) = load_actor_entities(None, None).await;
                     entity_dmg_totals.set(dmg_map);
                     result
@@ -869,7 +871,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         // Extract tab if in detailed mode, or use Damage tab for Rotation/Usage/Charts mode
         let tab = match mode {
             ViewMode::Detailed(tab) => tab,
-            ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts => DataTab::Damage,
+            ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts | ViewMode::Uptime => DataTab::Damage,
             _ => {
                 // Clear detailed data when not in detailed/rotation/usage/charts mode
                 // Note: selected_source is preserved so it syncs across tabs
@@ -899,7 +901,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
             };
 
             // Load entity breakdown - single attempt
-            let entity_data = if matches!(mode, ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts) {
+            let entity_data = if matches!(mode, ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts | ViewMode::Uptime) {
                 let (result, dmg_map) = load_actor_entities(idx, tr_opt.as_ref()).await;
                 entity_dmg_totals.set(dmg_map);
                 result
@@ -1884,33 +1886,12 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                             onclick: move |_| view_mode.set(ViewMode::Rotation),
                             "Rotation"
                         }
-                        // Mirror-class naming toggle (Republic / Imperial names for class abilities)
-                        // Neither lit = names as logged; clicking the lit one goes back to that
-                        div { class: "history-seg naming-toggle",
-                            for (naming, label, tip) in [
-                                (AbilityNaming::Republic, "Rep", "Show class abilities with Republic names"),
-                                (AbilityNaming::Imperial, "Imp", "Show class abilities with Imperial names"),
-                            ] {
-                                {
-                                    let on = *ABILITY_NAMING.read() == naming;
-                                    rsx! {
-                                        button {
-                                            key: "{label}",
-                                            class: if on { "seg active" } else { "seg" },
-                                            title: if on { "Click to show names as logged" } else { tip },
-                                            onclick: move |_| *ABILITY_NAMING.write() = if on { AbilityNaming::AsLogged } else { naming },
-                                            "{label}"
-                                        }
-                                    }
-                                }
-                            }
-                        }
                         button {
-                            class: "panel-fullscreen-btn",
-                            title: if *overview_fullscreen.read() { "Exit fullscreen" } else { "Expand to fullscreen" },
-                            onclick: move |_| { let v = *overview_fullscreen.read(); overview_fullscreen.set(!v); },
-                            i { class: if *overview_fullscreen.read() { "fa-solid fa-down-left-and-up-right-to-center" } else { "fa-solid fa-up-right-and-down-left-from-center" } }
+                            class: if matches!(view_mode(), ViewMode::Uptime) { "data-tab active" } else { "data-tab" },
+                            onclick: move |_| view_mode.set(ViewMode::Uptime),
+                            "Effect Uptime"
                         }
+                        TabMoreMenu { fullscreen: overview_fullscreen }
                     }
 
                     // Content area — fixed-height flex region below tab bar
@@ -2365,7 +2346,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                 }
                             }
                         }
-                    } else if matches!(view_mode(), ViewMode::Detailed(_) | ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts) {
+                    } else if matches!(view_mode(), ViewMode::Detailed(_) | ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts | ViewMode::Uptime) {
                         // Two-column layout (Detailed breakdown, Rotation, Usage, or Charts)
                         {
                         let current_tab = if let ViewMode::Detailed(tab) = view_mode() { Some(tab) } else { None };
@@ -2642,6 +2623,26 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                         on_range_change: move |new_range: TimeRange| {
                                             time_range.set(new_range);
                                         },
+                                        european: eu,
+                                    }
+                                }
+                            } else if matches!(view_mode(), ViewMode::Uptime) {
+                                div { class: "ability-section",
+                                    if *entity_collapsed.read() {
+                                        EntityPicker {
+                                            entities: entity_list,
+                                            icons: class_icon_lookup,
+                                            selected: selected_source.read().clone(),
+                                            players_only: show_players_only,
+                                            on_pick: move |(name, id): (String, Option<i64>)| on_source_click(name, id),
+                                        }
+                                    }
+                                    EffectUptimeView {
+                                        encounter_idx: *selected_encounter.read(),
+                                        time_range: time_range(),
+                                        duration_secs: timeline.read().as_ref().map_or(0.0, |t| t.duration_secs),
+                                        selected_source: selected_source.read().clone(),
+                                        selected_source_id: *selected_source_id.read(),
                                         european: eu,
                                     }
                                 }

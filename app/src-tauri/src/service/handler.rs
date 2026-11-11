@@ -20,7 +20,7 @@ use baras_core::query::{
     AbilityBreakdown, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow,
     CombatLogSortColumn, DamageTakenSummary, DataTab, EffectChartData, EffectWindow,
     EncounterTimeline, EntityBreakdown, HpPoint, NpcHealthRow, PlayerDeath, RaidOverviewRow,
-    GroupMetric, GroupTimeSeries, SortDirection, TimeRange, TimeSeriesPoint,
+    EffectUptimeCell, GroupMetric, GroupTimeSeries, SortDirection, TimeRange, TimeSeriesPoint,
 };
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -1254,6 +1254,24 @@ impl ServiceHandle {
             .await
             .query()
             .group_over_time(bucket_ms, metric, time_range.as_ref())
+            .await
+    }
+
+    /// Every effect `source` applied, uptime per target (Effect Uptime tab).
+    pub async fn query_effect_uptime_by_target(
+        &self,
+        encounter_idx: Option<u32>,
+        source: String,
+        time_range: Option<TimeRange>,
+        duration_secs: f32,
+    ) -> Result<Vec<EffectUptimeCell>, String> {
+        self.register_encounter(encounter_idx).await?;
+        self.shared
+            .query_context
+            .query()
+            .await
+            .query()
+            .effect_uptime_by_target(&source, time_range.as_ref(), duration_secs)
             .await
     }
 

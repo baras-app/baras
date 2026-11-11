@@ -5,7 +5,7 @@
 use baras_core::query::{
     AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch,
     CombatLogRow, CombatLogSortColumn, DamageTakenSummary, DataTab, EffectChartData, EffectWindow,
-    EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath, RaidOverviewRow,
+    EffectUptimeCell, EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath, RaidOverviewRow,
     RotationAnalysis, SortDirection, TimeRange, TimeSeriesPoint,
 };
 use tauri::State;
@@ -91,6 +91,20 @@ pub async fn query_group_over_time(
 ) -> Result<GroupTimeSeries, String> {
     handle
         .query_group_over_time(encounter_idx, bucket_ms, metric, time_range)
+        .await
+}
+
+/// Every effect a source applied, uptime per target.
+#[tauri::command]
+pub async fn query_effect_uptime_by_target(
+    handle: State<'_, ServiceHandle>,
+    encounter_idx: Option<u32>,
+    source: String,
+    time_range: Option<TimeRange>,
+    duration_secs: f32,
+) -> Result<Vec<EffectUptimeCell>, String> {
+    handle
+        .query_effect_uptime_by_target(encounter_idx, source, time_range, duration_secs)
         .await
 }
 
