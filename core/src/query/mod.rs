@@ -15,6 +15,7 @@ mod overview;
 mod rotation;
 mod time_series;
 mod timeline;
+mod uptime;
 mod usage;
 
 pub use error::QueryError;
@@ -35,7 +36,7 @@ pub use baras_types::{
     CombatLogSortColumn, DamageTakenSummary, DataTab, DeathRecap, DeathRecapDamageRow,
     DeathRecapDamageSource, DeathRecapEvent, DeathRecapEventKind, DeathRecapHealRow,
     DeathRecapHealSource, DeathRecapHpPoint,
-    DeathRecapKillingBlow, EffectChartData, EffectWindow, EncounterTimeline, EntityBreakdown,
+    DeathRecapKillingBlow, EffectChartData, EffectUptimeCell, EffectWindow, EncounterTimeline, EntityBreakdown,
     GcdSlot, GroupMetric, GroupTimeSeries, GroupedEntityNames, HpPoint, NpcHealthRow, PhaseSegment, PlayerDeath,
     AbilityUsageRow, RaidOverviewRow, RotationAnalysis, RotationCycle, RotationEvent,
     SortDirection, TimeRange, TimeSeriesPoint,

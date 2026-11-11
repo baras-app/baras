@@ -1208,7 +1208,7 @@ pub use baras_types::{
     AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch,
     CombatLogRow, CombatLogSortColumn, DamageTakenSummary, DataTab, DeathRecap,
     DeathRecapEventKind, EffectChartData, EffectWindow,
-    EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries, GroupedEntityNames, HpPoint,
+    EffectUptimeCell, EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries, GroupedEntityNames, HpPoint,
     NpcHealthRow, NpcSpawn,
     PhaseSegment, PlayerDeath, PvpFaction, RaidOverviewRow, RotationAnalysis,
     SortDirection, TimeRange, TimeSeriesPoint,
@@ -1372,6 +1372,22 @@ pub async fn query_dps_over_time(
 }
 
 /// Query encounter timeline with phase segments.
+/// Every effect `source` (name or `id:<instance>`) applied, uptime per target.
+pub async fn query_effect_uptime_by_target(
+    encounter_idx: Option<u32>,
+    source: &str,
+    time_range: Option<&TimeRange>,
+    duration_secs: f32,
+) -> Option<Vec<EffectUptimeCell>> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "encounterIdx", &encounter_idx.map_or(JsValue::NULL, |i| JsValue::from_f64(i as f64)));
+    js_set(&obj, "source", &JsValue::from_str(source));
+    let tr = time_range.and_then(|tr| serde_wasm_bindgen::to_value(tr).ok());
+    js_set(&obj, "timeRange", &tr.unwrap_or(JsValue::NULL));
+    js_set(&obj, "durationSecs", &JsValue::from_f64(duration_secs as f64));
+    from_js(invoke("query_effect_uptime_by_target", obj.into()).await)
+}
+
 /// Every player's metric over time, for the Overview's group chart.
 pub async fn query_group_over_time(
     encounter_idx: Option<u32>,

@@ -5,13 +5,13 @@ use datafusion::arrow::array::Array;
 use super::*;
 
 // Effect type IDs (the type of log event)
-const APPLY_EFFECT: i64 = 836045448945477;
-const REMOVE_EFFECT: i64 = 836045448945478;
+pub(super) const APPLY_EFFECT: i64 = 836045448945477;
+pub(super) const REMOVE_EFFECT: i64 = 836045448945478;
 // Effect IDs (what specifically happened)
 const ABILITY_ACTIVATE: i64 = 836045448945479;
 // Exclude damage/heal "effects" which are action results, not buffs
-const DAMAGE_EFFECT: i64 = 836045448945501;
-const HEAL_EFFECT: i64 = 836045448945500;
+pub(super) const DAMAGE_EFFECT: i64 = 836045448945501;
+pub(super) const HEAL_EFFECT: i64 = 836045448945500;
 
 /// Build a SQL WHERE clause fragment for source filtering.
 /// Returns an AND clause or empty string. `target` is an entity selector

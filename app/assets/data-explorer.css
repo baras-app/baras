@@ -2679,13 +2679,219 @@
   transition: height 0.2s ease;
 }
 
-/* Rep / Imp naming switch, centred in the tab bar. Neither lit = names as logged */
-.naming-toggle {
+/* "⋯" menu closing the tab bar: ability naming + fullscreen */
+.tab-more {
+  margin-left: auto;
   align-self: center;
-  flex: 0 0 auto;
-  margin-left: var(--space-xs);
+}
+
+.tab-more-btn {
+  padding: 4px 10px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.tab-more-btn:hover {
+  color: var(--text-primary);
+  background: rgba(var(--fg-rgb), 0.06);
+}
+
+.tab-more-list {
+  left: auto;
+  right: 0;
+  min-width: 12em;
+  font-size: 13px;
+}
+
+.tab-more-label {
+  padding: 0.3em 0.4em 0.15em;
+  color: var(--text-muted);
+  font-size: 0.8em;
+}
+
+/* Effect Uptime tab: targets × effects */
+.uptime-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.uptime-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
   font-size: 12px;
 }
+
+.uptime-title {
+  color: var(--text-secondary);
+}
+
+.uptime-title strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.uptime-empty {
+  padding: var(--space-lg);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.uptime-table-box {
+  overflow: auto;
+}
+
+.uptime-table .name-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  /* Opaque, like the shared sticky headers, so cells scroll under it */
+  background: var(--bg-dark);
+  white-space: nowrap;
+}
+
+.uptime-table .name-col.npc {
+  color: var(--text-secondary);
+}
+
+.uptime-table th.uptime-effect {
+  vertical-align: bottom;
+  max-width: 7em;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.uptime-effect span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: 2px;
+  white-space: normal;
+  line-height: 1.2;
+}
+
+/* Single-hue tint deepening with uptime; empty cells stay blank */
+.uptime-cell {
+  min-width: 4.5em;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--swtor-blue) calc(var(--pct) * 0.35%), transparent);
+}
+
+.uptime-cell.none {
+  background: none;
+}
+
+.uptime-row .name-col,
+.uptime-cell:not(.none) {
+  cursor: pointer;
+}
+
+.uptime-row.picked .name-col {
+  color: var(--swtor-blue);
+}
+
+.uptime-cell.picked {
+  outline: 2px solid var(--swtor-blue);
+  outline-offset: -2px;
+}
+
+/* Swimlane timeline for the picked target */
+.uptime-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-sm);
+  background: var(--well-bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+}
+
+.uptime-timeline-title {
+  margin-bottom: 2px;
+  color: var(--text-secondary);
+}
+
+.uptime-timeline-title strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.uptime-lane {
+  display: grid;
+  grid-template-columns: minmax(8em, 14em) minmax(0, 1fr) 3.5em;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.uptime-lane-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-secondary);
+}
+
+.uptime-lane-label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.uptime-lane-track {
+  position: relative;
+  height: 14px;
+  background: rgba(var(--fg-rgb), 0.05);
+  border-radius: 3px;
+}
+
+.uptime-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 1px;
+  background: var(--swtor-blue);
+  opacity: 0.7;
+  border-radius: 2px;
+}
+
+.uptime-lane.focus .uptime-lane-label {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.uptime-lane.focus .uptime-bar {
+  opacity: 1;
+}
+
+.uptime-lane-pct {
+  color: var(--text-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.uptime-axis .uptime-lane-track {
+  height: 1.2em;
+  background: none;
+}
+
+.uptime-tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.uptime-tick:first-child { transform: none; }
+.uptime-tick:last-child { transform: translateX(-100%); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Shared table look, matching the Overview table: a dark framed card,

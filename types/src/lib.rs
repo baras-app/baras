@@ -326,6 +326,23 @@ pub struct EffectChartData {
     pub uptime_pct: f32,
 }
 
+/// One cell of the Effect Uptime tab: one source's effect on one target
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EffectUptimeCell {
+    pub target_name: String,
+    /// "Player" / "Companion" / "Npc" / "Self"
+    pub target_type: String,
+    pub effect_id: i64,
+    pub effect_name: String,
+    /// Ability that applied it (icon lookup); 0 when unknown
+    pub ability_id: i64,
+    /// Applications inside the range
+    pub count: i64,
+    pub uptime_pct: f32,
+    /// When it was up: merged (start, end) combat seconds, clipped to the range
+    pub windows: Vec<(f32, f32)>,
+}
+
 /// A player death event for the death tracker.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PlayerDeath {
@@ -3955,6 +3972,7 @@ pub enum ViewMode {
     Detailed(DataTab),
     Rotation,
     Usage,
+    Uptime,
 }
 
 impl ViewMode {
