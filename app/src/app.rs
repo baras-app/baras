@@ -749,14 +749,17 @@ pub fn App() -> Element {
                                 i { class: "fa-solid fa-layer-group" }
                                 span { class: "tab-label", " Overlays" }
                             }
-                            NavMenu {
-                                label: "Timers & Effects",
-                                icon: "fa-solid fa-stopwatch",
-                                items: vec![
-                                    (MainTab::EncounterBuilder, "fa-solid fa-hammer", "Encounter Builder", "Boss timers, phases and triggers"),
-                                    (MainTab::Effects, "fa-solid fa-heart-pulse", "Effects Editor", "Tracked buffs, debuffs and alerts"),
-                                ],
-                                state: ui_state,
+                            for (tab, icon, label, tip) in [
+                                (MainTab::EncounterBuilder, "fa-solid fa-hammer", "Encounter Builder", "Boss timers, phases and triggers"),
+                                (MainTab::Effects, "fa-solid fa-heart-pulse", "Effects", "Tracked buffs, debuffs and alerts"),
+                            ] {
+                                button {
+                                    class: if ui_state.read().active_tab == tab { "tab-btn active" } else { "tab-btn" },
+                                    title: tip,
+                                    onclick: move |_| ui_state.write().active_tab = tab,
+                                    i { class: icon }
+                                    span { class: "tab-label", " {label}" }
+                                }
                             }
                             NavMenu {
                                 label: "Statistics",
@@ -788,14 +791,23 @@ pub fn App() -> Element {
                                 icon_only: true,
                                 items: vec![],
                                 actions: vec![
-                                    ("fa-solid fa-circle-question", "Documentation", "Documentation & Help",
+                                    ("fa-solid fa-circle-question", "Documentation".into(), "Documentation & Help",
                                         EventHandler::new(|_| { spawn(api::open_url("https://baras-app.github.io/features/overview")); })),
-                                    ("fa-brands fa-discord", "Discord", "Questions, bugs, or feedback",
+                                    ("fa-brands fa-discord", "Discord".into(), "Questions, bugs, or feedback",
                                         EventHandler::new(|_| { spawn(api::open_url("https://discord.gg/zmtkYkhSM4")); })),
-                                    ("fa-brands fa-github", "GitHub", "Source code",
+                                    ("fa-brands fa-github", "GitHub".into(), "Source code",
                                         EventHandler::new(|_| { spawn(api::open_url("https://github.com/baras-app/baras")); })),
-                                    ("fa-solid fa-heart", "Contributors", "The people behind BARAS",
+                                    ("fa-solid fa-heart", "Contributors".into(), "The people behind BARAS",
                                         EventHandler::new(move |_| contributors_open.set(true))),
+                                    ("fa-solid fa-scroll", format!("Changelog (v{})", app_version()), "What changed in this version",
+                                        EventHandler::new(move |_| {
+                                            spawn(async move {
+                                                if let Some(html) = api::get_changelog().await.and_then(|r| r.html) {
+                                                    changelog_html.set(html);
+                                                }
+                                                changelog_open.set(true);
+                                            });
+                                        })),
                                 ],
                                 state: ui_state,
                             }
@@ -825,47 +837,30 @@ pub fn App() -> Element {
                     // Version, update notice and project links
                     div { class: "header-meta",
                         div { class: "header-version-group",
-                            if !app_version().is_empty() {
-                                if let Some(ref update) = update_available() {
-                                    // Update available - show clickable notification
-                                    button {
-                                        class: if update_installing() { "header-version update-available updating" } else { "header-version update-available" },
-                                        title: update.notes.as_deref().unwrap_or("Update available"),
-                                        disabled: update_installing(),
-                                        onclick: move |_| {
-                                            update_installing.set(true);
-                                            let mut toast = use_toast();
-                                            spawn(async move {
-                                                if let Err(e) = api::install_update().await {
-                                                    toast.show(format!("Update failed: {}", e), ToastSeverity::Critical);
-                                                    update_installing.set(false);
-                                                }
-                                            });
-                                        },
-                                        if update_installing() {
-                                            i { class: "fa-solid fa-spinner fa-spin" }
-                                            " Updating..."
-                                        } else {
-                                            i { class: "fa-solid fa-arrow-up" }
-                                            " Update" span { class: "update-long", " Available!" }
-                                        }
-                                    }
-                                } else {
-                                    // No update - show current version (clickable for changelog)
-                                    button {
-                                        class: "header-version clickable",
-                                        title: "View changelog",
-                                        onclick: move |_| {
-                                            spawn(async move {
-                                                if let Some(response) = api::get_changelog().await {
-                                                    if let Some(html) = response.html {
-                                                        changelog_html.set(html);
-                                                    }
-                                                }
-                                                changelog_open.set(true);
-                                            });
-                                        },
-                                        "v{app_version}"
+                            // Only an available update earns header space; the version and
+                            // changelog live in the links menu
+                            if let Some(ref update) = update_available() {
+                                // Update available - show clickable notification
+                                button {
+                                    class: if update_installing() { "header-version update-available updating" } else { "header-version update-available" },
+                                    title: update.notes.as_deref().unwrap_or("Update available"),
+                                    disabled: update_installing(),
+                                    onclick: move |_| {
+                                        update_installing.set(true);
+                                        let mut toast = use_toast();
+                                        spawn(async move {
+                                            if let Err(e) = api::install_update().await {
+                                                toast.show(format!("Update failed: {}", e), ToastSeverity::Critical);
+                                                update_installing.set(false);
+                                            }
+                                        });
+                                    },
+                                    if update_installing() {
+                                        i { class: "fa-solid fa-spinner fa-spin" }
+                                        " Updating..."
+                                    } else {
+                                        i { class: "fa-solid fa-arrow-up" }
+                                        " Update" span { class: "update-long", " Available!" }
                                     }
                                 }
                             }

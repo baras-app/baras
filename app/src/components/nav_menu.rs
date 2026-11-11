@@ -9,8 +9,8 @@ use crate::types::{MainTab, UiSessionState};
 /// One destination: tab, icon class, label, tooltip
 pub type NavItem = (MainTab, &'static str, &'static str, &'static str);
 /// One extra entry below the destinations that runs a callback instead of
-/// switching tabs: icon class, label, tooltip, handler
-pub type NavAction = (&'static str, &'static str, &'static str, EventHandler<()>);
+/// switching tabs: icon class, label (may carry runtime text), tooltip, handler
+pub type NavAction = (&'static str, String, &'static str, EventHandler<()>);
 
 #[component]
 pub fn NavMenu(

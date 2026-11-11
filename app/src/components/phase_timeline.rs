@@ -317,7 +317,9 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
                             rsx! {
                                 div {
                                     class: if is_selected { "phase-segment selected" } else { "phase-segment" },
-                                    style: "left: {left}%; width: {width}%; background: {bg_color};",
+                                    // Color goes through a custom property: Dioxus re-applies stale longhands
+                                    // when a var()-based `background` shorthand reads back empty in WebKit
+                                    style: "left: {left}%; width: {width}%; --seg-color: {bg_color};",
                                     title: "{phase.phase_name} ({format_time(phase.start_secs)} - {format_time(phase.end_secs)})",
                                     onclick: move |e| {
                                         e.stop_propagation();

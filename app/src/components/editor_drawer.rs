@@ -14,16 +14,16 @@ static DRAWER_COLLAPSED: GlobalSignal<bool> = Signal::global(|| false);
 
 const MIN_WIDTH: f64 = 360.0;
 
-fn window_width() -> f64 {
+pub fn window_width() -> f64 {
     web_sys::window()
         .and_then(|w| w.inner_width().ok())
         .and_then(|v| v.as_f64())
         .unwrap_or(1600.0)
 }
 
-/// The drawer's current width: dragged, else the CSS default clamp(440px, 46vw, 860px)
-fn current_width() -> f64 {
-    DRAWER_WIDTH().unwrap_or_else(|| (window_width() * 0.46).clamp(440.0, 860.0))
+/// The CSS default width clamp(440px, 46vw, 860px)
+fn default_width() -> f64 {
+    (window_width() * 0.46).clamp(440.0, 860.0)
 }
 
 /// `style` for `.editor-layout`: the dragged width, which both the drawer and
@@ -32,9 +32,11 @@ pub fn layout_style() -> String {
     DRAWER_WIDTH().map(|w| format!("--editor-drawer-w: {w:.0}px")).unwrap_or_default()
 }
 
-/// Left-edge grip: drag to resize, double-click for the default width
+/// Left-edge grip of a right-docked drawer: drag to resize, double-click for
+/// the default. `width` holds the dragged width (None = CSS default, which
+/// `fallback` approximates for the drag start)
 #[component]
-fn ResizeHandle() -> Element {
+pub fn ResizeHandle(width: Signal<Option<f64>>, fallback: f64) -> Element {
     // (pointer x, width) when the drag started
     let mut drag = use_signal(|| None::<(f64, f64)>);
     rsx! {
@@ -43,9 +45,9 @@ fn ResizeHandle() -> Element {
             title: "Drag to resize · double-click to reset",
             onmousedown: move |e| {
                 e.prevent_default();
-                drag.set(Some((e.client_coordinates().x, current_width())));
+                drag.set(Some((e.client_coordinates().x, width.peek().unwrap_or(fallback))));
             },
-            ondoubleclick: move |_| *DRAWER_WIDTH.write() = None,
+            ondoubleclick: move |_| width.set(None),
         }
         // Full-window catcher while dragging, so the pointer can leave the grip
         if let Some((x0, w0)) = drag() {
@@ -53,7 +55,7 @@ fn ResizeHandle() -> Element {
                 class: "editor-drawer-drag-capture",
                 onmousemove: move |e| {
                     let w = (w0 + x0 - e.client_coordinates().x).clamp(MIN_WIDTH, window_width() * 0.7);
-                    *DRAWER_WIDTH.write() = Some(w);
+                    width.set(Some(w));
                 },
                 onmouseup: move |_| drag.set(None),
             }
@@ -179,7 +181,7 @@ pub fn EditorDrawer(
                 }
             },
             if !collapsed {
-                ResizeHandle {}
+                ResizeHandle { width: DRAWER_WIDTH.signal(), fallback: default_width() }
             }
             div { class: "editor-drawer-header",
                 CollapseButton {}
@@ -214,7 +216,7 @@ pub fn EmptyDrawer(hint: String) -> Element {
             if collapsed {
                 div { class: "editor-drawer-header", CollapseButton {} }
             } else {
-                ResizeHandle {}
+                ResizeHandle { width: DRAWER_WIDTH.signal(), fallback: default_width() }
                 div { class: "empty-state-guidance",
                     i { class: "fa-solid fa-pen-to-square" }
                     p { class: "hint", "{hint}" }

@@ -174,7 +174,7 @@
   min-height: 0;
   overflow: auto;
   /* Same dark card as the Data Explorer tables */
-  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
+  background: var(--well-bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
 }

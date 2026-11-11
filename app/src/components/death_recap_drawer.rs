@@ -1,6 +1,7 @@
-//! Death Recap modal — summarizes the final seconds before a player death.
+//! Death Recap drawer — summarizes the final seconds before a player death.
 //!
-//! Opened from the death tracker on the Overview tab. Loads lazily via
+//! Slides in from the right when a death is picked in the Overview tab's
+//! tracker; the page beside it stays usable, so another death can be picked. Loads lazily via
 //! `query_death_recap` and renders a header verdict, HP sparkline, damage
 //! taken / healing received tables, and a condensed event ledger.
 
@@ -9,14 +10,21 @@ use dioxus::prelude::*;
 use wasm_bindgen_futures::spawn_local as spawn;
 
 use crate::api::{self, DeathRecap, DeathRecapEventKind};
+use crate::components::editor_drawer::{ResizeHandle, window_width};
+
+/// Width (px) the user dragged the drawer to; None = the CSS default. Kept
+/// for the session so each recap opens at the same size.
+static RECAP_WIDTH: GlobalSignal<Option<f64>> = Signal::global(|| None);
 
 /// Sparkline viewBox dimensions (scaled to container via CSS).
 const SPARK_W: f32 = 600.0;
 const SPARK_H: f32 = 72.0;
 const SPARK_PAD: f32 = 3.0;
+/// Spacing of the time axis ticks, counted back from the death
+const TICK_SECS: f32 = 3.0;
 
 #[derive(Props, Clone, PartialEq)]
-pub struct DeathRecapModalProps {
+pub struct DeathRecapDrawerProps {
     pub encounter_idx: Option<u32>,
     pub player_name: String,
     pub death_time_secs: f32,
@@ -27,7 +35,7 @@ pub struct DeathRecapModalProps {
 }
 
 #[component]
-pub fn DeathRecapModal(props: DeathRecapModalProps) -> Element {
+pub fn DeathRecapDrawer(props: DeathRecapDrawerProps) -> Element {
     // None = loading, Some(None) = query failed/empty, Some(Some) = loaded
     let mut recap = use_signal(|| None::<Option<DeathRecap>>);
 
@@ -53,27 +61,34 @@ pub fn DeathRecapModal(props: DeathRecapModalProps) -> Element {
         .and_then(|r| r.phase_name.clone());
 
     rsx! {
-        div {
-            class: "modal-backdrop",
-            onclick: move |_| props.on_close.call(()),
-            div {
-                class: "death-recap-modal",
-                onclick: move |e| e.stop_propagation(),
-                div { class: "recap-header",
-                    h3 {
-                        i { class: "fa-solid fa-skull" }
-                        " Death Recap: {props.player_name}"
-                        span { class: "recap-header-time", " @ {time_str}" }
-                        if let Some(phase) = phase_chip {
-                            span { class: "recap-phase-chip", "{phase}" }
-                        }
-                    }
-                    button {
-                        class: "btn btn-close",
-                        onclick: move |_| props.on_close.call(()),
-                        "X"
+        aside {
+            class: "drawer death-recap-drawer",
+            style: RECAP_WIDTH().map(|w| format!("width: {w:.0}px")).unwrap_or_default(),
+            tabindex: "-1",
+            onkeydown: move |e| {
+                if e.key() == Key::Escape {
+                    props.on_close.call(());
+                }
+            },
+            // Default matches the CSS min(760px, 92vw)
+            ResizeHandle { width: RECAP_WIDTH.signal(), fallback: (window_width() * 0.92).min(760.0) }
+            div { class: "recap-header",
+                h3 {
+                    i { class: "fa-solid fa-skull" }
+                    " Death Recap: {props.player_name}"
+                    span { class: "recap-header-time", " @ {time_str}" }
+                    if let Some(phase) = phase_chip {
+                        span { class: "recap-phase-chip", "{phase}" }
                     }
                 }
+                button {
+                    class: "btn btn-xs btn-ghost",
+                    title: "Close (Esc)",
+                    onclick: move |_| props.on_close.call(()),
+                    i { class: "fa-solid fa-xmark" }
+                }
+            }
+            div { class: "death-recap-body",
                 {
                     match state {
                         None => rsx! {
@@ -344,10 +359,16 @@ fn hp_sparkline(r: &DeathRecap) -> Element {
         .nth(1)
         .map(|p| p.hp_pct)
         .unwrap_or(0.0));
-    let window_label = format!("-{}s", (r.death_time_secs - t0).round() as i64);
+    let window_label = format!("{}s", (r.death_time_secs - t0).round() as i64);
+    // Ticks every TICK_SECS counting back from the death: (x in viewBox, label)
+    let ticks: Vec<(f32, String)> = (0..)
+        .map(|k| (k, r.death_time_secs - k as f32 * TICK_SECS))
+        .take_while(|&(_, t)| t >= t0 - 0.01)
+        .map(|(k, t)| (x(t), if k == 0 { "death".to_string() } else { format!("-{}s", k * TICK_SECS as i32) }))
+        .collect();
 
     rsx! {
-        div { class: "recap-sparkline-wrap",
+        div { class: "recap-sparkline-wrap", title: "HP over the final {window_label}",
             // Y-axis is absolute 0-100% HP
             span { class: "spark-axis-label spark-axis-100", "100" }
             span { class: "spark-axis-label spark-axis-0", "0" }
@@ -355,6 +376,16 @@ fn hp_sparkline(r: &DeathRecap) -> Element {
                 class: "recap-sparkline",
                 view_box: "0 0 {SPARK_W} {SPARK_H}",
                 preserve_aspect_ratio: "none",
+                for (tx, _) in ticks.iter() {
+                    line {
+                        class: "spark-tick",
+                        x1: "{tx}",
+                        y1: "0",
+                        x2: "{tx}",
+                        y2: "{SPARK_H}",
+                        vector_effect: "non-scaling-stroke",
+                    }
+                }
                 polygon { points: "{area_pts}", fill: "rgba(95, 217, 142, 0.12)" }
                 polyline {
                     points: "{line_pts}",
@@ -372,9 +403,13 @@ fn hp_sparkline(r: &DeathRecap) -> Element {
                 }
             }
             div { class: "recap-sparkline-labels",
-                span { "{window_label}" }
-                span { "HP over final {window_label.trim_start_matches('-')}" }
-                span { class: "stat-damage", "death" }
+                for (i, (tx, label)) in ticks.iter().enumerate() {
+                    span {
+                        class: if i == 0 { "spark-tick-label stat-damage" } else { "spark-tick-label" },
+                        style: "left: {tx / SPARK_W * 100.0:.2}%",
+                        "{label}"
+                    }
+                }
             }
         }
     }
