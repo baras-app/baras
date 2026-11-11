@@ -128,6 +128,18 @@ fn apply_effect_markareas(chart: &JsValue, effect_windows: &[(i64, EffectWindow,
     set_chart_option(chart, &opt.into());
 }
 
+/// Axis tooltip in the theme's colours (ECharts' default is a white box)
+fn axis_tooltip() -> js_sys::Object {
+    let tooltip = js_sys::Object::new();
+    js_set(&tooltip, "trigger", &JsValue::from_str("axis"));
+    js_set(&tooltip, "backgroundColor", &JsValue::from_str(&css_var("--bg-elevated")));
+    js_set(&tooltip, "borderColor", &JsValue::from_str(&css_var("--border-strong")));
+    let text = js_sys::Object::new();
+    js_set(&text, "color", &JsValue::from_str(&css_var("--text-primary")));
+    js_set(&tooltip, "textStyle", &text);
+    tooltip
+}
+
 /// Await one animation frame — used in place of a fixed sleep to wait for the DOM
 /// to be laid out/painted before initializing charts.
 fn build_time_series_option(
@@ -220,8 +232,7 @@ fn build_time_series_option(
     js_set(&obj, "yAxis", &y_axis_arr);
 
     // Tooltip
-    let tooltip = js_sys::Object::new();
-    js_set(&tooltip, "trigger", &JsValue::from_str("axis"));
+    let tooltip = axis_tooltip();
     let tip_formatter = js_sys::Function::new_with_args(
         "params",
         concat!(
@@ -509,8 +520,7 @@ fn build_hp_chart_option(
     js_set(&obj, "yAxis", &y_axis_arr);
 
     // Tooltip — shows HP%, absolute HP, and EHT value when available
-    let tooltip = js_sys::Object::new();
-    js_set(&tooltip, "trigger", &JsValue::from_str("axis"));
+    let tooltip = axis_tooltip();
     let tip_formatter = js_sys::Function::new_with_args(
         "params",
         concat!(
