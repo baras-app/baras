@@ -567,7 +567,7 @@ fn EffectImportPreviewModal(
                     if !rows.is_empty() {
                         table { class: "import-table", style: "width: 100%; border-collapse: collapse;",
                             thead {
-                                tr { style: "text-align: left; border-bottom: 1px solid var(--border-color);",
+                                tr { style: "text-align: left; border-bottom: 1px solid var(--border-medium);",
                                     th { style: "padding: 4px 8px; width: 24px;" }
                                     th { style: "padding: 4px 8px;", "Name" }
                                     th { style: "padding: 4px 8px;", "ID" }
@@ -576,7 +576,7 @@ fn EffectImportPreviewModal(
                             }
                             tbody {
                                 for (action, effect) in &rows {
-                                    tr { style: "border-bottom: 1px solid var(--border-color-subtle, rgba(255,255,255,0.05));",
+                                    tr { style: "border-bottom: 1px solid var(--border-subtle);",
                                         td { style: "padding: 3px 8px; width: 24px; text-align: center;",
                                             if *action == "replace" {
                                                 span { class: "text-warning", "~" }

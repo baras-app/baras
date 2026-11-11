@@ -238,9 +238,9 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>, runs: bool) -> Element {
                     }
                 }
                 div { class: "history-range", title: "Date range",
-                    div { class: "pull-history-result-tabs",
+                    div { class: "history-seg seg-fill",
                         button {
-                            class: if f.date_from.is_empty() && f.date_to.is_empty() { "filter-tab active" } else { "filter-tab" },
+                            class: if f.date_from.is_empty() && f.date_to.is_empty() { "seg active" } else { "seg" },
                             onclick: move |_| {
                                 let mut w = filter.write();
                                 w.date_from.clear();
@@ -254,7 +254,7 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>, runs: bool) -> Element {
                                 let active = f.date_to.is_empty() && f.date_from == start;
                                 rsx! {
                                     button {
-                                        class: if active { "filter-tab active" } else { "filter-tab" },
+                                        class: if active { "seg active" } else { "seg" },
                                         onclick: move |_| {
                                             let mut w = filter.write();
                                             w.date_from = start.clone();

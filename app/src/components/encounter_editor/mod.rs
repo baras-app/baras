@@ -30,6 +30,8 @@ use boss_header::EditorHeader;
 use import_preview::ImportPreviewModal;
 use dioxus::prelude::*;
 
+use crate::components::form_fields::TogglePill;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared: Inline Name Creator
 // ─────────────────────────────────────────────────────────────────────────────
@@ -612,25 +614,21 @@ pub fn DifficultiesEditor(
     rsx! {
         div { class: "flex gap-xs",
             for diff in ["story", "veteran", "master"] {
-                {
-                    let diff_str = diff.to_string();
-                    let is_active = difficulties.iter().any(|d| d == diff);
-                    let diffs_clone = difficulties.clone();
-                    rsx! {
-                        button {
-                            class: if is_active { "toggle-btn active" } else { "toggle-btn" },
-                            onclick: move |_| {
-                                let mut updated = diffs_clone.clone();
-                                if is_active {
-                                    updated.retain(|x| x != &diff_str);
-                                } else {
-                                    updated.push(diff_str.clone());
-                                }
-                                on_change.call(updated);
-                            },
-                            "{diff}"
+                TogglePill {
+                    label: diff,
+                    active: difficulties.iter().any(|d| d == diff),
+                    on_click: {
+                        let difficulties = difficulties.clone();
+                        move |_| {
+                            let mut updated = difficulties.clone();
+                            if updated.iter().any(|d| d == diff) {
+                                updated.retain(|d| d != diff);
+                            } else {
+                                updated.push(diff.to_string());
+                            }
+                            on_change.call(updated);
                         }
-                    }
+                    },
                 }
             }
         }

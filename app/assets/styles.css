@@ -1617,7 +1617,7 @@ button:active {
 }
 
 .dashboard-empty-state .settings-link:hover {
-  color: var(--swtor-blue-light, #8ab4f8);
+  color: var(--swtor-blue-bright);
 }
 
 
@@ -2929,7 +2929,7 @@ details[open] .collapsible-summary::before {
   width: 100%;
   box-sizing: border-box;
   padding: 0.4em 0.75em;
-  background: var(--bg-tertiary);
+  background: var(--bg-input);
   border: 1px solid var(--border-subtle);
   border-radius: 4px;
   color: var(--text-primary);
@@ -3517,7 +3517,6 @@ a.contributor-name:hover {
   font-size: 0.85em;
   font-weight: 500;
   /* Default: muted grey (not selected) */
-  background: var(--bg-tertiary);
   border: 1px solid var(--border-subtle);
   border-left: 3px solid var(--text-disabled);
   border-radius: var(--radius-md);
@@ -3586,7 +3585,7 @@ a.contributor-name:hover {
 }
 
 .parsely-upload-btn:hover {
-  color: var(--accent, #4a9eff);
+  color: var(--swtor-blue);
   background: rgba(74, 158, 255, 0.1);
 }
 
@@ -3596,11 +3595,11 @@ a.contributor-name:hover {
 }
 
 .parsely-upload-btn.uploading {
-  color: var(--accent, #4a9eff);
+  color: var(--swtor-blue);
 }
 
 .parsely-upload-btn.success {
-  color: var(--success, #4ade80);
+  color: var(--color-success);
 }
 
 .parsely-upload-btn.success:hover {
@@ -3608,7 +3607,7 @@ a.contributor-name:hover {
 }
 
 .parsely-upload-btn.error {
-  color: var(--warning, #f59e0b);
+  color: var(--color-warning);
 }
 
 .parsely-upload-btn.error:hover {
@@ -4501,10 +4500,10 @@ a.contributor-name:hover {
 }
 
 .effect-new-badge {
-  background: var(--success-alpha-30);
+  background: var(--color-success-bg);
   padding: 0.15em 0.4em;
   border-radius: 3px;
-  color: var(--success);
+  color: var(--color-success);
   font-size: 0.75em;
   font-weight: 500;
 }
@@ -4820,14 +4819,13 @@ a.contributor-name:hover {
   padding: 2px 8px;
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
-  background: var(--bg-primary);
   transition:
     background 0.15s,
     border-color 0.15s;
 }
 
 .row-toggle:hover {
-  background: var(--bg-tertiary);
+  background: var(--bg-hover);
   border-color: var(--border-medium);
 }
 
@@ -4843,7 +4841,6 @@ a.contributor-name:hover {
   padding: 3px 7px;
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
-  background: var(--bg-primary);
   font-size: 0.75rem;
   font-weight: 700;
   line-height: 1;
@@ -4855,7 +4852,7 @@ a.contributor-name:hover {
 }
 
 .role-toggle:hover {
-  background: var(--bg-tertiary);
+  background: var(--bg-hover);
   border-color: var(--border-medium);
 }
 
@@ -5718,7 +5715,6 @@ a.contributor-name:hover {
 /* Icon preview in effect editor */
 .icon-preview {
   border-radius: 2px;
-  background: var(--bg-tertiary);
   border: 1px solid var(--border-light);
 }
 
@@ -6565,7 +6561,7 @@ a.contributor-name:hover {
 .ability-table .group-header {
   background: var(--blue-alpha-10);
   font-weight: 600;
-  border-top: 1px solid var(--border-default);
+  border-top: 1px solid var(--border-light);
 }
 
 .ability-table .group-header:first-child {
@@ -7494,19 +7490,19 @@ a.contributor-name:hover {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: var(--spacing-md);
+  padding: var(--space-md);
 }
 
 .notes-textarea {
   flex: 1;
   min-height: 400px;
   width: 100%;
-  padding: var(--spacing-md);
+  padding: var(--space-md);
   font-family: var(--font-mono);
-  font-size: var(--font-sm);
+  font-size: 0.85em;
   line-height: 1.6;
-  background: var(--surface-darker);
-  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   color: var(--text-primary);
   resize: vertical;
@@ -7529,7 +7525,6 @@ a.contributor-name:hover {
   border-radius: var(--radius-md);
   padding: var(--space-sm) var(--space-md);
   margin-bottom: var(--space-sm);
-  background: var(--bg-secondary);
 }
 
 .modifier-entry-header {
