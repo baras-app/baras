@@ -1635,9 +1635,17 @@
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 18px;
   z-index: 2;
   pointer-events: none;
+}
+
+.effects-loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-lg);
+  color: var(--text-muted);
+  font-size: 18px;
 }
 
 /* Each chart on the same dark card as the tables (the old --bg-secondary
@@ -2854,15 +2862,6 @@
   background: var(--swtor-blue);
   opacity: 0.7;
   border-radius: 2px;
-}
-
-.uptime-lane.focus .uptime-lane-label {
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.uptime-lane.focus .uptime-bar {
-  opacity: 1;
 }
 
 .uptime-lane-pct {

@@ -81,16 +81,20 @@ pub fn EffectUptimeView(
     let picked_col = picked_effect().filter(|_| picked.is_none());
     let timeline: Vec<EffectUptimeCell> = visible
         .iter()
-        .filter(|c| match (&picked, picked_col) {
-            (Some(t), _) => c.target_name == *t,
+        .filter(|c| match (&picked, picked_effect()) {
+            (Some(t), Some(e)) => c.target_name == *t && c.effect_id == e,
+            (Some(t), None) => c.target_name == *t,
             (None, Some(e)) => c.effect_id == e,
             _ => false,
         })
         .map(|c| (*c).clone())
         .collect();
-    let subject = match (&picked, picked_col) {
-        (Some(t), _) => Some(t.clone()),
-        (None, Some(e)) => effects.iter().find(|x| x.0 == e).map(|x| x.1.to_string()),
+    let effect_name = |e: i64| effects.iter().find(|x| x.0 == e).map_or_else(String::new, |x| x.1.to_string());
+    // (title prefix, subject) of the timeline
+    let subject = match (&picked, picked_effect()) {
+        (Some(t), Some(e)) => Some(("Timeline of", format!("{} on {t}", effect_name(e)))),
+        (Some(t), None) => Some(("Timeline on", t.clone())),
+        (None, Some(e)) => Some(("Timeline of", effect_name(e))),
         _ => None,
     };
     let (range_start, range_end) = if time_range.end > 0.0 { (time_range.start, time_range.end) } else { (0.0, duration_secs) };
@@ -171,8 +175,8 @@ pub fn EffectUptimeView(
                         }
                     }
                 }
-                if let Some(subject) = subject {
-                    UptimeTimeline { subject, by_target: picked.is_none(), cells: timeline, focus: picked_effect(), range_start, range_end }
+                if let Some((prefix, subject)) = subject {
+                    UptimeTimeline { prefix, subject, by_target: picked.is_none(), cells: timeline, range_start, range_end }
                 } else {
                     div { class: "usage-timeline-container",
                         div { class: "usage-timeline-hint",
@@ -187,15 +191,15 @@ pub fn EffectUptimeView(
 }
 
 /// Bars where effects were up, on the fight's (or range's) time axis, one lane
-/// per cell, by uptime: the picked target's effects (the clicked one
-/// emphasised), or with `by_target` the picked effect on each target.
+/// per cell, by uptime: a row's effects, a column's targets (`by_target`), or
+/// the one clicked cell.
 #[component]
 fn UptimeTimeline(
-    /// The picked target, or the picked effect's name
+    prefix: &'static str,
+    /// The picked target, effect, or "effect on target"
     subject: String,
     by_target: bool,
     cells: Vec<EffectUptimeCell>,
-    focus: Option<i64>,
     range_start: f32,
     range_end: f32,
 ) -> Element {
@@ -209,11 +213,11 @@ fn UptimeTimeline(
     rsx! {
         div { class: "uptime-timeline",
             div { class: "uptime-timeline-title",
-                if by_target { "Timeline of " } else { "Timeline on " }
+                "{prefix} "
                 strong { "{subject}" }
             }
             for c in lanes {
-                div { class: if !by_target && focus == Some(c.effect_id) { "uptime-lane focus" } else { "uptime-lane" },
+                div { class: "uptime-lane",
                     if by_target {
                         div { class: "uptime-lane-label", title: "{c.target_name}",
                             span { class: if c.target_type == "Npc" { "npc" }, "{c.target_name}" }
