@@ -18,6 +18,7 @@ use crate::components::class_icons::get_class_icon;
 use crate::components::combat_log::CombatLog;
 use crate::components::death_recap_drawer::DeathRecapDrawer;
 use crate::components::encounter_types::{ChallengeSummary, EncounterSummary, UploadState, group_by_area};
+use crate::components::overview_chart::OverviewGroupChart;
 use crate::components::overview_table::{OverviewSort, OverviewTable, OverviewTotals};
 use crate::components::phase_timeline::PhaseTimelineFilter;
 use crate::components::toggle_switch::ToggleSwitch;
@@ -174,6 +175,8 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
     // Overview table sort (not persisted - default DPS descending)
     let overview_sort_col = use_signal(OverviewSort::default);
     let overview_sort_asc = use_signal(|| false);
+    // Overview table row under the pointer, highlighted on the group chart
+    let overview_hovered = use_signal(|| None::<String>);
 
     // Sidebar collapse states (not persisted - always start expanded)
     let mut sidebar_collapsed = use_signal(|| false);
@@ -1955,6 +1958,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                     sort_col: overview_sort_col,
                                                     sort_asc: overview_sort_asc,
                                                     european: eu,
+                                                    hovered: Some(overview_hovered),
                                                 }
                                                 OverviewTable {
                                                     side_label: Some(("enemy", "Enemy")),
@@ -1983,9 +1987,21 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                     sort_col: overview_sort_col,
                                                     sort_asc: overview_sort_asc,
                                                     european: eu,
+                                                    hovered: Some(overview_hovered),
                                                 }
                                             }
                                         }
+                                    }
+
+                                    // Group chart: PvP plots the friendly side only (shares across sides are meaningless)
+                                    OverviewGroupChart {
+                                        encounter_idx: *selected_encounter.read(),
+                                        time_range: time_range(),
+                                        rows: table_data.rows.iter().filter(|r| r.faction != Some(PvpFaction::Enemy)).cloned().collect::<Vec<_>>(),
+                                        sort_col: overview_sort_col,
+                                        sort_asc: overview_sort_asc,
+                                        hovered: overview_hovered,
+                                        european: eu,
                                     }
 
                                     // Side-by-side: Deaths + NPC Health + Challenges

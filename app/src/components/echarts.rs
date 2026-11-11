@@ -156,3 +156,14 @@ pub fn on_click(chart: &JsValue, handler: &Closure<dyn FnMut(JsValue)>) {
         let _ = on.call2(chart, &JsValue::from_str("click"), handler.as_ref().unchecked_ref());
     }
 }
+
+/// `chart.dispatchAction(action)`, e.g. highlight / downplay a series
+pub fn dispatch_action(chart: &JsValue, action: &serde_json::Value) {
+    if let Some(action) = json_to_js(action)
+        && let Some(func) = js_sys::Reflect::get(chart, &JsValue::from_str("dispatchAction"))
+            .ok()
+            .and_then(|f| f.dyn_into::<js_sys::Function>().ok())
+    {
+        let _ = func.call1(chart, &action);
+    }
+}

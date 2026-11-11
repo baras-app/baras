@@ -34,6 +34,7 @@ pub mod history;
 pub mod hotkey_input;
 pub mod mirror_names;
 pub mod overlay_toggle;
+pub mod overview_chart;
 pub mod overview_table;
 pub mod parsely_upload_modal;
 pub mod phase_timeline;

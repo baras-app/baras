@@ -106,6 +106,9 @@ pub struct OverviewTableProps {
     pub sort_asc: Signal<bool>,
     /// European number formatting
     pub european: bool,
+    /// Set to the row's player while the pointer is over it (group chart highlight)
+    #[props(default)]
+    pub hovered: Option<Signal<Option<String>>>,
 }
 
 #[component]
@@ -175,6 +178,11 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
                 tbody {
                     for row in props.rows.iter() {
                         tr {
+                            onmouseenter: {
+                                let name = row.name.clone();
+                                move |_| if let Some(mut h) = props.hovered { h.set(Some(name.clone())) }
+                            },
+                            onmouseleave: move |_| if let Some(mut h) = props.hovered { h.set(None) },
                             td { class: "name-col",
                                 span { class: "name-with-icon",
                                     if let Some(role_name) = &row.role_icon {

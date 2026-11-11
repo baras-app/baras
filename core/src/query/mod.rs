@@ -36,7 +36,7 @@ pub use baras_types::{
     DeathRecapDamageSource, DeathRecapEvent, DeathRecapEventKind, DeathRecapHealRow,
     DeathRecapHealSource, DeathRecapHpPoint,
     DeathRecapKillingBlow, EffectChartData, EffectWindow, EncounterTimeline, EntityBreakdown,
-    GcdSlot, GroupedEntityNames, HpPoint, NpcHealthRow, PhaseSegment, PlayerDeath,
+    GcdSlot, GroupMetric, GroupTimeSeries, GroupedEntityNames, HpPoint, NpcHealthRow, PhaseSegment, PlayerDeath,
     AbilityUsageRow, RaidOverviewRow, RotationAnalysis, RotationCycle, RotationEvent,
     SortDirection, TimeRange, TimeSeriesPoint,
 };

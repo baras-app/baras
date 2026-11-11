@@ -271,6 +271,27 @@ pub struct TimeSeriesPoint {
     pub total_value: f64,
 }
 
+/// What the Overview's group chart plots per player
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GroupMetric {
+    #[default]
+    Damage,
+    Healing,
+    DamageTaken,
+    Threat,
+}
+
+/// Per-player value per bucket, all series on the same time spine
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct GroupTimeSeries {
+    /// Start of the first bucket, in combat seconds
+    pub start_secs: f64,
+    pub bucket_secs: f64,
+    /// (player name, value per bucket)
+    pub series: Vec<(String, Vec<f64>)>,
+}
+
 /// Query result for HP% over time — includes absolute HP for tooltips.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
