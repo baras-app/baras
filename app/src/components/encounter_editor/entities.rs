@@ -55,7 +55,7 @@ pub fn EntitiesTab(
     rsx! {
         div { class: "entities-tab",
             // Header
-            div { class: "flex items-center justify-between mb-sm",
+            div { class: "flex items-center justify-between mb-sm editor-tab-header",
                 div { class: "flex items-center gap-sm",
                     span { class: "text-sm text-secondary", "{entities.len()} entities" }
                     SortToggle { az: ENCOUNTER_SORT_AZ.signal() }

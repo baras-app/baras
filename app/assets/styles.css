@@ -4398,6 +4398,21 @@ a.contributor-name:hover {
   max-width: 14em;
 }
 
+/* Encounter editor tab header: groups wrap onto new lines instead of
+   squeezing their labels; buttons never break mid-label */
+.editor-tab-header,
+.editor-tab-header > div {
+  flex-wrap: wrap;
+  row-gap: 0.4em;
+}
+
+.editor-tab-header .history-seg {
+  flex-wrap: nowrap;
+}
+
+.editor-tab-header button {
+  white-space: nowrap;
+}
 
 .editor-sort-toggle.active {
   color: var(--text-accent);

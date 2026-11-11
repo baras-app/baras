@@ -79,7 +79,7 @@ pub fn CountersTab(
     rsx! {
         div { class: "counters-tab",
             // Header
-            div { class: "flex items-center justify-between mb-sm",
+            div { class: "flex items-center justify-between mb-sm editor-tab-header",
                 div { class: "flex items-center gap-sm",
                     span { class: "text-sm text-secondary", "{counters.len()} counters" }
                     if disabled_count > 0 {
