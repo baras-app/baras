@@ -2855,10 +2855,17 @@
   top: 0;
   bottom: 0;
   min-width: 1px;
-  background: var(--swtor-blue);
+  background: var(--lane-color, var(--swtor-blue));
   opacity: 0.7;
   border-radius: 2px;
 }
+
+/* Lanes cycle colours so neighbouring rows read apart (child 1 is the title) */
+.uptime-lane:nth-child(6n + 3) { --lane-color: var(--color-success); }
+.uptime-lane:nth-child(6n + 4) { --lane-color: var(--color-warning); }
+.uptime-lane:nth-child(6n + 5) { --lane-color: #a78bfa; }
+.uptime-lane:nth-child(6n + 6) { --lane-color: #2dd4bf; }
+.uptime-lane:nth-child(6n + 7) { --lane-color: var(--color-error); }
 
 .uptime-lane-pct {
   color: var(--text-muted);
