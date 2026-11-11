@@ -41,8 +41,8 @@ pub fn fmt_bytes(b: u64) -> String {
     }
 }
 
-fn matches(row: &LibraryRow, tags: &[ContentTag], kills_only: bool, favorites_only: bool, search: &str) -> bool {
-    let content_ok = (tags.is_empty() || tags.iter().any(|t| row.content.contains(t))) && (!kills_only || row.kills > 0);
+fn matches(row: &LibraryRow, tags: &[ContentTag], favorites_only: bool, search: &str) -> bool {
+    let content_ok = tags.is_empty() || tags.iter().any(|t| row.content.contains(t));
     let search_ok = search.is_empty()
         || row.filename.to_lowercase().contains(search)
         || row.character.as_deref().is_some_and(|c| c.to_lowercase().contains(search))
@@ -69,14 +69,15 @@ pub(super) fn tag_class(t: ContentTag) -> &'static str {
     }
 }
 
-fn status_badge(status: LogStatus) -> (&'static str, &'static str, &'static str) {
+/// Status line for the Date cell's tooltip (the table has no status column)
+fn status_text(status: LogStatus) -> &'static str {
     match status {
-        LogStatus::Live => ("● live", "lib-status live", "Being tailed right now"),
-        LogStatus::Indexed => ("indexed", "lib-status indexed", "History is current"),
-        LogStatus::Stale => ("re-scan", "lib-status stale", "History is from an older version or older log bytes"),
-        LogStatus::NoHistory => ("—", "lib-status none", "Never scanned, or nothing recordable"),
-        LogStatus::Archived => ("archived", "lib-status archived", "Compressed in the archive; restore to open"),
-        LogStatus::ArchivedStale => ("archived · re-scan", "lib-status archived stale", "Archived; its history is from an older version and the next scan refreshes it"),
+        LogStatus::Live => "Live: being tailed right now",
+        LogStatus::Indexed => "Indexed: history is current",
+        LogStatus::Stale => "Needs a re-scan: history is from an older version or older log bytes",
+        LogStatus::NoHistory => "Not scanned, or nothing recordable",
+        LogStatus::Archived => "Archived: compressed; restore to open",
+        LogStatus::ArchivedStale => "Archived; its history is from an older version and the next scan refreshes it",
     }
 }
 
@@ -139,7 +140,6 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
     // Filters live in the session state so a tab switch keeps them
     let mut search = use_signal(|| state.read().history.library_search.clone());
     let mut tags = use_signal(|| state.read().history.library_tags.clone());
-    let mut kills_only = use_signal(|| state.read().history.library_kills);
     let mut favorites_only = use_signal(|| state.read().history.library_favorites);
     // Calendar pick: inclusive day bounds, or None for every day
     let mut day_range: Signal<Option<super::heatmap::DayRange>> = use_signal(|| None);
@@ -148,7 +148,6 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
         let mut s = state.write();
         s.history.library_search = search.read().clone();
         s.history.library_tags = tags.read().clone();
-        s.history.library_kills = *kills_only.read();
         s.history.library_favorites = *favorites_only.read();
     });
 
@@ -179,12 +178,12 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
     let picked_days = day_range.read().clone();
     let visible: Vec<&LibraryRow> = all
         .iter()
-        .filter(|r| matches(r, &tags.read(), *kills_only.read(), *favorites_only.read(), &q))
+        .filter(|r| matches(r, &tags.read(), *favorites_only.read(), &q))
         .filter(|r| picked_days.as_ref().is_none_or(|d| super::heatmap::in_range(&r.date, d)))
         .collect();
     let day_stats = super::heatmap::day_stats(all);
     // Rows render a page at a time; a filter change starts over
-    let page_key = format!("{q}|{:?}|{}|{}|{:?}", *tags.read(), *kills_only.read(), *favorites_only.read(), picked_days);
+    let page_key = format!("{q}|{:?}|{}|{:?}", *tags.read(), *favorites_only.read(), picked_days);
     let paged = use_paged(&page_key);
     let limit = paged.limit(&page_key);
     let shown = visible.len().min(limit);
@@ -248,7 +247,6 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                         tags.set(ContentTag::ALL.iter().copied().filter(|t| picked.iter().any(|p| p == t.label())).collect());
                     },
                 }
-                ToggleSwitch { label: "Kills only", checked: *kills_only.read(), on_change: move |v| kills_only.set(v) }
                 ToggleSwitch { label: "Favorites", checked: *favorites_only.read(), on_change: move |v| favorites_only.set(v) }
                 if let Some((from, to)) = picked_days.clone() {
                     span { class: "library-day-pick",
@@ -264,12 +262,11 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                         onclick: move |_| {
                             search.set(String::new());
                             tags.set(Vec::new());
-                            kills_only.set(false);
                             favorites_only.set(false);
                             super::scroll::scroll_to_top(LIB_TABLE);
                         },
                         i { class: "fa-solid fa-location-crosshairs" }
-                        " Open log"
+                        " Focus current"
                     }
                 }
                 if !picked.is_empty() {
@@ -353,7 +350,6 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                                     },
                                 }
                             }
-                            th { "File" }
                             th { "Date" }
                             th { "Character" }
                             th { "Server" }
@@ -361,18 +357,17 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                             th { "Tags" }
                             th { "Note" }
                             th { "Size" }
-                            th { "Status" }
                             th { "Parsely" }
                             th { "" }
                         }
                     }
                     tbody {
                         if !loading && visible.is_empty() {
-                            tr { td { colspan: "14", class: "library-empty", "No logs match." } }
+                            tr { td { colspan: "10", class: "library-empty", "No logs match." } }
                         }
                         for row in visible[..shown].iter() {
                             {
-                                let (badge, badge_class, badge_title) = status_badge(row.status);
+                                let status = status_text(row.status);
                                 let area_names = row.areas.join(" · ");
                                 let editor = editing.read().as_ref().filter(|(f, _)| *f == row.filename).map(|(_, note)| *note);
                                 let (edit_tags, edit_note) = (row.filename.clone(), row.filename.clone());
@@ -405,8 +400,7 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                                                 },
                                             }
                                         }
-                                        td { class: "library-file", title: "{row.filename}", "{row.filename}" }
-                                        td { "{row.date}" }
+                                        td { title: "{row.filename}\n{status}", "{row.date}" }
                                         td { {row.character.clone().unwrap_or_else(|| "—".into())} }
                                         td { if row.server.is_empty() { "—" } else { "{row.server}" } }
                                         td { class: "library-areas", title: "{area_names}",
@@ -464,7 +458,6 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                                             }
                                         }
                                         td { {fmt_bytes(row.size)} }
-                                        td { span { class: "{badge_class}", title: "{badge_title}", "{badge}" } }
                                         td { class: "library-parsely-cell",
                                             if let Some(link) = row.parsely.clone() {
                                                 a { class: "library-parsely", href: "{link}", target: "_blank", title: "Open on Parsely", i { class: "fa-solid fa-up-right-from-square" } }
@@ -543,7 +536,7 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                         }
                         if shown < total {
                             tr {
-                                td { colspan: "14", class: "library-empty",
+                                td { colspan: "10", class: "library-empty",
                                     "{shown} of {total} shown · scroll for more "
                                     button { class: "btn btn-xs btn-ghost", onclick: move |_| paged.show_all(&page_key), "Show all" }
                                 }

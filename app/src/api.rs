@@ -593,6 +593,15 @@ pub async fn set_log_meta(filename: &str, tags: &[String], note: &str) -> Result
     from_js(result).ok_or_else(|| "Failed to parse response".to_string())
 }
 
+/// Take a tag off every run of one log
+pub async fn remove_run_tag_for_log(filename: &str, tag: &str) -> Result<bool, String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "filename", &JsValue::from_str(filename));
+    js_set(&obj, "tag", &JsValue::from_str(tag));
+    let result = try_invoke("remove_run_tag_for_log", obj.into()).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
 /// Content kinds the user wants kept out of every delete
 pub async fn get_retained_content() -> Option<Vec<baras_types::history::ContentTag>> {
     from_js(invoke("get_retained_content", JsValue::NULL).await)

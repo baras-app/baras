@@ -293,6 +293,19 @@ impl ServiceHandle {
         }
     }
 
+    /// Remove a tag from every run of one log (the grey run tags in Log Management)
+    pub fn remove_run_tag_for_log(&self, filename: &str, tag: &str) -> bool {
+        let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        meta.remove_run_tag_for_log(filename, tag);
+        match meta.save() {
+            Ok(()) => true,
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to save library.json");
+                false
+            }
+        }
+    }
+
     /// Decompress an archived log back into the log directory.
     pub async fn restore_log(&self, filename: String) -> Result<PathBuf, String> {
         let log_dir = PathBuf::from(self.config().await.log_directory);
@@ -727,6 +740,9 @@ impl ServiceHandle {
         logs.extend(baras_core::library::archived_logs().into_iter().map(|a| a.filename));
         self.with_pull_index(move |index| {
             let mut status = index.status(live.as_deref());
+            // "Need a scan" counts only what a scan covers (log directory + archive):
+            // history of a log opened from elsewhere stays out, even when stale
+            status.stale = logs.iter().filter(|f| index.log_info(f).is_some_and(|(_, stale)| stale)).count() as u32;
             status.unscanned = logs.iter().filter(|f| index.log_info(f).is_none()).count() as u32;
             status
         })

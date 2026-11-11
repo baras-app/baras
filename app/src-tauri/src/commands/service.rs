@@ -348,6 +348,11 @@ pub fn set_log_meta(
 }
 
 #[tauri::command]
+pub fn remove_run_tag_for_log(filename: String, tag: String, handle: State<'_, ServiceHandle>) -> Result<bool, String> {
+    Ok(handle.remove_run_tag_for_log(&filename, &tag))
+}
+
+#[tauri::command]
 pub async fn get_retained_content(
     handle: State<'_, ServiceHandle>,
 ) -> Result<Vec<baras_types::history::ContentTag>, String> {

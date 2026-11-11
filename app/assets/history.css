@@ -525,17 +525,8 @@
   white-space: nowrap;
 }
 
-.library-file {
-  max-width: 13em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-mono);
-  font-size: 0.85em;
-}
-
 .library-areas {
-  max-width: 28em;
+  max-width: 16em;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -597,39 +588,6 @@
 
 .lib-star.on {
   color: var(--swtor-gold);
-}
-
-.lib-status {
-  font-size: 0.75em;
-  padding: 1px 6px;
-  border-radius: 3px;
-  background: rgba(var(--fg-rgb), 0.06);
-  color: var(--text-muted);
-  cursor: help;
-}
-
-.lib-status.live {
-  color: var(--color-success);
-  background: var(--color-success-bg);
-}
-
-.lib-status.stale {
-  color: var(--color-warning);
-  background: var(--color-warning-bg);
-}
-
-.lib-status.indexed {
-  color: var(--text-secondary);
-}
-
-.lib-status.archived {
-  color: var(--swtor-blue);
-  background: rgba(79, 165, 230, 0.12);
-}
-
-.lib-status.archived.stale {
-  color: var(--color-warning);
-  background: var(--color-warning-bg);
 }
 
 .library-parsely {

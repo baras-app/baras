@@ -768,12 +768,11 @@ pub fn App() -> Element {
                                     (MainTab::BossStats, "fa-solid fa-chart-column", "Boss Statistics", "One boss across every log"),
                                     (MainTab::RaidSummaries, "fa-solid fa-dungeon", "Raid Summaries", ""),
                                     (MainTab::PvpStats, "fa-solid fa-crosshairs", "PvP Statistics", "Warzone and arena record, kills and deaths, trends"),
-                                    (MainTab::LogManagement, "fa-solid fa-folder-tree", "Log Management", "Scan, archive, delete and tag your logs"),
                                 ],
-                                divider_before: Some(MainTab::LogManagement),
                                 state: ui_state,
                             }
                             for (tab, icon, label, tip) in [
+                                (MainTab::LogManagement, "fa-solid fa-folder-tree", "Log Management", "Scan, archive, delete and tag your logs"),
                                 (MainTab::Characters, "fa-solid fa-users", "Characters", "Your characters across servers, with operation lockouts"),
                                 (MainTab::Settings, "fa-solid fa-gear", "Settings", "Log directory, hotkeys, audio and application options"),
                             ] {

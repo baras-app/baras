@@ -118,6 +118,17 @@ impl LibraryMeta {
         tags
     }
 
+    /// Take `tag` off every run of one log; runs left with no meta are dropped
+    pub fn remove_run_tag_for_log(&mut self, filename: &str, tag: &str) {
+        let prefix = format!("{filename}#");
+        self.runs.retain(|k, m| {
+            if k.starts_with(&prefix) {
+                m.tags.retain(|t| t != tag);
+            }
+            !m.is_empty()
+        });
+    }
+
     /// Every tag used on any run, sorted, for the tag picker
     pub fn run_tags(&self) -> Vec<String> {
         let mut tags: Vec<String> = self.runs.values().flat_map(|m| m.tags.iter().cloned()).collect();
