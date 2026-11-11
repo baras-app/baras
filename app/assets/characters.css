@@ -547,5 +547,5 @@ svg.char-faction {
 
 .matrix-tier-pick.on { color: var(--text-primary); }
 .matrix-tier-pick.tier-story.on { background: rgba(95, 196, 122, 0.18); border-color: #5fc47a; }
-.matrix-tier-pick.tier-veteran.on { background: rgba(217, 164, 65, 0.18); border-color: #d9a441; }
+.matrix-tier-pick.tier-veteran.on { background: rgba(217, 164, 65, 0.18); border-color: var(--accent-gold); }
 .matrix-tier-pick.tier-master.on { background: rgba(224, 90, 90, 0.18); border-color: #e05a5a; }

@@ -672,11 +672,11 @@
   color: var(--text-secondary);
 }
 
-.lib-tag.nim { color: #f08080; background: rgba(220, 60, 60, 0.12); }
-.lib-tag.hm { color: #e8c060; background: rgba(220, 160, 40, 0.12); }
+.lib-tag.nim { color: var(--lt-red, #f08080); background: rgba(220, 60, 60, 0.12); }
+.lib-tag.hm { color: var(--text-gold); background: rgba(220, 160, 40, 0.12); }
 .lib-tag.sm { color: var(--color-success); background: var(--color-success-bg); }
 .lib-tag.pvp { color: var(--swtor-blue-bright); background: rgba(74, 158, 255, 0.15); }
-.lib-tag.wb { color: #c58ee8; background: rgba(170, 110, 230, 0.14); }
+.lib-tag.wb { color: var(--lt-violet, #c58ee8); background: rgba(170, 110, 230, 0.14); }
 .lib-tag.misc { color: var(--text-muted); }
 
 .library-area-names {
@@ -1215,8 +1215,8 @@
 }
 .history-seg .seg.active > i { color: var(--swtor-blue); }
 .history-seg .seg.active.tier-story > i { color: var(--color-success); }
-.history-seg .seg.active.tier-veteran > i { color: #e8c060; }
-.history-seg .seg.active.tier-master > i { color: #f08080; }
+.history-seg .seg.active.tier-veteran > i { color: var(--text-gold); }
+.history-seg .seg.active.tier-master > i { color: var(--lt-red, #f08080); }
 .history-seg .seg.active.size > i { color: var(--swtor-blue-bright); }
 
 .history-subset {
@@ -1237,8 +1237,8 @@
 }
 
 .subset-chip.tier-story { color: var(--color-success); background: rgba(46, 204, 113, 0.18); }
-.subset-chip.tier-veteran { color: #e8c060; background: rgba(220, 160, 40, 0.15); }
-.subset-chip.tier-master { color: #f08080; background: rgba(220, 60, 60, 0.15); }
+.subset-chip.tier-veteran { color: var(--text-gold); background: rgba(220, 160, 40, 0.15); }
+.subset-chip.tier-master { color: var(--lt-red, #f08080); background: rgba(220, 60, 60, 0.15); }
 .subset-chip.size { color: var(--swtor-blue-bright); background: rgba(74, 158, 255, 0.18); }
 .subset-chip.any { color: var(--text-muted); background: rgba(var(--fg-rgb), 0.06); font-weight: 500; }
 
