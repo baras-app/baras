@@ -133,20 +133,26 @@ pub fn use_resize_charts(ids: &'static [&'static str]) {
     });
 }
 
-/// Replace the click handler on a chart. Params come back as the ECharts
-/// event object; `data` on it is the series item that was hit.
-pub fn on_click(chart: &JsValue, handler: &Closure<dyn FnMut(JsValue)>) {
-    let get = |name: &str| {
-        js_sys::Reflect::get(chart, &JsValue::from_str(name))
-            .ok()
-            .and_then(|f| f.dyn_into::<js_sys::Function>().ok())
-    };
-    if let Some(off) = get("off") {
-        let _ = off.call1(chart, &JsValue::from_str("click"));
-    }
-    if let Some(on) = get("on") {
-        let _ = on.call2(chart, &JsValue::from_str("click"), handler.as_ref().unchecked_ref());
-    }
+/// Click anywhere in the plot area (not just on a drawn item) → `handler`
+/// gets the first non-null data item of the x-axis column under the cursor,
+/// i.e. what an axis-trigger tooltip shows there. Needs a category x-axis
+/// with series data aligned to it. Replaces the chart's previous handler.
+pub fn on_column_click(chart: &JsValue, handler: &Closure<dyn FnMut(JsValue)>) {
+    const INSTALL: &str = "var zr = chart.getZr();\
+        if (chart.__columnClick) zr.off('click', chart.__columnClick);\
+        chart.__columnClick = function (e) {\
+          var pt = [e.offsetX, e.offsetY];\
+          if (!chart.containPixel('grid', pt)) return;\
+          var i = Math.round(chart.convertFromPixel({ xAxisIndex: 0 }, e.offsetX));\
+          var series = chart.getOption().series || [];\
+          for (var k = 0; k < series.length; k++) {\
+            var d = (series[k].data || [])[i];\
+            if (d !== null && d !== undefined) { cb(d); return; }\
+          }\
+        };\
+        zr.on('click', chart.__columnClick);";
+    let install = js_sys::Function::new_with_args("chart, cb", INSTALL);
+    let _ = install.call2(&JsValue::NULL, chart, handler.as_ref().unchecked_ref());
 }
 
 /// `chart.dispatchAction(action)`, e.g. highlight / downplay a series
