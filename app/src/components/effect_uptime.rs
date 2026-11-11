@@ -27,7 +27,8 @@ pub fn EffectUptimeView(
     european: bool,
 ) -> Element {
     let mut targets = use_signal(|| Targets::All);
-    // Row (target) picked for the timeline, and the cell's effect if a cell was clicked
+    // Timeline selection: a row (target), a column (effect), or a cell (both;
+    // shown as the target's timeline with that effect emphasised)
     let mut picked_target = use_signal(|| None::<String>);
     let mut picked_effect = use_signal(|| None::<i64>);
     let selector = selected_source.clone().map(|n| selected_source_id.map_or(n, |id| format!("id:{id}")));
@@ -77,10 +78,21 @@ pub fn EffectUptimeView(
     rows.sort_by(|a, b| rank(a).cmp(&rank(b)).then(a.0.cmp(b.0)));
     let cell = |target: &str, effect: i64| visible.iter().find(|c| c.target_name == target && c.effect_id == effect);
     let picked = picked_target();
-    let timeline: Vec<EffectUptimeCell> = picked
-        .as_deref()
-        .map(|t| visible.iter().filter(|c| c.target_name == t).map(|c| (*c).clone()).collect())
-        .unwrap_or_default();
+    let picked_col = picked_effect().filter(|_| picked.is_none());
+    let timeline: Vec<EffectUptimeCell> = visible
+        .iter()
+        .filter(|c| match (&picked, picked_col) {
+            (Some(t), _) => c.target_name == *t,
+            (None, Some(e)) => c.effect_id == e,
+            _ => false,
+        })
+        .map(|c| (*c).clone())
+        .collect();
+    let subject = match (&picked, picked_col) {
+        (Some(t), _) => Some(t.clone()),
+        (None, Some(e)) => effects.iter().find(|x| x.0 == e).map(|x| x.1.to_string()),
+        _ => None,
+    };
     let (range_start, range_end) = if time_range.end > 0.0 { (time_range.start, time_range.end) } else { (0.0, duration_secs) };
 
     rsx! {
@@ -104,7 +116,14 @@ pub fn EffectUptimeView(
                             tr {
                                 th { class: "name-col", "Target" }
                                 for (id, name, ability, _) in effects.iter().copied() {
-                                    th { class: "uptime-effect", title: "{name}",
+                                    th {
+                                        class: if picked_col == Some(id) { "uptime-effect picked" } else { "uptime-effect" },
+                                        title: "{name}: show it on every target",
+                                        onclick: move |_| {
+                                            let same = picked_target.peek().is_none() && *picked_effect.peek() == Some(id);
+                                            picked_target.set(None);
+                                            picked_effect.set((!same).then_some(id));
+                                        },
                                         AbilityIcon { ability_id: if ability != 0 { ability } else { id }, size: 18 }
                                         span { "{name}" }
                                     }
@@ -152,13 +171,13 @@ pub fn EffectUptimeView(
                         }
                     }
                 }
-                if let Some(target) = picked {
-                    UptimeTimeline { target, cells: timeline, focus: picked_effect(), range_start, range_end }
+                if let Some(subject) = subject {
+                    UptimeTimeline { subject, by_target: picked.is_none(), cells: timeline, focus: picked_effect(), range_start, range_end }
                 } else {
                     div { class: "usage-timeline-container",
                         div { class: "usage-timeline-hint",
                             i { class: "fa-solid fa-bars-progress" }
-                            " Click a target or a cell above to see when each effect was up"
+                            " Click a target, an effect or a cell above to see when effects were up"
                         }
                     }
                 }
@@ -167,10 +186,19 @@ pub fn EffectUptimeView(
     }
 }
 
-/// One lane per effect on the picked target, by uptime, bars where it was
-/// up, on the fight's (or range's) time axis. The clicked effect is emphasised.
+/// Bars where effects were up, on the fight's (or range's) time axis, one lane
+/// per cell, by uptime: the picked target's effects (the clicked one
+/// emphasised), or with `by_target` the picked effect on each target.
 #[component]
-fn UptimeTimeline(target: String, cells: Vec<EffectUptimeCell>, focus: Option<i64>, range_start: f32, range_end: f32) -> Element {
+fn UptimeTimeline(
+    /// The picked target, or the picked effect's name
+    subject: String,
+    by_target: bool,
+    cells: Vec<EffectUptimeCell>,
+    focus: Option<i64>,
+    range_start: f32,
+    range_end: f32,
+) -> Element {
     let span = (range_end - range_start).max(0.001);
     let pos = move |t: f32| (t - range_start) / span * 100.0;
     let mut lanes: Vec<&EffectUptimeCell> = cells.iter().collect();
@@ -181,13 +209,20 @@ fn UptimeTimeline(target: String, cells: Vec<EffectUptimeCell>, focus: Option<i6
     rsx! {
         div { class: "uptime-timeline",
             div { class: "uptime-timeline-title",
-                "Timeline on " strong { "{target}" }
+                if by_target { "Timeline of " } else { "Timeline on " }
+                strong { "{subject}" }
             }
             for c in lanes {
-                div { class: if focus == Some(c.effect_id) { "uptime-lane focus" } else { "uptime-lane" },
-                    div { class: "uptime-lane-label", title: "{c.effect_name}",
-                        AbilityIcon { ability_id: if c.ability_id != 0 { c.ability_id } else { c.effect_id }, size: 16 }
-                        span { "{c.effect_name}" }
+                div { class: if !by_target && focus == Some(c.effect_id) { "uptime-lane focus" } else { "uptime-lane" },
+                    if by_target {
+                        div { class: "uptime-lane-label", title: "{c.target_name}",
+                            span { class: if c.target_type == "Npc" { "npc" }, "{c.target_name}" }
+                        }
+                    } else {
+                        div { class: "uptime-lane-label", title: "{c.effect_name}",
+                            AbilityIcon { ability_id: if c.ability_id != 0 { c.ability_id } else { c.effect_id }, size: 16 }
+                            span { "{c.effect_name}" }
+                        }
                     }
                     div { class: "uptime-lane-track",
                         for (a, b) in c.windows.iter().copied() {

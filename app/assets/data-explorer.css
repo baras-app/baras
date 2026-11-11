@@ -640,9 +640,13 @@
   background: rgba(var(--fg-rgb), 0.04);
 }
 
-.data-tab.active {
+/* Shaded as well as underlined, so the selection doesn't rely on colour
+   alone; a touch stronger than hover so the two stay distinct */
+.data-tab.active,
+.data-tab.active:hover {
   color: var(--text-primary);
   font-weight: 600;
+  background: rgba(var(--fg-rgb), 0.07);
 }
 
 /* Active tab underline (colour per tab below) */
@@ -2537,6 +2541,10 @@
   background: hsl(45, 80%, 55%);
 } /* Rotation - amber */
 
+.data-tab:nth-child(10).active::after {
+  background: hsl(320, 60%, 55%);
+} /* Effect Uptime - magenta */
+
 .usage-section {
   display: flex;
   flex-direction: column;
@@ -2761,8 +2769,22 @@
 }
 
 .uptime-row .name-col,
+.uptime-table th.uptime-effect,
 .uptime-cell:not(.none) {
   cursor: pointer;
+}
+
+.uptime-table th.uptime-effect:hover,
+.uptime-table th.uptime-effect.picked {
+  color: var(--swtor-blue);
+}
+
+.uptime-table th.uptime-effect.picked {
+  box-shadow: inset 0 -2px 0 var(--swtor-blue);
+}
+
+.uptime-lane-label .npc {
+  color: var(--text-muted);
 }
 
 .uptime-row.picked .name-col {

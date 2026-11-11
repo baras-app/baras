@@ -368,7 +368,7 @@ pub(crate) fn EffectEditForm(
                                 DisciplineSelector {
                                     selected: draft().source_disciplines.clone(),
                                     include_roles: true,
-                                    empty_label: "(any)",
+                                    empty_label: "Any discipline",
                                     on_change: move |v: Vec<String>| draft.write().source_disciplines = v,
                                 }
                             }
@@ -376,7 +376,7 @@ pub(crate) fn EffectEditForm(
                                 DisciplineSelector {
                                     selected: draft().target_disciplines.clone(),
                                     include_roles: true,
-                                    empty_label: "(any)",
+                                    empty_label: "Any discipline",
                                     on_change: move |v: Vec<String>| draft.write().target_disciplines = v,
                                 }
                             }

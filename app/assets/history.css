@@ -1734,6 +1734,16 @@
   overflow-y: auto;
 }
 
+/* Group heading inside the list (a class above its disciplines) */
+.multi-select-group {
+  padding: 0.55em 0.8em 0.2em;
+  color: var(--text-muted);
+  font-size: 0.75em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 /* ── Raid Summaries: header actions, bosses with their pulls ── */
 
 .run-header-actions {

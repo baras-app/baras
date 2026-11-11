@@ -1,5 +1,5 @@
 //! Effects editor filter bar, pinned above the list in one row: the name
-//! search, an origin toggle, overlay and discipline dropdowns, then Clear. Counts apply the search and the other filters, so they show what
+//! search, an origin toggle, overlay and discipline multi-selects, then Clear. Counts apply the search and the other filters, so they show what
 //! picking that value would leave.
 
 use dioxus::prelude::*;
@@ -7,6 +7,7 @@ use dioxus::prelude::*;
 use super::editor_common::{ORIGINS, Origin, OriginFilter};
 use super::discipline_selector::{ALL_DISCIPLINES, ALL_ROLES};
 use super::effect_editor::effect_origin;
+use super::multi_select::{Entry, MultiSelect};
 use crate::types::{DisplayTarget, EffectFilters, EffectListItem};
 
 const NO_OVERLAY: &str = "No overlay";
@@ -25,19 +26,12 @@ const SECTIONS: [Section; 3] = [Section::Origin, Section::Overlay, Section::Disc
 type Groups = Vec<(Option<&'static str>, Vec<String>)>;
 
 impl Section {
-    fn selected(self, f: &EffectFilters) -> Option<&str> {
+    /// Picked values; empty = no filter
+    fn picked(self, f: &EffectFilters) -> &[String] {
         match self {
-            Self::Origin => f.origin.as_deref(),
-            Self::Overlay => f.overlay.as_deref(),
-            Self::Discipline => f.discipline.as_deref(),
-        }
-    }
-
-    fn set(self, f: &mut EffectFilters, value: Option<String>) {
-        match self {
-            Self::Origin => f.origin = value,
-            Self::Overlay => f.overlay = value,
-            Self::Discipline => f.discipline = value,
+            Self::Origin => f.origin.as_slice(),
+            Self::Overlay => &f.overlays,
+            Self::Discipline => &f.disciplines,
         }
     }
 
@@ -106,7 +100,10 @@ fn passes(f: &EffectFilters, e: &EffectListItem, skip: Option<Section>) -> bool 
     SECTIONS
         .iter()
         .filter(|s| Some(**s) != skip)
-        .all(|s| s.selected(f).is_none_or(|v| s.values(e).contains(&v)))
+        .all(|s| {
+            let picked = s.picked(f);
+            picked.is_empty() || s.values(e).iter().any(|v| picked.iter().any(|p| p == v))
+        })
 }
 
 pub fn matches_filters(f: &EffectFilters, e: &EffectListItem) -> bool {
@@ -123,7 +120,7 @@ fn count(f: &EffectFilters, effects: &[EffectListItem], section: Section, value:
 pub fn EffectFilterBar(effects: Memo<Vec<EffectListItem>>, filters: Signal<EffectFilters>, search: Signal<String>) -> Element {
     let f = filters.read().clone();
     let list = effects.read();
-    let active = SECTIONS.iter().filter(|s| s.selected(&f).is_some()).count();
+    let active = SECTIONS.iter().filter(|s| !s.picked(&f).is_empty()).count();
     let origin = f.origin.clone();
 
     rsx! {
@@ -141,8 +138,8 @@ pub fn EffectFilterBar(effects: Memo<Vec<EffectListItem>>, filters: Signal<Effec
                 kind: "effects",
                 on_pick: move |o: Option<Origin>| filters.write().origin = o.map(|o| o.label().to_string()),
             }
-            FilterSelect { section: Section::Overlay, any: "Any overlay", effects, filters }
-            FilterSelect { section: Section::Discipline, any: "Any discipline", effects, filters }
+            FilterSelect { section: Section::Overlay, any: "Any overlay", noun: "overlays", effects, filters }
+            FilterSelect { section: Section::Discipline, any: "Any discipline", noun: "disciplines", effects, filters }
             button {
                 class: "btn btn-xs history-clear",
                 class: if active > 0 { "active" },
@@ -157,38 +154,40 @@ pub fn EffectFilterBar(effects: Memo<Vec<EffectListItem>>, filters: Signal<Effec
     }
 }
 
-/// Dropdown for one section; the empty option is "any", groups become optgroups
+/// Multi-select for one section: each value with the count picking it would
+/// leave, under its group heading
 #[component]
-fn FilterSelect(section: Section, any: &'static str, effects: Memo<Vec<EffectListItem>>, filters: Signal<EffectFilters>) -> Element {
+fn FilterSelect(
+    section: Section,
+    any: &'static str,
+    noun: &'static str,
+    effects: Memo<Vec<EffectListItem>>,
+    filters: Signal<EffectFilters>,
+) -> Element {
     let f = filters.read().clone();
     let list = effects.read();
-    let selected = section.selected(&f).unwrap_or_default().to_string();
+    let mut entries: Vec<Entry> = Vec::new();
+    for (group, values) in section.groups(&list) {
+        if let Some(g) = group {
+            entries.push((g.to_string(), Vec::new()));
+        }
+        entries.extend(values.into_iter().map(|v| (format!("{v} ({})", count(&f, &list, section, &v)), vec![v])));
+    }
 
     rsx! {
-        select {
-            class: if !selected.is_empty() { "history-tag-active" },
-            value: "{selected}",
-            onchange: move |e| {
-                let v = e.value();
-                section.set(&mut filters.write(), (!v.is_empty()).then_some(v));
-            },
-            option { value: "", "{any}" }
-            for (group, values) in section.groups(&list) {
-                match group {
-                    Some(g) => rsx! {
-                        optgroup { label: "{g}",
-                            for v in values {
-                                option { value: "{v}", selected: v == selected, "{v} ({count(&f, &list, section, &v)})" }
-                            }
-                        }
-                    },
-                    None => rsx! {
-                        for v in values {
-                            option { value: "{v}", selected: v == selected, "{v} ({count(&f, &list, section, &v)})" }
-                        }
-                    },
+        MultiSelect {
+            any_label: any,
+            noun,
+            entries,
+            picked: section.picked(&f).to_vec(),
+            on_change: move |v: Vec<String>| {
+                let mut w = filters.write();
+                match section {
+                    Section::Overlay => w.overlays = v,
+                    Section::Discipline => w.disciplines = v,
+                    Section::Origin => w.origin = v.into_iter().next(),
                 }
-            }
+            },
         }
     }
 }
