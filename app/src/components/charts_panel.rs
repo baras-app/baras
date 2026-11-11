@@ -853,6 +853,7 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
 
     // Loading state
     let mut loading = use_signal(|| false);
+    let mut effects_loading = use_signal(|| false);
 
     // Epoch counter to discard stale async results
     let mut load_epoch = use_signal(|| 0u32);
@@ -951,7 +952,9 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
 
         let Some(entity) = entity else { return };
 
-        // Clear stale effect data immediately so icons don't show wrong player's effects
+        // Clear stale effect data immediately so icons don't show wrong player's effects.
+        // Spinner for historical only: live refreshes would make it flicker
+        effects_loading.set(idx.is_some());
         active_effects.set(Vec::new());
         passive_effects.set(Vec::new());
         selected_effects.set(Vec::new());
@@ -973,6 +976,7 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                 active_effects.set(active);
                 passive_effects.set(passive);
             }
+            effects_loading.set(false);
         });
     });
 
@@ -1287,8 +1291,7 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                         span { class: "toggle-hp", "HP%" }
                     }
                 }
-                // Charts area: the spinner sits in the first visible chart so it
-                // never lands in the gap between two
+                // Charts area: each visible chart shows a spinner while loading
                 div { class: "charts-area",
                     {
                         let loading_now = *loading.read();
@@ -1298,20 +1301,16 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                             ("chart-dtps", *show_dtps.read(), dtps_empty, "No damage taken in fight"),
                             ("chart-hp", *show_hp.read(), hp_empty, "No HP data in fight"),
                         ];
-                        let first_shown = slots.iter().position(|s| s.1);
                         rsx! {
-                            for (i, (id, shown, empty, msg)) in slots.into_iter().enumerate() {
+                            for (id, shown, empty, msg) in slots {
                                 if shown {
                                     if empty && !loading_now && !is_live {
                                         div { key: "{id}", class: "chart-empty", "{msg}" }
                                     } else {
                                         div { key: "{id}", class: "chart-slot",
                                             div { id: "{id}", class: "chart-container" }
-                                            if loading_now && first_shown == Some(i) {
-                                                div { class: "charts-loading",
-                                                    i { class: "fa-solid fa-spinner fa-spin" }
-                                                    " Loading..."
-                                                }
+                                            if loading_now {
+                                                div { class: "charts-loading", i { class: "fa-solid fa-spinner fa-spin" } }
                                             }
                                         }
                                     }
@@ -1351,7 +1350,9 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                 // Combined effects table (active abilities + passive effects)
                 div { class: "effects-section",
                     h4 { "Effects" }
-                    if sorted_effects.is_empty() {
+                    if effects_loading() {
+                        div { class: "effects-loading", i { class: "fa-solid fa-spinner fa-spin" } }
+                    } else if sorted_effects.is_empty() {
                         div { class: "effects-empty", "No effects" }
                     } else {
                         div { class: "effect-table-wrapper",
