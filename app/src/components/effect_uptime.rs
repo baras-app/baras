@@ -128,7 +128,7 @@ pub fn EffectUptimeView(
                                             picked_target.set(None);
                                             picked_effect.set((!same).then_some(id));
                                         },
-                                        AbilityIcon { ability_id: if ability != 0 { ability } else { id }, size: 18 }
+                                        AbilityIcon { ability_id: id, fallback_id: (ability != 0).then_some(ability), size: 18 }
                                         span { "{name}" }
                                     }
                                 }
@@ -224,7 +224,7 @@ fn UptimeTimeline(
                         }
                     } else {
                         div { class: "uptime-lane-label", title: "{c.effect_name}",
-                            AbilityIcon { ability_id: if c.ability_id != 0 { c.ability_id } else { c.effect_id }, size: 16 }
+                            AbilityIcon { ability_id: c.effect_id, fallback_id: (c.ability_id != 0).then_some(c.ability_id), size: 16 }
                             span { "{c.effect_name}" }
                         }
                     }
