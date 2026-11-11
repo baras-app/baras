@@ -97,7 +97,7 @@ pub fn App() -> Element {
 
     // Boss notes selector state
     let mut area_bosses = use_signal(Vec::<BossNotesInfo>::new);
-    let mut selected_boss_id = use_signal(|| None::<String>);
+    let selected_boss_id = use_signal(|| None::<String>);
 
 
     // File browser state

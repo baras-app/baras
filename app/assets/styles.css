@@ -75,6 +75,15 @@
   --phase-l: 30%;
   /* Plot surface: a recessed well on dark, a near-white card on light */
   --chart-bg: rgba(0, 0, 0, 0.22);
+  /* Categorical chart series, in a fixed order */
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
   /* Ability usage timeline series */
   --usage-1: rgba(255, 200, 50, 0.85);
   --usage-2: rgba(100, 200, 255, 0.85);
@@ -209,6 +218,15 @@
   --lt-violet: #7a3fa0;
   --phase-l: 78%;
   --chart-bg: #fbfbfc;
+  /* Categorical chart series, in a fixed order */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #6250d6;
+  --series-8: #e34948;
   --usage-1: #b7791f;
   --usage-2: #1f7ab8;
   --usage-3: #c2255c;
@@ -3649,24 +3667,12 @@ a.contributor-name:hover {
   cursor: not-allowed;
 }
 
-.parsely-upload-btn.uploading {
-  color: var(--swtor-blue);
-}
-
 .parsely-upload-btn.success {
   color: var(--color-success);
 }
 
 .parsely-upload-btn.success:hover {
   background: rgba(74, 222, 128, 0.1);
-}
-
-.parsely-upload-btn.error {
-  color: var(--color-warning);
-}
-
-.parsely-upload-btn.error:hover {
-  background: rgba(245, 158, 11, 0.1);
 }
 
 .encounter-name {

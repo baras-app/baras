@@ -1,6 +1,7 @@
 //! ECharts interop shared by every chart in the app: instance lookup on a DOM
 //! element, option application, resize and disposal. Options can be built as
-//! `serde_json::Value` and applied with `set_json_option`.
+//! `serde_json::Value`, converted with `json_to_js` and applied with
+//! `set_option_replace`.
 
 use dioxus::prelude::*;
 use serde::Serialize;
@@ -35,20 +36,19 @@ pub fn get_chart(element_id: &str) -> Option<JsValue> {
     (!existing.is_null() && !existing.is_undefined()).then_some(existing)
 }
 
-fn call0(target: &JsValue, method: &str) {
-    if let Some(func) = js_sys::Reflect::get(target, &JsValue::from_str(method))
-        .ok()
-        .and_then(|f| f.dyn_into::<js_sys::Function>().ok())
-    {
+/// `target[name]` when it is a function
+fn method(target: &JsValue, name: &str) -> Option<js_sys::Function> {
+    js_sys::Reflect::get(target, &JsValue::from_str(name)).ok()?.dyn_into().ok()
+}
+
+fn call0(target: &JsValue, name: &str) {
+    if let Some(func) = method(target, name) {
         let _ = func.call0(target);
     }
 }
 
 pub fn set_chart_option(chart: &JsValue, option: &JsValue) {
-    if let Some(func) = js_sys::Reflect::get(chart, &JsValue::from_str("setOption"))
-        .ok()
-        .and_then(|f| f.dyn_into::<js_sys::Function>().ok())
-    {
+    if let Some(func) = method(chart, "setOption") {
         let _ = func.call1(chart, option);
     }
 }
@@ -80,18 +80,8 @@ pub fn set_js_fn(obj: &JsValue, path: &[&str], args: &str, body: &str) {
 /// Apply an option (`notMerge`, so a smaller series set replaces the previous
 /// one instead of stacking).
 pub fn set_option_replace(chart: &JsValue, option: &JsValue) {
-    if let Some(func) = js_sys::Reflect::get(chart, &JsValue::from_str("setOption"))
-        .ok()
-        .and_then(|f| f.dyn_into::<js_sys::Function>().ok())
-    {
+    if let Some(func) = method(chart, "setOption") {
         let _ = func.call2(chart, option, &JsValue::TRUE);
-    }
-}
-
-/// Apply an option built as JSON.
-pub fn set_json_option(chart: &JsValue, option: &serde_json::Value) {
-    if let Some(option) = json_to_js(option) {
-        set_option_replace(chart, &option);
     }
 }
 
@@ -162,9 +152,7 @@ pub fn on_click(chart: &JsValue, handler: &Closure<dyn FnMut(JsValue)>) {
 /// `chart.dispatchAction(action)`, e.g. highlight / downplay a series
 pub fn dispatch_action(chart: &JsValue, action: &serde_json::Value) {
     if let Some(action) = json_to_js(action)
-        && let Some(func) = js_sys::Reflect::get(chart, &JsValue::from_str("dispatchAction"))
-            .ok()
-            .and_then(|f| f.dyn_into::<js_sys::Function>().ok())
+        && let Some(func) = method(chart, "dispatchAction")
     {
         let _ = func.call1(chart, &action);
     }
@@ -207,82 +195,45 @@ pub fn apply_brush_config(obj: &js_sys::Object) {
 /// Activate the brush tool on a chart instance via dispatchAction.
 /// Required when there's no toolbox — the brush won't auto-activate otherwise.
 pub fn activate_brush(chart: &JsValue) {
-    if let Ok(dispatch_fn) = js_sys::Reflect::get(chart, &JsValue::from_str("dispatchAction")) {
-        if let Some(func) = dispatch_fn.dyn_ref::<js_sys::Function>() {
-            let action = js_sys::Object::new();
-            js_set(&action, "type", &JsValue::from_str("takeGlobalCursor"));
-            let brush_opt = js_sys::Object::new();
-            js_set(&brush_opt, "brushType", &JsValue::from_str("lineX"));
-            js_set(&action, "key", &JsValue::from_str("brush"));
-            js_set(&action, "brushOption", &brush_opt);
-            let _ = func.call1(chart, &action);
-        }
-    }
+    dispatch_action(
+        chart,
+        &serde_json::json!({ "type": "takeGlobalCursor", "key": "brush", "brushOption": { "brushType": "lineX" } }),
+    );
 }
 
-/// Register a brush-end handler on an ECharts instance that calls back with the
-/// selected time range (start_secs, end_secs). After applying, the brush selection
-/// is cleared from the chart.
-pub fn register_brush_handler(chart: &JsValue, mut time_range_sink: Signal<Option<(f64, f64)>>) {
+/// Register a brush-end handler on an ECharts instance that writes the
+/// selected x-axis span `(start, end)` to `sink`, then clears the selection
+/// from the chart. Replaces any earlier handler, so charts that re-apply
+/// options on the same instance don't fire once per registration.
+pub fn register_brush_handler(chart: &JsValue, mut sink: Signal<Option<(f64, f64)>>) {
     use wasm_bindgen::closure::Closure;
 
-    let chart_clone = chart.clone();
+    let target = chart.clone();
     let closure = Closure::wrap(Box::new(move |params: JsValue| {
-        // ECharts brushEnd event: params.areas is an array of brush areas.
-        // Each area has coordRange: [startValue, endValue] in x-axis coordinates.
-        if let Ok(areas) = js_sys::Reflect::get(&params, &JsValue::from_str("areas")) {
-            if let Some(arr) = areas.dyn_ref::<js_sys::Array>() {
-                if arr.length() > 0 {
-                    let area = arr.get(0);
-                    if let Ok(coord_range) =
-                        js_sys::Reflect::get(&area, &JsValue::from_str("coordRange"))
-                    {
-                        if let Some(range_arr) = coord_range.dyn_ref::<js_sys::Array>() {
-                            if range_arr.length() >= 2 {
-                                let start = range_arr.get(0).as_f64().unwrap_or(0.0);
-                                let end = range_arr.get(1).as_f64().unwrap_or(0.0);
-                                if end > start {
-                                    time_range_sink.set(Some((start, end)));
-                                }
-                            }
-                        }
-                    }
-                    // Clear the brush selection visual after applying
-                    if let Ok(dispatch_fn) = js_sys::Reflect::get(
-                        &chart_clone,
-                        &JsValue::from_str("dispatchAction"),
-                    ) {
-                        if let Some(func) = dispatch_fn.dyn_ref::<js_sys::Function>() {
-                            let action = js_sys::Object::new();
-                            js_set(&action, "type", &JsValue::from_str("brush"));
-                            let empty_areas = js_sys::Array::new();
-                            js_set(&action, "areas", &empty_areas);
-                            let _ = func.call1(&chart_clone, &action);
-                        }
-                    }
-                }
-            }
+        // params.areas[0].coordRange = [start, end] in x-axis coordinates
+        let Some(area) = js_sys::Reflect::get(&params, &JsValue::from_str("areas"))
+            .ok()
+            .and_then(|a| a.dyn_into::<js_sys::Array>().ok())
+            .filter(|a| a.length() > 0)
+            .map(|a| a.get(0))
+        else {
+            return;
+        };
+        if let Ok(range) = js_sys::Reflect::get(&area, &JsValue::from_str("coordRange"))
+            && let Some(range) = range.dyn_ref::<js_sys::Array>()
+            && let (Some(start), Some(end)) = (range.get(0).as_f64(), range.get(1).as_f64())
+            && end > start
+        {
+            sink.set(Some((start, end)));
         }
+        dispatch_action(&target, &serde_json::json!({ "type": "brush", "areas": [] }));
     }) as Box<dyn FnMut(JsValue)>);
 
-    // Replace any earlier listener: charts that re-apply options on the same
-    // instance would otherwise fire once per registration
-    if let Ok(off_fn) = js_sys::Reflect::get(chart, &JsValue::from_str("off"))
-        && let Some(func) = off_fn.dyn_ref::<js_sys::Function>()
-    {
-        let _ = func.call1(chart, &JsValue::from_str("brushEnd"));
+    if let Some(off) = method(chart, "off") {
+        let _ = off.call1(chart, &JsValue::from_str("brushEnd"));
     }
-
-    // Call chart.on("brushEnd", closure) — use unchecked_ref to cast FnMut closure for JS
-    if let Ok(on_fn) = js_sys::Reflect::get(chart, &JsValue::from_str("on")) {
-        if let Some(func) = on_fn.dyn_ref::<js_sys::Function>() {
-            let _ = func.call2(
-                chart,
-                &JsValue::from_str("brushEnd"),
-                closure.as_ref().unchecked_ref(),
-            );
-        }
+    if let Some(on) = method(chart, "on") {
+        let _ = on.call2(chart, &JsValue::from_str("brushEnd"), closure.as_ref().unchecked_ref());
     }
-
     closure.forget();
 }
