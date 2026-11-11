@@ -190,7 +190,8 @@ pub struct PullFilter {
     /// "8" | "16", matched against the leading player count of the difficulty name
     #[serde(default)]
     pub group_size: String,
-    /// Flashpoint runs alongside operations in Raid Summaries (Boss Statistics always lists them)
+    /// Flashpoint runs alongside operations in Raid Summaries (Boss Statistics
+    /// always lists them). Seeded from and saved to `AppConfig`
     #[serde(default)]
     pub flashpoints: bool,
     pub kills_only: bool,
