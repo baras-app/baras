@@ -293,6 +293,19 @@ impl ServiceHandle {
         }
     }
 
+    /// Hide or show one pull in Boss Statistics
+    pub fn set_pull_hidden(&self, filename: &str, start_ms: i64, hidden: bool) -> bool {
+        let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        meta.set_pull_hidden(filename, start_ms, hidden);
+        match meta.save() {
+            Ok(()) => true,
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to save library.json");
+                false
+            }
+        }
+    }
+
     /// Remove a tag from every run of one log (the grey run tags in Log Management)
     pub fn remove_run_tag_for_log(&self, filename: &str, tag: &str) -> bool {
         let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());

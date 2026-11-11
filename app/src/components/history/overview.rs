@@ -131,7 +131,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
         .and_then(|(op, boss)| bosses.iter().find(|n| n.operation == *op && n.boss == *boss));
 
     // Reads signals (not render-local values) so the resource re-runs on change
-    let pulls = use_resource(move || {
+    let mut pulls = use_resource(move || {
         let key = overview
             .read()
             .as_ref()
@@ -300,7 +300,8 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                         }
                         div { class: "history-card", title: if fastest_kill.is_some() { "Fastest kill" } else { "Furthest progress" },
                             div { class: "k", "Best" }
-                            div { class: "v small", "{best_label}" }
+                            // A kill time reads like the other values; only the longer progress text shrinks
+                            div { class: if fastest_kill.is_some() { "v" } else { "v small" }, "{best_label}" }
                         }
                         div { class: "history-card", title: "Average time to kill across clears",
                             div { class: "k", "Avg TTK" }
@@ -330,8 +331,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                     th { class: sort_class(SortKey::Dps), onclick: move |_| on_sort(SortKey::Dps), "DPS" }
                                     th { class: sort_class(SortKey::Hps), onclick: move |_| on_sort(SortKey::Hps), "HPS" }
                                     th { "Tags" }
-                                    th { "Parsely" }
-                                    th { "Log" }
+                                    th { "" }
                                 }
                             }
                             tbody {
@@ -341,6 +341,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                         rsx! {
                                             tr {
                                                 key: "{row.filename}:{row.start_ms}",
+                                                class: if row.hidden { "pull-hidden" } else { "" },
                                                 td { {short_ts(&row.timestamp)} }
                                                 td {
                                                     span { class: "{class}", "{label}" }
@@ -368,7 +369,8 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                                         span { class: "run-tag small", "{t}" }
                                                     }
                                                 }
-                                                td {
+                                                // Parsely, open / restore, hide: one action cell
+                                                td { class: "pull-row-actions",
                                                     if let Some(link) = row.parsely.clone() {
                                                         button {
                                                             class: "btn btn-xs btn-ghost",
@@ -379,11 +381,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                                             },
                                                             i { class: "fa-solid fa-up-right-from-square" }
                                                         }
-                                                    } else {
-                                                        span { class: "pull-log-missing", title: "Not uploaded to Parsely", "—" }
                                                     }
-                                                }
-                                                td {
                                                     if let Some(path) = row.path.clone() {
                                                         button {
                                                             class: "btn btn-xs btn-ghost",
@@ -393,7 +391,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                                                 let encounter_id = row.encounter_id;
                                                                 move |_| opener.open(path.clone(), Some(encounter_id))
                                                             },
-                                                            i { class: "fa-solid fa-eye" }
+                                                            i { class: "fa-solid fa-magnifying-glass-chart" }
                                                         }
                                                     } else if row.archived {
                                                         button {
@@ -407,7 +405,26 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                                             i { class: "fa-solid fa-box-open" }
                                                         }
                                                     } else {
-                                                        span { class: "pull-log-missing", title: "Log file no longer exists", "—" }
+                                                        span { class: "pull-log-missing", title: "Log file no longer exists", i { class: "fa-solid fa-file-circle-xmark" } }
+                                                    }
+                                                    {
+                                                        let (filename, start_ms, hidden) = (row.filename.clone(), row.start_ms, row.hidden);
+                                                        rsx! {
+                                                            button {
+                                                                class: "btn btn-xs btn-ghost",
+                                                                title: if hidden { "Show this pull in the statistics again" } else { "Hide this pull (practice, bugged fight) from the statistics" },
+                                                                onclick: move |_| {
+                                                                    let filename = filename.clone();
+                                                                    spawn(async move {
+                                                                        if api::set_pull_hidden(&filename, start_ms, !hidden).await.is_ok() {
+                                                                            pulls.restart();
+                                                                            overview.restart();
+                                                                        }
+                                                                    });
+                                                                },
+                                                                i { class: if hidden { "fa-solid fa-eye" } else { "fa-solid fa-eye-slash" } }
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
@@ -416,7 +433,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                 }
                                 if shown < total {
                                     tr {
-                                        td { colspan: "12", class: "library-empty",
+                                        td { colspan: "11", class: "library-empty",
                                             "{shown} of {total} shown · scroll for more "
                                             button { class: "btn btn-xs btn-ghost", onclick: move |_| paged.show_all(&page_key), "Show all" }
                                         }

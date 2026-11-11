@@ -5,7 +5,7 @@
 //! a point or bar publishes a `ChartPick` the table narrows itself to.
 
 use std::cell::RefCell;
-use crate::utils::css_var;
+use crate::utils::{LightTheme, css_var};
 use std::rc::Rc;
 
 use dioxus::prelude::*;
@@ -107,7 +107,8 @@ fn pull_point(r: &PullRow, value: i64, shown: String) -> Value {
 }
 
 /// Tooltip body for pull charts (axis trigger); reads the `pull_point` fields
-const PULL_TOOLTIP: &str = "var p = params[0], d = p.data || {};\
+/// of the series that has a point at this pull (one role line per pull)
+const PULL_TOOLTIP: &str = "var p = params.filter(function (x) { return x.data && x.data.who; })[0] || params[0], d = p.data || {};\
     var img = function (u) { return u ? '<img src=\"' + u + '\" style=\"width:16px;height:16px;vertical-align:-3px;margin-right:4px\">' : ''; };\
     return '<div style=\"font-size:11px;opacity:.7;margin-bottom:2px\">' + p.name + '</div>'\
       + '<div>' + img(d.role) + img(d.disc) + '<b>' + (d.who || '') + '</b></div>'\
@@ -168,16 +169,47 @@ fn period_ticks(timestamps: &[&str]) -> Value {
     Value::Object(t.into_iter().map(|(i, l)| (i.to_string(), Value::String(l))).collect())
 }
 
+/// Lines on the DPS / EHPS charts: the role played on the pull (as recorded,
+/// `Role` Debug names), its legend label and colour; unknown role last
+const ROLE_SERIES: [(Option<&str>, &str, &str); 4] = [
+    (Some("Dps"), "DPS", "#e74c3c"),
+    (Some("Tank"), "Tank", "#4a9eff"),
+    (Some("Healer"), "Healer", "#2ecc71"),
+    (None, "Unknown role", "#9a9aa2"),
+];
+
 /// One point per pull where the logging character has the metric, in
-/// chronological order; the tooltip says who played and whether it was a kill.
-fn metric_option(rows: &[PullRow], title: &str, color: &str, pick: impl Fn(&PullRow) -> Option<i64>) -> Option<Value> {
+/// chronological order, one line per role played (gaps between a role's
+/// pulls are bridged); the tooltip says who played and whether it was a kill.
+fn metric_option(rows: &[PullRow], title: &str, pick: impl Fn(&PullRow) -> Option<i64>) -> Option<Value> {
     let points: Vec<(&PullRow, i64)> = rows.iter().filter_map(|r| pick(r).filter(|v| *v > 0).map(|v| (r, v))).collect();
     if points.is_empty() {
         return None;
     }
     let labels: Vec<String> = points.iter().map(|(r, _)| pull_label(&r.timestamp)).collect();
     let ticks = period_ticks(&points.iter().map(|(r, _)| r.timestamp.as_str()).collect::<Vec<_>>());
-    let data: Vec<Value> = points.iter().map(|(r, v)| pull_point(r, *v, formatting::format_compact(*v, false))).collect();
+    let series: Vec<Value> = ROLE_SERIES
+        .iter()
+        .filter_map(|(role, name, color)| {
+            let data: Vec<Value> = points
+                .iter()
+                .map(|(r, v)| match r.role.as_deref() == *role {
+                    true => pull_point(r, *v, formatting::format_compact(*v, false)),
+                    false => Value::Null,
+                })
+                .collect();
+            data.iter().any(|d| !d.is_null()).then(|| {
+                json!({
+                    // No markers; the hover dot takes the pull's kill / wipe colour
+                    "type": "line", "name": name, "data": data, "connectNulls": true,
+                    "symbol": "circle", "symbolSize": 9, "showAllSymbol": true,
+                    "emphasis": { "itemStyle": { "opacity": 1 } },
+                    "itemStyle": { "color": color },
+                    "lineStyle": { "color": color, "width": 1.5 },
+                })
+            })
+        })
+        .collect();
     let mut opt = base_option(title);
     opt["_pull_tooltip"] = json!(true);
     opt["xAxis"] = pull_axis(labels);
@@ -188,13 +220,11 @@ fn metric_option(rows: &[PullRow], title: &str, color: &str, pick: impl Fn(&Pull
     opt["xAxis"]["splitLine"] = json!({ "show": true, "lineStyle": { "color": css_var("--border-light"), "type": "dashed" } });
     opt["yAxis"] = json!({ "type": "value", "axisLabel": { "color": css_var("--text-muted") }, "splitLine": { "lineStyle": { "color": css_var("--border-light") } }, "scale": true });
     opt["dataZoom"] = json!([{ "type": "inside", "zoomOnMouseWheel": true, "moveOnMouseMove": true }]);
-    opt["series"] = json!([{
-        // No markers; the hover dot takes the pull's kill / wipe colour
-        "type": "line", "name": title, "data": data, "symbol": "circle", "symbolSize": 9, "showAllSymbol": true,
-        "emphasis": { "itemStyle": { "opacity": 1 } },
-        "itemStyle": { "color": color },
-        "lineStyle": { "color": color, "width": 1.5 }, "areaStyle": { "color": color, "opacity": 0.08 },
-    }]);
+    // Legend only when more than one role shows; clicking an entry hides that line
+    if series.len() > 1 {
+        opt["legend"] = json!({ "top": 0, "right": 8, "itemWidth": 14, "itemHeight": 8, "textStyle": { "color": css_var("--text-muted"), "fontSize": 10 } });
+    }
+    opt["series"] = Value::Array(series);
     Some(opt)
 }
 
@@ -311,8 +341,8 @@ fn chronological(pulls: &Resource<Option<Vec<PullRow>>>) -> Vec<PullRow> {
 /// meaningless, so the third slot shows time to kill instead.
 fn options(rows: &[PullRow], kills_only: bool) -> [(&'static str, Option<Value>); 3] {
     [
-        (DPS_ID, metric_option(rows, "DPS", "#e74c3c", |r| r.dps)),
-        (EHPS_ID, metric_option(rows, "EHPS", "#2ecc71", |r| r.ehps)),
+        (DPS_ID, metric_option(rows, "DPS", |r| r.dps)),
+        (EHPS_ID, metric_option(rows, "EHPS", |r| r.ehps)),
         (NIGHTS_ID, if kills_only { ttk_option(rows) } else { nights_option(rows) }),
     ]
 }
@@ -327,7 +357,12 @@ pub fn PullCharts(pulls: Resource<Option<Vec<PullRow>>>, pick: Signal<Option<Cha
     // The effect keeps its first closure, so it rebuilds from the resource
     // itself rather than capturing this render's options. The chart divs
     // exist after this render; two frames give them a size.
+    let light_theme = try_use_context::<LightTheme>();
     use_effect(move || {
+        // Colours resolve from CSS when the options are built: rebuild on a theme flip
+        if let Some(LightTheme(t)) = light_theme {
+            t.read();
+        }
         let charts = options(&chronological(&pulls), kills_only);
         let handlers = handlers.clone();
         spawn(async move {

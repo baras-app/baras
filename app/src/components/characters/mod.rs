@@ -98,7 +98,13 @@ pub fn CharactersPanel() -> Element {
     // Which view: the roster table, or the lockout matrix
     let mut matrix = use_signal(|| false);
     // Modes the lockout matrix draws (Story, Veteran, Master)
-    let matrix_tiers = use_signal(|| [true; 3]);
+    let mut matrix_tiers = use_signal(|| [true; 3]);
+    // Saved by `TierPicks`; restored once per mount
+    use_future(move || async move {
+        if let Some(cfg) = api::get_config().await {
+            matrix_tiers.set(cfg.lockout_tiers);
+        }
+    });
     let mut locked_for: Signal<LockedFor> = use_signal(LockedFor::default);
     let sort_key = use_signal(|| SortKey::LastSeen);
     let sort_desc = use_signal(|| true);

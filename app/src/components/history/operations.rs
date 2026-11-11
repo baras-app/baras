@@ -116,6 +116,9 @@ fn RunItem(run: RunSummary, selected: bool, on_pick: EventHandler<RunKey>, #[pro
                 // Outcome sits at the right edge, under the tier badge. A full
                 // clear replaces the kill count; partial runs show how far they got
                 span { class: "run-outcome",
+                    if r.hidden {
+                        span { class: "run-badge", title: "Hidden run", i { class: "fa-solid fa-eye-slash" } }
+                    }
                     // A missed timer shows nothing; only the achievement is worth a badge
                     if r.timer.achieved == Some(true) {
                         span { class: "run-badge timer-ok", title: "Timed run achieved", i { class: "fa-solid fa-stopwatch" } }

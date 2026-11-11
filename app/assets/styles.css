@@ -2259,6 +2259,14 @@ details[open] .collapsible-summary::before {
   min-height: 2.2em;
 }
 
+/* Light mode: settings fields are white wells, not the dark-tinted recess */
+:root[data-theme="light"] .settings-page input:is([type="text"], [type="password"], :not([type])),
+:root[data-theme="light"] .hotkey-input:not(.hotkey-input--capturing),
+:root[data-theme="light"] .directory-display {
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+}
+
 .hotkey-input:focus {
   outline: none;
   border-color: #4a90a0;

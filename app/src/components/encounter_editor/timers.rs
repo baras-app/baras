@@ -285,9 +285,6 @@ fn TimerRow(
                 class: "list-item-header timer-row-header",
                 onclick: move |_| on_toggle.call(()),
 
-
-                OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "timer" }
-
                 // Color swatch
                 span {
                     class: "color-swatch",
@@ -389,6 +386,7 @@ fn TimerRow(
                         {role_toggle("H", "Healer", has_healer, timer_for_healer, timers_for_healer, bwp_for_healer, on_change, on_refetch)}
                         {role_toggle("D", "Dps", has_dps, timer_for_dps, timers_for_dps, bwp_for_dps, on_change, on_refetch)}
                     }
+                    OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "timer" }
                 }
             }
 

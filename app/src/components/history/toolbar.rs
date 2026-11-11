@@ -62,6 +62,8 @@ fn extra_active(f: &PullFilter, runs: bool) -> usize {
         + [&f.characters, &f.disciplines, &f.servers, &f.game_versions, &f.tags].iter().filter(|v| !v.is_empty()).count()
         + usize::from(f.kills_only)
         + usize::from(runs && f.flashpoints)
+        + usize::from(runs && f.timed_only)
+        + usize::from(f.show_hidden)
 }
 
 /// Everything narrowing the view, segmented toggles included (Clear button)
@@ -174,6 +176,20 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>, runs: bool) -> Element {
                             checked: f.flashpoints,
                             on_change: move |checked: bool| filter.write().flashpoints = checked,
                         }
+                        ToggleSwitch {
+                            label: "Timed runs",
+                            title: "Only runs cleared within the area's time limit",
+                            class: "history-switch",
+                            checked: f.timed_only,
+                            on_change: move |checked: bool| filter.write().timed_only = checked,
+                        }
+                    }
+                    ToggleSwitch {
+                        label: "Show hidden",
+                        title: if runs { "List the runs you hid" } else { "List the pulls you hid (dimmed)" },
+                        class: "history-switch",
+                        checked: f.show_hidden,
+                        on_change: move |checked: bool| filter.write().show_hidden = checked,
                     }
                 }
                 MultiSelect {
