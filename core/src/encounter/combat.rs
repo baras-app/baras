@@ -1618,7 +1618,8 @@ impl CombatEncounter {
                 }
             }
 
-            source.threat_generated += event.details.threat as f64;
+            // Floored at 0, like the in-game threat table (cloak-outs, threat drops)
+            source.threat_generated = (source.threat_generated + event.details.threat as f64).max(0.0);
 
             if event.effect.effect_id == effect_id::ABILITYACTIVATE
                 && self.enter_combat_time.is_some_and(|t| event.timestamp >= t)
