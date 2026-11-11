@@ -315,8 +315,8 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.explorer-sidebar .history-toolbar .history-seg .seg {
-  padding: 0.45em 0.5em;
+.explorer-sidebar .history-toolbar .filter-pills .seg {
+  padding: 0.1em 0.5em;
 }
 
 .explorer-sidebar .history-more {
@@ -326,7 +326,7 @@
 
 /* Sized by their label, then sharing the slack: equal thirds would clip
    the widest one when the rail is narrow */
-.explorer-sidebar .history-toolbar .history-seg .seg {
+.explorer-sidebar .history-toolbar .filter-pills .seg {
   flex: 1 1 auto;
   min-width: 0;
   justify-content: center;
@@ -1158,53 +1158,7 @@
   margin-right: 0.25em;
 }
 
-/* ── Difficulty / size: segmented toggles and the subset chips ───────────── */
-
-/* Segmented control in the navbar's scheme: a faint track, flat segments,
-   the picked one raised with its icon in the filter's colour */
-.history-seg {
-  display: inline-flex;
-  gap: 2px;
-  padding: 2px;
-  background: rgba(var(--fg-rgb), 0.06);
-  border: 1px solid var(--border-subtle);
-  border-radius: 9px;
-}
-
-.history-seg .seg {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35em;
-  padding: 0.35em 0.7em;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--text-tertiary);
-  font: inherit;
-  font-size: 0.9em;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color var(--transition-fast), color var(--transition-fast),
-    border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-/* Full-width variant: equal segments across the container */
-.history-seg.seg-fill { display: flex; }
-.history-seg.seg-fill .seg { flex: 1; justify-content: center; white-space: nowrap; }
-
-.history-seg .seg:hover { color: var(--text-primary); background: rgba(var(--fg-rgb), 0.06); }
-
-.history-seg .seg.active {
-  color: var(--text-primary);
-  background: var(--bg-raised);
-  border-color: rgba(var(--fg-rgb), 0.08);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
-}
-.history-seg .seg.active > i { color: var(--swtor-blue); }
-.history-seg .seg.active.tier-story > i { color: var(--color-success); }
-.history-seg .seg.active.tier-veteran > i { color: var(--text-gold); }
-.history-seg .seg.active.tier-master > i { color: var(--lt-red, #f08080); }
-.history-seg .seg.active.size > i { color: var(--swtor-blue-bright); }
+/* ── Difficulty / size subset chips ──────────────────────────────────────── */
 
 .history-subset {
   display: inline-flex;
@@ -1228,14 +1182,6 @@
 .subset-chip.tier-master { color: var(--lt-red, #f08080); background: rgba(220, 60, 60, 0.15); }
 .subset-chip.size { color: var(--swtor-blue-bright); background: rgba(74, 158, 255, 0.18); }
 .subset-chip.any { color: var(--text-muted); background: rgba(var(--fg-rgb), 0.06); font-weight: 500; }
-
-.history-seg .seg.role img {
-  width: 1.1em;
-  height: 1.1em;
-  opacity: 0.7;
-}
-
-.history-seg .seg.role.active img { opacity: 1; }
 
 /* ─────────────────────────────────────────────────────────────────────────
    Log Management: activity calendar beside the 2×2 value boxes

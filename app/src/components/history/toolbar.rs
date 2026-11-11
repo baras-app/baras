@@ -107,7 +107,7 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>, runs: bool) -> Element {
 
     rsx! {
         div { class: "history-toolbar",
-            div { class: "history-seg", title: "Difficulty",
+            div { class: "filter-pills", title: "Difficulty",
                 for (t, icon, class) in TIERS {
                     button {
                         class: if f.tier == t { "seg active {class}" } else { "seg {class}" },
@@ -117,7 +117,7 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>, runs: bool) -> Element {
                     }
                 }
             }
-            div { class: "history-seg", title: "Group size",
+            div { class: "filter-pills", title: "Group size",
                 for (s, icon) in SIZES {
                     button {
                         class: if f.group_size == s { "seg active size" } else { "seg size" },
@@ -127,7 +127,7 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>, runs: bool) -> Element {
                     }
                 }
             }
-            div { class: "history-seg", title: if runs { "Your role on the run" } else { "Your role on the pull" },
+            div { class: "filter-pills", title: if runs { "Your role on the run" } else { "Your role on the pull" },
                 for (value, label, icon) in ROLES {
                     button {
                         class: if f.role == value { "seg active role" } else { "seg role" },
@@ -238,7 +238,7 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>, runs: bool) -> Element {
                     }
                 }
                 div { class: "history-range", title: "Date range",
-                    div { class: "history-seg seg-fill",
+                    div { class: "filter-pills seg-fill",
                         button {
                             class: if f.date_from.is_empty() && f.date_to.is_empty() { "seg active" } else { "seg" },
                             onclick: move |_| {

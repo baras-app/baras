@@ -103,7 +103,7 @@ pub fn EffectUptimeView(
         div { class: "uptime-view",
             div { class: "uptime-toolbar",
                 span { class: "uptime-title", "Effects applied by " strong { "{source}" } }
-                div { class: "history-seg ml-auto", title: "Targets",
+                div { class: "filter-pills ml-auto", title: "Targets",
                     for (label, t) in [("All", Targets::All), ("Players", Targets::Players), ("NPCs", Targets::Npcs)] {
                         button { class: if shown == t { "seg active" } else { "seg" }, onclick: move |_| targets.set(t), "{label}" }
                     }

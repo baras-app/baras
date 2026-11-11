@@ -564,6 +564,61 @@ select optgroup {
   border-radius: 10px;
 }
 
+/* Filter pills: the in-page segmented toggle, in the navbar's scheme but
+   shorter. A faint track, flat segments, the picked one raised with its
+   icon in the filter's colour */
+.filter-pills {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: rgba(var(--fg-rgb), 0.06);
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+}
+
+.filter-pills .seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.15em 0.7em;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-tertiary);
+  font: inherit;
+  font-size: 0.9em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+/* Full-width variant: equal segments across the container */
+.filter-pills.seg-fill { display: flex; }
+.filter-pills.seg-fill .seg { flex: 1; justify-content: center; white-space: nowrap; }
+
+.filter-pills .seg:hover { color: var(--text-primary); background: rgba(var(--fg-rgb), 0.06); }
+
+.filter-pills .seg.active {
+  color: var(--text-primary);
+  background: var(--bg-raised);
+  border-color: rgba(var(--fg-rgb), 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+.filter-pills .seg.active > i { color: var(--swtor-blue); }
+.filter-pills .seg.active.tier-story > i { color: var(--color-success); }
+.filter-pills .seg.active.tier-veteran > i { color: var(--text-gold); }
+.filter-pills .seg.active.tier-master > i { color: var(--lt-red, #f08080); }
+.filter-pills .seg.active.size > i { color: var(--swtor-blue-bright); }
+
+.filter-pills .seg.role img {
+  width: 1.1em;
+  height: 1.1em;
+  opacity: 0.7;
+}
+
+.filter-pills .seg.role.active img { opacity: 1; }
+
 .app-header .header-content {
   justify-self: start;
   display: flex;
@@ -4435,7 +4490,7 @@ a.contributor-name:hover {
   row-gap: 0.4em;
 }
 
-.editor-tab-header .history-seg {
+.editor-tab-header .filter-pills {
   flex-wrap: nowrap;
 }
 
@@ -4449,7 +4504,7 @@ a.contributor-name:hover {
   background: var(--blue-alpha-10);
 }
 
-.history-seg .seg.origin-seg .origin-badge {
+.filter-pills .seg.origin-seg .origin-badge {
   width: 15px;
   height: 15px;
   font-size: 10px;

@@ -26,7 +26,7 @@ pub fn TabMoreMenu(fullscreen: Signal<bool>) -> Element {
                 div { class: "nav-menu-backdrop", onclick: move |_| open.set(false) }
                 div { class: "nav-menu-list tab-more-list",
                     div { class: "tab-more-label", "Ability names" }
-                    div { class: "history-seg seg-fill",
+                    div { class: "filter-pills seg-fill",
                         for (n, label, tip) in NAMINGS {
                             button {
                                 class: if naming == n { "seg active" } else { "seg" },
