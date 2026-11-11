@@ -4,6 +4,7 @@
 //! Entities define which NPCs are bosses, adds, triggers, and kill targets.
 //! Uses EntityDefinition DSL type directly.
 
+use crate::components::editor_sort::{ENCOUNTER_SORT_AZ, SortToggle, apply_rank, use_stable_rank};
 use dioxus::prelude::*;
 
 use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
@@ -46,12 +47,19 @@ pub fn EntitiesTab(
     let guard = use_drawer_guard();
     // Extract entities from BossWithPath
     let entities = boss_with_path.boss.entities.clone();
+    // A–Z when toggled; renaming leaves the row in place
+    let rank = use_stable_rank(entities.iter().map(|x| (x.name.as_str(), x.name.as_str())), ENCOUNTER_SORT_AZ());
+    let mut sorted_entities = entities.clone();
+    apply_rank(&mut sorted_entities, &rank.read(), |x| &x.name);
 
     rsx! {
         div { class: "entities-tab",
             // Header
             div { class: "flex items-center justify-between mb-sm",
-                span { class: "text-sm text-secondary", "{entities.len()} entities" }
+                div { class: "flex items-center gap-sm",
+                    span { class: "text-sm text-secondary", "{entities.len()} entities" }
+                    SortToggle { az: ENCOUNTER_SORT_AZ.signal() }
+                }
                 {
                     let bwp = boss_with_path.clone();
                     let entities_for_create = entities.clone();
@@ -94,7 +102,7 @@ pub fn EntitiesTab(
             if entities.is_empty() {
                 div { class: "empty-state text-sm", "No entities defined" }
             } else {
-                for entity in entities.clone() {
+                for entity in sorted_entities.clone() {
                     {
                         let entity_key = entity.name.clone();
                         let is_expanded = expanded_entity() == Some(entity_key.clone());

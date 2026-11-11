@@ -60,6 +60,48 @@ pub fn OriginBadge(origin: Origin, kind: &'static str) -> Element {
     rsx! { span { class: "origin-badge {origin.css_class()}", title: "{title}", "{letter}" } }
 }
 
+/// Origins in filter order: the user's own first
+pub const ORIGINS: [Origin; 3] = [Origin::Custom, Origin::Modified, Origin::Builtin];
+
+/// Encounter builder lists: show only this origin (session-wide, all tabs)
+pub static ENCOUNTER_ORIGIN: GlobalSignal<Option<Origin>> = Signal::global(|| None);
+
+/// How many of `origins` fall under each [`ORIGINS`] entry
+pub fn origin_counts(origins: impl Iterator<Item = Origin>) -> [usize; 3] {
+    let mut n = [0; 3];
+    for o in origins {
+        if let Some(i) = ORIGINS.iter().position(|x| *x == o) {
+            n[i] += 1;
+        }
+    }
+    n
+}
+
+/// Custom / Modified / Built-in segmented toggle. Nothing lit = any origin;
+/// clicking the lit one clears it. `kind` names the items ("timers")
+#[component]
+pub fn OriginFilter(selected: Option<Origin>, counts: [usize; 3], kind: &'static str, on_pick: EventHandler<Option<Origin>>) -> Element {
+    rsx! {
+        div { class: "history-seg", title: "Where the {kind} come from",
+            for (o, n) in ORIGINS.into_iter().zip(counts) {
+                {
+                    let lit = selected == Some(o);
+                    rsx! {
+                        button {
+                            class: "seg origin-seg {o.css_class()}",
+                            class: if lit { "active" },
+                            title: "{n} {kind}",
+                            onclick: move |_| on_pick.call((!lit).then_some(o)),
+                            OriginBadge { origin: o, kind }
+                            " {o.label()}"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// Save, optional Duplicate, any extra buttons (`children`), then the removal
 /// action that fits the origin: none for an unedited built-in, Reset for an
 /// edited one, Delete for a custom one, Cancel for an unsaved draft.

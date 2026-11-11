@@ -3,10 +3,11 @@
 //! CRUD for boss challenge definitions.
 //! Uses ChallengeDefinition DSL type directly.
 
+use crate::components::editor_sort::{ENCOUNTER_SORT_AZ, SortToggle, apply_rank, use_stable_rank};
 use dioxus::prelude::*;
 
 use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
-use crate::components::editor_common::{FormCard, ItemActions, Origin, OriginBadge};
+use crate::components::editor_common::{ENCOUNTER_ORIGIN, FormCard, ItemActions, Origin, OriginBadge, OriginFilter, origin_counts};
 use crate::api;
 use crate::types::{
     BossWithPath, ChallengeColumns, ChallengeCondition, ChallengeDefinition, ChallengeMetric,
@@ -50,12 +51,29 @@ pub fn ChallengesTab(
     let guard = use_drawer_guard();
     // Extract challenges from BossWithPath
     let challenges = boss_with_path.boss.challenges.clone();
+    // A–Z when toggled; renaming leaves the row in place
+    let rank = use_stable_rank(challenges.iter().map(|x| (x.id.as_str(), x.name.as_str())), ENCOUNTER_SORT_AZ());
+    let mut sorted_challenges = challenges.clone();
+    apply_rank(&mut sorted_challenges, &rank.read(), |x| &x.id);
+    let origin_of = |id: &str| {
+        Origin::of(
+            boss_with_path.builtin_challenge_ids.iter().any(|b| b == id),
+            boss_with_path.modified_challenge_ids.iter().any(|m| m == id),
+        )
+    };
+    let origin_counts = origin_counts(challenges.iter().map(|x| origin_of(&x.id)));
+    let origin_filter = ENCOUNTER_ORIGIN();
+    sorted_challenges.retain(|x| origin_filter.is_none_or(|o| origin_of(&x.id) == o));
 
     rsx! {
         div { class: "challenges-tab",
             // Header
             div { class: "flex items-center justify-between mb-sm",
-                span { class: "text-sm text-secondary", "{challenges.len()} challenges" }
+                div { class: "flex items-center gap-sm",
+                    span { class: "text-sm text-secondary", "{challenges.len()} challenges" }
+                    SortToggle { az: ENCOUNTER_SORT_AZ.signal() }
+                    OriginFilter { selected: origin_filter, counts: origin_counts, kind: "challenges", on_pick: move |o| *ENCOUNTER_ORIGIN.write() = o }
+                }
                 {
                     let bwp = boss_with_path.clone();
                     let challenges_for_create = challenges.clone();
@@ -92,8 +110,10 @@ pub fn ChallengesTab(
             // Challenge list
             if challenges.is_empty() {
                 div { class: "empty-state text-sm", "No challenges defined" }
+            } else if sorted_challenges.is_empty() {
+                div { class: "empty-state text-sm", "No challenges match the filters" }
             } else {
-                for challenge in challenges.clone() {
+                for challenge in sorted_challenges.clone() {
                     {
                         let challenge_key = challenge.id.clone();
                         let is_expanded = expanded_challenge() == Some(challenge_key.clone());
