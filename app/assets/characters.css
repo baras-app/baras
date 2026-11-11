@@ -57,7 +57,7 @@
   flex-direction: column;
   gap: var(--space-xs);
   padding: var(--space-xs) var(--space-sm) var(--space-sm);
-  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
+  background: var(--well-bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
 }

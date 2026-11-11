@@ -16,12 +16,13 @@ use crate::components::ability_icon::AbilityIcon;
 use crate::components::charts_panel::ChartsPanel;
 use crate::components::class_icons::get_class_icon;
 use crate::components::combat_log::CombatLog;
-use crate::components::death_recap_modal::DeathRecapModal;
+use crate::components::death_recap_drawer::DeathRecapDrawer;
 use crate::components::encounter_types::{ChallengeSummary, EncounterSummary, UploadState, group_by_area};
 use crate::components::overview_table::{OverviewSort, OverviewTable, OverviewTotals};
 use crate::components::phase_timeline::PhaseTimelineFilter;
 use crate::components::toggle_switch::ToggleSwitch;
 use crate::components::dt_summary::DtSummaryTable;
+use crate::components::entity_picker::EntityPicker;
 use crate::components::rotation_view::RotationView;
 use crate::components::{ToastSeverity, use_parsely_upload, use_toast};
 use crate::components::mirror_names::{self, ABILITY_NAMING, display_id, display_name};
@@ -330,6 +331,11 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
 
     // Death whose recap modal is open (None = closed)
     let mut recap_death = use_signal(|| None::<PlayerDeath>);
+    // A recap belongs to one fight: close it when another encounter is picked
+    use_effect(move || {
+        selected_encounter();
+        recap_death.set(None);
+    });
 
     // Memoized overview table data (rows + totals) - prevents recomputation on every render
     let overview_table_data = use_memo(move || {
@@ -1457,6 +1463,29 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
 
     rsx! {
         div { class: "data-explorer",
+            // Death recap drawer (opened from the Overview's death tracker); lives at
+            // the root so it stays open across tabs of the same encounter
+            if let Some(d) = recap_death() {
+                DeathRecapDrawer {
+                    key: "{d.name}-{d.death_time_secs}",
+                    encounter_idx: *selected_encounter.read(),
+                    player_name: d.name.clone(),
+                    death_time_secs: d.death_time_secs,
+                    european: eu,
+                    on_close: move |_| recap_death.set(None),
+                    on_open_combat_log: move |window_start: f32| {
+                        if let Some(d) = recap_death() {
+                            time_range.set(TimeRange {
+                                start: window_start.max(0.0),
+                                end: d.death_time_secs + 1.5,
+                            });
+                            death_target_filter.set(Some(d.name.clone()));
+                            view_mode.set(ViewMode::CombatLog);
+                        }
+                    },
+                }
+            }
+
             // Sidebar with encounter list
             aside { class: if *sidebar_collapsed.read() { "explorer-sidebar collapsed" } else { "explorer-sidebar" },
                 div { class: "sidebar-header",
@@ -1896,29 +1925,6 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                         // Raid Overview - Donut Charts + Table
                         // Uses memoized overview_table_data - charts initialized via use_effect above
                         div { class: "overview-section",
-                            // Death recap modal (opened from the death tracker)
-                            if let Some(d) = recap_death() {
-                                DeathRecapModal {
-                                    key: "{d.name}-{d.death_time_secs}",
-                                    encounter_idx: *selected_encounter.read(),
-                                    player_name: d.name.clone(),
-                                    death_time_secs: d.death_time_secs,
-                                    european: eu,
-                                    on_close: move |_| recap_death.set(None),
-                                    on_open_combat_log: move |window_start: f32| {
-                                        if let Some(d) = recap_death() {
-                                            time_range.set(TimeRange {
-                                                start: window_start.max(0.0),
-                                                end: d.death_time_secs + 1.5,
-                                            });
-                                            death_target_filter.set(Some(d.name.clone()));
-                                            view_mode.set(ViewMode::CombatLog);
-                                            recap_death.set(None);
-                                        }
-                                    },
-                                }
-                            }
-
                             // Overview table - uses memoized data
                             {
                                 let table_data = overview_table_data.read();
@@ -2558,11 +2564,12 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                 // Charts view in right column
                                 div { class: "charts-main",
                                     if *entity_collapsed.read() {
-                                        if let Some(name) = selected_source.read().as_ref() {
-                                            div { class: "selected-entity-indicator",
-                                                i { class: "fa-solid fa-user" }
-                                                span { "{name}" }
-                                            }
+                                        EntityPicker {
+                                            entities: entity_list,
+                                            icons: class_icon_lookup,
+                                            selected: selected_source.read().clone(),
+                                            players_only: show_players_only,
+                                            on_pick: move |(name, id): (String, Option<i64>)| on_source_click(name, id),
                                         }
                                     }
                                     if let Some(tl) = timeline.read().as_ref() {
@@ -2592,11 +2599,12 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                 // Rotation view in right column
                                 div { class: "ability-section",
                                     if *entity_collapsed.read() {
-                                        if let Some(name) = selected_source.read().as_ref() {
-                                            div { class: "selected-entity-indicator",
-                                                i { class: "fa-solid fa-user" }
-                                                span { "{name}" }
-                                            }
+                                        EntityPicker {
+                                            entities: entity_list,
+                                            icons: class_icon_lookup,
+                                            selected: selected_source.read().clone(),
+                                            players_only: show_players_only,
+                                            on_pick: move |(name, id): (String, Option<i64>)| on_source_click(name, id),
                                         }
                                     }
                                     RotationView {
@@ -2614,11 +2622,12 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                 // Ability Usage view in right column
                                 div { class: "ability-section usage-section",
                                     if *entity_collapsed.read() {
-                                        if let Some(name) = selected_source.read().as_ref() {
-                                            div { class: "selected-entity-indicator",
-                                                i { class: "fa-solid fa-user" }
-                                                span { "{name}" }
-                                            }
+                                        EntityPicker {
+                                            entities: entity_list,
+                                            icons: class_icon_lookup,
+                                            selected: selected_source.read().clone(),
+                                            players_only: show_players_only,
+                                            on_pick: move |(name, id): (String, Option<i64>)| on_source_click(name, id),
                                         }
                                     }
                                     UsageTab {
@@ -2636,11 +2645,12 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                             // Ability breakdown table
                             div { class: "ability-section",
                                 if *entity_collapsed.read() {
-                                    if let Some(name) = selected_source.read().as_ref() {
-                                        div { class: "selected-entity-indicator",
-                                            i { class: "fa-solid fa-user" }
-                                            span { "{name}" }
-                                        }
+                                    EntityPicker {
+                                        entities: entity_list,
+                                        icons: class_icon_lookup,
+                                        selected: selected_source.read().clone(),
+                                        players_only: show_players_only,
+                                        on_pick: move |(name, id): (String, Option<i64>)| on_source_click(name, id),
                                     }
                                 }
                                 // DamageTaken summary panel

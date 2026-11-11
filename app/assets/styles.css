@@ -66,8 +66,11 @@
 
   /* Foreground channel for translucent tints (white on dark, black on light) */
   --fg-rgb: 255, 255, 255;
+  --bg-hover: rgba(var(--fg-rgb), 0.05);
   /* Scales black recessed-well backgrounds (lighter wells on light theme) */
   --recess-k: 1;
+  /* Card / table wells: recessed on dark, white cards on light */
+  --well-bg: rgba(0, 0, 0, 0.22);
   /* Base lightness of phase timeline segments (hue/sat come from phase_color) */
   --phase-l: 30%;
   /* Plot surface: a recessed well on dark, a near-white card on light */
@@ -201,6 +204,9 @@
   --lt-orange: #b54708;
   --lt-yellow: #8a6400;
   --lt-green: #1a7f45;
+  --lt-cyan: #0e7490;
+  --lt-blue: #1f5fa8;
+  --lt-violet: #7a3fa0;
   --phase-l: 78%;
   --chart-bg: #fbfbfc;
   --usage-1: #b7791f;
@@ -210,15 +216,15 @@
   --usage-5: #7048c0;
   --usage-6: #c4581a;
 
-  /* Same depth order as dark: body lightest, inputs/panels/sidebars progressively darker */
+  /* Panels and sidebars darken inward like dark; inputs and card wells are white */
   --bg-body: #f6f6f8;
   --bg-dark: #d7d7de;
   --bg-mid: #e0e0e6;
   --bg-light: #f1f1f4;
-  --bg-input: #e8e8ec;
+  --bg-input: #ffffff;
   --bg-elevated: rgba(255, 255, 255, 0.96);
   --bg-card-header: #eaeaee;
-  --bg-card-input: #e3e3e8;
+  --bg-card-input: #ffffff;
   --bg-deep: #cfcfd7;
   --bg-raised: #ffffff;
   --btn-top: #ffffff;
@@ -228,6 +234,7 @@
 
   --fg-rgb: 0, 0, 0;
   --recess-k: 0.4;
+  --well-bg: var(--bg-raised);
   --border-strong: #bdbdc6;
   --border-accent: rgba(31, 111, 209, 0.18);
   --border-accent-medium: rgba(31, 111, 209, 0.28);
@@ -370,6 +377,9 @@ select optgroup {
 
 .container:has(> .settings-panel) > .settings-panel {
   position: static;
+  /* Grid items honor z-index even when static: drop the floating drawer's
+     1000 so the header's menus open over the docked panel */
+  z-index: 1;
   grid-column: 2;
   grid-row: 2;
   width: auto;
@@ -575,21 +585,6 @@ select optgroup {
   align-self: flex-end;
   margin-bottom: 0.1em;
   gap: 0.4rem;
-}
-
-.app-header .header-version.clickable {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-family: inherit;
-  padding: 0.15em 0.4em;
-  border-radius: var(--radius-sm);
-  transition: all var(--transition-normal);
-}
-
-.app-header .header-version.clickable:hover {
-  color: var(--swtor-gold);
-  background: var(--blue-alpha-10);
 }
 
 .app-header .header-links {
@@ -3664,6 +3659,7 @@ a.contributor-name:hover {
   display: flex;
   align-items: baseline;
   gap: 0.75em;
+  text-align: left;
   margin-bottom: 0.4em;
   font-size: 0.85em;
 }
@@ -4892,7 +4888,6 @@ a.contributor-name:hover {
   border-left: 1px solid var(--border-accent-strong);
   border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
   box-shadow: -6px 0 20px rgba(0, 0, 0, 0.25);
-  container-type: inline-size;
   cursor: auto;
   outline: none;
 }
@@ -4934,6 +4929,9 @@ a.contributor-name:hover {
 
 .editor-drawer-body.list-item-body {
   flex: 1;
+  /* The container lives here, not on the drawer: containment makes its box the
+     containing block for fixed children, which would shrink the resize catcher */
+  container-type: inline-size;
   min-height: 0;
   overflow-y: auto;
   border-top: none;
@@ -6752,10 +6750,10 @@ a.contributor-name:hover {
 
 /* Shield columns - blue on healing tabs */
 .ability-table.healing-tab .col-shield {
-  color: hsl(210, 60%, 68%);
+  color: var(--lt-blue, hsl(210, 60%, 68%));
 }
 .ability-table.healing-tab .group-stat.col-shield {
-  color: hsl(210, 55%, 62%);
+  color: var(--lt-blue, hsl(210, 55%, 62%));
 }
 
 /* Orange averages only on damage tabs */

@@ -17,7 +17,7 @@
 .phase-timeline {
   padding: var(--space-sm);
   margin-bottom: var(--space-sm);
-  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
+  background: var(--well-bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
 }
@@ -74,7 +74,7 @@
   padding: 0 4px;
   transition: filter var(--transition-fast);
   user-select: none;
-  /* Background color set via inline style from phase_color() */
+  background: var(--seg-color); /* set inline from phase_color() */
 }
 
 /* Thin divider between adjacent phases only (none at the track edges) */
@@ -300,6 +300,63 @@
   color: var(--text-muted);
 }
 
+/* Folded entity sidebar: the selection as a dropdown */
+.entity-picker {
+  align-self: flex-start;
+  flex-shrink: 0;
+  margin-bottom: var(--space-sm);
+}
+
+.entity-picker-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 22em;
+  padding: 3px 10px;
+  line-height: 1.2;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.entity-picker-btn:hover {
+  border-color: rgba(var(--fg-rgb), 0.25);
+}
+
+.entity-picker .entity-class-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.entity-picker-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entity-picker-caret {
+  margin-left: 2px;
+  font-size: 9px;
+  opacity: 0.6;
+}
+
+.entity-picker-list {
+  max-height: min(60vh, 32em);
+  min-width: 16em;
+}
+
+.entity-picker-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15em;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    Entity Section (Sources filter)
    ───────────────────────────────────────────────────────────────────────────── */
@@ -364,14 +421,14 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 1.6em;
-  height: 1.6em;
-  margin-right: 0.1em;
+  width: 2.2em;
+  height: 1.9em;
+  margin-right: 0.3em;
   border-radius: 3px;
   background: rgba(var(--fg-rgb), 0.06);
   border: 1px solid var(--border-subtle);
   color: var(--text-muted);
-  font-size: 0.85em;
+  font-size: 1em;
   cursor: pointer;
   transition: background 0.1s, color 0.1s, transform 0.1s;
 }
@@ -641,7 +698,7 @@
 .npc-health-box {
   max-width: 650px;
   overflow: hidden;
-  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
+  background: var(--well-bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
 }
@@ -703,7 +760,7 @@
 }
 
 .npc-health-table tbody tr:hover {
-  background: var(--bg-hover);
+  background: rgba(var(--fg-rgb), 0.05);
 }
 
 /* Sub-rows within expanded groups */
@@ -732,20 +789,32 @@
 }
 
 .npc-health-table .npc-group-header:hover td {
-  background: var(--bg-hover);
+  background: rgba(var(--fg-rgb), 0.05);
 }
 
 .npc-health-table .npc-group-header.dead td {
   color: var(--text-tertiary);
 }
 
-.npc-group-chevron {
-  font-size: 9px;
-  margin-right: 8px;
-  color: var(--text-tertiary);
-  width: 10px;
-  display: inline-block;
-  text-align: center;
+/* Table-scoped so it outranks Font Awesome's .fa-solid display (loaded later) */
+.npc-health-table .npc-group-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: rgba(var(--fg-rgb), 0.06);
+  border-radius: var(--radius-sm, 3px);
+  vertical-align: middle;
+  transition: background var(--transition-fast, 0.15s);
+}
+
+.npc-health-table .npc-group-header:hover .npc-group-chevron {
+  background: rgba(var(--fg-rgb), 0.14);
+  color: var(--text-primary);
 }
 
 .npc-group-count {
@@ -803,7 +872,7 @@
 /* Card around the table; it scrolls sideways itself when the columns overflow */
 .overview-table-box {
   overflow-x: auto;
-  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
+  background: var(--well-bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
 }
@@ -856,7 +925,7 @@
 }
 
 .overview-table tbody tr:hover {
-  background: var(--bg-hover);
+  background: rgba(var(--fg-rgb), 0.05);
 }
 
 .overview-table .name-col {
@@ -914,7 +983,7 @@
   color: var(--lt-green, hsl(120, 50%, 60%));
 }
 .overview-table .shield {
-  color: hsl(190, 70%, 55%);
+  color: var(--lt-cyan, hsl(190, 70%, 55%));
 }
 
 /* Totals row styling */
@@ -1045,15 +1114,17 @@
    Death Recap Modal
    ───────────────────────────────────────────────────────────────────────────── */
 
-.death-recap-modal {
+/* Positioning and slide-in come from .drawer; the body scrolls under the header */
+.death-recap-drawer {
   width: min(760px, 92vw);
-  max-height: 88vh;
-  overflow-y: auto;
-  background: var(--gradient-panel);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-xl);
-  padding: var(--space-md);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.6);
+  outline: none;
+}
+
+.death-recap-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .recap-header {
@@ -1101,6 +1172,29 @@
   gap: var(--space-sm);
 }
 
+/* In the drawer nothing scrolls but the ledger: it takes the height left over,
+   so the footer button stays in view at any drawer size */
+.death-recap-body .recap-content {
+  flex: 1;
+  min-height: 0;
+}
+
+.death-recap-body .recap-content > * {
+  flex-shrink: 0;
+}
+
+.death-recap-body .recap-content > .recap-ledger-wrap {
+  flex: 1 1 0;
+  min-height: 6em;
+  display: flex;
+  flex-direction: column;
+}
+
+.death-recap-body .recap-ledger {
+  flex: 1;
+  min-height: 0;
+}
+
 .recap-verdict {
   font-size: 13px;
   padding: var(--space-xs) var(--space-sm);
@@ -1129,7 +1223,7 @@
   align-items: center;
   gap: 2px;
   padding: var(--space-sm) var(--space-xs);
-  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
+  background: var(--well-bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
 }
@@ -1153,7 +1247,7 @@
 
 .recap-sparkline-wrap {
   position: relative;
-  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
+  background: var(--well-bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   padding: 4px 8px;
@@ -1177,13 +1271,34 @@
   height: 72px;
 }
 
+/* Tick labels sit under their gridlines; the end ones stay inside the box */
 .recap-sparkline-labels {
-  display: flex;
-  justify-content: space-between;
+  position: relative;
+  height: 1.4em;
+  margin-top: 2px;
   font-size: 10px;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  margin-top: 2px;
+}
+
+.spark-tick-label {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.spark-tick-label:first-child {
+  transform: translateX(-100%);
+}
+
+.spark-tick-label:last-child:not(:first-child) {
+  transform: none;
+}
+
+.spark-tick {
+  stroke: rgba(var(--fg-rgb), 0.08);
+  stroke-width: 1;
 }
 
 .recap-tables {
@@ -1208,7 +1323,7 @@
   border-collapse: separate;
   border-spacing: 0;
   font-size: 11px;
-  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
+  background: var(--well-bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   overflow: clip;
@@ -1288,11 +1403,10 @@
 }
 
 .recap-ledger {
-  max-height: 200px;
   overflow-y: auto;
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
-  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
+  background: var(--well-bg);
 }
 
 .ledger-row {
@@ -1643,7 +1757,7 @@
 }
 
 .effect-table tbody tr:hover {
-  background: var(--bg-hover);
+  background: rgba(var(--fg-rgb), 0.05);
 }
 
 .effect-table tbody tr.selected {
@@ -1817,7 +1931,7 @@
 }
 
 .log-row:hover {
-  background: var(--bg-hover);
+  background: rgba(var(--fg-rgb), 0.05);
 }
 
 /* Cell widths */
@@ -1920,7 +2034,7 @@
   color: var(--lt-red, hsl(0, 50%, 60%));
 }
 .log-event {
-  color: hsl(200, 50%, 60%);
+  color: var(--lt-cyan, hsl(200, 50%, 60%));
 }
 
 /* Row type colors */
@@ -1974,7 +2088,7 @@
   width: 60px;
   flex-shrink: 0;
   text-align: center;
-  color: hsl(280, 60%, 70%);
+  color: var(--lt-violet, hsl(280, 60%, 70%));
   font-size: 10px;
   text-transform: uppercase;
 }
@@ -2115,7 +2229,7 @@
 }
 
 .find-nav-btn:hover {
-  background: var(--bg-hover);
+  background: rgba(var(--fg-rgb), 0.05);
   color: var(--text-primary);
 }
 
@@ -2186,12 +2300,8 @@
 }
 
 .rotation-anchor-select {
+  /* Everything else from the base select, which themes it (and keeps its chevron) */
   min-width: 200px;
-  padding: 0.35em 0.5em;
-  background: var(--blue-alpha-3, rgba(0, 0, 0, 0.3));
-  color: var(--text-primary);
-  border: 1px solid var(--border-color, var(--border-strong));
-  border-radius: 4px;
 }
 
 .rotation-placeholder {
@@ -2565,7 +2675,7 @@
 .usage-table-container,
 .log-table-container,
 .entity-list {
-  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
+  background: var(--well-bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
 }
@@ -2575,7 +2685,7 @@
 .ability-table {
   border-collapse: separate;
   border-spacing: 0;
-  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
+  background: var(--well-bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   overflow: clip;
@@ -2647,14 +2757,15 @@
 .challenge-card {
   padding: 0;
   overflow: hidden;
-  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
+  background: var(--well-bg);
   border: 1px solid var(--border-light);
 }
 
 .challenge-card-header {
   margin-bottom: 0;
   padding: 0.5em 0.75em;
-  background: var(--bg-dark);
+  /* Same header band as the NPC health table beside it */
+  background: var(--bg-tertiary);
   border-bottom: 2px solid var(--border-subtle);
 }
 

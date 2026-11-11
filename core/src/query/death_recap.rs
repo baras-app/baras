@@ -10,7 +10,7 @@ const WINDOW_SECS: f32 = 15.0;
 /// Included after the death event — killing damage is often logged after death.
 const TRAILING_SECS: f32 = 3.0;
 /// Maximum entries returned in the event ledger.
-const MAX_LEDGER_EVENTS: usize = 30;
+const MAX_LEDGER_EVENTS: usize = 80;
 /// Maximum HP samples returned for the sparkline.
 const MAX_HP_POINTS: usize = 200;
 
