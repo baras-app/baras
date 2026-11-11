@@ -1,5 +1,5 @@
 //! Shared filter toolbar at the top of each view's sidebar: difficulty,
-//! group size and role up front; character, kills, flashpoints, dates,
+//! group size and role up front; character, kills, dates,
 //! discipline, server, patch and tag behind "More filters". Option lists come from the overview
 //! resource; the filter itself lives in the parent so it survives tab switches.
 
@@ -61,7 +61,6 @@ fn extra_active(f: &PullFilter, runs: bool) -> usize {
     [&f.date_from, &f.date_to].iter().filter(|v| !v.is_empty()).count()
         + [&f.characters, &f.disciplines, &f.servers, &f.game_versions, &f.tags].iter().filter(|v| !v.is_empty()).count()
         + usize::from(f.kills_only)
-        + usize::from(runs && f.flashpoints)
         + usize::from(runs && f.timed_only)
         + usize::from(f.show_hidden)
 }
@@ -151,7 +150,11 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>, runs: bool) -> Element {
                     class: if active > 0 { "btn btn-xs history-clear active" } else { "btn btn-xs history-clear" },
                     disabled: active == 0,
                     title: "Show everything: any difficulty, size and role, and nothing under More filters",
-                    onclick: move |_| filter.set(PullFilter::default()),
+                    // The flashpoints switch is a remembered preference, not a filter to clear
+                    onclick: move |_| {
+                        let flashpoints = filter.peek().flashpoints;
+                        filter.set(PullFilter { flashpoints, ..PullFilter::default() });
+                    },
                     i { class: "fa-solid fa-filter-circle-xmark" }
                     " Clear filters"
                     if active > 0 { span { class: "history-more-count", "{active}" } }
@@ -168,14 +171,7 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>, runs: bool) -> Element {
                         checked: f.kills_only,
                         on_change: move |checked: bool| filter.write().kills_only = checked,
                     }
-                    // Boss Statistics always lists flashpoints, under their own sidebar group
                     if runs {
-                        ToggleSwitch {
-                            label: "Include flashpoints",
-                            class: "history-switch",
-                            checked: f.flashpoints,
-                            on_change: move |checked: bool| filter.write().flashpoints = checked,
-                        }
                         ToggleSwitch {
                             label: "Timed runs",
                             title: "Only runs cleared within the area's time limit",

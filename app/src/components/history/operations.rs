@@ -10,6 +10,8 @@ use super::scroll::{PAGE, save_scroll, use_restore_scroll};
 use super::toolbar::HistoryToolbar;
 use super::run_detail::{RunDetailView, fmt_secs};
 use crate::api;
+use crate::components::toggle_switch::ToggleSwitch;
+use crate::components::{ToastSeverity, use_toast};
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::types::UiSessionState;
 
@@ -145,7 +147,8 @@ fn RunItem(run: RunSummary, selected: bool, on_pick: EventHandler<RunKey>, #[pro
 
 #[component]
 pub fn OperationsTab(props: OperationsProps) -> Element {
-    let filter = props.filter;
+    let mut filter = props.filter;
+    let mut toast = use_toast();
     let mut selected = use_signal(|| props.state.read().history.selected_run.clone());
     let mut search = use_signal(|| props.state.read().history.run_search.clone());
     // Operations the user has opened in the rail (collapsed by default, like the Overview tree)
@@ -218,6 +221,25 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
                 super::SidebarHeader { state: props.state, icon: "fa-solid fa-dungeon", title: "Runs" }
                 if !collapsed {
                     HistoryToolbar { filter, runs: true }
+                    div { class: "history-controls",
+                        ToggleSwitch {
+                            label: "Include flashpoints",
+                            class: "boss-filter-toggle",
+                            checked: filter.read().flashpoints,
+                            on_change: move |checked: bool| {
+                                filter.write().flashpoints = checked;
+                                // Remembered across restarts, like "Bosses Only"
+                                spawn(async move {
+                                    if let Some(mut cfg) = api::get_config().await {
+                                        cfg.raid_summaries_include_flashpoints = checked;
+                                        if let Err(err) = api::update_config(&cfg).await {
+                                            toast.show(format!("Failed to save settings: {err}"), ToastSeverity::Normal);
+                                        }
+                                    }
+                                });
+                            },
+                        }
+                    }
                     div { class: "sidebar-search",
                         input {
                             class: "search-input",

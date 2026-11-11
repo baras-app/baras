@@ -301,6 +301,12 @@
   min-width: 0;
 }
 
+/* Switch row under the toolbar (Raid Summaries' "Include flashpoints"):
+   the toolbar's side inset, and its gap above */
+.explorer-sidebar .history-toolbar + .history-controls {
+  padding: var(--space-sm) 0.75em 0;
+}
+
 .explorer-sidebar .history-toolbar .history-dates .pull-history-date {
   flex: 1;
   width: auto;
