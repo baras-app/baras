@@ -70,8 +70,26 @@ pub fn LogTagsCell(
                     }
                 }
             }
-            for t in run_tags.iter().filter(|t| !tags.contains(*t)) {
-                span { class: "run-tag small muted", title: "Tag on a run in this log", "{t}" }
+            for t in run_tags.iter().filter(|t| !tags.contains(*t)).cloned() {
+                {
+                    let (filename, tag) = (filename.clone(), t.clone());
+                    let mut toast = toast;
+                    let remove = move |_| {
+                        let (filename, tag) = (filename.clone(), tag.clone());
+                        spawn(async move {
+                            match api::remove_run_tag_for_log(&filename, &tag).await {
+                                Ok(true) => on_change.call(()),
+                                _ => toast.show("Could not remove the run tag", ToastSeverity::Normal),
+                            }
+                        });
+                    };
+                    rsx! {
+                        span { class: "run-tag small muted", title: "Tag on a run in this log",
+                            "{t}"
+                            button { title: "Remove from every run in this log", onclick: remove, i { class: "fa-solid fa-xmark" } }
+                        }
+                    }
+                }
             }
             input {
                 class: "library-tag-input",

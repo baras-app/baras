@@ -407,17 +407,17 @@ fn tags_at(ranges: &[(i64, i64, Vec<String>)], start_ms: i64) -> &[String] {
 /// matches the header. A log that is gone from both is not stale: there is
 /// nothing to re-scan from.
 fn is_stale(history: &LogHistory, log_path: &Path) -> bool {
-    if history.version < HISTORY_VERSION {
-        return true;
-    }
     let header = HistoryHeader {
         version: history.version,
         source_len: history.source_len,
         source_mtime: history.source_mtime,
     };
+    // Gone from both comes first: a deleted log's old-version history must
+    // not count toward "need a scan"
     match std::fs::metadata(log_path) {
-        Ok(meta) => !header.is_current(&meta),
-        Err(_) => crate::library::archived_log(&history.filename).is_some_and(|a| !a.history_current(&header)),
+        Ok(meta) => history.version < HISTORY_VERSION || !header.is_current(&meta),
+        Err(_) => crate::library::archived_log(&history.filename)
+            .is_some_and(|a| history.version < HISTORY_VERSION || !a.history_current(&header)),
     }
 }
 
