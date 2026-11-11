@@ -80,6 +80,23 @@ use baras_types::{
 use super::state::{OverlayCommand, OverlayHandle, PositionEvent};
 use super::types::{MetricType, OverlayType};
 
+/// Locked redraw rate of the countdown overlays (`OverlayType::is_animated`),
+/// read by every overlay thread each loop; set from `OverlaySettings::overlay_fps`
+static OVERLAY_FPS: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(10);
+
+pub fn set_overlay_fps(fps: u8) {
+    OVERLAY_FPS.store(u32::from(fps.clamp(5, 30)), std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Sleep between polls while locked
+fn locked_sleep_ms(kind: OverlayType) -> u64 {
+    if kind.is_animated() {
+        1000 / u64::from(OVERLAY_FPS.load(std::sync::atomic::Ordering::Relaxed))
+    } else {
+        100
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Generic Spawn Function
 // ─────────────────────────────────────────────────────────────────────────────
@@ -236,10 +253,10 @@ where
                 needs_render = false;
             }
 
-            // Sleep longer when locked (no interaction), shorter when interactive
-            // 100ms = 10 polls/sec when locked (smooth countdowns, visual-change detection skips redundant renders)
-            // 16ms = 60 FPS when interactive (for responsive dragging)
-            let sleep_ms = if is_interactive { 16 } else { 100 };
+            // Locked: the user's rate for countdown overlays, 10/sec for the rest
+            // (visual-change detection skips redundant renders either way).
+            // Interactive: 60 FPS for responsive dragging
+            let sleep_ms = if is_interactive { 16 } else { locked_sleep_ms(kind) };
             thread::sleep(std::time::Duration::from_millis(sleep_ms));
         }
 
@@ -473,9 +490,8 @@ where
             }
 
             // Sleep on background thread (doesn't block main thread)
-            // 100ms = 10 polls/sec when locked
-            // 16ms = 60 FPS when interactive
-            let sleep_ms = if is_interactive { 16 } else { 100 };
+            // Locked: see `locked_sleep_ms`; interactive: 60 FPS
+            let sleep_ms = if is_interactive { 16 } else { locked_sleep_ms(kind) };
             thread::sleep(std::time::Duration::from_millis(sleep_ms));
         }
 

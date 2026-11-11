@@ -3195,6 +3195,10 @@ pub struct OverlaySettings {
     /// Global font family for all overlay text. Empty = bundled default (Inter).
     #[serde(default = "default_overlay_font_family")]
     pub overlay_font_family: String,
+    /// Redraw rate (5–30 FPS) of the countdown overlays (timers, effects,
+    /// raid frames, alerts, cooldowns, DoTs) while locked
+    #[serde(default = "default_overlay_fps")]
+    pub overlay_fps: u8,
     #[serde(default)]
     pub personal_overlay: PersonalOverlayConfig,
     #[serde(default = "default_opacity")]
@@ -3319,6 +3323,10 @@ fn default_overlay_font_family() -> String {
     "Inter".to_string()
 }
 
+fn default_overlay_fps() -> u8 {
+    10
+}
+
 /// Default metric bar gradient intensity. Must match
 /// `baras_overlay::widgets::progress_bar::GRADIENT_DARKEN`.
 fn default_gradient_intensity() -> f32 {
@@ -3333,6 +3341,7 @@ impl Default for OverlaySettings {
             enabled: HashMap::new(),
             overlays_visible: true,
             overlay_font_family: default_overlay_font_family(),
+            overlay_fps: default_overlay_fps(),
             personal_overlay: PersonalOverlayConfig::default(),
             metric_opacity: 180,
             metric_show_empty_bars: true,

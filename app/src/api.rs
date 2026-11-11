@@ -140,6 +140,12 @@ pub async fn list_system_fonts() -> Vec<String> {
     from_js(result).unwrap_or_default()
 }
 
+/// Set the countdown overlays' redraw rate, 5–30 FPS (persists + applies)
+pub async fn set_overlay_fps(fps: u8) -> Result<(), String> {
+    try_invoke("set_overlay_fps", build_args("fps", &fps)).await?;
+    Ok(())
+}
+
 /// Set the global overlay font family (persists + applies to all overlays)
 pub async fn set_overlay_font_family(family: String) -> Result<(), String> {
     try_invoke("set_overlay_font_family", build_args("family", &family)).await?;

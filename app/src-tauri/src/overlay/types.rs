@@ -191,6 +191,24 @@ pub enum OverlayType {
 }
 
 impl OverlayType {
+    /// Overlays with live countdowns, redrawn at `OverlaySettings::overlay_fps`
+    /// while locked; the rest poll at a fixed 10 per second
+    pub fn is_animated(&self) -> bool {
+        matches!(
+            self,
+            Self::TimersA
+                | Self::TimersB
+                | Self::Alerts
+                | Self::EffectsA
+                | Self::EffectsB
+                | Self::EffectsC
+                | Self::Raid
+                | Self::Cooldowns
+                | Self::CooldownsB
+                | Self::DotTracker
+        )
+    }
+
     /// Get the config key for this overlay kind
     pub fn config_key(&self) -> &'static str {
         match self {
