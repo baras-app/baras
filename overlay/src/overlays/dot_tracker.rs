@@ -139,8 +139,8 @@ pub struct DotTrackerOverlay {
     config: DotTrackerConfig,
     background_alpha: u8,
     data: DotTrackerData,
-    /// Last rendered state for dirty checking: Vec of (target_id, Vec of (effect_id, time_string))
-    last_rendered: Vec<(i64, Vec<(u64, String)>)>,
+    /// Last rendered state for dirty checking: Vec of (target_id, Vec of (effect_id, time_string, remaining_bits))
+    last_rendered: Vec<(i64, Vec<(u64, String, u32)>)>,
     /// Last rendered state for bar mode: includes remaining_secs bits so bar fill updates each frame
     last_rendered_bar: Vec<(i64, Vec<(u64, String, u32)>)>,
     european_number_format: bool,
@@ -257,17 +257,21 @@ impl DotTrackerOverlay {
         let max_targets = self.config.max_targets as usize;
 
         // Build current visible state for dirty check
-        let current_state: Vec<(i64, Vec<(u64, String)>)> = self
+        let current_state: Vec<(i64, Vec<(u64, String, u32)>)> = self
             .data
             .targets
             .iter()
             .take(max_targets)
             .filter(|t| !t.dots.is_empty())
             .map(|t| {
-                let dots: Vec<(u64, String)> = t
+                // Exact remaining time keeps the clock wipe moving between text changes
+                let dots: Vec<(u64, String, u32)> = t
                     .dots
                     .iter()
-                    .map(|d| (d.effect_id, d.format_time(self.european_number_format)))
+                    .map(|d| {
+                        let progress = d.remaining_secs.to_bits();
+                        (d.effect_id, d.format_time(self.european_number_format), progress)
+                    })
                     .collect();
                 (t.entity_id, dots)
             })

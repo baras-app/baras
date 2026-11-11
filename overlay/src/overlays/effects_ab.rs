@@ -170,8 +170,8 @@ pub struct EffectsABOverlay {
     config: EffectsABConfig,
     background_alpha: u8,
     data: EffectsABData,
-    /// Last rendered state for dirty checking: (effect_id, time_string, stacks, inactive, stack_priority)
-    last_rendered: Vec<(u64, String, u8, bool, bool)>,
+    /// Last rendered state for dirty checking: (effect_id, time_string, stacks, inactive, stack_priority, remaining_bits)
+    last_rendered: Vec<(u64, String, u8, bool, bool, u32)>,
     /// Last rendered state for bar mode dirty checking: (effect_id, time_string, stacks, remaining_bits, inactive)
     last_rendered_bar: Vec<(u64, String, u8, u32, bool)>,
     /// Label for this overlay instance
@@ -274,7 +274,9 @@ impl EffectsABOverlay {
         let max_display = self.config.max_display as usize;
 
         // Build current visible state for dirty check
-        let current_state: Vec<(u64, String, u8, bool, bool)> = self
+        // Exact remaining time keeps the clock wipe moving while the text is
+        // stable (whole seconds when >= 10s)
+        let current_state: Vec<(u64, String, u8, bool, bool, u32)> = self
             .data
             .effects
             .iter()
@@ -286,6 +288,7 @@ impl EffectsABOverlay {
                     e.stacks,
                     e.inactive,
                     e.stack_priority,
+                    e.remaining_secs.to_bits(),
                 )
             })
             .collect();
@@ -474,7 +477,9 @@ impl EffectsABOverlay {
         let max_display = self.config.max_display as usize;
 
         // Build current visible state for dirty check
-        let current_state: Vec<(u64, String, u8, bool, bool)> = self
+        // Exact remaining time keeps the clock wipe moving while the text is
+        // stable (whole seconds when >= 10s)
+        let current_state: Vec<(u64, String, u8, bool, bool, u32)> = self
             .data
             .effects
             .iter()
@@ -486,6 +491,7 @@ impl EffectsABOverlay {
                     e.stacks,
                     e.inactive,
                     e.stack_priority,
+                    e.remaining_secs.to_bits(),
                 )
             })
             .collect();
