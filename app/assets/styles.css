@@ -168,7 +168,7 @@
   --swtor-blue: #1f6fd1;
   --swtor-blue-bright: #1a5fb4;
   --swtor-blue-dim: #9cc3ef;
-  --swtor-gold: #9a7a10;
+  --swtor-gold: #806408;
   --swtor-gold-dim: #c9a227;
   --swtor-gold-glow: rgba(154, 122, 16, 0.25);
   --accent-gold: #8f6a10;
@@ -617,7 +617,7 @@ select optgroup {
     rgba(255, 193, 7, 0.15)
   );
   border: 1px solid rgba(255, 193, 7, 0.6);
-  color: var(--swtor-gold);
+  color: var(--text-gold);
   font-weight: 600;
   padding: 0.2em 0.6em;
   border-radius: 4px;
@@ -648,6 +648,12 @@ select optgroup {
   );
   border-color: rgba(255, 193, 7, 0.8);
   color: var(--text-gold);
+  animation: none;
+}
+
+:root[data-theme="light"] .app-header .header-version.update-available {
+  background: rgba(255, 193, 7, 0.22);
+  border-color: var(--accent-gold);
   animation: none;
 }
 
