@@ -704,6 +704,12 @@ impl EventProcessor {
 
         self.update_area_from_event(event, cache);
 
+        // Flashpoint run clocks start on entry rather than at the first pull
+        // (the game logs entry twice; the first line carries no difficulty)
+        if event.effect.difficulty_id != 0 && crate::game_data::is_flashpoint(event.effect.effect_id) {
+            cache.record_timer_start(event.timestamp);
+        }
+
         // Also update the current encounter's area/difficulty
         // BUT only if the encounter hasn't started combat yet.
         // If combat is active, the encounter should keep its original area info

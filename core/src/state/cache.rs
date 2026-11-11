@@ -322,6 +322,12 @@ impl SessionCache {
 
     pub fn mark_timer_start_fired(&mut self, at: chrono::NaiveDateTime) {
         self.timer_start_fired = true;
+        self.record_timer_start(at);
+    }
+
+    /// Record a run clock start for the current area without touching the
+    /// region trigger (flashpoints start on entry).
+    pub fn record_timer_start(&mut self, at: chrono::NaiveDateTime) {
         self.timer_starts.push(TimerStart {
             area_id: self.current_area.area_id,
             difficulty_id: self.current_area.difficulty_id,
