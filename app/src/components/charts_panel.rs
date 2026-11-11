@@ -1324,7 +1324,7 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
             // Right column: effects panel (stacked vertically)
             div { class: "effects-panel",
                 // Source filter toggle buttons
-                div { class: "history-seg seg-fill effects-source-filter",
+                div { class: "filter-pills seg-fill effects-source-filter",
                     button {
                         class: if current_sf == "all" { "seg active" } else { "seg" },
                         onclick: move |_| source_filter.set("all".to_string()),

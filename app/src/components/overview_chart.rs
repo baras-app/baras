@@ -237,7 +237,7 @@ pub fn OverviewGroupChart(
     rsx! {
         div { class: "overview-chart-box",
             div { class: "overview-chart-header",
-                div { class: "history-seg", title: "Metric (follows the table's sort column)",
+                div { class: "filter-pills", title: "Metric (follows the table's sort column)",
                     for (label, sort) in TABS {
                         button {
                             class: if metric_of(sort) == metric { "seg active" } else { "seg" },
@@ -250,7 +250,7 @@ pub fn OverviewGroupChart(
                     }
                 }
                 span { class: "overview-chart-note", "{metric_label(metric)} · running average" }
-                div { class: "history-seg ml-auto",
+                div { class: "filter-pills ml-auto",
                     button { class: if !stacked() { "seg active" } else { "seg" }, onclick: move |_| stacked.set(false), "Lines" }
                     button { class: if stacked() { "seg active" } else { "seg" }, onclick: move |_| stacked.set(true), "Stacked" }
                 }

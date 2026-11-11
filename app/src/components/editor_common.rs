@@ -82,7 +82,7 @@ pub fn origin_counts(origins: impl Iterator<Item = Origin>) -> [usize; 3] {
 #[component]
 pub fn OriginFilter(selected: Option<Origin>, counts: [usize; 3], kind: &'static str, on_pick: EventHandler<Option<Origin>>) -> Element {
     rsx! {
-        div { class: "history-seg", title: "Where the {kind} come from",
+        div { class: "filter-pills", title: "Where the {kind} come from",
             for (o, n) in ORIGINS.into_iter().zip(counts) {
                 {
                     let lit = selected == Some(o);

@@ -2368,7 +2368,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                     }
                                 }
                                 if !*entity_collapsed.read() {
-                                    div { class: "history-seg seg-fill entity-filter-tabs",
+                                    div { class: "filter-pills seg-fill entity-filter-tabs",
                                         button {
                                             class: if *show_players_only.read() { "seg active" } else { "seg" },
                                             onclick: move |_| show_players_only.set(true),

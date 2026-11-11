@@ -925,10 +925,6 @@
   font-size: 12px;
 }
 
-.overview-chart-header .seg {
-  padding: 0.25em 0.65em;
-}
-
 .overview-chart-note {
   color: var(--text-muted);
   font-size: 11px;
