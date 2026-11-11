@@ -767,9 +767,11 @@ select optgroup {
   background: rgba(240, 173, 78, 0.06);
 }
 
-.header-unsaved-hint i {
-  font-size: 0.85em;
-  color: var(--text-gold);
+.header-unsaved-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
 }
 
 .header-unsaved-save-btn {
@@ -5601,29 +5603,6 @@ a.contributor-name:hover {
 .list-item-header:has(.unsaved-indicator) + .list-item-body {
   outline: 2px solid var(--swtor-orange, #f0ad4e);
   outline-offset: -2px;
-}
-
-/* ─── Profile Unsaved Changes Indicator ──────────────────────────────────────── */
-.profile-unsaved-indicator {
-  display: flex;
-  align-items: center;
-  gap: 0.4em;
-  padding: 0.35em 0.75em;
-  margin-bottom: 0.5em;
-  font-size: 0.8rem;
-  color: var(--swtor-orange, #f0ad4e);
-  background: rgba(240, 173, 78, 0.08);
-  border: 1px solid rgba(240, 173, 78, 0.2);
-  border-radius: var(--radius-md);
-}
-
-.profile-unsaved-indicator i {
-  font-size: 0.85em;
-  flex-shrink: 0;
-}
-
-.settings-footer .profile-unsaved-indicator {
-  margin: 0;
 }
 
 /* ─── Color Swatch ───────────────────────────────────────────────────────────── */

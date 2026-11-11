@@ -28,6 +28,7 @@ use dioxus::prelude::*;
 use std::collections::HashMap;
 
 use crate::api;
+use crate::components::profile_unsaved::{OVERLAY_DRAFT_DIRTY, OVERLAY_SAVE_REQUEST};
 use crate::components::{ToastSeverity, use_toast};
 use crate::types::{MetricType, OverlaySettings};
 
@@ -133,6 +134,13 @@ pub fn SettingsPanel(
             });
         }
     });
+    // Header hint: mirror the draft's state out, take Save requests in
+    use_effect(move || *OVERLAY_DRAFT_DIRTY.write() = draft.has_changes());
+    use_drop(|| {
+        if let Ok(mut d) = OVERLAY_DRAFT_DIRTY.signal().try_write() {
+            *d = false;
+        }
+    });
     let mut metrics_global_open = use_signal(|| false);
     let mut toast = use_toast();
 
@@ -145,7 +153,7 @@ pub fn SettingsPanel(
     let reset_label = overlay_label(&tab);
 
     // Save settings to backend
-    let save_to_backend = move |_| {
+    let save_to_backend = move || {
         let new_settings = draft.current();
         async move {
             if let Some(mut config) = api::get_config().await {
@@ -232,6 +240,13 @@ pub fn SettingsPanel(
             }
         }
     };
+
+    let seen_request = use_hook(|| OVERLAY_SAVE_REQUEST.peek().to_owned());
+    use_effect(move || {
+        if OVERLAY_SAVE_REQUEST() != seen_request {
+            spawn(save_to_backend());
+        }
+    });
 
     // Sits beside each overlay tab's style reset
     let reset_position = rsx! {
@@ -336,17 +351,14 @@ pub fn SettingsPanel(
                 button {
                     class: if draft.has_changes() || profile_dirty() { "btn btn-save btn-unsaved" } else { "btn btn-save" },
                     disabled: !draft.has_changes() && !profile_dirty(),
-                    onclick: save_to_backend,
+                    onclick: move |_| save_to_backend(),
                     if draft.has_changes() || profile_dirty() { "Save *" } else { "Save" }
                 }
                 if !draft.status().is_empty() {
                     span { class: "save-status", "{draft.status()}" }
                 }
-                if profile_dirty() {
-                    div { class: "profile-unsaved-indicator",
-                        i { class: "fa-solid fa-circle-exclamation" }
-                        span { " Changes not saved to profile" }
-                    }
+                if draft.has_changes() || profile_dirty() {
+                    span { class: "unsaved-indicator", title: "Overlay changes not saved to the active profile" }
                 }
             }
         }
