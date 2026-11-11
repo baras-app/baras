@@ -4796,23 +4796,6 @@ a.contributor-name:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
-.floating-menu.wide {
-  min-width: 260px;
-  max-height: 400px;
-}
-
-/* Invisible layer under a floating menu that closes it on outside click */
-.floating-menu-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-}
-
-/* Discipline selector dropdown */
-.discipline-selector {
-  position: relative;
-}
-
 /* Row toggle buttons (enable/audio in timer list) */
 .row-toggle {
   cursor: pointer;

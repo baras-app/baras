@@ -10,7 +10,8 @@ use baras_types::history::{class_mirror, discipline_mirror};
 /// Looks up the (Imperial, Republic) pair a name belongs to
 pub type Mirror = fn(&str) -> Option<(&'static str, &'static str)>;
 
-/// A pickable entry: its label and every logged value it stands for
+/// A pickable entry: its label and every logged value it stands for. An
+/// entry with no values is a group heading (e.g. a class above its disciplines)
 pub type Entry = (String, Vec<String>);
 
 /// One entry per value, as is
@@ -104,17 +105,21 @@ pub fn MultiSelect(
                     }
                     div { class: "nav-menu-divider" }
                     for (label, values) in entries.iter().cloned() {
-                        {
-                            let checked = values.iter().any(|v| picked.contains(v));
-                            let current = picked.clone();
-                            rsx! {
-                                button {
-                                    key: "{label}",
-                                    class: if checked { "nav-menu-item active" } else { "nav-menu-item" },
-                                    // The list stays open for more picks
-                                    onclick: move |_| on_change.call(toggle(&current, &values)),
-                                    i { class: if checked { "fa-solid fa-square-check" } else { "fa-regular fa-square" } }
-                                    " {label}"
+                        if values.is_empty() {
+                            div { key: "{label}", class: "multi-select-group", "{label}" }
+                        } else {
+                            {
+                                let checked = values.iter().any(|v| picked.contains(v));
+                                let current = picked.clone();
+                                rsx! {
+                                    button {
+                                        key: "{label}",
+                                        class: if checked { "nav-menu-item active" } else { "nav-menu-item" },
+                                        // The list stays open for more picks
+                                        onclick: move |_| on_change.call(toggle(&current, &values)),
+                                        i { class: if checked { "fa-solid fa-square-check" } else { "fa-regular fa-square" } }
+                                        " {label}"
+                                    }
                                 }
                             }
                         }
