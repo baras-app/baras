@@ -1983,6 +1983,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                         sort_asc: overview_sort_asc,
                                         hovered: overview_hovered,
                                         european: eu,
+                                        on_time_range_change: move |r: TimeRange| time_range.set(r),
                                     }
 
                                     // Side-by-side: Deaths + NPC Health + Challenges

@@ -5,11 +5,11 @@
 
 use dioxus::prelude::*;
 use serde_json::{Value, json};
+use wasm_bindgen::JsCast;
 
 use crate::api::{self, GroupMetric, GroupTimeSeries, RaidOverviewRow, TimeRange};
 use crate::components::echarts::{
-    dispatch_action, dispose_chart, get_chart, init_chart, json_to_js, next_animation_frame, set_js_fn,
-    set_option_replace, use_resize_charts,
+    activate_brush, apply_brush_config, dispatch_action, dispose_chart, get_chart, init_chart, json_to_js, next_animation_frame, register_brush_handler, set_js_fn, set_option_replace, use_resize_charts,
 };
 use crate::components::overview_table::OverviewSort;
 use crate::utils::{LightTheme, css_var};
@@ -191,6 +191,8 @@ pub fn OverviewGroupChart(
     /// Player whose table row is hovered
     hovered: ReadSignal<Option<String>>,
     european: bool,
+    /// Drag across the chart to narrow the timeline to that span
+    on_time_range_change: EventHandler<TimeRange>,
 ) -> Element {
     let metric = metric_of(sort_col());
     let mut stacked = use_signal(|| false);
@@ -203,6 +205,17 @@ pub fn OverviewGroupChart(
         let tr = (time_range.end > 0.0).then_some(time_range);
         api::query_group_over_time(encounter_idx, 1000, metric, tr.as_ref()).await
     }));
+
+    // Brush span in x-axis slots (the axis is a category, one per bucket),
+    // turned back into combat seconds for the timeline
+    let brush: Signal<Option<(f64, f64)>> = use_signal(|| None);
+    use_effect(move || {
+        let Some((a, b)) = brush() else { return };
+        if let Some(Some(d)) = data.peek().as_ref() {
+            let at = |i: f64| (d.start_secs + i * d.bucket_secs) as f32;
+            on_time_range_change.call(TimeRange { start: at(a), end: at(b) });
+        }
+    });
 
     let option = data.read().as_ref().and_then(|d| d.as_ref()).and_then(|d| build_option(d, metric, &roster, stacked(), light));
     let has_data = option.is_some();
@@ -219,7 +232,10 @@ pub fn OverviewGroupChart(
             set_js_fn(&js, &["xAxis", "axisLabel", "formatter"], "v", MMSS);
             let y_fmt = if stacked { "return v + '%';".to_string() } else { compact_js(european) };
             set_js_fn(&js, &["yAxis", "axisLabel", "formatter"], "v", &y_fmt);
+            apply_brush_config(js.unchecked_ref());
             set_option_replace(&chart, &js);
+            register_brush_handler(&chart, brush);
+            activate_brush(&chart);
         });
     }));
 

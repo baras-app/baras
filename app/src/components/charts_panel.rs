@@ -10,7 +10,8 @@ use wasm_bindgen_futures::spawn_local as spawn;
 use crate::api::{self, EffectChartData, EffectWindow, HpPoint, TimeRange, TimeSeriesPoint};
 use crate::components::ability_icon::AbilityIcon;
 use crate::components::echarts::{
-    dispose_chart, get_chart, init_chart, next_animation_frame, resize_chart, set_chart_option,
+    activate_brush, apply_brush_config, dispose_chart, get_chart, init_chart, next_animation_frame,
+    register_brush_handler, resize_chart, set_chart_option,
 };
 use crate::utils::{css_var, css_var_or, js_set};
 use baras_types::formatting;
@@ -667,111 +668,6 @@ fn build_hp_chart_option(
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper Functions
 // ─────────────────────────────────────────────────────────────────────────────
-
-/// Add brush configuration to an ECharts option for drag-to-select time range.
-/// Always active — no toolbox icon needed. Reset via the phase timeline bar.
-fn apply_brush_config(obj: &js_sys::Object) {
-    // Brush configuration — x-axis only, always active
-    let brush = js_sys::Object::new();
-    let x_axis_index = js_sys::Array::new();
-    x_axis_index.push(&JsValue::from_f64(0.0));
-    js_set(&brush, "xAxisIndex", &x_axis_index);
-    js_set(&brush, "brushType", &JsValue::from_str("lineX"));
-    js_set(&brush, "throttleType", &JsValue::from_str("debounce"));
-    js_set(&brush, "throttleDelay", &JsValue::from_f64(300.0));
-    // Hide the toolbox — brush is always on
-    let toolbox_arr = js_sys::Array::new();
-    js_set(&brush, "toolbox", &toolbox_arr);
-    // Style for the brush selection rectangle
-    let brush_style = js_sys::Object::new();
-    js_set(&brush_style, "color", &JsValue::from_str("rgba(100, 200, 255, 0.15)"));
-    js_set(&brush_style, "borderColor", &JsValue::from_str("rgba(100, 200, 255, 0.6)"));
-    js_set(&brush_style, "borderWidth", &JsValue::from_f64(1.0));
-    js_set(&brush, "brushStyle", &brush_style);
-
-    js_set(obj, "brush", &brush);
-
-    // Explicitly hide the top-level toolbox — ECharts auto-creates one when
-    // brush is configured, even if brush.toolbox is empty.
-    let toolbox = js_sys::Object::new();
-    js_set(&toolbox, "show", &JsValue::from_bool(false));
-    js_set(obj, "toolbox", &toolbox);
-}
-
-/// Activate the brush tool on a chart instance via dispatchAction.
-/// Required when there's no toolbox — the brush won't auto-activate otherwise.
-fn activate_brush(chart: &JsValue) {
-    if let Ok(dispatch_fn) = js_sys::Reflect::get(chart, &JsValue::from_str("dispatchAction")) {
-        if let Some(func) = dispatch_fn.dyn_ref::<js_sys::Function>() {
-            let action = js_sys::Object::new();
-            js_set(&action, "type", &JsValue::from_str("takeGlobalCursor"));
-            let brush_opt = js_sys::Object::new();
-            js_set(&brush_opt, "brushType", &JsValue::from_str("lineX"));
-            js_set(&action, "key", &JsValue::from_str("brush"));
-            js_set(&action, "brushOption", &brush_opt);
-            let _ = func.call1(chart, &action);
-        }
-    }
-}
-
-/// Register a brush-end handler on an ECharts instance that calls back with the
-/// selected time range (start_secs, end_secs). After applying, the brush selection
-/// is cleared from the chart.
-fn register_brush_handler(chart: &JsValue, mut time_range_sink: Signal<Option<(f64, f64)>>) {
-    use wasm_bindgen::closure::Closure;
-
-    let chart_clone = chart.clone();
-    let closure = Closure::wrap(Box::new(move |params: JsValue| {
-        // ECharts brushEnd event: params.areas is an array of brush areas.
-        // Each area has coordRange: [startValue, endValue] in x-axis coordinates.
-        if let Ok(areas) = js_sys::Reflect::get(&params, &JsValue::from_str("areas")) {
-            if let Some(arr) = areas.dyn_ref::<js_sys::Array>() {
-                if arr.length() > 0 {
-                    let area = arr.get(0);
-                    if let Ok(coord_range) =
-                        js_sys::Reflect::get(&area, &JsValue::from_str("coordRange"))
-                    {
-                        if let Some(range_arr) = coord_range.dyn_ref::<js_sys::Array>() {
-                            if range_arr.length() >= 2 {
-                                let start = range_arr.get(0).as_f64().unwrap_or(0.0);
-                                let end = range_arr.get(1).as_f64().unwrap_or(0.0);
-                                if end > start {
-                                    time_range_sink.set(Some((start, end)));
-                                }
-                            }
-                        }
-                    }
-                    // Clear the brush selection visual after applying
-                    if let Ok(dispatch_fn) = js_sys::Reflect::get(
-                        &chart_clone,
-                        &JsValue::from_str("dispatchAction"),
-                    ) {
-                        if let Some(func) = dispatch_fn.dyn_ref::<js_sys::Function>() {
-                            let action = js_sys::Object::new();
-                            js_set(&action, "type", &JsValue::from_str("brush"));
-                            let empty_areas = js_sys::Array::new();
-                            js_set(&action, "areas", &empty_areas);
-                            let _ = func.call1(&chart_clone, &action);
-                        }
-                    }
-                }
-            }
-        }
-    }) as Box<dyn FnMut(JsValue)>);
-
-    // Call chart.on("brushEnd", closure) — use unchecked_ref to cast FnMut closure for JS
-    if let Ok(on_fn) = js_sys::Reflect::get(chart, &JsValue::from_str("on")) {
-        if let Some(func) = on_fn.dyn_ref::<js_sys::Function>() {
-            let _ = func.call2(
-                chart,
-                &JsValue::from_str("brushEnd"),
-                closure.as_ref().unchecked_ref(),
-            );
-        }
-    }
-
-    closure.forget();
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
