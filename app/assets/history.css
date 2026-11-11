@@ -1205,6 +1205,10 @@
     border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
+/* Full-width variant: equal segments across the container */
+.history-seg.seg-fill { display: flex; }
+.history-seg.seg-fill .seg { flex: 1; justify-content: center; white-space: nowrap; }
+
 .history-seg .seg:hover { color: var(--text-primary); background: rgba(var(--fg-rgb), 0.06); }
 
 .history-seg .seg.active {

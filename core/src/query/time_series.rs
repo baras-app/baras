@@ -342,7 +342,7 @@ impl EncounterQuery<'_> {
             GroupMetric::Damage => ("source", "dmg_amount", "AND source_id != target_id"),
             GroupMetric::Healing => ("source", "heal_effective", ""),
             GroupMetric::DamageTaken => ("target", "dmg_amount", ""),
-            GroupMetric::Threat => ("source", "threat", ""),
+            GroupMetric::Threat => ("source", "threat", ""), // see floored_threat
         };
         let tr_filter = time_range.map(|tr| format!("AND {}", tr.sql_filter())).unwrap_or_default();
 
@@ -359,37 +359,72 @@ impl EncounterQuery<'_> {
         let (min_bucket, max_bucket) = (col_i64(b, 0)?[0], col_i64(b, 1)?[0]);
         let len = (max_bucket - min_bucket + 1).max(0) as usize;
 
-        let batches = self
-            .sql(&format!(
-                "SELECT {side}_name,
-                        CAST(FLOOR(combat_time_secs / {bucket_secs}) AS BIGINT) AS bucket,
-                        CAST(SUM({value_col}) AS DOUBLE)
-                 FROM events
-                 WHERE combat_time_secs IS NOT NULL {tr_filter}
-                   AND {side}_entity_type IN ('Player', 'Companion') {extra}
-                 GROUP BY {side}_name, bucket"
-            ))
-            .await?;
-
-        let mut series: Vec<(String, Vec<f64>)> = Vec::new();
-        for batch in &batches {
-            let names = col_strings(batch, 0)?;
-            let buckets = col_i64(batch, 1)?;
-            let values = col_f64(batch, 2)?;
-            for ((name, bucket), value) in names.into_iter().zip(buckets).zip(values) {
-                let Some(slot) = usize::try_from(bucket - min_bucket).ok().filter(|i| *i < len) else {
-                    continue;
-                };
-                let idx = match series.iter().position(|(n, _)| *n == name) {
-                    Some(i) => i,
-                    None => {
-                        series.push((name, vec![0.0; len]));
-                        series.len() - 1
-                    }
-                };
-                series[idx].1[slot] = value;
+        // (player, bucket, value) rows; threat is floored per target first
+        let mut rows: Vec<(String, i64, f64)> = Vec::new();
+        if metric == GroupMetric::Threat {
+            rows = self.floored_threat(bucket_secs, &tr_filter).await?;
+        } else {
+            let batches = self
+                .sql(&format!(
+                    "SELECT {side}_name,
+                            CAST(FLOOR(combat_time_secs / {bucket_secs}) AS BIGINT) AS bucket,
+                            CAST(SUM({value_col}) AS DOUBLE)
+                     FROM events
+                     WHERE combat_time_secs IS NOT NULL {tr_filter}
+                       AND {side}_entity_type IN ('Player', 'Companion') {extra}
+                     GROUP BY {side}_name, bucket"
+                ))
+                .await?;
+            for batch in &batches {
+                let (names, buckets, values) = (col_strings(batch, 0)?, col_i64(batch, 1)?, col_f64(batch, 2)?);
+                rows.extend(names.into_iter().zip(buckets).zip(values).map(|((n, b), v)| (n, b, v)));
             }
         }
+
+        let mut series: Vec<(String, Vec<f64>)> = Vec::new();
+        for (name, bucket, value) in rows {
+            let Some(slot) = usize::try_from(bucket - min_bucket).ok().filter(|i| *i < len) else {
+                continue;
+            };
+            let idx = match series.iter().position(|(n, _)| *n == name) {
+                Some(i) => i,
+                None => {
+                    series.push((name, vec![0.0; len]));
+                    series.len() - 1
+                }
+            };
+            series[idx].1[slot] += value;
+        }
         Ok(GroupTimeSeries { start_secs: min_bucket as f64 * bucket_secs, bucket_secs, series })
+    }
+
+    /// Threat as it counts in game: each player's threat on each target never
+    /// drops below 0, so a drop only removes what was there. Returns
+    /// (player, bucket, threat actually gained or lost) per event, in log order.
+    pub(super) async fn floored_threat(&self, bucket_secs: f64, tr_filter: &str) -> Result<Vec<(String, i64, f64)>, String> {
+        let batches = self
+            .sql(&format!(
+                "SELECT source_name, target_id,
+                        CAST(FLOOR(combat_time_secs / {bucket_secs}) AS BIGINT),
+                        CAST(threat AS DOUBLE)
+                 FROM events
+                 WHERE combat_time_secs IS NOT NULL AND threat != 0 {tr_filter}
+                   AND source_entity_type IN ('Player', 'Companion')
+                 ORDER BY line_number"
+            ))
+            .await?;
+        let mut held: std::collections::HashMap<(String, i64), f64> = std::collections::HashMap::new();
+        let mut out = Vec::new();
+        for batch in &batches {
+            let (names, targets, buckets, values) =
+                (col_strings(batch, 0)?, col_i64(batch, 1)?, col_i64(batch, 2)?, col_f64(batch, 3)?);
+            for (((name, target), bucket), value) in names.into_iter().zip(targets).zip(buckets).zip(values) {
+                let run = held.entry((name.clone(), target)).or_insert(0.0);
+                let next = (*run + value).max(0.0);
+                out.push((name, bucket, next - *run));
+                *run = next;
+            }
+        }
+        Ok(out)
     }
 }

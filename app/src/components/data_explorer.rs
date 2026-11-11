@@ -1886,7 +1886,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                         }
                         // Mirror-class naming toggle (Republic / Imperial names for class abilities)
                         // Neither lit = names as logged; clicking the lit one goes back to that
-                        div { class: "naming-toggle",
+                        div { class: "history-seg naming-toggle",
                             for (naming, label, tip) in [
                                 (AbilityNaming::Republic, "Rep", "Show class abilities with Republic names"),
                                 (AbilityNaming::Imperial, "Imp", "Show class abilities with Imperial names"),
@@ -1896,7 +1896,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                     rsx! {
                                         button {
                                             key: "{label}",
-                                            class: if on { "naming-toggle-btn active" } else { "naming-toggle-btn" },
+                                            class: if on { "seg active" } else { "seg" },
                                             title: if on { "Click to show names as logged" } else { tip },
                                             onclick: move |_| *ABILITY_NAMING.write() = if on { AbilityNaming::AsLogged } else { naming },
                                             "{label}"
@@ -2387,14 +2387,14 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                     }
                                 }
                                 if !*entity_collapsed.read() {
-                                    div { class: "entity-filter-tabs",
+                                    div { class: "history-seg seg-fill entity-filter-tabs",
                                         button {
-                                            class: if *show_players_only.read() { "filter-tab active" } else { "filter-tab" },
+                                            class: if *show_players_only.read() { "seg active" } else { "seg" },
                                             onclick: move |_| show_players_only.set(true),
                                             "Player"
                                         }
                                         button {
-                                            class: if !*show_players_only.read() { "filter-tab active" } else { "filter-tab" },
+                                            class: if !*show_players_only.read() { "seg active" } else { "seg" },
                                             onclick: move |_| show_players_only.set(false),
                                             "NPC"
                                         }

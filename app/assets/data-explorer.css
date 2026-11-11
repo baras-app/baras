@@ -434,12 +434,7 @@
 }
 
 .entity-filter-tabs {
-  display: flex;
-  gap: 2px;
   margin-bottom: var(--space-xs);
-  background: var(--bg-tertiary);
-  border-radius: var(--radius-sm);
-  padding: 2px;
 }
 
 .filter-tab {
@@ -460,14 +455,6 @@
 .filter-tab.active {
   background: var(--bg-secondary);
   color: var(--text-primary);
-}
-
-/* Player / NPC switch in the entity sidebar: full-width halves, readable size */
-.entity-filter-tabs .filter-tab {
-  flex: 1;
-  font-size: 12px;
-  font-weight: 500;
-  padding: 5px 12px;
 }
 
 /* NPC rows are slightly dimmed */
@@ -1717,42 +1704,9 @@
   overflow: hidden;
 }
 
-/* Source filter toggle buttons */
+/* Source filter (All / Self / Player / NPC) */
 .effects-source-filter {
-  display: flex;
-  gap: 2px;
   flex-shrink: 0;
-  /* Same quiet track as the header nav (--bg-secondary was never defined) */
-  background: rgba(var(--fg-rgb), 0.06);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  padding: 2px;
-}
-
-.source-filter-btn {
-  flex: 1;
-  padding: 4px 6px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  border: none;
-  border-radius: var(--radius-xs, 3px);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background-color var(--transition-fast), color var(--transition-fast);
-  white-space: nowrap;
-}
-
-.source-filter-btn:hover {
-  color: var(--text-primary);
-  background: rgba(var(--fg-rgb), 0.06);
-}
-
-.source-filter-btn.active {
-  background: var(--swtor-blue);
-  color: #fff;
 }
 
 /* Effect sections — each table fills available space */
@@ -2725,43 +2679,12 @@
   transition: height 0.2s ease;
 }
 
-/* Mirror-class naming toggle (Log / Rep / Imp) in the data tab bar */
-/* Rep / Imp naming: a small two-pill track (same look as the Player / NPC
-   switch), centred in the tab bar rather than stretched to its height.
-   Neither lit = names as logged. */
+/* Rep / Imp naming switch, centred in the tab bar. Neither lit = names as logged */
 .naming-toggle {
   align-self: center;
-  display: inline-flex;
   flex: 0 0 auto;
-  gap: 2px;
   margin-left: var(--space-xs);
-  padding: 2px;
-  background: rgba(var(--fg-rgb), 0.06);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-}
-
-.naming-toggle-btn {
-  padding: 2px 9px;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.4;
-  color: var(--text-muted);
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: background-color var(--transition-fast), color var(--transition-fast);
-}
-
-.naming-toggle-btn:hover {
-  color: var(--text-primary);
-  background: rgba(var(--fg-rgb), 0.06);
-}
-
-.naming-toggle-btn.active {
-  color: #fff;
-  background: var(--swtor-blue);
+  font-size: 12px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
