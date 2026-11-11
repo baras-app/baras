@@ -38,27 +38,28 @@ fn metric_of(sort: OverviewSort) -> GroupMetric {
     }
 }
 
-fn metric_label(m: GroupMetric) -> &'static str {
-    match m {
-        GroupMetric::Damage => "DPS",
-        GroupMetric::Healing => "EHPS",
-        GroupMetric::DamageTaken => "DTPS",
-        GroupMetric::Threat => "TPS",
-    }
-}
-
-/// Running per-second average (total so far / elapsed), like the Charts
-/// tab and the overlays: the last point equals the table's value
-fn running_rate(values: &[f64], bucket_secs: f64) -> Vec<f64> {
+/// Threat plots its running total, so a drop shows as the fall it is; the
+/// rest plot a running per-second average (total so far / elapsed), like the
+/// Charts tab and the overlays: the last point equals the table's value
+fn running(values: &[f64], bucket_secs: f64, metric: GroupMetric) -> Vec<f64> {
     let mut total = 0.0;
     values
         .iter()
         .enumerate()
         .map(|(i, v)| {
             total += v;
-            total / ((i + 1) as f64 * bucket_secs)
+            if metric == GroupMetric::Threat { total } else { total / ((i + 1) as f64 * bucket_secs) }
         })
         .collect()
+}
+
+fn chart_note(m: GroupMetric) -> &'static str {
+    match m {
+        GroupMetric::Damage => "DPS · running average",
+        GroupMetric::Healing => "EHPS · running average",
+        GroupMetric::DamageTaken => "DTPS · running average",
+        GroupMetric::Threat => "Threat · running total",
+    }
 }
 
 /// JS: compact number (12.3K / 1.25M), honouring the European decimal comma
@@ -92,12 +93,12 @@ fn tooltip_js(eu: bool, stacked: bool) -> String {
 
 /// Players in the table, coloured in a stable (alphabetical) order. Past
 /// eight, the top seven by total keep a colour and the rest share grey.
-fn build_option(data: &GroupTimeSeries, roster: &[String], stacked: bool, light: bool) -> Option<Value> {
+fn build_option(data: &GroupTimeSeries, metric: GroupMetric, roster: &[String], stacked: bool, light: bool) -> Option<Value> {
     let mut players: Vec<(&str, Vec<f64>, f64)> = data
         .series
         .iter()
         .filter(|(n, _)| roster.contains(n))
-        .map(|(n, v)| (n.as_str(), running_rate(v, data.bucket_secs), v.iter().sum::<f64>()))
+        .map(|(n, v)| (n.as_str(), running(v, data.bucket_secs, metric), v.iter().sum::<f64>()))
         .filter(|(_, _, total)| *total != 0.0)
         .collect();
     if players.is_empty() {
@@ -203,7 +204,7 @@ pub fn OverviewGroupChart(
         api::query_group_over_time(encounter_idx, 1000, metric, tr.as_ref()).await
     }));
 
-    let option = data.read().as_ref().and_then(|d| d.as_ref()).and_then(|d| build_option(d, &roster, stacked(), light));
+    let option = data.read().as_ref().and_then(|d| d.as_ref()).and_then(|d| build_option(d, metric, &roster, stacked(), light));
     let has_data = option.is_some();
 
     use_resize_charts(&[CHART_ID]);
@@ -249,7 +250,7 @@ pub fn OverviewGroupChart(
                         }
                     }
                 }
-                span { class: "overview-chart-note", "{metric_label(metric)} · running average" }
+                span { class: "overview-chart-note", "{chart_note(metric)}" }
                 div { class: "filter-pills ml-auto",
                     button { class: if !stacked() { "seg active" } else { "seg" }, onclick: move |_| stacked.set(false), "Lines" }
                     button { class: if stacked() { "seg active" } else { "seg" }, onclick: move |_| stacked.set(true), "Stacked" }

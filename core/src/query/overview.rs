@@ -169,7 +169,7 @@ impl EncounterQuery<'_> {
             .await
             .unwrap_or_default();
 
-        // Threat floored at 0 per target, as in game (matches the group chart)
+        // Threat floored at 0 per player (matches the group chart)
         let mut threat: HashMap<String, f64> = HashMap::new();
         for (name, _, gained) in self.floored_threat(1.0, &time_filter).await? {
             *threat.entry(name).or_default() += gained;
@@ -185,7 +185,7 @@ impl EncounterQuery<'_> {
         // CTE-based query to aggregate multiple metrics per player
         // participants: all unique source names (players who did anything)
         // damage_dealt: sum of dmg_amount WHERE source = player
-        // threat: floored per target in Rust (floored_threat), not summed here
+        // threat: floored per player in Rust (floored_threat), not summed here
         // damage_taken: sum of dmg_amount WHERE target = player
         // absorbed: sum of dmg_absorbed WHERE target = player
         // healing: sum of heal_amount WHERE source = player

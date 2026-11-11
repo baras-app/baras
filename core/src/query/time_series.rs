@@ -359,7 +359,7 @@ impl EncounterQuery<'_> {
         let (min_bucket, max_bucket) = (col_i64(b, 0)?[0], col_i64(b, 1)?[0]);
         let len = (max_bucket - min_bucket + 1).max(0) as usize;
 
-        // (player, bucket, value) rows; threat is floored per target first
+        // (player, bucket, value) rows; threat is floored per player first
         let mut rows: Vec<(String, i64, f64)> = Vec::new();
         if metric == GroupMetric::Threat {
             rows = self.floored_threat(bucket_secs, &tr_filter).await?;
@@ -398,13 +398,16 @@ impl EncounterQuery<'_> {
         Ok(GroupTimeSeries { start_secs: min_bucket as f64 * bucket_secs, bucket_secs, series })
     }
 
-    /// Threat as it counts in game: each player's threat on each target never
-    /// drops below 0, so a drop only removes what was there. Returns
+    /// Threat with each player's running total floored at 0, so a drop only
+    /// removes what was there. Floored per player, not per target: the log
+    /// books heal threat (incl. tank self-heals) on the friendly, so per-NPC
+    /// totals undercount and clip the full drop of a cloak-out or threat wipe
+    /// to a small dip. Returns
     /// (player, bucket, threat actually gained or lost) per event, in log order.
     pub(super) async fn floored_threat(&self, bucket_secs: f64, tr_filter: &str) -> Result<Vec<(String, i64, f64)>, String> {
         let batches = self
             .sql(&format!(
-                "SELECT source_name, target_id,
+                "SELECT source_name,
                         CAST(FLOOR(combat_time_secs / {bucket_secs}) AS BIGINT),
                         CAST(threat AS DOUBLE)
                  FROM events
@@ -413,13 +416,12 @@ impl EncounterQuery<'_> {
                  ORDER BY line_number"
             ))
             .await?;
-        let mut held: std::collections::HashMap<(String, i64), f64> = std::collections::HashMap::new();
+        let mut held: hashbrown::HashMap<String, f64> = hashbrown::HashMap::new();
         let mut out = Vec::new();
         for batch in &batches {
-            let (names, targets, buckets, values) =
-                (col_strings(batch, 0)?, col_i64(batch, 1)?, col_i64(batch, 2)?, col_f64(batch, 3)?);
-            for (((name, target), bucket), value) in names.into_iter().zip(targets).zip(buckets).zip(values) {
-                let run = held.entry((name.clone(), target)).or_insert(0.0);
+            let (names, buckets, values) = (col_strings(batch, 0)?, col_i64(batch, 1)?, col_f64(batch, 2)?);
+            for ((name, bucket), value) in names.into_iter().zip(buckets).zip(values) {
+                let run = held.entry_ref(name.as_str()).or_insert(0.0);
                 let next = (*run + value).max(0.0);
                 out.push((name, bucket, next - *run));
                 *run = next;
