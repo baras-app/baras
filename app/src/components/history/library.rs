@@ -353,12 +353,12 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                             th { "Date" }
                             th { "Character" }
                             th { "Server" }
-                            th { "Content" }
-                            th { "Tags" }
-                            th { "Note" }
                             th { "Size" }
+                            th { "Content" }
                             th { "Parsely" }
                             th { "" }
+                            th { "Tags" }
+                            th { "Note" }
                         }
                     }
                     tbody {
@@ -403,6 +403,7 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                                         td { title: "{row.filename}\n{status}", "{row.date}" }
                                         td { {row.character.clone().unwrap_or_else(|| "—".into())} }
                                         td { if row.server.is_empty() { "—" } else { "{row.server}" } }
+                                        td { {fmt_bytes(row.size)} }
                                         td { class: "library-areas", title: "{area_names}",
                                             if row.content.is_empty() {
                                                 span { class: "pull-log-missing", "—" }
@@ -414,50 +415,6 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                                                 span { class: "library-area-names", "{area_names}" }
                                             }
                                         }
-                                        td {
-                                            if let Some(note_focus) = editor {
-                                                LogTagsCell {
-                                                    filename: row.filename.clone(),
-                                                    tags: row.tags.clone(),
-                                                    run_tags: row.run_tags.clone(),
-                                                    note: row.note.clone(),
-                                                    focus: !note_focus,
-                                                    on_change: move |_| rows.restart(),
-                                                }
-                                            } else {
-                                                div { class: "library-tag-cell static", title: "Click to edit tags",
-                                                    onclick: move |_| editing.set(Some((edit_tags.clone(), false))),
-                                                    for t in row.tags.iter() {
-                                                        span { class: "run-tag small", "{t}" }
-                                                    }
-                                                    for t in row.run_tags.iter().filter(|t| !row.tags.contains(*t)) {
-                                                        span { class: "run-tag small muted", title: "Tag on a run in this log", "{t}" }
-                                                    }
-                                                    if row.tags.is_empty() {
-                                                        span { class: "library-add-hint", "+ tag" }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        td {
-                                            if let Some(note_focus) = editor {
-                                                LogNoteCell {
-                                                    filename: row.filename.clone(),
-                                                    tags: row.tags.clone(),
-                                                    note: row.note.clone(),
-                                                    focus: note_focus,
-                                                    on_change: move |_| rows.restart(),
-                                                }
-                                            } else {
-                                                div {
-                                                    class: if row.note.is_empty() { "library-note static empty" } else { "library-note static" },
-                                                    title: "{row.note}",
-                                                    onclick: move |_| editing.set(Some((edit_note.clone(), true))),
-                                                    if row.note.is_empty() { "Note…" } else { "{row.note}" }
-                                                }
-                                            }
-                                        }
-                                        td { {fmt_bytes(row.size)} }
                                         td { class: "library-parsely-cell",
                                             if let Some(link) = row.parsely.clone() {
                                                 a { class: "library-parsely", href: "{link}", target: "_blank", title: "Open on Parsely", i { class: "fa-solid fa-up-right-from-square" } }
@@ -528,6 +485,49 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                                                 disabled: open,
                                                 onclick: move |_| confirm_delete.set(Some(vec![(delete_path.clone(), delete_name.clone())])),
                                                 i { class: "fa-solid fa-trash" }
+                                            }
+                                        }
+                                        td {
+                                            if let Some(note_focus) = editor {
+                                                LogTagsCell {
+                                                    filename: row.filename.clone(),
+                                                    tags: row.tags.clone(),
+                                                    run_tags: row.run_tags.clone(),
+                                                    note: row.note.clone(),
+                                                    focus: !note_focus,
+                                                    on_change: move |_| rows.restart(),
+                                                }
+                                            } else {
+                                                div { class: "library-tag-cell static", title: "Click to edit tags",
+                                                    onclick: move |_| editing.set(Some((edit_tags.clone(), false))),
+                                                    for t in row.tags.iter() {
+                                                        span { class: "run-tag small", "{t}" }
+                                                    }
+                                                    for t in row.run_tags.iter().filter(|t| !row.tags.contains(*t)) {
+                                                        span { class: "run-tag small muted", title: "Tag on a run in this log", "{t}" }
+                                                    }
+                                                    if row.tags.is_empty() {
+                                                        span { class: "library-add-hint", "+ tag" }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        td {
+                                            if let Some(note_focus) = editor {
+                                                LogNoteCell {
+                                                    filename: row.filename.clone(),
+                                                    tags: row.tags.clone(),
+                                                    note: row.note.clone(),
+                                                    focus: note_focus,
+                                                    on_change: move |_| rows.restart(),
+                                                }
+                                            } else {
+                                                div {
+                                                    class: if row.note.is_empty() { "library-note static empty" } else { "library-note static" },
+                                                    title: "{row.note}",
+                                                    onclick: move |_| editing.set(Some((edit_note.clone(), true))),
+                                                    if row.note.is_empty() { "Note…" } else { "{row.note}" }
+                                                }
                                             }
                                         }
                                     }
