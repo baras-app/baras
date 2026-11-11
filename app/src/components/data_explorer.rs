@@ -1814,10 +1814,21 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                             }
                         } else if let Some(enc_idx) = *selected_encounter.read() {
                             if let Some(enc) = encounters().iter().find(|e| e.encounter_id as u32 == enc_idx) {
-                                div { class: "selected-entity-indicator",
-                                    i { class: "fa-solid fa-crosshairs" }
-                                    span { "{enc.display_name}" }
-                                    span { class: "indicator-meta", "({formatting::format_duration(enc.duration_seconds)})" }
+                                div { class: "selected-encounter-strip",
+                                    span { class: "enc-strip-name", title: "{enc.display_name}", "{enc.display_name}" }
+                                    if enc.boss_name.is_some() {
+                                        span { class: if enc.success { "enc-strip-result kill" } else { "enc-strip-result wipe" },
+                                            if enc.success { "Kill" } else { "Wipe" }
+                                        }
+                                    }
+                                    span { class: "enc-strip-meta",
+                                        if !enc.area_name.is_empty() { span { "{enc.area_name}" } }
+                                        if let Some(d) = enc.difficulty.as_ref() { span { "{d}" } }
+                                        span { class: "enc-strip-duration",
+                                            i { class: "fa-regular fa-clock" }
+                                            " {formatting::format_duration(enc.duration_seconds)}"
+                                        }
+                                    }
                                 }
                             }
                         }
