@@ -379,7 +379,7 @@ pub fn PvpTab(european: bool, backfill: Backfill) -> Element {
                                                 if let Some(path) = path {
                                                     button {
                                                         class: "btn btn-xs btn-ghost",
-                                                        title: "Open in Data Explorer",
+                                                        title: "Open in Analysis",
                                                         disabled: opener.busy(),
                                                         onclick: move |_| opener.open(path.clone(), Some(encounter_id)),
                                                         i { class: "fa-solid fa-arrow-up-right-from-square" }

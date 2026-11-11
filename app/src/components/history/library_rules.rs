@@ -87,7 +87,7 @@ pub fn CleanupRules() -> Element {
                 }
                 "Scan new logs at startup"
             }
-            p { class: "hint", "The statistics pages are built from scanned logs, archived ones included. You can also scan from Log Management." }
+            p { class: "hint", "The statistics pages are built from scanned logs, archived ones included. You can also scan from the Logs tab." }
 
             span { class: "library-retain-title", "Automatic cleanup" }
             div { class: "library-rules",
@@ -169,7 +169,7 @@ pub fn CleanupRules() -> Element {
                 }
             }
             p { class: "hint",
-                "Archived logs are compressed but stay in the statistics and can be restored from Log Management. Deleted logs are removed for good; their pulls stay in the statistics. Protected content can still be archived. Favorites, the live log and today's logs are never touched. Cleanup runs at startup or from Log Management."
+                "Archived logs are compressed but stay in the statistics and can be restored from the Logs tab. Deleted logs are removed for good; their pulls stay in the statistics. Protected content can still be archived. Favorites, the live log and today's logs are never touched. Cleanup runs at startup or from the Logs tab."
             }
         }
     }
