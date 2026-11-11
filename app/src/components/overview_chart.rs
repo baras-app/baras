@@ -71,17 +71,19 @@ fn compact_js(eu: bool) -> String {
 
 const MMSS: &str = "var m = Math.floor(v / 60), s = Math.floor(v % 60); return m + ':' + (s < 10 ? '0' : '') + s;";
 
-/// Tooltip: time, the stacked total, then every player at that second, highest first
+/// Tooltip: time, the group total (stacked), then every player at that
+/// second, highest first. Stacked points carry the value as `raw`.
 fn tooltip_js(eu: bool, stacked: bool) -> String {
     format!(
         "var fmt = function (v) {{ {c} }}, mmss = function (v) {{ {MMSS} }};\
-         var ps = params.slice().sort(function (a, b) {{ return b.value[1] - a.value[1]; }});\
-         var total = ps.reduce(function (t, p) {{ return t + p.value[1]; }}, 0);\
-         var r = '<div style=\"opacity:.7;margin-bottom:2px\">' + mmss(params[0].value[0]) + '</div>';\
+         var val = function (p) {{ return p.data && p.data.raw !== undefined ? p.data.raw : p.value; }};\
+         var ps = params.slice().sort(function (a, b) {{ return val(b) - val(a); }});\
+         var total = ps.reduce(function (t, p) {{ return t + val(p); }}, 0);\
+         var r = '<div style=\"opacity:.7;margin-bottom:2px\">' + mmss(params[0].axisValue) + '</div>';\
          if ({stacked}) r += '<div style=\"margin-bottom:2px\">Group <b style=\"float:right;margin-left:16px\">' + fmt(total) + '</b></div>';\
          ps.forEach(function (p) {{\
-           var pct = total > 0 ? ' <span style=\"opacity:.6\">' + Math.round(p.value[1] * 100 / total) + '%</span>' : '';\
-           r += '<div>' + p.marker + p.seriesName + '<b style=\"float:right;margin-left:16px\">' + fmt(p.value[1]) + ({stacked} ? pct : '') + '</b></div>';\
+           var pct = {stacked} ? ' <span style=\"opacity:.6\">' + Math.round(p.data.value) + '%</span>' : '';\
+           r += '<div>' + p.marker + p.seriesName + '<b style=\"float:right;margin-left:16px\">' + fmt(val(p)) + pct + '</b></div>';\
          }});\
          return r;",
         c = compact_js(eu),
@@ -108,27 +110,45 @@ fn build_option(data: &GroupTimeSeries, roster: &[String], stacked: bool, light:
     players.sort_by(|a, b| a.0.cmp(b.0));
 
     let grey = css_var("--text-disabled");
-    let point = |i: usize, v: f64| json!([data.start_secs + i as f64 * data.bucket_secs, v]);
+    // Stacked = share of the group: each point is { value: % of group, raw }, and
+    // the bands always fill the height (negative threat counts as none)
+    let group: Vec<f64> = stacked
+        .then(|| {
+            let len = players[0].1.len();
+            (0..len).map(|i| players.iter().chain(&rest).map(|p| p.1[i].max(0.0)).sum()).collect()
+        })
+        .unwrap_or_default();
     let line = |name: &str, values: &[f64], color: &str| {
-        let mut s = json!({
-            "type": "line", "name": name, "showSymbol": false, "sampling": "lttb",
-            "data": values.iter().enumerate().map(|(i, v)| point(i, *v)).collect::<Vec<_>>(),
-            "itemStyle": { "color": color },
-            "lineStyle": { "color": color, "width": if stacked { 0.0 } else { 1.5 } },
-            "emphasis": { "focus": "series", "lineStyle": { "width": if stacked { 0.0 } else { 2.5 } } },
-        });
+        let points: Vec<Value> = values
+            .iter()
+            .enumerate()
+            .map(|(i, v)| match group.get(i) {
+                Some(g) => json!({ "value": if *g > 0.0 { v.max(0.0) * 100.0 / g } else { 0.0 }, "raw": v }),
+                None => json!(v),
+            })
+            .collect();
         if stacked {
-            s["stack"] = json!("group");
-            s["areaStyle"] = json!({ "color": color, "opacity": 0.85 });
+            json!({
+                "type": "line", "name": name, "showSymbol": false, "stack": "group", "data": points,
+                "itemStyle": { "color": color },
+                "lineStyle": { "width": 0 },
+                "areaStyle": { "color": color, "opacity": 0.9 },
+                "emphasis": { "focus": "series" },
+            })
+        } else {
+            json!({
+                "type": "line", "name": name, "showSymbol": false, "sampling": "lttb", "data": points,
+                "itemStyle": { "color": color },
+                "lineStyle": { "color": color, "width": 1.5 },
+                "emphasis": { "focus": "series", "lineStyle": { "width": 2.5 } },
+            })
         }
-        s
     };
 
     let mut series: Vec<Value> = players.iter().zip(palette).map(|((n, v, _), c)| line(n, v, c)).collect();
     if !rest.is_empty() {
         if stacked {
-            let len = rest[0].1.len();
-            let sum: Vec<f64> = (0..len).map(|i| rest.iter().map(|r| r.1[i]).sum()).collect();
+            let sum: Vec<f64> = (0..group.len()).map(|i| rest.iter().map(|r| r.1[i]).sum()).collect();
             series.push(line(OTHERS, &sum, &grey));
         } else {
             series.extend(rest.iter().map(|(n, v, _)| line(n, v, &grey)));
@@ -139,6 +159,7 @@ fn build_option(data: &GroupTimeSeries, roster: &[String], stacked: bool, light:
         legend.push(OTHERS);
     }
 
+    let times: Vec<f64> = (0..players[0].1.len()).map(|i| data.start_secs + i as f64 * data.bucket_secs).collect();
     let muted = css_var("--text-muted");
     let rule = css_var("--border-light");
     Some(json!({
@@ -148,9 +169,12 @@ fn build_option(data: &GroupTimeSeries, roster: &[String], stacked: bool, light:
                     "textStyle": { "color": muted, "fontSize": 10 }, "pageTextStyle": { "color": muted } },
         "tooltip": { "trigger": "axis", "backgroundColor": css_var("--bg-elevated"), "borderColor": css_var("--border-strong"),
                      "textStyle": { "color": css_var("--text-primary"), "fontSize": 11 } },
-        "xAxis": { "type": "value", "min": "dataMin", "max": "dataMax",
-                   "axisLabel": { "color": muted }, "splitLine": { "show": false } },
-        "yAxis": { "type": "value", "axisLabel": { "color": muted }, "splitLine": { "lineStyle": { "color": rule } } },
+        // Category (one per second), not value: ECharts stacks the x values
+        // on a value/value grid, which tore the stacked bands
+        "xAxis": { "type": "category", "boundaryGap": false, "data": times,
+                   "axisLabel": { "color": muted }, "axisTick": { "show": false }, "splitLine": { "show": false } },
+        "yAxis": { "type": "value", "max": if stacked { json!(100) } else { json!(null) },
+                   "axisLabel": { "color": muted }, "splitLine": { "lineStyle": { "color": rule } } },
         "series": series,
     }))
 }
@@ -192,7 +216,8 @@ pub fn OverviewGroupChart(
             let Some(js) = json_to_js(&option) else { return };
             set_js_fn(&js, &["tooltip", "formatter"], "params", &tooltip_js(european, stacked));
             set_js_fn(&js, &["xAxis", "axisLabel", "formatter"], "v", MMSS);
-            set_js_fn(&js, &["yAxis", "axisLabel", "formatter"], "v", &compact_js(european));
+            let y_fmt = if stacked { "return v + '%';".to_string() } else { compact_js(european) };
+            set_js_fn(&js, &["yAxis", "axisLabel", "formatter"], "v", &y_fmt);
             set_option_replace(&chart, &js);
         });
     }));

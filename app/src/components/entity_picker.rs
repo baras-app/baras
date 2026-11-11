@@ -59,14 +59,14 @@ pub fn EntityPicker(
             if open() {
                 div { class: "nav-menu-backdrop", onclick: move |_| open.set(false) }
                 div { class: "nav-menu-list entity-picker-list",
-                    div { class: "entity-filter-tabs",
+                    div { class: "history-seg seg-fill entity-filter-tabs",
                         button {
-                            class: if players_only() { "filter-tab active" } else { "filter-tab" },
+                            class: if players_only() { "seg active" } else { "seg" },
                             onclick: move |_| players_only.set(true),
                             "Player"
                         }
                         button {
-                            class: if !players_only() { "filter-tab active" } else { "filter-tab" },
+                            class: if !players_only() { "seg active" } else { "seg" },
                             onclick: move |_| players_only.set(false),
                             "NPC"
                         }

@@ -169,6 +169,12 @@ impl EncounterQuery<'_> {
             .await
             .unwrap_or_default();
 
+        // Threat floored at 0 per target, as in game (matches the group chart)
+        let mut threat: HashMap<String, f64> = HashMap::new();
+        for (name, _, gained) in self.floored_threat(1.0, &time_filter).await? {
+            *threat.entry(name).or_default() += gained;
+        }
+
         // Friend/enemy classification (PvP only)
         let factions = if pvp {
             self.query_pvp_factions().await.unwrap_or_default()
@@ -179,7 +185,7 @@ impl EncounterQuery<'_> {
         // CTE-based query to aggregate multiple metrics per player
         // participants: all unique source names (players who did anything)
         // damage_dealt: sum of dmg_amount WHERE source = player
-        // threat: sum of threat WHERE source = player
+        // threat: floored per target in Rust (floored_threat), not summed here
         // damage_taken: sum of dmg_amount WHERE target = player
         // absorbed: sum of dmg_absorbed WHERE target = player
         // healing: sum of heal_amount WHERE source = player
@@ -214,13 +220,6 @@ impl EncounterQuery<'_> {
                 WHERE heal_amount > 0 {time_filter}
                 GROUP BY source_name
             ),
-            threat AS (
-                SELECT source_name as name,
-                    SUM(threat) as threat_total
-                FROM events
-                WHERE threat != 0 {time_filter}
-                GROUP BY source_name
-            ),
             actions AS (
                 SELECT source_name as name,
                        COUNT(*) as action_count
@@ -240,7 +239,6 @@ impl EncounterQuery<'_> {
                 p.name,
                 p.entity_type,
                 COALESCE(d.damage_total, 0) as damage_total,
-                COALESCE(th.threat_total, 0) as threat_total,
                 COALESCE(t.damage_taken_total, 0) as damage_taken_total,
                 COALESCE(t.absorbed_total, 0) as absorbed_total,
                 COALESCE(h.healing_total, 0) as healing_total,
@@ -251,7 +249,6 @@ impl EncounterQuery<'_> {
             LEFT JOIN damage_dealt d ON p.name = d.name
             LEFT JOIN damage_taken t ON p.name = t.name
             LEFT JOIN healing_done h ON p.name = h.name
-            LEFT JOIN threat as th ON p.name = th.name
             LEFT JOIN actions a ON p.name = a.name
             LEFT JOIN interrupts i ON p.name = i.name
             ORDER BY damage_total DESC
@@ -270,17 +267,17 @@ impl EncounterQuery<'_> {
             let names = col_strings(batch, 0)?;
             let entity_types = col_strings(batch, 1)?;
             let damage_totals = col_f64(batch, 2)?;
-            let threat_totals = col_f64(batch, 3)?;
-            let damage_taken_totals = col_f64(batch, 4)?;
-            let absorbed_totals = col_f64(batch, 5)?;
-            let healing_totals = col_f64(batch, 6)?;
-            let healing_effectives = col_f64(batch, 7)?;
-            let action_counts = col_f64(batch, 8)?;
-            let interrupt_counts = col_f64(batch, 9)?;
+            let damage_taken_totals = col_f64(batch, 3)?;
+            let absorbed_totals = col_f64(batch, 4)?;
+            let healing_totals = col_f64(batch, 5)?;
+            let healing_effectives = col_f64(batch, 6)?;
+            let action_counts = col_f64(batch, 7)?;
+            let interrupt_counts = col_f64(batch, 8)?;
 
             for i in 0..batch.num_rows() {
                 let name = names[i].clone();
                 let shield_total = shielding_given.get(&name).copied().unwrap_or(0.0);
+                let threat_total = threat.get(&name).copied().unwrap_or(0.0);
                 // Include shielding in healing totals (shields are pre-emptive healing)
                 let healing_total = healing_totals[i] + shield_total;
                 let healing_effective = healing_effectives[i] + shield_total;
@@ -299,8 +296,8 @@ impl EncounterQuery<'_> {
                     role_icon: None,
                     damage_total: damage_totals[i],
                     dps: damage_totals[i] * 1000.0 / duration_ms as f64,
-                    threat_total: threat_totals[i],
-                    tps: threat_totals[i] * 1000.0 / duration_ms as f64,
+                    threat_total,
+                    tps: threat_total * 1000.0 / duration_ms as f64,
                     damage_taken_total: damage_taken_totals[i],
                     dtps: damage_taken_totals[i] * 1000.0 / duration_ms as f64,
                     aps: absorbed_totals[i] * 1000.0 / duration_ms as f64,

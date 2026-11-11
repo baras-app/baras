@@ -1315,24 +1315,24 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
             // Right column: effects panel (stacked vertically)
             div { class: "effects-panel",
                 // Source filter toggle buttons
-                div { class: "effects-source-filter",
+                div { class: "history-seg seg-fill effects-source-filter",
                     button {
-                        class: if current_sf == "all" { "source-filter-btn active" } else { "source-filter-btn" },
+                        class: if current_sf == "all" { "seg active" } else { "seg" },
                         onclick: move |_| source_filter.set("all".to_string()),
                         "All"
                     }
                     button {
-                        class: if current_sf == "self" { "source-filter-btn active" } else { "source-filter-btn" },
+                        class: if current_sf == "self" { "seg active" } else { "seg" },
                         onclick: move |_| source_filter.set("self".to_string()),
                         "Self"
                     }
                     button {
-                        class: if current_sf == "other_players" { "source-filter-btn active" } else { "source-filter-btn" },
+                        class: if current_sf == "other_players" { "seg active" } else { "seg" },
                         onclick: move |_| source_filter.set("other_players".to_string()),
                         "Player"
                     }
                     button {
-                        class: if current_sf == "npcs" { "source-filter-btn active" } else { "source-filter-btn" },
+                        class: if current_sf == "npcs" { "seg active" } else { "seg" },
                         onclick: move |_| source_filter.set("npcs".to_string()),
                         "NPC"
                     }
