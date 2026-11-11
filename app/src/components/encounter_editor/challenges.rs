@@ -68,7 +68,7 @@ pub fn ChallengesTab(
     rsx! {
         div { class: "challenges-tab",
             // Header
-            div { class: "flex items-center justify-between mb-sm",
+            div { class: "flex items-center justify-between mb-sm editor-tab-header",
                 div { class: "flex items-center gap-sm",
                     span { class: "text-sm text-secondary", "{challenges.len()} challenges" }
                     SortToggle { az: ENCOUNTER_SORT_AZ.signal() }

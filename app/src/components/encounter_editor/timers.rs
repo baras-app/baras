@@ -108,7 +108,7 @@ pub fn TimersTab(
     rsx! {
         div { class: "timers-tab",
             // Header
-            div { class: "flex items-center justify-between mb-sm",
+            div { class: "flex items-center justify-between mb-sm editor-tab-header",
                 div { class: "flex items-center gap-sm",
                     span { class: "text-sm text-secondary", "{timers.len()} timers" }
                     if disabled_count > 0 {

@@ -72,7 +72,7 @@ pub fn PhasesTab(
     rsx! {
         div { class: "phases-tab",
             // Header
-            div { class: "flex items-center justify-between mb-sm",
+            div { class: "flex items-center justify-between mb-sm editor-tab-header",
                 div { class: "flex items-center gap-sm",
                     span { class: "text-sm text-secondary", "{phases.len()} phases" }
                     if disabled_count > 0 {
