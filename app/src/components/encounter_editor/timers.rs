@@ -3,10 +3,11 @@
 //! Full CRUD for boss timers with all fields exposed.
 //! Uses BossTimerDefinition DSL type directly.
 
+use crate::components::editor_sort::{ENCOUNTER_SORT_AZ, SortToggle, apply_rank, use_stable_rank};
 use dioxus::prelude::*;
 
 use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
-use crate::components::editor_common::{FormCard, ItemActions, Origin, OriginBadge};
+use crate::components::editor_common::{ENCOUNTER_ORIGIN, FormCard, ItemActions, Origin, OriginBadge, OriginFilter, origin_counts};
 use crate::api;
 use crate::components::SoundPicker;
 use crate::types::{
@@ -85,17 +86,24 @@ pub fn TimersTab(
 
     // Extract timers from BossWithPath
     let timers = boss_with_path.boss.timers.clone();
+    // A–Z when toggled; renaming leaves the row in place
+    let rank = use_stable_rank(timers.iter().map(|x| (x.id.as_str(), x.name.as_str())), ENCOUNTER_SORT_AZ());
     let builtin_timer_ids = boss_with_path.builtin_timer_ids.clone();
     let modified_timer_ids = boss_with_path.modified_timer_ids.clone();
 
     let disabled_count = timers.iter().filter(|t| !t.enabled).count();
 
     // Filter timers based on toggle
-    let visible_timers: Vec<BossTimerDefinition> = if hide_disabled_timers() {
+    let mut visible_timers: Vec<BossTimerDefinition> = if hide_disabled_timers() {
         timers.iter().filter(|t| t.enabled).cloned().collect()
     } else {
         timers.clone()
     };
+    apply_rank(&mut visible_timers, &rank.read(), |x| &x.id);
+    let origin_of = |id: &str| Origin::of(builtin_timer_ids.iter().any(|b| b == id), modified_timer_ids.iter().any(|m| m == id));
+    let origin_counts = origin_counts(timers.iter().map(|x| origin_of(&x.id)));
+    let origin_filter = ENCOUNTER_ORIGIN();
+    visible_timers.retain(|x| origin_filter.is_none_or(|o| origin_of(&x.id) == o));
 
     rsx! {
         div { class: "timers-tab",
@@ -113,6 +121,10 @@ pub fn TimersTab(
                             "Hide disabled ({disabled_count})"
                         }
                     }
+                    SortToggle { az: ENCOUNTER_SORT_AZ.signal() }
+                    OriginFilter { selected: origin_filter, counts: origin_counts, kind: "timers", on_pick: move |o| *ENCOUNTER_ORIGIN.write() = o }
+                }
+                div { class: "flex items-center gap-sm",
                     if !timers.is_empty() {
                         {
                             let all_hidden = timers.iter().all(|t| t.roles.is_empty());
@@ -146,34 +158,34 @@ pub fn TimersTab(
                             }
                         }
                     }
-                }
-                {
-                    let bwp = boss_with_path.clone();
-                    let timers_for_create = timers.clone();
-                    rsx! {
-                        InlineNameCreator {
-                            button_label: "+ New Timer",
-                            placeholder: "Timer name...",
-                            on_create: move |name: String| {
-                                let timers_clone = timers_for_create.clone();
-                                let boss_id = bwp.boss.id.clone();
-                                let file_path = bwp.file_path.clone();
-                                let timer = default_timer(name);
-                                let item = EncounterItem::Timer(timer);
-                                spawn(async move {
-                                    match api::create_encounter_item(&boss_id, &file_path, &item).await {
-                                        Ok(EncounterItem::Timer(created)) => {
-                                            let created_id = created.id.clone();
-                                            let mut current = timers_clone;
-                                            current.push(created);
-                                            on_change.call(current);
-                                            expanded_timer.set(Some(created_id));
-                                            on_status.call(("Created".to_string(), false));
+                    {
+                        let bwp = boss_with_path.clone();
+                        let timers_for_create = timers.clone();
+                        rsx! {
+                            InlineNameCreator {
+                                button_label: "+ New Timer",
+                                placeholder: "Timer name...",
+                                on_create: move |name: String| {
+                                    let timers_clone = timers_for_create.clone();
+                                    let boss_id = bwp.boss.id.clone();
+                                    let file_path = bwp.file_path.clone();
+                                    let timer = default_timer(name);
+                                    let item = EncounterItem::Timer(timer);
+                                    spawn(async move {
+                                        match api::create_encounter_item(&boss_id, &file_path, &item).await {
+                                            Ok(EncounterItem::Timer(created)) => {
+                                                let created_id = created.id.clone();
+                                                let mut current = timers_clone;
+                                                current.push(created);
+                                                on_change.call(current);
+                                                expanded_timer.set(Some(created_id));
+                                                on_status.call(("Created".to_string(), false));
+                                            }
+                                            Ok(_) => on_status.call(("Unexpected response type".to_string(), true)),
+                                            Err(e) => on_status.call((e, true)),
                                         }
-                                        Ok(_) => on_status.call(("Unexpected response type".to_string(), true)),
-                                        Err(e) => on_status.call((e, true)),
-                                    }
-                                });
+                                    });
+                                }
                             }
                         }
                     }
@@ -185,7 +197,7 @@ pub fn TimersTab(
                 if timers.is_empty() {
                     div { class: "empty-state text-sm", "No timers defined" }
                 } else {
-                    div { class: "empty-state text-sm", "All timers are disabled (toggle above to show)" }
+                    div { class: "empty-state text-sm", "No timers match the filters" }
                 }
             } else {
                 for timer in visible_timers {

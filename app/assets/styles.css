@@ -4371,7 +4371,32 @@ a.contributor-name:hover {
   overflow: hidden;
 }
 
-/* ─── Effects Sidebar Filters (history toolbar controls) ─────────────────────── */
+/* ─── Effects filter bar: pinned above the list (only the list scrolls) ───────── */
+.effect-filter-bar {
+  flex-shrink: 0;
+  margin-bottom: var(--space-sm);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.effect-filter-bar .search-input {
+  flex: 1 1 14em;
+  min-width: 10em;
+  max-width: 22em;
+}
+
+.effect-filter-bar select {
+  min-width: 0;
+  max-width: 14em;
+}
+
+
+.editor-sort-toggle.active {
+  color: var(--text-accent);
+  border-color: var(--border-accent-strong);
+  background: var(--blue-alpha-10);
+}
+
 .history-seg .seg.origin-seg .origin-badge {
   width: 15px;
   height: 15px;

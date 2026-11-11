@@ -3,10 +3,11 @@
 //! CRUD for boss phase definitions.
 //! Uses PhaseDefinition DSL type directly.
 
+use crate::components::editor_sort::{ENCOUNTER_SORT_AZ, SortToggle, apply_rank, use_stable_rank};
 use dioxus::prelude::*;
 
 use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
-use crate::components::editor_common::{FormCard, ItemActions, Origin, OriginBadge};
+use crate::components::editor_common::{ENCOUNTER_ORIGIN, FormCard, ItemActions, Origin, OriginBadge, OriginFilter, origin_counts};
 use crate::api;
 use crate::types::{BossWithPath, Condition, EncounterItem, PhaseDefinition, Trigger};
 
@@ -49,17 +50,24 @@ pub fn PhasesTab(
     let guard = use_drawer_guard();
     // Extract phases and badge IDs from BossWithPath
     let phases = boss_with_path.boss.phases.clone();
+    // A–Z when toggled; renaming leaves the row in place
+    let rank = use_stable_rank(phases.iter().map(|x| (x.id.as_str(), x.name.as_str())), ENCOUNTER_SORT_AZ());
     let builtin_phase_ids = boss_with_path.builtin_phase_ids.clone();
     let modified_phase_ids = boss_with_path.modified_phase_ids.clone();
 
     let disabled_count = phases.iter().filter(|p| !p.enabled).count();
 
     // Filter phases based on toggle
-    let visible_phases: Vec<PhaseDefinition> = if hide_disabled_phases() {
+    let mut visible_phases: Vec<PhaseDefinition> = if hide_disabled_phases() {
         phases.iter().filter(|p| p.enabled).cloned().collect()
     } else {
         phases.clone()
     };
+    apply_rank(&mut visible_phases, &rank.read(), |x| &x.id);
+    let origin_of = |id: &str| Origin::of(builtin_phase_ids.iter().any(|b| b == id), modified_phase_ids.iter().any(|m| m == id));
+    let origin_counts = origin_counts(phases.iter().map(|x| origin_of(&x.id)));
+    let origin_filter = ENCOUNTER_ORIGIN();
+    visible_phases.retain(|x| origin_filter.is_none_or(|o| origin_of(&x.id) == o));
 
     rsx! {
         div { class: "phases-tab",
@@ -77,6 +85,8 @@ pub fn PhasesTab(
                             "Hide disabled ({disabled_count})"
                         }
                     }
+                    SortToggle { az: ENCOUNTER_SORT_AZ.signal() }
+                    OriginFilter { selected: origin_filter, counts: origin_counts, kind: "phases", on_pick: move |o| *ENCOUNTER_ORIGIN.write() = o }
                 }
                 {
                     let bwp = boss_with_path.clone();
@@ -116,7 +126,7 @@ pub fn PhasesTab(
                 if phases.is_empty() {
                     div { class: "empty-state text-sm", "No phases defined" }
                 } else {
-                    div { class: "empty-state text-sm", "All phases are disabled (toggle above to show)" }
+                    div { class: "empty-state text-sm", "No phases match the filters" }
                 }
             } else {
                 for phase in visible_phases {

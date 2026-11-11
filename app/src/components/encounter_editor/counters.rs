@@ -3,10 +3,11 @@
 //! CRUD for boss counter definitions.
 //! Uses CounterDefinition DSL type directly.
 
+use crate::components::editor_sort::{ENCOUNTER_SORT_AZ, SortToggle, apply_rank, use_stable_rank};
 use dioxus::prelude::*;
 
 use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
-use crate::components::editor_common::{FormCard, ItemActions, Origin, OriginBadge};
+use crate::components::editor_common::{ENCOUNTER_ORIGIN, FormCard, ItemActions, Origin, OriginBadge, OriginFilter, origin_counts};
 use crate::api;
 use crate::types::{
     BossWithPath, CounterDefinition, EffectSelector, EffectStackConfig, EncounterItem,
@@ -56,17 +57,24 @@ pub fn CountersTab(
     let guard = use_drawer_guard();
     // Extract counters and badge IDs from BossWithPath
     let counters = boss_with_path.boss.counters.clone();
+    // A–Z when toggled; renaming leaves the row in place
+    let rank = use_stable_rank(counters.iter().map(|x| (x.id.as_str(), x.name.as_str())), ENCOUNTER_SORT_AZ());
     let builtin_counter_ids = boss_with_path.builtin_counter_ids.clone();
     let modified_counter_ids = boss_with_path.modified_counter_ids.clone();
 
     let disabled_count = counters.iter().filter(|c| !c.enabled).count();
 
     // Filter counters based on toggle
-    let visible_counters: Vec<CounterDefinition> = if hide_disabled_counters() {
+    let mut visible_counters: Vec<CounterDefinition> = if hide_disabled_counters() {
         counters.iter().filter(|c| c.enabled).cloned().collect()
     } else {
         counters.clone()
     };
+    apply_rank(&mut visible_counters, &rank.read(), |x| &x.id);
+    let origin_of = |id: &str| Origin::of(builtin_counter_ids.iter().any(|b| b == id), modified_counter_ids.iter().any(|m| m == id));
+    let origin_counts = origin_counts(counters.iter().map(|x| origin_of(&x.id)));
+    let origin_filter = ENCOUNTER_ORIGIN();
+    visible_counters.retain(|x| origin_filter.is_none_or(|o| origin_of(&x.id) == o));
 
     rsx! {
         div { class: "counters-tab",
@@ -84,6 +92,8 @@ pub fn CountersTab(
                             "Hide disabled ({disabled_count})"
                         }
                     }
+                    SortToggle { az: ENCOUNTER_SORT_AZ.signal() }
+                    OriginFilter { selected: origin_filter, counts: origin_counts, kind: "counters", on_pick: move |o| *ENCOUNTER_ORIGIN.write() = o }
                 }
                 {
                     let bwp = boss_with_path.clone();
@@ -123,7 +133,7 @@ pub fn CountersTab(
                 if counters.is_empty() {
                     div { class: "empty-state text-sm", "No counters defined" }
                 } else {
-                    div { class: "empty-state text-sm", "All counters are disabled (toggle above to show)" }
+                    div { class: "empty-state text-sm", "No counters match the filters" }
                 }
             } else {
                 for counter in visible_counters {

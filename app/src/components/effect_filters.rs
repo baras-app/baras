@@ -1,18 +1,15 @@
-//! Effects editor sidebar, laid out like the History filter toolbar: an
-//! origin toggle, overlay and discipline dropdowns, Clear, then the name
-//! search. Counts apply the search and the other filters, so they show what
+//! Effects editor filter bar, pinned above the list in one row: the name
+//! search, an origin toggle, overlay and discipline dropdowns, then Clear. Counts apply the search and the other filters, so they show what
 //! picking that value would leave.
 
 use dioxus::prelude::*;
 
-use super::editor_common::{Origin, OriginBadge};
-use super::sidebar_header::SidebarHeader;
+use super::editor_common::{ORIGINS, Origin, OriginFilter};
 use super::effect_editor::{ALL_DISCIPLINES, ALL_ROLES, effect_origin};
 use crate::types::{DisplayTarget, EffectFilters, EffectListItem};
 
 const NO_OVERLAY: &str = "No overlay";
 const UNRESTRICTED: &str = "Unrestricted";
-const ORIGINS: [Origin; 3] = [Origin::Custom, Origin::Modified, Origin::Builtin];
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Section {
@@ -122,73 +119,38 @@ fn count(f: &EffectFilters, effects: &[EffectListItem], section: Section, value:
 
 /// `effects` is the list after the name search and hide-disabled toggle
 #[component]
-pub fn EffectSidebar(
-    effects: Memo<Vec<EffectListItem>>,
-    filters: Signal<EffectFilters>,
-    search: Signal<String>,
-    collapsed: Signal<bool>,
-) -> Element {
+pub fn EffectFilterBar(effects: Memo<Vec<EffectListItem>>, filters: Signal<EffectFilters>, search: Signal<String>) -> Element {
     let f = filters.read().clone();
     let list = effects.read();
     let active = SECTIONS.iter().filter(|s| s.selected(&f).is_some()).count();
     let origin = f.origin.clone();
 
     rsx! {
-        aside { class: "explorer-sidebar", class: if collapsed() { "collapsed" },
-            SidebarHeader {
-                icon: "fa-solid fa-filter",
-                title: "Filters",
-                collapsed: collapsed(),
-                on_toggle: move |_| collapsed.toggle(),
-                // Folded, still say that filters are narrowing the list
-                badge: (active > 0).then(|| active.to_string()),
+        div { class: "history-toolbar effect-filter-bar",
+            input {
+                class: "search-input",
+                r#type: "text",
+                placeholder: "Search by name...",
+                value: "{search}",
+                oninput: move |e| search.set(e.value()),
             }
-            if !collapsed() {
-                div { class: "history-toolbar",
-                    // Nothing lit means any origin; clicking the lit one clears it
-                    div { class: "history-seg", title: "Where the effect comes from",
-                        for o in ORIGINS {
-                            {
-                                let label = o.label();
-                                let lit = origin.as_deref() == Some(label);
-                                let n = count(&f, &list, Section::Origin, label);
-                                rsx! {
-                                    button {
-                                        class: "seg origin-seg {o.css_class()}",
-                                        class: if lit { "active" },
-                                        title: "{n} effects",
-                                        onclick: move |_| filters.write().origin = (!lit).then(|| label.to_string()),
-                                        OriginBadge { origin: o, kind: "effect" }
-                                        " {label}"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    FilterSelect { section: Section::Overlay, any: "Any overlay", effects, filters }
-                    FilterSelect { section: Section::Discipline, any: "Any discipline", effects, filters }
-                    div { class: "history-actions",
-                        button {
-                            class: "btn btn-xs history-clear",
-                            class: if active > 0 { "active" },
-                            disabled: active == 0,
-                            title: "Show every effect: any origin, overlay and discipline",
-                            onclick: move |_| filters.set(EffectFilters::default()),
-                            i { class: "fa-solid fa-filter-circle-xmark" }
-                            " Clear filters"
-                            if active > 0 { span { class: "history-more-count", "{active}" } }
-                        }
-                    }
-                }
-                div { class: "sidebar-search",
-                    input {
-                        class: "search-input",
-                        r#type: "text",
-                        placeholder: "Search by name...",
-                        value: "{search}",
-                        oninput: move |e| search.set(e.value()),
-                    }
-                }
+            OriginFilter {
+                selected: ORIGINS.into_iter().find(|o| origin.as_deref() == Some(o.label())),
+                counts: ORIGINS.map(|o| count(&f, &list, Section::Origin, o.label())),
+                kind: "effects",
+                on_pick: move |o: Option<Origin>| filters.write().origin = o.map(|o| o.label().to_string()),
+            }
+            FilterSelect { section: Section::Overlay, any: "Any overlay", effects, filters }
+            FilterSelect { section: Section::Discipline, any: "Any discipline", effects, filters }
+            button {
+                class: "btn btn-xs history-clear",
+                class: if active > 0 { "active" },
+                disabled: active == 0,
+                title: "Show every effect: any origin, overlay and discipline",
+                onclick: move |_| filters.set(EffectFilters::default()),
+                i { class: "fa-solid fa-filter-circle-xmark" }
+                " Clear filters"
+                if active > 0 { span { class: "history-more-count", "{active}" } }
             }
         }
     }

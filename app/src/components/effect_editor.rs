@@ -13,7 +13,8 @@ use super::encounter_editor::InlineNameCreator;
 use super::encounter_editor::triggers::{
     EffectSelectorEditor, EntityFilterDropdown,
 };
-use crate::components::effect_sidebar::{EffectSidebar, matches_filters};
+use crate::components::effect_filters::{EffectFilterBar, matches_filters};
+use crate::components::editor_sort::{apply_rank, use_stable_rank};
 use crate::components::editor_common::{FormCard, ItemActions, Origin, OriginBadge};
 use crate::api;
 use super::sound_picker::SoundPicker;
@@ -336,7 +337,6 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
     let mut expanded_effect = use_signal(|| props.state.read().effects_editor.expanded_effect.clone());
     let mut hide_disabled_effects = use_signal(|| props.state.read().effects_editor.hide_disabled_effects);
     let filters = use_signal(|| props.state.read().effects_editor.filters.clone());
-    let sidebar_collapsed = use_signal(|| props.state.read().effects_editor.sidebar_collapsed);
 
     // Sync persisted state back to unified state
     use_effect(move || {
@@ -345,7 +345,6 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
         state.effects_editor.expanded_effect = expanded_effect.read().clone();
         state.effects_editor.hide_disabled_effects = *hide_disabled_effects.read();
         state.effects_editor.filters = filters.read().clone();
-        state.effects_editor.sidebar_collapsed = *sidebar_collapsed.read();
     });
 
     // Load effects on mount
@@ -390,6 +389,10 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
         let f = filters.read();
         searched_effects().into_iter().filter(|e| matches_filters(&f, e)).collect::<Vec<_>>()
     });
+    // Always A–Z (the backend order is arbitrary); a rename keeps its row in place
+    let rank = use_stable_rank(effects.read().iter().map(|e| (e.id.as_str(), e.name.as_str())), true);
+    let mut shown_effects = filtered_effects();
+    apply_rank(&mut shown_effects, &rank.read(), |e| &e.id);
 
     // Handlers
     let on_save = move |updated_effect: EffectListItem| {
@@ -555,7 +558,6 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
     rsx! {
         div { class: "editor-layout", style: layout_style(),
             DiscardPrompt {}
-            EffectSidebar { effects: searched_effects, filters, search: search_query, collapsed: sidebar_collapsed }
             div { class: "editor-main effect-editor-panel",
                 // Header
                 div { class: "effect-editor-header",
@@ -646,6 +648,8 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                     }
                 }
 
+                EffectFilterBar { effects: searched_effects, filters, search: search_query }
+
                 // Effect list (flat)
                 if loading() {
                     div { class: "empty-state", "Loading effects..." }
@@ -686,7 +690,7 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                         }
 
                         // Existing effects
-                        for effect in filtered_effects() {
+                        for effect in shown_effects {
                             {
                                 let effect_key = effect.id.clone();
                                 let is_effect_expanded = expanded_effect() == Some(effect_key.clone());
