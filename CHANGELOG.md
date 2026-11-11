@@ -1,3 +1,53 @@
+# v2026.11.11
+
+## General
+
+- **Player threat totals are now floored at 0. Threat will no longer display as negative.**
+- Added Overlay settings for toggling FPS for countdown overlays
+- Light mode support improved
+- Header bar reformatted
+- General UI polishing
+
+## Data Explorer
+
+- New raid metrics chart added to overview page
+- New Effects Uptime interactive page added
+- Death Recap window changed to side panel instead of pop-up
+- Ability name faction toggles moved to relevant pages
+- Fixed bug causing timeline colors failing to appear when switching between encounters
+
+## Encounter/Effects Editors
+
+- Icons now visible in table
+- Added basic filters and sorting to editing card
+- Fixed issue preventing editor drawer from expanding
+- Deprecated timer chains to and counter decremental and set value fields
+- Updated formatting of all editor cards
+
+## Boss Statistics
+
+- Split metrics line graphs by role
+- Added ability to hide pulls
+
+## Raid Summaries
+
+- Flashpoints now start at area entrance instead of first boss pull (requires log data to be rescanned)
+- Include flashpoints is now a persistent toggle
+- Add filter for successful timer runs
+- Reformatted summary tables
+- Added ability to hide entries
+- All roles/disciplines played on a character are now visible
+
+## Log Management
+
+- Removed columns file name, status
+- Reordered table columns
+- Fixed issue causing deleted files to be marked as needing scanning
+
+## Characters
+
+- The difficulty filter on the lockouts tab now persists across sessions
+
 # v2026.11.9
 
 - Light Mode Added (beta)
