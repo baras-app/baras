@@ -740,7 +740,7 @@ display_text = "Shotroll"
 trigger = { type = "combat_start" }
 duration_secs = 48.0
 color = [18, 116, 26, 255]
-icon_ability_id = 4335425887928320
+icon_ability_id = 4336065838055424
 difficulties = ["veteran"]
 
 [[boss.timer]]
@@ -756,6 +756,7 @@ difficulties = ["master"]
 [[boss.timer]]
 id = "huntmaster_primal_fear_1st_vm"
 name = "Primal Fear CS VM"
+display_text = "Primal Fear"
 trigger = { type = "combat_start" }
 duration_secs = 36.0
 color = [150, 0, 255, 255]
@@ -769,11 +770,13 @@ display_text = "Shotroll"
 trigger = { type = "combat_start" }
 duration_secs = 54.0
 color = [18, 116, 26, 255]
+icon_ability_id = 4336065838055424
 difficulties = ["master"]
 
 [[boss.timer]]
 id = "huntmaster_penetratign_shot_p3_vm"
 name = "Penetrating Shot P3 VM"
+display_text = "Penetrating Shot"
 trigger = { type = "timer_expires", timer_id = "huntmaster_p3_jump" }
 duration_secs = 12.0
 color = [255, 100, 100, 255]
@@ -783,9 +786,11 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "huntmaster_p3_jump"
 name = "P3 jump"
+display_text = "Holdout Ends"
 trigger = { type = "ability_cast", abilities = [4277787426816000] }
 duration_secs = 43.0
 color = [100, 149, 237, 255]
+icon_ability_id = 4271065802997760
 difficulties = ["veteran", "master"]
 
 [[boss.timer]]
@@ -848,6 +853,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "huntmaster_scat_pv_pen"
 name = "Scat/PV/Pen"
+display_text = "PV OR Scatter OR Pen"
 trigger = { type = "ability_cast", abilities = [4387871733579776] }
 duration_secs = 25.0
 color = [175, 0, 0, 255]
@@ -856,6 +862,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "huntmaster_powershot_volley_1st"
 name = "Powershot Volley 1st"
+display_text = "Powershot Volley"
 trigger = { type = "combat_start" }
 duration_secs = 8.0
 color = [0, 75, 150, 255]
@@ -867,13 +874,14 @@ id = "huntmaster_powershot_volley"
 name = "Powershot Volley"
 trigger = { type = "ability_cast", abilities = [4269773017841664] }
 duration_secs = 53.1
-color = [0, 75, 150, 255]
+color = [26, 95, 180, 255]
 icon_ability_id = 4269773017841664
 difficulties = ["veteran", "master"]
 
 [[boss.timer]]
 id = "huntmaster_powershot_scatter_p3_vm"
 name = "Powershot/Scatter P3 VM"
+display_text = "P.Volley OR Scatter"
 trigger = { type = "timer_expires", timer_id = "huntmaster_p3_jump" }
 duration_secs = 48.0
 color = [175, 0, 0, 255]
@@ -882,6 +890,7 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "huntmaster_egg_snipe_p3"
 name = "Egg Snipe P3"
+display_text = "Egg Snipe"
 trigger = { type = "timer_expires", timer_id = "huntmaster_p3_jump" }
 duration_secs = 28.0
 color = [255, 50, 255, 255]
@@ -890,7 +899,8 @@ difficulties = ["master"]
 
 [[boss.timer]]
 id = "huntmaster_penetratign_shot_p3"
-name = "Penetratign Shot P3"
+name = "Penetrating Shot P3"
+display_text = "Penetrating Shot"
 trigger = { type = "timer_expires", timer_id = "huntmaster_p3_jump" }
 duration_secs = 6.0
 color = [255, 100, 100, 255]
@@ -900,6 +910,7 @@ difficulties = ["master"]
 [[boss.timer]]
 id = "huntmaster_primal_fear_p3"
 name = "Primal Fear P3"
+display_text = "Primal Fear"
 trigger = { type = "timer_expires", timer_id = "huntmaster_p3_jump" }
 duration_secs = 34.0
 color = [150, 0, 255, 255]
@@ -909,6 +920,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "huntmaster_egg_snipe_1st"
 name = "Egg Snipe 1st"
+display_text = "Egg Snipe"
 trigger = { type = "combat_start" }
 duration_secs = 36.0
 color = [255, 50, 255, 255]
@@ -918,9 +930,11 @@ difficulties = ["master"]
 [[boss.timer]]
 id = "huntmaster_scatterblast_1st"
 name = "Scatterblast 1st"
+display_text = "Scatterblast"
 trigger = { type = "combat_start" }
 duration_secs = 24.0
 color = [201, 197, 45, 255]
+icon_ability_id = 4335125240217600
 difficulties = ["veteran", "master"]
 
 [[boss.timer]]
@@ -935,6 +949,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "huntmaster_penetrating_shot_1st"
 name = "Penetrating Shot 1st"
+display_text = "Penetrating Shot"
 trigger = { type = "combat_start" }
 duration_secs = 20.0
 color = [255, 100, 100, 255]
@@ -962,6 +977,7 @@ difficulties = ["master"]
 [[boss.timer]]
 id = "huntmaster_primal_fear_vm"
 name = "Primal Fear VM"
+display_text = "Primal Fear"
 trigger = { type = "ability_cast", abilities = [4335425887928320] }
 duration_secs = 34.0
 color = [150, 0, 255, 255]
@@ -971,6 +987,7 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "huntmaster_power_scater"
 name = "Power/Scatter"
+display_text = "P.Volley OR Scatter"
 trigger = { type = "ability_cast", abilities = [4336065838055424] }
 duration_secs = 16.0
 color = [175, 0, 0, 255]
