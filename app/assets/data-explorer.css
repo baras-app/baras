@@ -1239,15 +1239,16 @@
   flex-shrink: 0;
 }
 
+/* Sized to its rows; shrinks (and scrolls) only when the drawer is too short */
 .death-recap-body .recap-content > .recap-ledger-wrap {
-  flex: 1 1 0;
+  flex: 0 1 auto;
   min-height: 6em;
   display: flex;
   flex-direction: column;
 }
 
 .death-recap-body .recap-ledger {
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
 }
 

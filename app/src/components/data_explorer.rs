@@ -1986,7 +1986,11 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                         button {
                                                             class: "{class}",
                                                             title: "Click for death recap",
-                                                            onclick: move |_| recap_death.set(Some(d.clone())),
+                                                            // Same death again closes the drawer; another one switches to it
+                                                            onclick: move |_| {
+                                                                let open = recap_death.peek().as_ref() == Some(&d);
+                                                                recap_death.set((!open).then(|| d.clone()));
+                                                            },
                                                             span { class: "death-name", "{name}" }
                                                             span { class: "death-time", "@ {time_str}" }
                                                         }
