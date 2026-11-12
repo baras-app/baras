@@ -401,6 +401,7 @@ id = "zorn_toth_drouks_enrage"
 name = "Drouks Enrage"
 duration_secs = 310.0
 color = [200, 0, 0, 255]
+icon_ability_id = 2698025440903168
 difficulties = ["veteran", "master"]
 group_size = 8
 show_at_secs = 60.0
@@ -418,6 +419,7 @@ name = "Drouks Enrage 16m"
 display_text = "Drouks Enrage"
 duration_secs = 320.0
 color = [200, 0, 0, 255]
+icon_ability_id = 2698025440903168
 difficulties = ["veteran", "master"]
 group_size = 16
 show_at_secs = 60.0
@@ -587,6 +589,7 @@ is_alert = true
 trigger = { type = "boss_hp_below", hp_percent = 5.0, selector = ["Toth"] }
 alert_text = "Soft Enrage"
 color = [219, 31, 28, 255]
+icon_ability_id = 2698025440903168
 difficulties = ["veteran", "master"]
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -743,6 +746,7 @@ id = "firebrand_stormcaller_enrage"
 name = "Enrage"
 duration_secs = 380.0
 color = [200, 0, 0, 255]
+icon_ability_id = 2698025440903168
 difficulties = ["veteran", "master"]
 group_size = 8
 show_at_secs = 60.0
@@ -756,6 +760,7 @@ name = "Enrage 16m"
 display_text = "Enrage"
 duration_secs = 460.0
 color = [200, 0, 0, 255]
+icon_ability_id = 2698025440903168
 difficulties = ["veteran", "master"]
 group_size = 16
 show_at_secs = 60.0
@@ -769,7 +774,7 @@ id = "fs_shield_dps"
 name = "Shield DPS"
 metric = "damage"
 color = [100, 210, 237, 255]
-columns = "total_percent"
+columns = "total_only"
 
 [[boss.challenges.conditions]]
 type = "target"
@@ -848,7 +853,7 @@ display_text = "Double Destruction"
 icon_ability_id = 2876691785449472
 trigger = { type = "phase_ended", phase_id = "fs_shield" }
 duration_secs = 15
-color = [219, 28, 29, 255]
+color = [153, 193, 241, 255]
 difficulties = ["veteran", "master"]
 cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
 
@@ -1105,6 +1110,7 @@ id = "cv_minefield_enrage_hm"
 name = "Minefield Enrage (HM)"
 display_text = "Minefield Enrage"
 color = [214, 37, 32, 255]
+icon_ability_id = 2698025440903168
 difficulties = ["veteran"]
 duration_secs = 285
 show_at_secs = 120.0
@@ -1116,11 +1122,23 @@ id = "cv_minefield_enrage_nim"
 name = "Minefield Enrage (NiM)"
 display_text = "Minefield Enrage"
 color = [214, 37, 32, 255]
+icon_ability_id = 2698025440903168
 difficulties = ["master"]
 duration_secs = 330
 show_at_secs = 120.0
 trigger = { type = "combat_start" }
 cancel_trigger = { type = "phase_entered", phase_id = "cv_vorgath" }
+
+# -- Challenges --
+[[boss.challenges]]
+id = "colonel_vorgath_interrupts"
+name = "Interrupts"
+metric = "interrupt_count"
+columns = "total_only"
+
+[[boss.challenges.conditions]]
+type = "ability"
+ability_ids = [2853022220681216, 2853043695517696]
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 4: Warlord Kephess
@@ -1314,6 +1332,7 @@ id = "warlord_kephess_walker_enrage"
 name = "Walker Enrage"
 duration_secs = 450.0
 color = [200, 0, 0, 255]
+icon_ability_id = 2698025440903168
 difficulties = ["veteran", "master"]
 group_size = 8
 show_at_secs = 60.0
@@ -1331,6 +1350,7 @@ name = "Walker Enrage 16m"
 display_text = "Walker Enrage"
 duration_secs = 510.0
 color = [200, 0, 0, 255]
+icon_ability_id = 2698025440903168
 difficulties = ["veteran", "master"]
 group_size = 16
 show_at_secs = 60.0
@@ -1344,10 +1364,11 @@ selector = ["Warstrider Battlewalker"]
 
 [[boss.timer]]
 id = "wk_baradium_countdown"
-name = "Bomber Countdown"
+name = "Bomber Explodes"
 trigger = { type = "npc_appears", selector = ["Baradium Bomber"] }
 cancel_trigger = { type = "entity_death", selector = ["Baradium Bomber"] }
 duration_secs = 20.0
+color = [255, 128, 0, 255]
 icon_ability_id = 2877026792898560
 difficulties = ["veteran", "master"]
 
