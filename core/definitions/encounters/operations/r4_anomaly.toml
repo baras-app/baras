@@ -22,6 +22,18 @@ name = "IP-CPT"
 difficulties = ["story", "veteran"]
 
 [[boss.entities]]
+name = "Inferno Enforcer"
+ids = [4480200645541888]
+is_boss = true
+triggers_encounter = false
+
+[[boss.entities]]
+name = "Overload Enforcer"
+ids = [4480196350574592]
+is_boss = true
+triggers_encounter = false
+
+[[boss.entities]]
 name = "IP-CPT"
 ids = [4494653210492928, 4467247024177152]
 is_boss = true
@@ -30,7 +42,7 @@ is_kill_target = true
 # -- Hp markers
 [[boss.entities.hp_markers]]
 hp_percent = 75.0
-label = "Goes up"
+label = "Withdraws"
 
 [[boss.entities.hp_markers.conditions]]
 type = "phase_active"
@@ -38,7 +50,7 @@ phase_ids = ["ip_main"]
 
 [[boss.entities.hp_markers]]
 hp_percent = 50.0
-label = "Goes up"
+label = "Withdraws"
 
 [[boss.entities.hp_markers.conditions]]
 type = "phase_active"
@@ -46,7 +58,7 @@ phase_ids = ["ip_main"]
 
 [[boss.entities.hp_markers]]
 hp_percent = 25.0
-label = "Goes up"
+label = "Withdraws"
 
 [[boss.entities.hp_markers.conditions]]
 type = "phase_active"
@@ -169,6 +181,7 @@ phase_id = "ip_bombs"
 [[boss.timer]]
 id = "ip_cpt_big_grenade"
 name = "Big Grenade"
+display_text = "Grenade Explodes"
 trigger = { type = "effect_applied", effects = [
   4471271408533778,
 ], target = "local_player" }
@@ -182,7 +195,7 @@ difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "ip_cpt_back_wall_not_safe"
-name = "Back wall not safe"
+name = "Back Wall Not Safe"
 duration_secs = 8.5
 color = [255, 128, 0, 255]
 icon_ability_id = 4471271408533778
@@ -204,7 +217,7 @@ value = 18
 
 [[boss.timer]]
 id = "ip_cpt_side_wall_not_safe"
-name = "Side wall not safe"
+name = "Side Wall Not Safe"
 duration_secs = 8.5
 color = [255, 128, 0, 255]
 icon_ability_id = 4471271408533778
@@ -226,7 +239,7 @@ value = 16
 
 [[boss.timer]]
 id = "ip_cpt_exit_not_safe"
-name = "Exit not safe"
+name = "Exit Not Safe"
 duration_secs = 8.5
 color = [255, 128, 0, 255]
 icon_ability_id = 4471271408533778
@@ -240,7 +253,7 @@ value = 10
 
 [[boss.timer]]
 id = "ip_cpt_entrance_not_safe"
-name = "Entrance not safe"
+name = "Entrance Not Safe"
 duration_secs = 8.5
 color = [255, 128, 0, 255]
 icon_ability_id = 4471271408533778
@@ -352,7 +365,7 @@ timer_id = "ip_cpt_4th_intrusion_units"
 
 [[boss.timer]]
 id = "ip_cpt_bomb_explosion"
-name = "Bomb explosion"
+name = "Intrusion Units Explode"
 duration_secs = 31.0
 alert_on = "countdown"
 alert_countdown_secs = 3.0
@@ -411,10 +424,11 @@ timer_id = "ip_cpt_bomb_explosion"
 [[boss.timer]]
 id = "ip_cpt_boss_returning"
 name = "Boss returning"
+display_text = "Boss Returns"
 duration_secs = 44.5
 color = [200, 0, 255, 255]
 difficulties = ["story", "veteran"]
-show_at_secs = 10.0
+show_at_secs = 20.0
 
 [boss.timer.trigger]
 type = "any_of"
@@ -430,11 +444,12 @@ timer_id = "ip_cpt_4th_intrusion_units"
 [[boss.timer]]
 id = "ip_cpt_boss_returning_burn_start"
 name = "Boss returning, Burn start"
-display_text = "Burn start"
+display_text = "Burn Start"
 duration_secs = 102.5
 color = [200, 0, 255, 255]
+icon_ability_id = 4471730970034176
 difficulties = ["story", "veteran"]
-show_at_secs = 10.0
+show_at_secs = 20.0
 
 [boss.timer.trigger]
 type = "timer_expires"
