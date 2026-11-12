@@ -356,7 +356,7 @@ pub fn PvpTab(european: bool, backfill: Backfill) -> Element {
                                     let with = names(r, true).join(", ");
                                     let against = names(r, false).join(", ");
                                     rsx! {
-                                        tr { key: "{r.filename}:{r.start_ms}",
+                                        tr { key: "{r.filename}:{r.encounter_id}",
                                             td { {short_ts(&r.timestamp)} }
                                             td { "{r.map}" }
                                             if is_arena { td { span { class: "{class}", "{label}" } } }

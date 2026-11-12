@@ -229,8 +229,10 @@ impl ServiceHandle {
                     }
                 })
                 .collect();
-            // Archived logs are no longer in the directory; the areas moved with them
-            for a in baras_core::library::archived_logs() {
+            // Archived logs are no longer in the directory; the areas moved with them.
+            // A log both on disk and archived (interrupted archive, manual copy) lists once, as the on-disk file
+            let on_disk: std::collections::HashSet<String> = rows_out.iter().map(|r| r.filename.clone()).collect();
+            for a in baras_core::library::archived_logs().into_iter().filter(|a| !on_disk.contains(&a.filename)) {
                 let info = pulls.log_info(&a.filename);
                 let rows = info.map_or(&[][..], |(r, _)| r);
                 let status = if info.is_some_and(|(_, stale)| stale) { LogStatus::ArchivedStale } else { LogStatus::Archived };

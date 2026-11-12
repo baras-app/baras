@@ -11,28 +11,30 @@ use crate::utils::js_set;
 
 #[wasm_bindgen]
 extern "C" {
-    #[wasm_bindgen(js_namespace = echarts, js_name = init)]
-    fn echarts_init(dom: &web_sys::Element) -> JsValue;
+    // `catch`: when the CDN script failed to load, `echarts` is undefined and
+    // the ReferenceError would otherwise unwind through wasm and wedge the UI
+    #[wasm_bindgen(catch, js_namespace = echarts, js_name = init)]
+    fn echarts_init(dom: &web_sys::Element) -> Result<JsValue, JsValue>;
 
-    #[wasm_bindgen(js_namespace = echarts, js_name = getInstanceByDom)]
-    pub fn echarts_get_instance(dom: &web_sys::Element) -> JsValue;
+    #[wasm_bindgen(catch, js_namespace = echarts, js_name = getInstanceByDom)]
+    fn echarts_get_instance(dom: &web_sys::Element) -> Result<JsValue, JsValue>;
 }
 
 /// The instance bound to `element_id`, creating one if needed. None when the
 /// element is not in the DOM (yet).
 pub fn init_chart(element_id: &str) -> Option<JsValue> {
     let element = web_sys::window()?.document()?.get_element_by_id(element_id)?;
-    let existing = echarts_get_instance(&element);
+    let existing = echarts_get_instance(&element).ok()?;
     if !existing.is_null() && !existing.is_undefined() {
         return Some(existing);
     }
-    Some(echarts_init(&element))
+    echarts_init(&element).ok()
 }
 
 /// An already-initialized instance for `element_id`; never creates one.
 pub fn get_chart(element_id: &str) -> Option<JsValue> {
     let element = web_sys::window()?.document()?.get_element_by_id(element_id)?;
-    let existing = echarts_get_instance(&element);
+    let existing = echarts_get_instance(&element).ok()?;
     (!existing.is_null() && !existing.is_undefined()).then_some(existing)
 }
 

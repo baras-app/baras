@@ -173,7 +173,7 @@ pub fn roster(
                         .into_iter()
                         .map(|t| TierBosses {
                             // Config keys are lowercase; rows and lockouts use the capitalized word
-                            tier: format!("{}{}", t[..1].to_uppercase(), &t[1..]),
+                            tier: capitalize(t),
                             bosses: a.bosses_at(t, 8).chain(a.bosses_at(t, 16)).map(|b| b.name.clone()).fold(Vec::new(), |mut v, n| {
                                 if !v.contains(&n) {
                                     v.push(n);
@@ -195,4 +195,10 @@ pub fn roster(
         next_weekly_reset_ms: next_reset(now_ms, true, store.reset_hour_utc),
         next_daily_reset_ms: next_reset(now_ms, false, store.reset_hour_utc),
     }
+}
+
+/// First letter uppercased; char-safe for empty or non-ASCII config keys
+fn capitalize(s: &str) -> String {
+    let mut chars = s.chars();
+    chars.next().map_or_else(String::new, |c| c.to_uppercase().chain(chars).collect())
 }

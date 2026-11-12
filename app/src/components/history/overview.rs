@@ -340,7 +340,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                         let (label, class) = result_badge(row, eu);
                                         rsx! {
                                             tr {
-                                                key: "{row.filename}:{row.start_ms}",
+                                                key: "{row.filename}:{row.encounter_id}",
                                                 class: if row.hidden { "pull-hidden" } else { "" },
                                                 td { {short_ts(&row.timestamp)} }
                                                 td {

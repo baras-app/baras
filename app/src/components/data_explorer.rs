@@ -56,35 +56,6 @@ struct OverviewTableData {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ECharts JS Interop (used by usage-timeline chart)
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = echarts, js_name = init)]
-    fn echarts_init(dom: &web_sys::Element) -> JsValue;
-
-    #[wasm_bindgen(js_namespace = echarts, js_name = getInstanceByDom)]
-    fn echarts_get_instance(dom: &web_sys::Element) -> JsValue;
-}
-
-fn init_overview_chart(element_id: &str) -> Option<JsValue> {
-    let window = web_sys::window()?;
-    let document = window.document()?;
-    let element = document.get_element_by_id(element_id)?;
-
-    // Check if instance already exists
-    let existing = echarts_get_instance(&element);
-    if !existing.is_null() && !existing.is_undefined() {
-        return Some(existing);
-    }
-
-    Some(echarts_init(&element))
-}
-
-
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Helper Functions
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -3602,7 +3573,7 @@ fn UsageTab(
         // Defer chart init to ensure the DOM has been updated with visible dimensions
         spawn(async move {
             gloo_timers::future::TimeoutFuture::new(100).await;
-            if let Some(chart) = init_overview_chart("usage-timeline-chart") {
+            if let Some(chart) = crate::components::echarts::init_chart("usage-timeline-chart") {
                 // Resize first so ECharts picks up the current container dimensions
                 let resize_fn = js_sys::Reflect::get(&chart, &JsValue::from_str("resize"))
                     .ok()
