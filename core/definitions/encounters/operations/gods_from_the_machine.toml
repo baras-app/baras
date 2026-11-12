@@ -718,22 +718,6 @@ label = "Empowered Shield"
 difficulties = ["veteran", "master"]
 
 [[boss.entities]]
-name = "Nexus"
-ids = [4101564918661120]
-is_boss = true
-is_kill_target = false
-
-[[boss.entities.hp_markers]]
-hp_percent = 50.0
-label = "Aivela & Esne"
-difficulties = ["story", "veteran"]
-
-[[boss.entities.hp_markers]]
-hp_percent = 33.3
-label = "Aivela & Esne"
-difficulties = ["master"]
-
-[[boss.entities]]
 name = "ESNE"
 ids = [4088538282852352]
 is_boss = true
@@ -757,6 +741,29 @@ difficulties = ["story"]
 hp_percent = 7.5
 label = "Empowered Shield"
 difficulties = ["veteran", "master"]
+
+[[boss.entities]]
+name = "Nexus"
+ids = [4101564918661120]
+is_boss = true
+is_kill_target = false
+
+[[boss.entities.hp_markers]]
+hp_percent = 50.0
+label = "Aivela & Esne"
+difficulties = ["story", "veteran"]
+
+[[boss.entities.hp_markers]]
+hp_percent = 33.3
+label = "Aivela & Esne"
+difficulties = ["master"]
+
+[[boss.entities]]
+name = "Codex"
+ids = [4105254295568384]
+is_boss = false
+triggers_encounter = true
+is_kill_target = false
 
 [[boss.phases]]
 id = "a&e_k_p1"
