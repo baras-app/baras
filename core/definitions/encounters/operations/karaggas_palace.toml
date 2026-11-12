@@ -22,6 +22,14 @@ ids = [2624491305828352, 2271801476382720, 2624508485697536, 2624474125959168]
 is_boss = true
 is_kill_target = true
 
+[[boss.entities.hp_markers]]
+hp_percent = 90.0
+label = "Band Thrown In"
+
+[[boss.entities.hp_markers]]
+hp_percent = 50.0
+label = ""
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Jarg & Sorno
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -58,18 +66,75 @@ ids = [2739888487137280, 2739875602235392, 2760693308719104, 2760637474144256]
 is_boss = true
 is_kill_target = true
 
-[[boss.entities.hp_marker]]
+[[boss.entities.hp_markers]]
+hp_percent = 80.0
+label = "Ground Smash"
+difficulties = ["story", "veteran"]
+
+[[boss.entities.hp_markers]]
 hp_percent = 75.0
 label = "Adds"
+difficulties = ["story", "veteran"]
 
-[[boss.entities.hp_marker]]
+[[boss.entities.hp_markers]]
+hp_percent = 60.0
+label = "Ground Smash"
+difficulties = ["story", "veteran"]
+
+[[boss.entities.hp_markers]]
 hp_percent = 50.0
 label = "Adds"
+difficulties = ["story", "veteran"]
 
-[[boss.entities.hp_marker]]
+[[boss.entities.hp_markers]]
+hp_percent = 40.0
+label = "Ground Smash"
+difficulties = ["story", "veteran"]
+
+[[boss.entities.hp_markers]]
 hp_percent = 25.0
 label = "Adds"
+difficulties = ["story", "veteran"]
 
+[[boss.entities.hp_markers]]
+hp_percent = 20.0
+label = "Ground Smash"
+difficulties = ["story", "veteran"]
+
+[[boss.timer]]
+id = "foreman_crusher_accuracy_reduced"
+name = "Accuracy Reduced"
+is_alert = true
+alert_text = "Accuracy Debuff on You"
+trigger = { type = "effect_applied", effects = [2779427956064517], target = "local_player" }
+duration_secs = 30.0
+color = [255, 128, 0, 255]
+icon_ability_id = 2779427956064517
+
+[[boss.timer]]
+id = "foreman_crusher_frenzy_cs"
+name = "Frenzy (Combat Start)"
+display_text = "Frenzy"
+trigger = { type = "combat_start" }
+duration_secs = 50.0
+color = [255, 128, 0, 255]
+icon_ability_id = 2779475200704772
+
+[[boss.timer]]
+id = "foreman_crusher_frenzy"
+name = "Frenzy"
+trigger = { type = "ability_cast", abilities = [2779436545998848] }
+duration_secs = 60.0
+color = [255, 128, 0, 255]
+icon_ability_id = 2779475200704772
+
+[[boss.timer]]
+id = "foreman_crusher_punt"
+name = "Punt"
+trigger = { type = "effect_applied", effects = [2779475200704772] }
+duration_secs = 10.0
+color = [255, 128, 0, 255]
+icon_ability_id = 2779526740312064
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 4: G4-B3 Heavy Fabricator
@@ -85,6 +150,32 @@ name = "G4-B3 Heavy Fabricator"
 ids = [2760371186171904, 2747344550363136, 2760375481139200, 2748401112317952]
 is_boss = true
 is_kill_target = true
+
+[[boss.timer]]
+id = "g4b3_armor_returns"
+name = "Armor Returns"
+trigger = { type = "damage_taken", abilities = [2778611912278016], target = { selector = ["G4-B3 Heavy Fabricator"] } }
+duration_secs = 20.0
+color = [255, 128, 0, 255]
+icon_ability_id = 2778629092147476
+difficulties = ["veteran"]
+can_be_refreshed = true
+
+[[boss.timer]]
+id = "g4b3_smash"
+name = "Smash"
+trigger = { type = "ability_cast", abilities = [2790487496851456] }
+duration_secs = 45.0
+color = [255, 128, 0, 255]
+icon_ability_id = 2790487496851456
+
+[[boss.timer]]
+id = "g4b3_sticky_grenade"
+name = "Sticky Grenade"
+trigger = { type = "ability_cast", abilities = [2778641977049088, 2778921149923328] }
+duration_secs = 20.0
+color = [255, 128, 0, 255]
+icon_ability_id = 2778641977049088
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -110,6 +201,7 @@ display_text = "Unstable Energy"
 trigger = { type = "combat_start" }
 duration_secs = 15.0
 color = [179, 26, 26, 255]
+icon_ability_id = 2778337034371072
 cancel_trigger = { type = "combat_end" }
 
 [[boss.timer]]
@@ -121,6 +213,7 @@ trigger = { type = "ability_cast", abilities = [
 ] }
 duration_secs = 15.0
 color = [179, 26, 26, 255]
+icon_ability_id = 2778337034371072
 cancel_trigger = { type = "combat_end" }
 
 
@@ -133,6 +226,7 @@ trigger = { type = "ability_cast", abilities = [
 ], source = "boss" }
 duration_secs = 15.0
 color = [179, 26, 26, 255]
+icon_ability_id = 2778388573978624
 cancel_trigger = { type = "combat_end" }
 
 [[boss.timer]]
@@ -144,6 +238,7 @@ trigger = { type = "ability_cast", abilities = [
 ], source = "boss" }
 duration_secs = 59.0
 color = [255, 230, 128, 255]
+icon_ability_id = 2778349919272960
 cancel_trigger = { type = "combat_end" }
 
 [[boss.timer]]
@@ -155,6 +250,7 @@ trigger = { type = "ability_cast", abilities = [
 ], source = "boss" }
 duration_secs = 24.5
 color = [179, 204, 255, 255]
+icon_ability_id = 2778298379665408
 cancel_trigger = { type = "combat_end" }
 
 [[boss.timer]]
@@ -166,6 +262,7 @@ trigger = { type = "ability_cast", abilities = [
 ], source = "boss" }
 duration_secs = 20.0
 color = [102, 51, 102, 255]
+icon_ability_id = 2741520574709760
 cancel_trigger = { type = "combat_end" }
 
 [[boss.timer]]
@@ -174,4 +271,5 @@ name = "Cluster Bombs Soon"
 trigger = { type = "timer_expires", timer_id = "cluster_bombs" }
 duration_secs = 5.0
 color = [179, 128, 179, 255]
+icon_ability_id = 2741520574709760
 cancel_trigger = { type = "timer_started", timer_id = "cluster_bombs" }

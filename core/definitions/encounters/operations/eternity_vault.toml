@@ -24,35 +24,47 @@ ids = [2017165750304768, 1779997656219648, 2034611907461120, 2034573252755456]
 is_boss = true
 is_kill_target = true
 
-# ─── Phase Transitions ─────────────────────────────────────────────────────────
+[[boss.entities.hp_markers]]
+hp_percent = 95.0
+label = "Shockwave + Swipe"
+
+[[boss.entities.hp_markers]]
+hp_percent = 75.0
+label = "Shockwave + Swipe"
+
+[[boss.entities.hp_markers]]
+hp_percent = 40.0
+label = "Shockwave + Swipe"
+
+[[boss.entities.hp_markers]]
+hp_percent = 10.0
+label = "Shockwave + Swipe (Burn)"
+
+[[boss.entities.hp_markers]]
+hp_percent = 2.5
+label = "Death Animation"
 
 [[boss.timer]]
-id = "xrr3_phase_95"
-name = "95% - Swipe Active"
-is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 95.0 }
-color = [100, 200, 255, 255]
+id = "xrr3_missile_salvo_ends"
+name = "Missile Salvo Ends"
+display_text = "Salvo Ends"
+trigger = { type = "ability_cast", abilities = [2508436994523136, 1780259649224704], source = "boss" }
+duration_secs = 20.0
+color = [145, 65, 172, 255]
+icon_ability_id = 2508436994523136
 
 [[boss.timer]]
-id = "xrr3_phase_75"
-name = "75%"
-is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 75.0 }
-color = [100, 200, 255, 255]
-
-[[boss.timer]]
-id = "xrr3_phase_40"
-name = "40% - Groundfire Active"
-is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 40.0 }
-color = [255, 150, 100, 255]
-
-[[boss.timer]]
-id = "xrr3_phase_10"
-name = "10% - Burn Phase"
-is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 10.0 }
-color = [255, 50, 50, 255]
+id = "xrr3_shockwave_soon"
+name = "Shockwave Soon"
+trigger = { type = "any_of", conditions = [
+  { type = "boss_hp_below", hp_percent = 97.0, selector = ["Annihilation Droid XRR-3"] },
+  { type = "boss_hp_below", hp_percent = 78.0, selector = ["Annihilation Droid XRR-3"] },
+  { type = "boss_hp_below", hp_percent = 43.0, selector = ["Annihilation Droid XRR-3"] },
+  { type = "boss_hp_below", hp_percent = 13.0, selector = ["Annihilation Droid XRR-3"] },
+] }
+duration_secs = 30.0
+color = [255, 128, 0, 255]
+icon_ability_id = 2508681807659008
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Gharj
@@ -74,6 +86,26 @@ ids = [
 ]
 is_boss = true
 is_kill_target = true
+
+[[boss.entities.hp_markers]]
+hp_percent = 95.0
+label = "Platform Collapse"
+
+[[boss.entities.hp_markers]]
+hp_percent = 70.0
+label = "Platform Collapse"
+
+[[boss.entities.hp_markers]]
+hp_percent = 50.0
+label = "Platform Collapse"
+
+[[boss.entities.hp_markers]]
+hp_percent = 30.0
+label = "Platform Collapse"
+
+[[boss.entities.hp_markers]]
+hp_percent = 10.0
+label = "Platform Collapse"
 
 # ─── Platform Collapse Warning ────────────────────────────────────────────────
 # These abilities fire when platform is about to collapse (~5s warning)
@@ -98,66 +130,23 @@ name = "Pulverizing Slam"
 trigger = { type = "ability_cast", abilities = [2508411224719360] }
 duration_secs = 14.0
 color = [224, 118, 29, 255]
+icon_ability_id = 2508892261056512
+cancel_trigger = { type = "timer_expires", timer_id = "gharj_platform_collapse" }
 
 [[boss.timer]]
 id = "gharj_jump"
-name = "Jump"
-trigger = { type = "any_of", conditions = [
-  { type = "ability_cast", abilities = [
-    3592276286636032,
-  ] },
-  { type = "ability_cast", abilities = [
-    3592280581603328,
-  ] },
-  { type = "ability_cast", abilities = [
-    3592284876570624,
-  ] },
-  { type = "ability_cast", abilities = [
-    3592654243758080,
-  ] },
-  { type = "ability_cast", abilities = [
-    3592688603496448,
-  ] },
+name = "Platform Jump"
+trigger = { type = "ability_cast", abilities = [
+  3592276286636032,
+  3592280581603328,
+  3592284876570624,
+  3592654243758080,
+  3592688603496448,
 ] }
 duration_secs = 34.0
 color = [224, 31, 29, 255]
+icon_ability_id = 2508905145958400
 difficulties = ["veteran"]
-
-
-[[boss.timer]]
-id = "gharj_hp_95"
-name = "95% - Platform Soon"
-is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 95.0 }
-color = [36, 24, 219, 255]
-# Platform phase alerts
-[[boss.timer]]
-id = "gharj_hp_70"
-name = "70% - Platform Soon"
-is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 70.0 }
-color = [36, 24, 219, 255]
-
-[[boss.timer]]
-id = "gharj_hp_50"
-name = "50% - Platform Soon"
-is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 50.0 }
-color = [33, 29, 224, 255]
-
-[[boss.timer]]
-id = "gharj_hp_30"
-name = "30% - Platform Soon"
-is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 30.0 }
-color = [33, 29, 224, 255]
-
-[[boss.timer]]
-id = "gharj_hp_10"
-name = "10% - Final Platform"
-is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 10.0 }
-color = [255, 50, 50, 255]
 
 [[boss]]
 id = "pylons"
@@ -207,6 +196,7 @@ name = "Infernal Council"
 ids = [2290145281703936, 2098327747297280, 2289690015170560, 2289887583666176]
 show_on_hp_overlay = false
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Soa
@@ -232,11 +222,11 @@ is_kill_target = true
 
 [[boss.entities.hp_markers]]
 hp_percent = 75.0
-label = "Floor 1 Ends"
+label = "Transition"
 
 [[boss.entities.hp_markers]]
 hp_percent = 30.0
-label = "Floor 2 Ends"
+label = "Transition"
 
 
 # ─── Phases ───────────────────────────────────────────────────────────────────
@@ -267,13 +257,14 @@ start_trigger = { type = "ability_cast", abilities = [2482912003883008] }
 
 [[boss.timer]]
 id = "soa_transistion"
-name = "Platforms"
-duration_secs = 115.0
+name = "Platforms End"
+duration_secs = 111.0
 trigger = { type = "any_of", conditions = [
   { type = "phase_ended", phase_id = "p1" },
   { type = "phase_ended", phase_id = "p4" },
 ] }
 color = [33, 224, 223, 255]
+icon_ability_id = 1999869917003776
 cancel_trigger = { type = "any_of", conditions = [
   { type = "phase_ended", phase_id = "p2" },
   { type = "phase_ended", phase_id = "p5" },
@@ -287,6 +278,7 @@ display_text = "Mind Trap"
 trigger = { type = "ability_cast", abilities = [2025528051630080] }
 duration_secs = 38.0
 color = [33, 224, 223, 255]
+icon_ability_id = 2025528051630080
 cancel_trigger = { type = "phase_ended", phase_id = "p4" }
 
 [[boss.timer]]
@@ -295,6 +287,7 @@ name = "Ball Lightning"
 trigger = { type = "ability_cast", abilities = [2076298860036096] }
 duration_secs = 19.0
 color = [224, 176, 33, 255]
+icon_ability_id = 2523203092086784
 cancel_trigger = { type = "phase_ended", phase_id = "p4" }
 
 [[boss.timer]]
@@ -303,6 +296,7 @@ name = "Force Cyclone"
 trigger = { type = "ability_cast", abilities = [1790412951912448] }
 duration_secs = 38.0
 color = [158, 29, 224, 255]
+icon_ability_id = 1790412951912448
 cancel_trigger = { type = "phase_ended", phase_id = "p4" }
 
 [[boss.timer]]
@@ -314,6 +308,7 @@ trigger = { type = "target_set", selector = [
 is_alert = true
 alert_text = "Ball Lightning Targeting You!"
 color = [224, 176, 33, 255]
+icon_ability_id = 2523203092086784
 difficulties = ["veteran"]
 
 
@@ -324,8 +319,17 @@ name = "Mind Trap (Ground)"
 display_text = "Mind Trap"
 trigger = { type = "ability_cast", abilities = [2482912003883008] }
 duration_secs = 23.0
-color = [33, 224, 220, 255]
+color = [230, 97, 0, 255]
+icon_ability_id = 2025528051630080
 cancel_trigger = { type = "effect_applied", effects = [2480962088730880] }
+
+[[boss.timer]]
+id = "soa_ball_lightning_p6"
+name = "Ball Lightning"
+trigger = { type = "ability_cast", abilities = [2482985018327040] }
+duration_secs = 16.5
+color = [224, 176, 33, 255]
+icon_ability_id = 2523203092086784
 
 [[boss.timer]]
 id = "soa_mind_trap_recovery"
@@ -334,6 +338,7 @@ display_text = "Mind Trap"
 trigger = { type = "effect_removed", effects = [2480962088730880] }
 duration_secs = 13.5
 color = [33, 224, 220, 255]
+icon_ability_id = 2025528051630080
 
 [[boss.timer]]
 id = "soa_pylon"
@@ -341,18 +346,21 @@ name = "Pylon Drops"
 trigger = { type = "ability_cast", abilities = [1975835280015360] }
 duration_secs = 20.0
 color = [224, 29, 29, 255]
+icon_ability_id = 2514067696648192
 
 # ─── Phase Alerts ─────────────────────────────────────────────────────────────
 [[boss.timer]]
 id = "soa_hp_75"
-name = "75% - P2 Transition"
+name = "Floor Collapse"
 is_alert = true
 trigger = { type = "boss_hp_below", hp_percent = 75.0 }
 color = [46, 32, 219, 255]
+icon_ability_id = 1999869917003776
 
 [[boss.timer]]
 id = "soa_hp_30"
-name = "30% - P5 Transition"
+name = "Floor Collapse"
 is_alert = true
 trigger = { type = "boss_hp_below", hp_percent = 30.0 }
 color = [29, 24, 224, 255]
+icon_ability_id = 1999869917003776
