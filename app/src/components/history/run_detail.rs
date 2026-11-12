@@ -55,12 +55,13 @@ fn RunTimeline(detail: RunDetail) -> Element {
         cursor = (p.start_ms + dur).max(cursor);
     }
 
-    // Elapsed-time ticks: the coarsest step that still gives a few labels
+    // Elapsed-time ticks: the coarsest step that still gives a few labels.
+    // A span past the largest step (bad timestamps) still gets ~8 ticks.
     let total_secs = (end_ms - start_ms) / 1000;
     let step = [60, 300, 600, 900, 1800, 3600, 7200]
         .into_iter()
         .find(|s| total_secs / s <= 8)
-        .unwrap_or(7200);
+        .unwrap_or_else(|| (total_secs / 8).max(1));
     let ticks: Vec<(f64, String)> = (0..=total_secs / step)
         .map(|i| (pct(i * step * 1000), fmt_secs(i * step)))
         .collect();
@@ -419,7 +420,7 @@ pub fn RunDetailView(
                                                                 let archived = row.archived.then(|| row.filename.clone());
                                                                 let first = d.first_deaths.get(idx).cloned().flatten();
                                                                 rsx! {
-                                                                    tr { key: "{row.start_ms}",
+                                                                    tr { key: "{row.encounter_id}",
                                                                         td { {short_ts(&row.timestamp)} }
                                                                         td { span { class: "{class}", "{label}" } }
                                                                         td { {row.phase.clone().unwrap_or_else(|| "-".into())} }
