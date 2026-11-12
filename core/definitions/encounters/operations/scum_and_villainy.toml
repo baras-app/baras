@@ -602,7 +602,8 @@ difficulties = ["veteran", "master"]
 id = "olok_wave_1"
 name = "Wave 1"
 duration_secs = 4.0
-color = [255, 128, 0, 255]
+color = [220, 138, 221, 255]
+icon_ability_id = 3140961123172352
 difficulties = ["story", "veteran", "master"]
 display_targets = ["timers_a"]
 roles = []
@@ -625,7 +626,8 @@ value = -75.0
 id = "olok_wave_2"
 name = "Wave 2"
 duration_secs = 64.0
-color = [255, 128, 0, 255]
+color = [220, 138, 221, 255]
+icon_ability_id = 3140961123172352
 difficulties = ["story", "veteran", "master"]
 display_targets = ["timers_a"]
 roles = []
@@ -640,7 +642,8 @@ timer_id = "olok_wave_1"
 id = "olok_wave_3"
 name = "Wave 3"
 duration_secs = 64.0
-color = [255, 128, 0, 255]
+color = [220, 138, 221, 255]
+icon_ability_id = 3140961123172352
 difficulties = ["story", "veteran", "master"]
 display_targets = ["timers_a"]
 roles = []
@@ -655,7 +658,8 @@ timer_id = "olok_wave_2"
 id = "olok_wave_4"
 name = "Wave 4"
 duration_secs = 64.0
-color = [255, 128, 0, 255]
+color = [220, 138, 221, 255]
+icon_ability_id = 3140961123172352
 difficulties = ["story", "veteran", "master"]
 display_targets = ["timers_a"]
 roles = []
@@ -670,7 +674,8 @@ timer_id = "olok_wave_3"
 id = "olok_olok_enters"
 name = "Olok Enters"
 duration_secs = 61.0
-color = [255, 128, 0, 255]
+color = [220, 138, 221, 255]
+icon_ability_id = 3604516943429632
 display_targets = ["timers_a"]
 roles = []
 queue_countdown_bar = false
@@ -782,7 +787,7 @@ name = "Horic Grenade"
 trigger = { type = "ability_cast", abilities = [3126843565670400] }
 cancel_trigger = { type = "entity_death", selector = ["Horic"] }
 duration_secs = 15.0
-color = [12, 138, 31, 255]
+color = [25, 164, 48, 255]
 icon_ability_id = 3126843565670400
 difficulties = ["veteran", "master"]
 
@@ -806,6 +811,7 @@ trigger = { type = "ability_cast", abilities = [3128772005986304] }
 cancel_trigger = { type = "entity_death", selector = ["Garr"] }
 duration_secs = 10.0
 color = [32, 29, 224, 255]
+icon_ability_id = 4271065802997760
 difficulties = ["veteran", "master"]
 
 [[boss.timer]]
@@ -825,6 +831,7 @@ trigger = { type = "ability_cast", abilities = [3239758255882240] }
 cancel_trigger = { type = "entity_death", selector = ["Sunder"] }
 duration_secs = 12.0
 color = [189, 169, 50, 255]
+icon_ability_id = 3239758255882240
 difficulties = ["veteran", "master"]
 
 [[boss.timer]]
