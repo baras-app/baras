@@ -374,7 +374,6 @@ impl PersonalOverlay {
                 CompoundRow::new(label, values)
                     .with_label_color(label_color)
                     .with_value_color(value_color)
-                    .with_text_glow()
                     .render(&mut self.frame, padding, y, content_width, row_fs);
             } else {
                 // Single-value row
@@ -415,7 +414,6 @@ impl PersonalOverlay {
                         .with_value_color(value_color)
                         .with_label_bold(false)
                         .with_value_bold(true)
-                        .with_text_glow()
                         .render(&mut self.frame, padding, y, content_width, row_fs);
                 }
             }

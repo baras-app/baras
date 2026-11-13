@@ -1,23 +1,21 @@
 //! Compound row widget for displaying a label with multiple values
 //!
-//! Renders a category label on the left and multiple values distributed
-//! evenly across the remaining width. Used for grouped personal stats
-//! like "Damage: 6,541  45.2K  Crit: 32.5%"
+//! Renders a category label on the left and multiple values right-aligned
+//! on the right. Used for grouped personal stats like
+//! "Damage: 6,541  45.2K  Crit: 32.5%"
 
 use tiny_skia::Color;
 
 use crate::frame::OverlayFrame;
 use crate::widgets::colors;
 
-/// Offset in pixels for text drop shadow
-const SHADOW_OFFSET: f32 = 1.0;
+/// Smallest value font scale before values stop shrinking
+const MIN_VALUE_SCALE: f32 = 0.55;
 
 /// A value with an optional prefix label (e.g., "Crit:" before "32.5%")
 #[derive(Debug, Clone)]
 pub struct CompoundValue {
-    /// Optional prefix label (e.g., "Crit:", "Eff:")
     pub prefix: Option<String>,
-    /// The value text
     pub value: String,
 }
 
@@ -35,14 +33,13 @@ impl CompoundValue {
     }
 }
 
-/// A row displaying a label and multiple right-distributed values
+/// A row displaying a label and multiple right-aligned values
 #[derive(Debug, Clone)]
 pub struct CompoundRow {
     pub label: String,
     pub values: Vec<CompoundValue>,
     pub label_color: Color,
     pub value_color: Color,
-    pub text_glow: bool,
 }
 
 impl CompoundRow {
@@ -52,7 +49,6 @@ impl CompoundRow {
             values,
             label_color: colors::label_dim(),
             value_color: colors::white(),
-            text_glow: false,
         }
     }
 
@@ -66,159 +62,67 @@ impl CompoundRow {
         self
     }
 
-    /// Enable full surrounding text glow instead of simple drop shadow
-    pub fn with_text_glow(mut self) -> Self {
-        self.text_glow = true;
-        self
+    /// Width of the optional "prefix " part of a value (0 when no prefix).
+    fn prefix_width(frame: &mut OverlayFrame, cv: &CompoundValue, vfs: f32) -> f32 {
+        cv.prefix.as_deref().map_or(0.0, |prefix| {
+            frame.measure_text_styled(prefix, vfs, false, false).0
+                + frame.measure_text_styled(" ", vfs, false, false).0
+        })
     }
 
-    fn draw_text(
-        frame: &mut OverlayFrame,
-        text: &str,
-        x: f32,
-        y: f32,
-        font_size: f32,
-        color: Color,
-        bold: bool,
-        glow: bool,
-    ) {
-        if glow {
-            frame.draw_text_with_glow(text, x, y, font_size, color, bold, false);
-        } else {
-            let shadow = colors::text_shadow();
-            frame.draw_text_styled(
-                text,
-                x + SHADOW_OFFSET,
-                y + SHADOW_OFFSET,
-                font_size,
-                shadow,
-                bold,
-                false,
-            );
-            frame.draw_text_styled(text, x, y, font_size, color, bold, false);
-        }
-    }
-
-    /// Measure the total width needed for all values at a given font size,
-    /// including gaps between them.
-    fn measure_values_width(
-        frame: &mut OverlayFrame,
-        values: &[CompoundValue],
-        vfs: f32,
-        gap: f32,
-    ) -> (Vec<f32>, f32) {
-        let mut widths = Vec::with_capacity(values.len());
-        let mut total = 0.0f32;
-        for (i, cv) in values.iter().enumerate() {
-            let w = if let Some(ref prefix) = cv.prefix {
-                let (pw, _) = frame.measure_text_styled(prefix, vfs, false, false);
-                let (sw, _) = frame.measure_text_styled(" ", vfs, false, false);
-                let (vw, _) = frame.measure_text_styled(&cv.value, vfs, true, false);
-                pw + sw + vw
-            } else {
-                let (vw, _) = frame.measure_text_styled(&cv.value, vfs, true, false);
-                vw
-            };
-            widths.push(w);
-            total += w;
-            if i > 0 {
-                total += gap;
-            }
-        }
+    /// Per-value widths and total width (including gaps) at a given font size.
+    fn measure_values(frame: &mut OverlayFrame, values: &[CompoundValue], vfs: f32) -> (Vec<f32>, f32) {
+        let gap = vfs * 0.5;
+        let widths: Vec<f32> = values
+            .iter()
+            .map(|cv| {
+                Self::prefix_width(frame, cv, vfs)
+                    + frame.measure_text_styled(&cv.value, vfs, true, false).0
+            })
+            .collect();
+        let total = widths.iter().sum::<f32>() + gap * values.len().saturating_sub(1) as f32;
         (widths, total)
     }
 
-    /// Render the compound row
+    /// Render the row with `y` as the text baseline.
     ///
-    /// Layout: label left-aligned, values right-aligned to the row edge.
-    /// Values are laid out right-to-left with a gap between each.
-    /// If the values + label don't fit, the value font size is scaled down
-    /// automatically (down to 0.55x) until everything fits.
-    ///
-    /// # Arguments
-    /// * `frame` - The overlay frame to render to
-    /// * `x` - Left edge x position
-    /// * `y` - Baseline y position for text
-    /// * `width` - Total width available
-    /// * `font_size` - Font size for label and values
+    /// Label is left-aligned; values are laid out right-to-left from the row
+    /// edge. Values shrink (down to `MIN_VALUE_SCALE`) when they don't fit
+    /// beside the label.
     pub fn render(&self, frame: &mut OverlayFrame, x: f32, y: f32, width: f32, font_size: f32) {
-        let prefix_color = colors::label_dim();
-        let glow = self.text_glow;
-
-        // Draw label on left (regular weight, same size as values)
-        Self::draw_text(frame, &self.label, x, y, font_size, self.label_color, false, glow);
+        frame.draw_text_with_glow(&self.label, x, y, font_size, self.label_color, false, false);
 
         if self.values.is_empty() {
             return;
         }
 
-        // Measure label to find available space for values
         let (label_width, _) = frame.measure_text_styled(&self.label, font_size, false, false);
-        let label_gap = font_size * 0.4;
-        let available = width - label_width - label_gap;
+        let available = width - label_width - font_size * 0.4;
 
-        // Values start at 1.0x (same size as label); auto-shrink only if needed.
-        let base_value_scale = 1.0f32;
-        let min_scale = 0.55f32;
-        let base_vfs = font_size * base_value_scale;
-        let base_gap = base_vfs * 0.5;
-        let (mut measured, total_w) =
-            Self::measure_values_width(frame, &self.values, base_vfs, base_gap);
-
-        // If it still doesn't fit at 0.8x, shrink further down to min_scale
-        let scale = if available <= 0.0 || total_w <= 0.0 {
-            min_scale / base_value_scale
-        } else if total_w <= available {
-            1.0
+        let (mut widths, total) = Self::measure_values(frame, &self.values, font_size);
+        let scale = if available <= 0.0 || total <= 0.0 {
+            MIN_VALUE_SCALE
         } else {
-            (available / total_w).clamp(min_scale / base_value_scale, 1.0)
+            (available / total).clamp(MIN_VALUE_SCALE, 1.0)
         };
-
-        let gap;
+        let vfs = font_size * scale;
         if scale < 1.0 {
-            let vfs = base_vfs * scale;
-            gap = vfs * 0.5;
-            let result = Self::measure_values_width(frame, &self.values, vfs, gap);
-            measured = result.0;
-        } else {
-            gap = base_gap;
+            widths = Self::measure_values(frame, &self.values, vfs).0;
         }
+        let gap = vfs * 0.5;
 
-        let scale = base_value_scale * scale;
+        // Last value flush right, earlier values placed leftward
+        let mut cursor = x + width;
+        let prefix_color = colors::label_dim();
+        for (cv, w) in self.values.iter().zip(&widths).rev() {
+            let text_x = cursor - w;
+            cursor = text_x - gap;
 
-        let value_font_size = font_size * scale;
-
-        // Layout right-to-left: last value flush right, others placed leftward
-        let right_edge = x + width;
-        let num = self.values.len();
-        let mut positions: Vec<f32> = vec![0.0; num];
-
-        let mut cursor = right_edge;
-        for i in (0..num).rev() {
-            positions[i] = cursor - measured[i];
-            cursor = positions[i] - gap;
-        }
-
-        // Values sit on the same baseline as the label
-        let vy = y;
-
-        // Draw each value
-        for (i, cv) in self.values.iter().enumerate() {
-            let text_x = positions[i];
-
-            if let Some(ref prefix) = cv.prefix {
-                let (prefix_width, _) =
-                    frame.measure_text_styled(prefix, value_font_size, false, false);
-                let (space_width, _) =
-                    frame.measure_text_styled(" ", value_font_size, false, false);
-
-                Self::draw_text(frame, prefix, text_x, vy, value_font_size, prefix_color, false, glow);
-
-                let value_x = text_x + prefix_width + space_width;
-                Self::draw_text(frame, &cv.value, value_x, vy, value_font_size, self.value_color, true, glow);
-            } else {
-                Self::draw_text(frame, &cv.value, text_x, vy, value_font_size, self.value_color, true, glow);
+            if let Some(prefix) = cv.prefix.as_deref() {
+                frame.draw_text_with_glow(prefix, text_x, y, vfs, prefix_color, false, false);
             }
+            let value_x = text_x + Self::prefix_width(frame, cv, vfs);
+            frame.draw_text_with_glow(&cv.value, value_x, y, vfs, self.value_color, true, false);
         }
     }
 }
