@@ -299,20 +299,25 @@ impl PersonalOverlay {
         let label_color = color_from_rgba(self.config.label_color);
         let font_color = color_from_rgba(self.config.font_color);
 
-        // Compute content height for dynamic background, accounting for hidden stats
-        let mut content_height = padding + font_size;
+        // Content height for the dynamic background: walk the same baseline
+        // advances as the draw loop and stop at the last drawn element (last
+        // row's descenders or last separator line), not one advance past it.
+        let mut baseline = padding + font_size;
+        let mut bottom = padding;
         for stat in &self.config.visible_stats {
             // Skip legacy no-op variants
             if stat.is_legacy() {
                 continue;
             }
             if *stat == PersonalStat::Separator {
-                content_height += separator_height;
+                bottom = bottom.max(baseline - line_height + separator_height * 0.85 + 2.0);
+                baseline += separator_height;
             } else if !self.config.hide_empty_values || !self.is_stat_empty(*stat) {
-                content_height += line_height;
+                bottom = baseline + font_size * 0.3;
+                baseline += line_height;
             }
         }
-        content_height += padding;
+        let content_height = bottom + padding;
 
         // Begin frame (clear, background, border)
         if self.config.dynamic_background {

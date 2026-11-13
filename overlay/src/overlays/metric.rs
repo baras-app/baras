@@ -353,14 +353,10 @@ impl MetricOverlay {
         };
 
         // Calculate space reserved for header and footer (uses base_font_size, unaffected by font_scale)
-        // Header with separator: font_size + spacing + 2.0 + spacing + 4.0 * scale
         // Footer: 2.0 (separator offset) + spacing + font_size + buffer
         let scale = self.frame.scale_factor();
-        let header_space = if self.appearance.show_header {
-            base_font_size + header_spacing + 2.0 + header_spacing + 4.0 * scale
-        } else {
-            0.0
-        };
+        let header_space =
+            Header::space(self.appearance.show_header, base_font_size, header_spacing, scale);
         let footer_space = if self.appearance.show_footer {
             2.0 + header_spacing + bar_font_size + 6.0 * scale // separator + spacing + text + buffer
         } else {

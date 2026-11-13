@@ -75,6 +75,11 @@ impl EffectABEntry {
         super::entity_label(self.display_source, &self.source_name, self.show_target, &self.target_name)
     }
 
+    fn has_entity_label(&self) -> bool {
+        (self.display_source && !self.source_name.is_empty())
+            || (self.show_target && !self.target_name.is_empty())
+    }
+
     /// Progress as 0.0 (expired) to 1.0 (full)
     pub fn progress(&self) -> f32 {
         if self.total_secs <= 0.0 {
@@ -310,25 +315,25 @@ impl EffectsABOverlay {
         let header_font_size = font_size * 1.4;
 
         // Calculate header space if enabled
-        let header_space = if self.config.show_header {
-            header_font_size + spacing + 2.0 + spacing + 4.0 * scale
-        } else {
-            0.0
-        };
+        let header_space = Header::space(self.config.show_header, header_font_size, spacing, scale);
 
         // Count visible entries for dynamic background
         let num_visible = self.data.effects.iter().take(max_display).count();
+
+        // Text rows drawn under the icons: effect name and source/target label
+        let has_labels = self
+            .data
+            .effects
+            .iter()
+            .take(max_display)
+            .any(|e| e.has_entity_label());
+        let extra_below = below_icon_height(self.config.show_effect_names, has_labels, font_size);
 
         // Inner content height (without padding) and total content height
         let inner_height = if num_visible == 0 {
             if self.config.show_header { header_space } else { 0.0 }
         } else {
-            let mut h = header_space + icon_size;
-            if self.config.show_effect_names {
-                let name_font_size = font_size * 0.85;
-                h += name_font_size + 2.0;
-            }
-            h
+            header_space + icon_size + extra_below
         };
         let content_height = if num_visible == 0 && !self.config.show_header {
             0.0
@@ -339,11 +344,6 @@ impl EffectsABOverlay {
         // Compute icon row y position based on stack direction
         let window_height = self.frame.height() as f32;
         let icon_row_y = if self.config.stack_from_bottom && num_visible > 0 {
-            let extra_below = if self.config.show_effect_names {
-                font_size * 0.85 + 2.0
-            } else {
-                0.0
-            };
             (window_height - padding - icon_size - extra_below).max(padding + header_space)
         } else {
             padding + header_space
@@ -519,11 +519,8 @@ impl EffectsABOverlay {
         let header_font_size = font_size * 1.4;
 
         // Calculate header space if enabled
-        let header_space = if self.config.show_header {
-            header_font_size + row_spacing + 2.0 + row_spacing + 4.0 * scale
-        } else {
-            0.0
-        };
+        let header_space =
+            Header::space(self.config.show_header, header_font_size, row_spacing, scale);
 
         // Count visible entries for dynamic background
         let num_visible = self.data.effects.iter().take(max_display).count();
@@ -732,11 +729,9 @@ impl EffectsABOverlay {
         let bar_x = padding + icon_size - icon_overlap;
         let bar_width = content_width - icon_size + icon_overlap;
 
-        let header_space = if self.config.show_header {
-            header_font_size + entry_spacing + 2.0 + entry_spacing + 4.0 * scale
-        } else {
-            0.0
-        };
+        let header_space =
+
+            Header::space(self.config.show_header, header_font_size, entry_spacing, scale);
 
         let num_visible = self.data.effects.iter().take(max_display).count();
         let total_bars_height = if num_visible > 0 {
@@ -1086,20 +1081,12 @@ impl EffectsABOverlay {
         let header_font_size = font_size * 1.4;
 
         // Calculate header space if enabled
-        let header_space = if self.config.show_header {
-            header_font_size + spacing + 2.0 + spacing + 4.0 * scale
-        } else {
-            0.0
-        };
+        let header_space = Header::space(self.config.show_header, header_font_size, spacing, scale);
 
         self.frame.begin_frame();
 
         let window_height = self.frame.height() as f32;
-        let extra_below = if self.config.show_effect_names {
-            font_size * 0.85 + 2.0
-        } else {
-            0.0
-        };
+        let extra_below = below_icon_height(self.config.show_effect_names, false, font_size);
         let icon_row_y = if self.config.stack_from_bottom {
             (window_height - padding - icon_size - extra_below).max(padding + header_space)
         } else {
@@ -1186,11 +1173,8 @@ impl EffectsABOverlay {
         let header_font_size = font_size * 1.4;
 
         // Calculate header space if enabled
-        let header_space = if self.config.show_header {
-            header_font_size + row_spacing + 2.0 + row_spacing + 4.0 * scale
-        } else {
-            0.0
-        };
+        let header_space =
+            Header::space(self.config.show_header, header_font_size, row_spacing, scale);
 
         self.frame.begin_frame();
 
@@ -1296,11 +1280,9 @@ impl EffectsABOverlay {
         let font_color = colors::white();
         let header_font_size = font_size * 1.4;
 
-        let header_space = if self.config.show_header {
-            header_font_size + entry_spacing + 2.0 + entry_spacing + 4.0 * scale
-        } else {
-            0.0
-        };
+        let header_space =
+
+            Header::space(self.config.show_header, header_font_size, entry_spacing, scale);
 
         self.frame.begin_frame();
 
@@ -1450,6 +1432,19 @@ impl EffectsABOverlay {
             );
         }
     }
+}
+
+/// Height of the text rows drawn under horizontal-mode icons. Must match the
+/// offsets used when drawing the name (0.85×font) and label (0.75×font) rows.
+fn below_icon_height(show_names: bool, has_labels: bool, font_size: f32) -> f32 {
+    let mut h = 0.0;
+    if show_names {
+        h += font_size * 0.85 + 2.0;
+    }
+    if has_labels {
+        h += font_size * 0.75 + 2.0;
+    }
+    h
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -12,7 +12,6 @@ use crate::widgets::colors;
 pub struct Header {
     pub title: String,
     pub color: Color,
-    pub show_separator: bool,
     pub centered: bool,
 }
 
@@ -21,18 +20,12 @@ impl Header {
         Self {
             title: title.into(),
             color: colors::white(),
-            show_separator: true,
             centered: false,
         }
     }
 
     pub fn with_color(mut self, color: Color) -> Self {
         self.color = color;
-        self
-    }
-
-    pub fn with_separator(mut self, show: bool) -> Self {
-        self.show_separator = show;
         self
     }
 
@@ -71,24 +64,22 @@ impl Header {
         };
         frame.draw_text_glowed(&self.title, title_x, title_y, font_size, self.color);
 
-        if self.show_separator {
-            let sep_y = title_y + spacing + 2.0;
-            let line_height = 0.2 * frame.scale_factor();
-            frame.fill_rect(x, sep_y, width, line_height, self.color);
+        let scale = frame.scale_factor();
+        let sep_y = title_y + spacing + 2.0;
+        frame.fill_rect(x, sep_y, width, 0.2 * scale, self.color);
 
-            sep_y + spacing + 4.0 * frame.scale_factor()
-        } else {
-            title_y + spacing
-        }
+        y + Self::height(font_size, spacing, scale)
     }
 
-    /// Calculate the total height this header will use
-    pub fn height(&self, font_size: f32, spacing: f32, scale: f32) -> f32 {
-        if self.show_separator {
-            font_size + spacing + 2.0 + spacing + 4.0 * scale
-        } else {
-            font_size + spacing
-        }
+    /// Total height a header uses (title + separator + trailing gap).
+    /// Layout code reserves this up front; `render` returns `y + height`.
+    pub fn height(font_size: f32, spacing: f32, scale: f32) -> f32 {
+        font_size + spacing + 2.0 + spacing + 4.0 * scale
+    }
+
+    /// `height` when the header is shown, 0 otherwise
+    pub fn space(show: bool, font_size: f32, spacing: f32, scale: f32) -> f32 {
+        if show { Self::height(font_size, spacing, scale) } else { 0.0 }
     }
 }
 

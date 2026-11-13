@@ -207,7 +207,7 @@ impl OperationTimerOverlay {
 
         if self.config.show_title {
             let scale = self.frame.scale_factor();
-            h += Header::new("").height(header_font_size, header_spacing, scale);
+            h += Header::height(header_font_size, header_spacing, scale);
         }
 
         // Time value row (always shown)

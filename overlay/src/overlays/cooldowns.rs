@@ -277,11 +277,8 @@ impl CooldownOverlay {
         let header_font_size = font_size * 1.4;
 
         // Calculate header space if enabled
-        let header_space = if self.config.show_header {
-            header_font_size + row_spacing + 2.0 + row_spacing + 4.0 * scale
-        } else {
-            0.0
-        };
+        let header_space =
+            Header::space(self.config.show_header, header_font_size, row_spacing, scale);
 
         // Compute content height for dynamic background
         let num_entries = self.data.entries.iter().take(max_display).count();
@@ -514,11 +511,8 @@ impl CooldownOverlay {
         let header_font_size = font_size * 1.4;
 
         // Calculate header space if enabled
-        let header_space = if self.config.show_header {
-            header_font_size + row_spacing + 2.0 + row_spacing + 4.0 * scale
-        } else {
-            0.0
-        };
+        let header_space =
+            Header::space(self.config.show_header, header_font_size, row_spacing, scale);
 
         self.frame.begin_frame();
 
@@ -685,11 +679,9 @@ impl CooldownOverlay {
         let bar_x = padding + icon_size - icon_overlap;
         let bar_width = content_width - icon_size + icon_overlap;
 
-        let header_space = if self.config.show_header {
-            header_font_size + entry_spacing + 2.0 + entry_spacing + 4.0 * scale
-        } else {
-            0.0
-        };
+        let header_space =
+
+            Header::space(self.config.show_header, header_font_size, entry_spacing, scale);
 
         let n = self.data.entries.iter().take(max_display).count();
         let total_bars_height = if n > 0 {

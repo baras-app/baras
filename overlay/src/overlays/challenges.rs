@@ -16,7 +16,7 @@ use crate::class_icons::{
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
 use crate::utils::{color_from_rgba, format_duration_short};
-use crate::widgets::{colors, Footer, ProgressBar};
+use crate::widgets::{colors, Footer, Header, ProgressBar};
 use baras_types::{formatting, ClassIconMode};
 
 /// Data for the challenges overlay
@@ -224,22 +224,20 @@ impl ChallengeOverlay {
         let slots = self.slot_count(num_visible);
         if num_visible > 0 {
             // Scale content up to fill available space when fewer challenges are shown.
-            // Estimate per-card height: header + separator + player bars + optional footer
-            let sep_overhead = bar_spacing * 2.0 + 4.0 * scale;
-            // Use actual player counts per card instead of MAX_PLAYERS constant
+            // Estimate per-card height from the tallest card at unscaled sizes
             let max_players_in_cards = enabled_challenges
                 .iter()
                 .map(|c| c.by_player.len().min(MAX_PLAYERS))
                 .max()
                 .unwrap_or(MAX_PLAYERS);
-            let card_height_est = header_font_size
-                + sep_overhead
-                + max_players_in_cards as f32 * (bar_height + bar_spacing)
-                + if show_footer {
-                    font_size + bar_spacing
-                } else {
-                    0.0
-                };
+            let card_height_est = card_height(
+                max_players_in_cards,
+                header_font_size,
+                bar_height,
+                bar_spacing,
+                show_footer.then(|| footer_font_size(font_size)),
+                scale,
+            );
 
             // Size against the slot count, not the visible count: with
             // reserved slots a lone card keeps its 1/N share instead of
@@ -287,49 +285,23 @@ impl ChallengeOverlay {
         }
 
         // Compute actual content height from final (scaled) dimensions for dynamic background
+        let footer_font = show_footer.then(|| footer_font_size(font_size));
+        let card_h = |c: &ChallengeEntry| {
+            let players = c.by_player.len().min(MAX_PLAYERS);
+            card_height(players, header_font_size, bar_height, bar_spacing, footer_font, scale)
+        };
         let content_height = if num_visible == 0 {
             0.0
         } else {
             match layout {
                 ChallengeLayout::Vertical => {
-                    let mut h = padding;
-                    for (idx, challenge) in enabled_challenges.iter().enumerate() {
-                        if idx > 0 {
-                            h += card_spacing;
-                        }
-                        // Card header: title + separator
-                        h += header_font_size + bar_spacing * 2.0 + 2.0 + 4.0 * scale;
-                        // Player bars
-                        let num_players = challenge.by_player.len().min(MAX_PLAYERS);
-                        h += num_players as f32 * (bar_height + bar_spacing);
-                        // Footer
-                        if show_footer {
-                            h += 2.0 + bar_spacing + font_size + 6.0 * scale;
-                        }
-                    }
-                    h + padding
+                    let cards: f32 = enabled_challenges.iter().map(card_h).sum();
+                    padding * 2.0 + cards + (num_visible - 1) as f32 * card_spacing
                 }
+                // All cards are same height (tallest card), side by side
                 ChallengeLayout::Horizontal => {
-                    // All cards are same height (tallest card), side by side
-                    let tallest_card = enabled_challenges
-                        .iter()
-                        .map(|c| {
-                            let num_players = c.by_player.len().min(MAX_PLAYERS);
-                            let card_h = header_font_size
-                                + bar_spacing * 2.0
-                                + 2.0
-                                + 4.0 * scale
-                                + num_players as f32 * (bar_height + bar_spacing)
-                                + if show_footer {
-                                    2.0 + bar_spacing + font_size + 6.0 * scale
-                                } else {
-                                    0.0
-                                };
-                            card_h
-                        })
-                        .max_by(|a, b| a.partial_cmp(b).unwrap())
-                        .unwrap_or(0.0);
-                    padding * 2.0 + tallest_card
+                    let tallest = enabled_challenges.iter().map(card_h).fold(0.0, f32::max);
+                    padding * 2.0 + tallest
                 }
             }
         };
@@ -459,7 +431,7 @@ impl ChallengeOverlay {
                     padding,
                     y,
                     content_width,
-                    font_size - 2.0,
+                    footer_font_size(font_size),
                     bar_spacing,
                     font_color,
                 );
@@ -548,7 +520,7 @@ impl ChallengeOverlay {
                     card_x,
                     y,
                     card_width,
-                    font_size - 2.0,
+                    footer_font_size(font_size),
                     bar_spacing,
                     font_color,
                 );
@@ -614,11 +586,9 @@ impl ChallengeOverlay {
 
         // Draw separator line
         let sep_y = title_y + spacing + 2.0;
-        let line_height = 0.2 * scale;
-        self.frame
-            .fill_rect(x, sep_y, width, line_height, font_color);
+        self.frame.fill_rect(x, sep_y, width, 0.2 * scale, font_color);
 
-        sep_y + spacing + 4.0 * scale
+        y + Header::height(header_font_size, spacing, scale)
     }
 
     /// Fit a header title into `max_width` by truncation first, then by
@@ -863,6 +833,27 @@ impl ChallengeOverlay {
 
         y + font_size + spacing
     }
+}
+
+/// Footer values render slightly smaller than bar text
+fn footer_font_size(font_size: f32) -> f32 {
+    font_size - 2.0
+}
+
+/// Height of one challenge card. Mirrors the render path: header (title +
+/// separator, same metrics as `Header`), one row per player, then the footer
+/// (`footer_font + spacing`, see `render_challenge_footer`).
+fn card_height(
+    players: usize,
+    header_font: f32,
+    bar_height: f32,
+    bar_spacing: f32,
+    footer_font: Option<f32>,
+    scale: f32,
+) -> f32 {
+    Header::height(header_font, bar_spacing, scale)
+        + players as f32 * (bar_height + bar_spacing)
+        + footer_font.map_or(0.0, |f| f + bar_spacing)
 }
 
 /// Build `n` sample challenge cards for the move-mode preview so the user

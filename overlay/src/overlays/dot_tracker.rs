@@ -295,11 +295,8 @@ impl DotTrackerOverlay {
         let header_font_size = font_size * 1.4;
 
         // Calculate header space if enabled
-        let header_space = if self.config.show_header {
-            header_font_size + row_spacing + 2.0 + row_spacing + 4.0 * scale
-        } else {
-            0.0
-        };
+        let header_space =
+            Header::space(self.config.show_header, header_font_size, row_spacing, scale);
 
         // Compute content height for dynamic background
         let num_visible = self
@@ -571,11 +568,9 @@ impl DotTrackerOverlay {
         let bar_x = padding + icon_size - icon_overlap;
         let bar_width = content_width - icon_size + icon_overlap;
 
-        let header_space = if self.config.show_header {
-            header_font_size + entry_spacing + 2.0 + entry_spacing + 4.0 * scale
-        } else {
-            0.0
-        };
+        let header_space =
+
+            Header::space(self.config.show_header, header_font_size, entry_spacing, scale);
 
         // Group layout: target name line, then one bar per DOT
         let name_line_height = name_font_size + entry_spacing;
@@ -772,11 +767,9 @@ impl DotTrackerOverlay {
         let content_width = self.frame.width() as f32 - 2.0 * padding;
         let header_font_size = font_size * 1.4;
 
-        let header_space = if self.config.show_header {
-            header_font_size + entry_spacing + 2.0 + entry_spacing + 4.0 * scale
-        } else {
-            0.0
-        };
+        let header_space =
+
+            Header::space(self.config.show_header, header_font_size, entry_spacing, scale);
 
         let name_line_height = name_font_size + entry_spacing;
         let group_spacing = entry_spacing * 2.0;
@@ -898,11 +891,8 @@ impl DotTrackerOverlay {
         let header_font_size = font_size * 1.4;
 
         // Calculate header space if enabled
-        let header_space = if self.config.show_header {
-            header_font_size + row_spacing + 2.0 + row_spacing + 4.0 * scale
-        } else {
-            0.0
-        };
+        let header_space =
+            Header::space(self.config.show_header, header_font_size, row_spacing, scale);
 
         self.frame.begin_frame();
 
