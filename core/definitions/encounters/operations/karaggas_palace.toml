@@ -51,6 +51,10 @@ ids = [2760504330158080, 2739441810538496, 2760521510027264, 2760487150288896]
 is_boss = true
 is_kill_target = true
 
+[[boss.entities.hp_markers]]
+hp_percent = 70.0
+label = "Sorno Jets Up"
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Foreman Crusher
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -108,7 +112,7 @@ is_alert = true
 alert_text = "Accuracy Debuff on You"
 trigger = { type = "effect_applied", effects = [2779427956064517], target = "local_player" }
 duration_secs = 30.0
-color = [255, 128, 0, 255]
+color = [61, 56, 70, 255]
 icon_ability_id = 2779427956064517
 
 [[boss.timer]]
@@ -124,7 +128,7 @@ icon_ability_id = 2779475200704772
 id = "foreman_crusher_frenzy"
 name = "Frenzy"
 trigger = { type = "ability_cast", abilities = [2779436545998848] }
-duration_secs = 60.0
+duration_secs = 50.0
 color = [255, 128, 0, 255]
 icon_ability_id = 2779475200704772
 
@@ -156,7 +160,7 @@ id = "g4b3_armor_returns"
 name = "Armor Returns"
 trigger = { type = "damage_taken", abilities = [2778611912278016], target = { selector = ["G4-B3 Heavy Fabricator"] } }
 duration_secs = 20.0
-color = [255, 128, 0, 255]
+color = [249, 240, 107, 255]
 icon_ability_id = 2778629092147476
 difficulties = ["veteran"]
 can_be_refreshed = true
@@ -166,7 +170,7 @@ id = "g4b3_smash"
 name = "Smash"
 trigger = { type = "ability_cast", abilities = [2790487496851456] }
 duration_secs = 45.0
-color = [255, 128, 0, 255]
+color = [229, 21, 21, 255]
 icon_ability_id = 2790487496851456
 
 [[boss.timer]]
@@ -174,7 +178,7 @@ id = "g4b3_sticky_grenade"
 name = "Sticky Grenade"
 trigger = { type = "ability_cast", abilities = [2778641977049088, 2778921149923328] }
 duration_secs = 20.0
-color = [255, 128, 0, 255]
+color = [46, 194, 126, 255]
 icon_ability_id = 2778641977049088
 
 
