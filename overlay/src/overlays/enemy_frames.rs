@@ -12,7 +12,7 @@ use baras_types::{formatting, ClassColorConfig};
 use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
-use crate::utils::{color_from_rgba, truncate_name};
+use crate::utils::color_from_rgba;
 use crate::widgets::colors;
 use crate::widgets::ProgressBar;
 
@@ -79,8 +79,6 @@ const BASE_WIDTH: f32 = 320.0;
 const BASE_HEIGHT: f32 = 240.0;
 const BASE_PADDING: f32 = 4.0;
 const BASE_GAP: f32 = 3.0;
-const MAX_NAME_CHARS: usize = 14;
-const MAX_TARGET_CHARS: usize = 18;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Overlay Implementation
@@ -227,12 +225,18 @@ fn render_cell(
     } else {
         colors::white()
     };
-    let name = truncate_name(&ef.name, MAX_NAME_CHARS);
+    // Stale "Ns" label is right-aligned on the name line; the name gets the rest
+    let stale = ef.stale_secs.map(|secs| {
+        let text = format!("{secs}s");
+        let w = frame.measure_text(&text, name_font).0;
+        (text, w)
+    });
+    let stale_w = stale.as_ref().map_or(0.0, |(_, w)| w + inset);
+    let name_max = (x + w - inset - stale_w - cursor_x).max(0.0);
+    let name = frame.truncate_to_width(&ef.name, name_max, name_font, false);
     frame.draw_text_styled(&name, cursor_x, name_baseline, name_font, name_color, false, false);
 
-    if let Some(secs) = ef.stale_secs {
-        let text = format!("{secs}s");
-        let (text_w, _) = frame.measure_text(&text, name_font);
+    if let Some((text, text_w)) = stale {
         frame.draw_text_styled(
             &text,
             x + w - inset - text_w,
@@ -291,15 +295,12 @@ fn render_cell(
         } else if ef.targeting_you {
             ("→ YOU".to_string(), colors::targeting_you_red(), true)
         } else if let Some(target) = ef.target_name.as_deref() {
-            (
-                format!("→ {}", truncate_name(target, MAX_TARGET_CHARS)),
-                colors::label_dim(),
-                false,
-            )
+            (format!("→ {target}"), colors::label_dim(), false)
         } else {
             (String::new(), colors::label_dim(), false)
         };
         if !text.is_empty() {
+            let text = frame.truncate_to_width(&text, w - inset * 2.0, target_font, bold);
             frame.draw_text_styled(
                 &text,
                 x + inset,

@@ -290,6 +290,44 @@ impl OverlayFrame {
             .measure_text_styled(text, font_size, bold, italic)
     }
 
+    /// Truncate `text` with "…" so it fits `max_width`, measured in the same
+    /// weight it will be drawn with. Returns an empty string if not even the
+    /// ellipsis fits.
+    pub fn truncate_to_width(
+        &mut self,
+        text: &str,
+        max_width: f32,
+        font_size: f32,
+        bold: bool,
+    ) -> String {
+        if self.measure_text_styled(text, font_size, bold, false).0 <= max_width {
+            return text.to_string();
+        }
+        let chars: Vec<char> = text.chars().collect();
+        let mut buf = String::with_capacity(text.len() + 3);
+        // Binary search the longest prefix that fits with the ellipsis appended
+        let (mut lo, mut hi) = (0usize, chars.len().saturating_sub(1));
+        while lo < hi {
+            let mid = (lo + hi).div_ceil(2);
+            buf.clear();
+            buf.extend(&chars[..mid]);
+            buf.push('…');
+            if self.measure_text_styled(&buf, font_size, bold, false).0 <= max_width {
+                lo = mid;
+            } else {
+                hi = mid - 1;
+            }
+        }
+        buf.clear();
+        buf.extend(&chars[..lo]);
+        buf.truncate(buf.trim_end().len());
+        buf.push('…');
+        if lo == 0 && self.measure_text_styled(&buf, font_size, bold, false).0 > max_width {
+            buf.clear();
+        }
+        buf
+    }
+
     /// Draw an RGBA image at the specified position with scaling
     pub fn draw_image(
         &mut self,

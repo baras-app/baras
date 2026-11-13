@@ -9,7 +9,7 @@ use tiny_skia::Color;
 use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
-use crate::utils::{color_from_rgba, truncate_name};
+use crate::utils::color_from_rgba;
 use crate::widgets::colors;
 use crate::widgets::{draw_icon_placeholder, Footer, Header, ProgressBar};
 
@@ -147,8 +147,6 @@ const MIN_BAR_HEIGHT_ABSOLUTE: f32 = 16.0; // Absolute minimum bar height (not s
 const MIN_BAR_SPACING_ABSOLUTE: f32 = 2.0; // Absolute minimum spacing (not scaled)
 const BASE_FONT_SIZE: f32 = 14.0;
 
-/// Maximum characters for player names before truncation
-const MAX_NAME_CHARS: usize = 16;
 
 /// A specialized DPS/HPS metric overlay
 pub struct MetricOverlay {
@@ -553,7 +551,6 @@ impl MetricOverlay {
             };
             let has_icon = icon_name.is_some();
 
-            let display_name = truncate_name(&entry.name, MAX_NAME_CHARS);
             let progress = if max_val > 0.0 {
                 (entry.value as f64 / max_val) as f32
             } else {
@@ -566,7 +563,7 @@ impl MetricOverlay {
                 Color::from_rgba8(0, 0, 0, 0)
             };
 
-            let mut bar = ProgressBar::new(display_name, progress)
+            let mut bar = ProgressBar::new(entry.name.as_str(), progress)
                 .with_fill_color(fill_color)
                 .with_bg_color(bg_color)
                 .with_text_color(font_color)

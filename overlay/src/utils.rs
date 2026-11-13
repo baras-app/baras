@@ -17,16 +17,6 @@ pub fn color_from_rgba(rgba: [u8; 4]) -> Color {
     Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3])
 }
 
-/// Truncate a string to max_chars, adding "..." if truncated
-pub fn truncate_name(name: &str, max_chars: usize) -> String {
-    if name.chars().count() <= max_chars {
-        name.to_string()
-    } else {
-        let truncated: String = name.chars().take(max_chars.saturating_sub(3)).collect();
-        format!("{}...", truncated)
-    }
-}
-
 /// Format a duration in seconds as MM:SS
 ///
 /// Delegates to [`baras_types::formatting::format_duration_u64`].
@@ -204,13 +194,6 @@ pub fn format_number(n: i64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_truncate_name() {
-        assert_eq!(truncate_name("short", 10), "short");
-        assert_eq!(truncate_name("this is a very long name", 10), "this is...");
-        assert_eq!(truncate_name("exactly10!", 10), "exactly10!");
-    }
 
     #[test]
     fn test_format_time() {

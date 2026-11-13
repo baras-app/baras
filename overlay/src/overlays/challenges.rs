@@ -15,7 +15,7 @@ use crate::class_icons::{
 };
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
-use crate::utils::{color_from_rgba, format_duration_short, truncate_name};
+use crate::utils::{color_from_rgba, format_duration_short};
 use crate::widgets::{colors, Footer, ProgressBar};
 use baras_types::{formatting, ClassIconMode};
 
@@ -108,7 +108,6 @@ const BASE_FONT_SIZE: f32 = 13.0;
 const BASE_HEADER_FONT_SIZE: f32 = 12.0;
 const BASE_DURATION_FONT_SIZE: f32 = 10.0; // Smaller than header
 
-const MAX_NAME_CHARS: usize = 14;
 const MAX_PLAYERS: usize = 8;
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -640,24 +639,22 @@ impl ChallengeOverlay {
         }
 
         // Try truncation at the requested font size first.
-        let truncated = truncate_to_width(&mut self.frame, title, max_width, font_size);
-        let (trunc_w, _) = self.frame.measure_text(&truncated, font_size);
-        if trunc_w <= max_width && truncated.chars().count() > 3 {
+        let truncated = self.frame.truncate_to_width(title, max_width, font_size, false);
+        if truncated.chars().count() > 3 {
             return (truncated, font_size);
         }
 
         // Truncation can't preserve enough of the name (card is very narrow).
-        // Shrink font in 5% steps down to 70% of original, retrying truncation.
+        // Shrink font in 5% steps down to ~70% of original, retrying truncation.
         let mut size = font_size;
         for _ in 0..6 {
             size *= 0.95;
-            let candidate = truncate_to_width(&mut self.frame, title, max_width, size);
-            let (cw, _) = self.frame.measure_text(&candidate, size);
-            if cw <= max_width {
+            let candidate = self.frame.truncate_to_width(title, max_width, size, false);
+            if candidate.chars().count() > 3 {
                 return (candidate, size);
             }
         }
-        (truncate_to_width(&mut self.frame, title, max_width, size), size)
+        (self.frame.truncate_to_width(title, max_width, size, false), size)
     }
 
     /// Render player contribution bars for a challenge
@@ -689,7 +686,6 @@ impl ChallengeOverlay {
         };
 
         for player in &players {
-            let display_name = truncate_name(&player.name, MAX_NAME_CHARS);
             let progress = if max_value > 0 {
                 player.value as f32 / max_value as f32
             } else {
@@ -713,7 +709,7 @@ impl ChallengeOverlay {
             };
             let has_icon = icon_name.is_some();
 
-            let mut bar = ProgressBar::new(display_name, progress)
+            let mut bar = ProgressBar::new(player.name.as_str(), progress)
                 .with_fill_color(bar_color)
                 .with_bg_color(bg_color)
                 .with_text_color(font_color)
@@ -932,43 +928,6 @@ fn sample_challenges(n: usize) -> Vec<ChallengeEntry> {
             }
         })
         .collect()
-}
-
-/// Truncate `text` to fit within `max_width` at `font_size`, appending `...`
-/// when truncation occurs. Standalone (not a method) so the header fitter can
-/// call it without holding `&mut self` across multiple measure calls.
-fn truncate_to_width(
-    frame: &mut OverlayFrame,
-    text: &str,
-    max_width: f32,
-    font_size: f32,
-) -> String {
-    let (full_w, _) = frame.measure_text(text, font_size);
-    if full_w <= max_width {
-        return text.to_string();
-    }
-    let chars: Vec<char> = text.chars().collect();
-    if chars.is_empty() {
-        return String::new();
-    }
-    let (ellipsis_w, _) = frame.measure_text("...", font_size);
-    if ellipsis_w >= max_width {
-        return "...".to_string();
-    }
-    let avail = max_width - ellipsis_w;
-    let avg_w = full_w / chars.len() as f32;
-    // Slightly conservative initial estimate; back off on overflow.
-    let mut fit = ((avail / avg_w) * 0.9) as usize;
-    fit = fit.min(chars.len()).max(1);
-    loop {
-        let prefix: String = chars[..fit].iter().collect();
-        let candidate = format!("{}...", prefix);
-        let (cw, _) = frame.measure_text(&candidate, font_size);
-        if cw <= max_width || fit <= 1 {
-            return candidate;
-        }
-        fit -= 1;
-    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -194,51 +194,6 @@ impl ProgressBar {
         self.center_text.is_some() && self.right_text.is_some()
     }
 
-    /// Truncate label to fit within max_width, adding "..." if truncated
-    /// Uses estimation + single verification instead of binary search to reduce measure_text calls
-    fn truncate_label_to_width(
-        &self,
-        frame: &mut OverlayFrame,
-        max_width: f32,
-        font_size: f32,
-    ) -> String {
-        let (label_width, _) = frame.measure_text(&self.label, font_size);
-        if label_width <= max_width {
-            return self.label.clone();
-        }
-
-        let chars: Vec<char> = self.label.chars().collect();
-        if chars.is_empty() {
-            return "...".to_string();
-        }
-
-        // Estimate: assume roughly uniform character width
-        // Calculate how many chars would fit based on ratio
-        let (ellipsis_width, _) = frame.measure_text("...", font_size);
-        let available_width = max_width - ellipsis_width;
-
-        if available_width <= 0.0 {
-            return "...".to_string();
-        }
-
-        // Estimate characters that fit (slightly conservative)
-        let avg_char_width = label_width / chars.len() as f32;
-        let estimated_fit = ((available_width / avg_char_width) * 0.9) as usize;
-        let mut fit_count = estimated_fit.min(chars.len()).max(1);
-
-        // Single verification pass - if too wide, back off linearly
-        loop {
-            let truncated: String = chars[..fit_count].iter().collect();
-            let test = format!("{}...", truncated);
-            let (test_width, _) = frame.measure_text(&test, font_size);
-
-            if test_width <= max_width || fit_count <= 1 {
-                return test;
-            }
-            fit_count -= 1;
-        }
-    }
-
     /// Draw a fill segment, applying the single-color gradient when enabled.
     /// The gradient spans the rect's own width.
     fn draw_fill(
@@ -341,6 +296,7 @@ impl ProgressBar {
 
         let text_padding = 4.0 * frame.scale_factor();
         let is_three_col = self.is_three_column();
+        let bold = self.bold_text;
 
         // Use smaller font for 3-column layout to fit everything
         let effective_font_size = if is_three_col {
@@ -361,7 +317,8 @@ impl ProgressBar {
             (name_w, x + name_w, x + name_w + center_w)
         } else if let Some(ref right) = self.right_text {
             // Measure actual right text width and give the rest to name
-            let (right_width, _) = frame.measure_text(right, effective_font_size);
+            let (right_width, _) =
+                frame.measure_text_styled(right, effective_font_size, bold, false);
             let right_reserved = right_width + text_padding * 3.0; // padding on both sides + gap
             let name_w = width - right_reserved;
             (name_w, x + name_w, x + name_w)
@@ -371,8 +328,6 @@ impl ProgressBar {
         } else {
             (width - text_padding * 2.0, x, x)
         };
-
-        let bold = self.bold_text;
 
         // Helper: draw text with either full glow or simple drop shadow
         let use_glow = self.text_glow;
@@ -406,13 +361,18 @@ impl ProgressBar {
         // Draw label on the left (truncated to fit, with optional offset for icon)
         let label_start = x + text_padding + self.label_offset;
         let available_for_label = name_width - text_padding * 2.0 - self.label_offset;
-        let display_label =
-            self.truncate_label_to_width(frame, available_for_label.max(0.0), effective_font_size);
+        let display_label = frame.truncate_to_width(
+            &self.label,
+            available_for_label.max(0.0),
+            effective_font_size,
+            bold,
+        );
         draw_bar_text(frame, &display_label, label_start, text_y);
 
         // Draw right text (rightmost position)
         if let Some(ref right) = self.right_text {
-            let (text_width, _) = frame.measure_text(right, effective_font_size);
+            let (text_width, _) =
+                frame.measure_text_styled(right, effective_font_size, bold, false);
             let right_x = x + width - text_width - 8.0 * frame.scale_factor();
             draw_bar_text(frame, right, right_x, text_y);
         }
@@ -421,12 +381,14 @@ impl ProgressBar {
         if let Some(ref center) = self.center_text {
             if is_three_col {
                 // In 3-column mode, position center text right-aligned within its column
-                let (center_width, _) = frame.measure_text(center, effective_font_size);
+                let (center_width, _) =
+                    frame.measure_text_styled(center, effective_font_size, bold, false);
                 let center_x = right_start - center_width - text_padding;
                 draw_bar_text(frame, center, center_x, text_y);
             } else {
                 // In 2-column mode (center only), right-align it
-                let (center_width, _) = frame.measure_text(center, effective_font_size);
+                let (center_width, _) =
+                    frame.measure_text_styled(center, effective_font_size, bold, false);
                 let center_pos = x + width - center_width - text_padding;
                 draw_bar_text(frame, center, center_pos, text_y);
             }

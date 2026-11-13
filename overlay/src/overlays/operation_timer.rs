@@ -88,30 +88,6 @@ const BASE_HEADER_SPACING: f32 = 2.0;
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Return `text` truncated with "…" if it exceeds `max_width` at `font_size`.
-/// Otherwise returns the original string unchanged.
-fn truncate_to_fit(frame: &mut OverlayFrame, text: &str, font_size: f32, max_width: f32) -> String {
-    let (w, _) = frame.measure_text(text, font_size);
-    if w <= max_width {
-        return text.to_string();
-    }
-    // Binary-search the char boundary where truncation keeps us within max_width
-    let ellipsis = "…";
-    let (ew, _) = frame.measure_text(ellipsis, font_size);
-    let budget = max_width - ew;
-    // Walk chars from the end, trimming one at a time
-    let mut chars: Vec<char> = text.chars().collect();
-    while !chars.is_empty() {
-        let candidate: String = chars.iter().collect();
-        let (cw, _) = frame.measure_text(&candidate, font_size);
-        if cw <= budget {
-            return format!("{}{}", candidate, ellipsis);
-        }
-        chars.pop();
-    }
-    ellipsis.to_string()
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Overlay Implementation
 // ─────────────────────────────────────────────────────────────────────────────
@@ -178,7 +154,8 @@ impl OperationTimerOverlay {
             let raw_title = self.data.operation_name.as_deref().unwrap_or("Op Timer");
             let content_width = self.content_width(padding);
             let title =
-                truncate_to_fit(&mut self.frame, raw_title, header_font_size, content_width);
+                self.frame
+                    .truncate_to_width(raw_title, content_width, header_font_size, false);
             y = Header::new(title)
                 .with_color(color)
                 .with_centered(true)

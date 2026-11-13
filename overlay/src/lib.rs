@@ -139,7 +139,7 @@ pub use platform::{
     resolve_absolute_position,
 };
 pub use renderer::{DEFAULT_FONT_FAMILY, Renderer, available_font_families};
-pub use utils::{color_from_rgba, format_number, format_time, truncate_name};
+pub use utils::{color_from_rgba, format_number, format_time};
 pub use widgets::{Footer, Header, LabeledValue, ProgressBar, colors};
 
 // Re-export tiny_skia Color for external use

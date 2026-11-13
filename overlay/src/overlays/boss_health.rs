@@ -237,7 +237,7 @@ impl BossHealthOverlay {
             } else {
                 w - pad_x * 2.0
             };
-            let display = self.truncate_text_to_width(marker_text, marker_max, font);
+            let display = self.frame.truncate_to_width(marker_text, marker_max, font, true);
             self.draw_text_bold(&display, x + pad_x, text_y, font, font_color);
         }
         if let Some((target_name, role)) = target {
@@ -245,7 +245,7 @@ impl BossHealthOverlay {
             if let Some(icon) = icon {
                 let icon_size = h * 0.8;
                 let icon_gap = 2.0 * self.scale();
-                let display = self.truncate_text_to_width(target_name, w * 0.4, font);
+                let display = self.frame.truncate_to_width(target_name, w * 0.4, font, true);
                 let (tw, _) = self.measure_text_bold(&display, font);
                 let text_x = x + w - tw - pad_x;
                 self.frame.draw_image(
@@ -260,7 +260,7 @@ impl BossHealthOverlay {
                 self.draw_text_bold(&display, text_x, text_y, font, font_color);
             } else {
                 let text = format!("⌖ {}", target_name);
-                let display = self.truncate_text_to_width(&text, w * 0.4, font);
+                let display = self.frame.truncate_to_width(&text, w * 0.4, font, true);
                 let (tw, _) = self.measure_text_bold(&display, font);
                 self.draw_text_bold(&display, x + w - tw - pad_x, text_y, font, font_color);
             }
@@ -336,39 +336,20 @@ impl BossHealthOverlay {
         if health_text.is_empty() {
             let name_font = (name_font_size * 1.45).min(bar_h * 0.55);
             let name_y = bar_top + bar_h / 2.0 + name_font / 3.0;
-            let display = self.truncate_text_to_width(name, text_max_w, name_font);
+            let display = self.frame.truncate_to_width(name, text_max_w, name_font, true);
             self.draw_text_bold(&display, bar_x + pad_x, name_y, name_font, font_color);
             return;
         }
         let name_y = bar_top + bar_h * 0.25 + name_font_size / 3.0;
-        let display = self.truncate_text_to_width(name, text_max_w, name_font_size);
+        let display = self.frame.truncate_to_width(name, text_max_w, name_font_size, true);
         self.draw_text_bold(&display, bar_x + pad_x, name_y, name_font_size, font_color);
 
         // Readout line: centered in the bottom half, nudged up so the text
         // doesn't hug the bar's bottom edge.
         let hp_text_y =
             bar_top + bar_h * 0.75 + hp_font_size / 3.0 - 2.0 * self.scale();
-        let display = self.truncate_text_to_width(health_text, text_max_w, hp_font_size);
+        let display = self.frame.truncate_to_width(health_text, text_max_w, hp_font_size, true);
         self.draw_text_bold(&display, bar_x + pad_x, hp_text_y, hp_font_size, font_color);
-    }
-
-    /// Ellipsis-truncate `text` to fit `max_width` at `font_size` (bold metrics).
-    fn truncate_text_to_width(&mut self, text: &str, max_width: f32, font_size: f32) -> String {
-        let (text_w, _) = self.measure_text_bold(text, font_size);
-        if text_w <= max_width {
-            return text.to_string();
-        }
-        let chars: Vec<char> = text.chars().collect();
-        let mut fit = chars.len();
-        while fit > 1 {
-            fit -= 1;
-            let candidate: String = chars[..fit].iter().collect::<String>() + "…";
-            let (cw, _) = self.measure_text_bold(&candidate, font_size);
-            if cw <= max_width {
-                return candidate;
-            }
-        }
-        "…".to_string()
     }
 
     /// True when any gutter element (target / HP markers / shield) is enabled;

@@ -9,7 +9,6 @@ use tiny_skia::Color;
 use super::{Overlay, OverlayConfigUpdate, OverlayData, RaidRegistryAction};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
-use crate::utils::truncate_name;
 use crate::widgets::colors;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1326,6 +1325,21 @@ impl RaidOverlay {
         }
     }
 
+    fn role_icon_size(&self) -> f32 {
+        (self.frame_height() * 0.3).clamp(10.0, 20.0)
+    }
+
+    /// Width of the bottom-left role/class icon strip for a frame (0 if none)
+    fn icon_strip_width(&self, raid_frame: &RaidFrame) -> f32 {
+        let has_role = self.config.show_role_icons && raid_frame.role != PlayerRole::Dps;
+        let has_class = self.config.show_class_icons && raid_frame.class_icon.is_some();
+        let count = has_role as u8 + has_class as u8;
+        if count == 0 {
+            return 0.0;
+        }
+        3.0 + count as f32 * (self.role_icon_size() + 2.0)
+    }
+
     /// Render role and/or class icons at the bottom-left of the frame.
     ///
     /// Icons are anchored to the frame bottom so they always render regardless
@@ -1347,7 +1361,7 @@ impl RaidOverlay {
         show_role: bool,
         show_class: bool,
     ) {
-        let icon_size = (self.frame_height() * 0.3).clamp(10.0, 20.0);
+        let icon_size = self.role_icon_size();
         let icon_x = x + 3.0;
         // Anchor to frame bottom with small margin
         let icon_y = y + h - icon_size - 2.0;
@@ -1656,7 +1670,9 @@ impl RaidOverlay {
         let text = if raid_frame.is_empty() {
             "Empty".to_string()
         } else {
-            truncate_name(&raid_frame.name, 12).to_string()
+            let name_max = (w - 8.0 - self.icon_strip_width(raid_frame)).max(0.0);
+            self.frame
+                .truncate_to_width(&raid_frame.name, name_max, font_size, false)
         };
 
         let (text_w, _text_h) = self.frame.measure_text(&text, font_size);

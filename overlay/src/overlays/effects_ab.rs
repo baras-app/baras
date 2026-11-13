@@ -435,11 +435,14 @@ impl EffectsABOverlay {
                 self.draw_normal_mode(effect, x, y, icon_size, font_size);
             }
 
-            // Effect name below icon
+            // Effect name below icon (labels may use the full icon pitch)
+            let label_max = icon_size + spacing;
             let mut text_y_offset = 0.0;
             if self.config.show_effect_names {
                 let name_font_size = font_size * 0.85;
-                let name = truncate_name(&effect.name, 8);
+                let name =
+                    self.frame
+                        .truncate_to_width(&effect.name, label_max, name_font_size, false);
                 let name_width = self.frame.measure_text(&name, name_font_size).0;
                 let name_x = x + (icon_size - name_width) / 2.0;
                 let name_y = y + icon_size + name_font_size + 2.0;
@@ -452,7 +455,9 @@ impl EffectsABOverlay {
             // Source/target label below effect name
             if let Some(label) = effect.entity_label() {
                 let source_font_size = font_size * 0.75;
-                let source = truncate_name(&label, 16);
+                let source =
+                    self.frame
+                        .truncate_to_width(&label, label_max, source_font_size, false);
                 let source_width = self.frame.measure_text(&source, source_font_size).0;
                 let source_x = x + (icon_size - source_width) / 2.0;
                 let source_y = y + icon_size + source_font_size + 2.0 + text_y_offset;
@@ -636,12 +641,16 @@ impl EffectsABOverlay {
             // Text to the right of icon
             let text_x = x + icon_size + padding;
             let text_y = y + icon_size / 2.0;
+            let text_max = (self.frame.width() as f32 - padding - text_x).max(0.0);
 
             if self.config.show_effect_names {
                 // Effect name on top
                 let name_y = text_y - font_size * 0.3;
+                let name = self
+                    .frame
+                    .truncate_to_width(&effect.name, text_max, font_size, false);
                 self.frame.draw_text_glowed(
-                    &effect.name,
+                    &name,
                     text_x,
                     name_y,
                     font_size,
@@ -651,6 +660,9 @@ impl EffectsABOverlay {
                 // Source/target label below effect name
                 if let Some(label) = effect.entity_label() {
                     let source_font_size = font_size * 0.8;
+                    let label =
+                        self.frame
+                            .truncate_to_width(&label, text_max, source_font_size, false);
                     self.frame.draw_text_glowed(
                         &label,
                         text_x,
@@ -663,6 +675,9 @@ impl EffectsABOverlay {
                 // Source/target label centered to the right of icon
                 if let Some(label) = effect.entity_label() {
                     let source_font_size = font_size * 0.8;
+                    let label =
+                        self.frame
+                            .truncate_to_width(&label, text_max, source_font_size, false);
                     self.frame.draw_text_glowed(
                         &label,
                         text_x,
@@ -1434,16 +1449,6 @@ impl EffectsABOverlay {
                 colors::icon_countdown(),
             );
         }
-    }
-}
-
-/// Truncate a name to fit within a character limit
-fn truncate_name(name: &str, max_chars: usize) -> String {
-    if name.chars().count() <= max_chars {
-        name.to_string()
-    } else {
-        let truncated: String = name.chars().take(max_chars - 1).collect();
-        format!("{}…", truncated)
     }
 }
 
