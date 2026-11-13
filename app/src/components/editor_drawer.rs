@@ -174,12 +174,6 @@ pub fn EditorDrawer(
         aside {
             // Folded, the form stays mounted (hidden) so its edits survive
             class: if collapsed { "editor-drawer collapsed" } else { "editor-drawer" },
-            tabindex: "-1",
-            onkeydown: move |e| {
-                if e.key() == Key::Escape {
-                    close();
-                }
-            },
             if !collapsed {
                 ResizeHandle { width: DRAWER_WIDTH.signal(), fallback: default_width() }
             }
@@ -194,7 +188,7 @@ pub fn EditorDrawer(
                         {actions}
                     }
                     if on_close.is_some() {
-                        button { class: "btn btn-xs btn-ghost", title: "Close (Esc)", onclick: move |_| close(),
+                        button { class: "btn btn-xs btn-ghost", title: "Close (Esc)", "data-esc-close": true, onclick: move |_| close(),
                             i { class: "fa-solid fa-xmark" }
                         }
                     }

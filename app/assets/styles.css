@@ -2054,6 +2054,47 @@ button:active {
   color: var(--text-heading);
 }
 
+/* In-app shortcut list under Global Hotkeys */
+.app-shortcuts {
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.app-shortcuts h5 {
+  margin: 0 0 var(--space-sm) 0;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+.app-shortcuts ul {
+  list-style: none;
+  margin: 0 0 var(--space-sm) 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.app-shortcuts li {
+  display: grid;
+  grid-template-columns: 3.5em 1fr;
+  align-items: center;
+  font-size: 0.85em;
+  color: var(--text-primary);
+}
+
+.app-shortcuts kbd {
+  justify-self: start;
+  padding: 1px 6px;
+  font-family: inherit;
+  font-size: 0.9em;
+  white-space: pre;
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+}
+
 /* Overlay tab sections, always in this order: Background & Bars, Layout,
    Content, Text */
 .settings-group + .settings-group {

@@ -1330,8 +1330,16 @@
 }
 
 .recap-table-wrap h5,
-.recap-ledger-wrap h5 {
+.recap-ledger-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
   margin: var(--space-xs) 0 var(--space-sm);
+}
+
+.recap-ledger-wrap h5 {
+  margin: 0;
   font-size: 11px;
   font-weight: 500;
   color: var(--text-tertiary);
@@ -1455,6 +1463,13 @@
   flex-shrink: 0;
   text-align: center;
   font-size: 10px;
+}
+
+.ledger-ability-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border-radius: 2px;
 }
 
 .ledger-ability {

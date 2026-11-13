@@ -441,6 +441,9 @@ pub struct DeathRecapEvent {
     pub kind: DeathRecapEventKind,
     pub source_name: String,
     pub ability_name: String,
+    /// For the ledger icon; 0 for the death row
+    #[serde(default)]
+    pub ability_id: i64,
     /// Effective damage or healing
     pub value: i32,
     pub absorbed: i32,

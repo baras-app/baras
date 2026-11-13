@@ -111,6 +111,7 @@ pub fn App() -> Element {
 
     // UI Session State - unified state that persists across tab switches
     let mut ui_state = use_signal(UiSessionState::default);
+    crate::shortcuts::use_app_shortcuts(ui_state);
 
     // Other UI state (not part of session persistence)
     let mut overlay_settings = use_signal(OverlaySettings::default);
@@ -814,7 +815,8 @@ pub fn App() -> Element {
                         }
                         button {
                             class: if file_browser_open() { "tab-btn header-files-btn active" } else { "tab-btn header-files-btn" },
-                            title: if file_browser_open() { "Close log files" } else { "Browse log files" },
+                            title: if file_browser_open() { "Close log files (L)" } else { "Browse log files (L)" },
+                            "data-shortcut": "l",
                             onclick: move |_| {
                                 // Second click closes the drawer again
                                 if file_browser_open() {
@@ -1877,6 +1879,21 @@ pub fn App() -> Element {
                                 }
                                 span { class: "save-status", "{hotkey_save_status}" }
                             }
+                            div { class: "app-shortcuts",
+                                h5 { "In-app Shortcuts" }
+                                ul {
+                                    for (key, action) in [
+                                        ("Esc", "Close the topmost dialog, drawer or fullscreen view"),
+                                        ("L", "Toggle the log file browser"),
+                                        ("[  ]", "Previous / next tab"),
+                                        ("S", "Collapse / expand the sidebar"),
+                                        ("F", "Toggle Analysis fullscreen"),
+                                    ] {
+                                        li { kbd { "{key}" } span { "{action}" } }
+                                    }
+                                }
+                                p { class: "hint", "Ignored while typing in a field." }
+                            }
                         }
 
                         div { class: "settings-section",
@@ -2270,6 +2287,8 @@ pub fn App() -> Element {
                             }
                             button {
                                 class: "btn btn-close",
+                                title: "Close (Esc)",
+                                "data-esc-close": true,
                                 onclick: move |_| file_browser_open.set(false),
                                 "X"
                             }

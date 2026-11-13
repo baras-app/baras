@@ -10,7 +10,9 @@ use dioxus::prelude::*;
 use wasm_bindgen_futures::spawn_local as spawn;
 
 use crate::api::{self, DeathRecap, DeathRecapEventKind, PlayerDeath, RaidOverviewRow};
+use crate::components::ability_icon::use_icon_url;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
+use crate::components::mirror_names::display_id;
 use crate::components::editor_drawer::{ResizeHandle, window_width};
 
 /// Width (px) the user dragged the drawer to; None = the CSS default. Kept
@@ -78,12 +80,6 @@ pub fn DeathRecapDrawer(props: DeathRecapDrawerProps) -> Element {
         aside {
             class: "drawer death-recap-drawer",
             style: RECAP_WIDTH().map(|w| format!("width: {w:.0}px")).unwrap_or_default(),
-            tabindex: "-1",
-            onkeydown: move |e| {
-                if e.key() == Key::Escape {
-                    props.on_close.call(());
-                }
-            },
             // Default matches the CSS min(760px, 92vw)
             ResizeHandle { width: RECAP_WIDTH.signal(), fallback: (window_width() * 0.92).min(760.0) }
             div { class: "recap-header",
@@ -104,6 +100,7 @@ pub fn DeathRecapDrawer(props: DeathRecapDrawerProps) -> Element {
                 button {
                     class: "btn btn-xs btn-ghost",
                     title: "Close (Esc)",
+                    "data-esc-close": true,
                     onclick: move |_| props.on_close.call(()),
                     i { class: "fa-solid fa-xmark" }
                 }
@@ -148,6 +145,8 @@ fn RecapBody(recap: DeathRecap, european: bool) -> Element {
     let r = &recap;
     let eu = european;
     let fmt = move |n: i64| formatting::format_compact(n, eu);
+    // Final events filter: None = all, Some(kind) = that kind (the death row always shows)
+    let mut ledger_kind = use_signal(|| None::<DeathRecapEventKind>);
 
     rsx! {
         div { class: "recap-content",
@@ -210,9 +209,20 @@ fn RecapBody(recap: DeathRecap, european: bool) -> Element {
 
             // Event ledger — final events with running HP%
             div { class: "recap-ledger-wrap",
-                h5 { "Final Events" }
+                div { class: "recap-ledger-head",
+                    h5 { "Final Events" }
+                    div { class: "filter-pills",
+                        for (label, kind) in [("All", None), ("Damage", Some(DeathRecapEventKind::Damage)), ("Healing", Some(DeathRecapEventKind::Heal))] {
+                            button {
+                                class: if ledger_kind() == kind { "seg active" } else { "seg" },
+                                onclick: move |_| ledger_kind.set(kind),
+                                "{label}"
+                            }
+                        }
+                    }
+                }
                 div { class: "recap-ledger",
-                    for ev in r.events.iter().cloned() {
+                    for ev in r.events.iter().filter(|e| ledger_kind().is_none_or(|k| e.kind == k || e.kind == DeathRecapEventKind::Death)).cloned() {
                         {event_row(&ev, r.death_time_secs, eu)}
                     }
                 }
@@ -465,12 +475,6 @@ fn event_row(ev: &DeathRecapEvent, death_time: f32, european: bool) -> Element {
                 if ev.is_crit {
                     s.push('*');
                 }
-                if ev.absorbed > 0 {
-                    s.push_str(&format!(
-                        " ({} absorbed)",
-                        formatting::format_compact(ev.absorbed as i64, european)
-                    ));
-                }
                 s
             }
         }
@@ -483,13 +487,15 @@ fn event_row(ev: &DeathRecapEvent, death_time: f32, european: bool) -> Element {
         DeathRecapEventKind::Damage | DeathRecapEventKind::Death => "ledger-detail stat-damage",
         DeathRecapEventKind::Heal => "ledger-detail stat-heal",
     };
+    let absorbed = (ev.kind == DeathRecapEventKind::Damage && ev.absorbed > 0)
+        .then(|| formatting::format_compact(ev.absorbed as i64, european));
     let hp_label = format!("{}%", ev.hp_pct.round() as i64);
     let hp_width = format!("{}%", ev.hp_pct.clamp(0.0, 100.0));
 
     rsx! {
         div { class: "ledger-row",
             span { class: "ledger-time", "{time_label}" }
-            i { class: "{icon_class} {icon}" }
+            LedgerIcon { ability_id: ev.ability_id, icon, icon_class }
             span { class: "ledger-ability",
                 "{ev.ability_name}"
                 if !ev.source_name.is_empty() {
@@ -501,6 +507,9 @@ fn event_row(ev: &DeathRecapEvent, death_time: f32, european: bool) -> Element {
                     span { class: "recap-dmg-type", "{ev.damage_type}" }
                 }
                 "{detail}"
+                if let Some(a) = absorbed {
+                    span { class: "stat-absorb", " ({a} absorbed)" }
+                }
             }
             span { class: "ledger-hp",
                 span { class: "ledger-hp-bar",
@@ -564,6 +573,19 @@ fn recap_nav(deaths: &[PlayerDeath], name: &str, time: f32, on_select: EventHand
             if firsts.len() > 1 {
                 {player_btn(Some(p + 1), false)}
             }
+        }
+    }
+}
+
+/// The ability's icon, or the event-kind glyph while loading / when it has none
+#[component]
+fn LedgerIcon(ability_id: i64, icon: &'static str, icon_class: &'static str) -> Element {
+    let (url, _) = use_icon_url((ability_id != 0).then(|| display_id(ability_id) as u64));
+    rsx! {
+        if let Some(url) = url() {
+            img { class: "ledger-ability-icon", src: "{url}", alt: "" }
+        } else {
+            i { class: "{icon_class} {icon}" }
         }
     }
 }

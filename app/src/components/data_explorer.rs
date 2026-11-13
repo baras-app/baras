@@ -1474,7 +1474,8 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                         }
                         button {
                             class: "sidebar-collapse-btn",
-                            title: if *sidebar_collapsed.read() { "Expand encounters" } else { "Collapse encounters" },
+                            title: if *sidebar_collapsed.read() { "Expand encounters (S)" } else { "Collapse encounters (S)" },
+                            "data-shortcut": "s",
                             onclick: move |_| { let v = *sidebar_collapsed.read(); sidebar_collapsed.set(!v); },
                             i { class: if *sidebar_collapsed.read() { "fa-solid fa-angles-right" } else { "fa-solid fa-angles-left" } }
                         }
@@ -1828,7 +1829,9 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                         }
                         button {
                             class: "tab-fullscreen-btn",
-                            title: if overview_fullscreen() { "Exit fullscreen" } else { "Fullscreen" },
+                            title: if overview_fullscreen() { "Exit fullscreen (F / Esc)" } else { "Fullscreen (F)" },
+                            "data-shortcut": "f",
+                            "data-esc-close": overview_fullscreen().then_some("true"),
                             onclick: move |_| overview_fullscreen.toggle(),
                             i { class: if overview_fullscreen() { "fa-solid fa-down-left-and-up-right-to-center" } else { "fa-solid fa-up-right-and-down-left-from-center" } }
                         }

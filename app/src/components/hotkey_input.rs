@@ -114,6 +114,8 @@ pub fn HotkeyInput(props: HotkeyInputProps) -> Element {
         div {
             class: "{input_class}",
             tabindex: 0,
+            // Captured keys must not trigger in-app shortcuts
+            "data-no-shortcuts": true,
             onclick: move |_| {
                 is_capturing.set(true);
                 pending_display.set(String::new());

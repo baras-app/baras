@@ -20,6 +20,7 @@ struct RecapRow {
     source_name: String,
     source_id: i64,
     ability_name: String,
+    ability_id: i64,
     effect_id: i64,
     dmg_effective: i32,
     dmg_absorbed: i32,
@@ -80,7 +81,8 @@ impl EncounterQuery<'_> {
                 heal_effective,
                 target_hp,
                 target_max_hp,
-                COALESCE(phase_name, '') AS phase_name
+                COALESCE(phase_name, '') AS phase_name,
+                ability_id
             FROM events
             WHERE target_name = '{}'
               AND combat_time_secs IS NOT NULL
@@ -114,6 +116,7 @@ impl EncounterQuery<'_> {
             let hps = col_i32(batch, 11)?;
             let max_hps = col_i32(batch, 12)?;
             let phases = col_strings(batch, 13)?;
+            let ability_ids = col_i64(batch, 14)?;
 
             for i in 0..batch.num_rows() {
                 rows.push(RecapRow {
@@ -121,6 +124,7 @@ impl EncounterQuery<'_> {
                     source_name: sources[i].clone(),
                     source_id: source_ids[i],
                     ability_name: abilities[i].clone(),
+                    ability_id: ability_ids[i],
                     effect_id: effect_ids[i],
                     dmg_effective: dmg_eff[i],
                     dmg_absorbed: dmg_abs[i],
@@ -296,6 +300,7 @@ fn build_recap(player_name: &str, requested_death_time: f32, rows: Vec<RecapRow>
             kind,
             source_name: r.source_name.clone(),
             ability_name: r.ability_name.clone(),
+            ability_id: if kind == DeathRecapEventKind::Death { 0 } else { r.ability_id },
             value,
             absorbed,
             is_crit: r.is_crit && kind == DeathRecapEventKind::Damage,

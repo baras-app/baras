@@ -23,7 +23,8 @@ pub fn SidebarHeader(
                 }
                 button {
                     class: "sidebar-collapse-btn",
-                    title: if collapsed { "Expand {title}" } else { "Collapse {title}" },
+                    title: if collapsed { "Expand {title} (S)" } else { "Collapse {title} (S)" },
+                    "data-shortcut": "s",
                     onclick: move |_| on_toggle.call(()),
                     i { class: if collapsed { "fa-solid fa-angles-right" } else { "fa-solid fa-angles-left" } }
                 }
