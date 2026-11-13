@@ -1,4 +1,4 @@
-# v2026.11.XX
+# v2026.11.13
 
 ## Personal Stats Overlay Rework
 
