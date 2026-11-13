@@ -144,7 +144,8 @@ impl AlertsOverlay {
     /// rather than stacking — used for live-updating countdown timers.
     pub fn add_alerts(&mut self, new_alerts: Vec<AlertEntry>) {
         // Pre-cache icons at current display size before inserting
-        let icon_size = self.frame.scaled(self.config.font_size as f32) as u32;
+        // Rounded to match the render-path lookup key
+        let icon_size = self.frame.scaled(self.config.font_size as f32).round() as u32;
         for alert in &new_alerts {
             if let (Some(ability_id), Some(icon_arc)) = (alert.icon_ability_id, &alert.icon) {
                 let (src_w, src_h, ref src_data) = **icon_arc;

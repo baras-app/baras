@@ -130,7 +130,7 @@ const BASE_FONT_SIZE: f32 = 10.0;
 const BASE_NAME_WIDTH: f32 = 100.0;
 /// Max characters per line before wrapping
 const NAME_WRAP_CHARS: usize = 16;
-/// Bar mode font size (matches timer overlay style)
+/// Bar mode font size (sized for the 20px default icon / 24px bar)
 const BASE_BAR_FONT_SIZE: f32 = 17.0;
 
 /// DOT tracker overlay - rows of targets with DOT icons
@@ -363,7 +363,8 @@ impl DotTrackerOverlay {
         }
 
         let mut y = rows_start_y;
-        let icon_size_u32 = icon_size as u32;
+        // Must match the rounding in bar_or_icon_size() or the cache misses
+        let icon_size_u32 = icon_size.round() as u32;
 
         for target in self.data.targets.iter().take(max_targets) {
             // Skip targets with no DOTs

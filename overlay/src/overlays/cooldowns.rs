@@ -340,7 +340,8 @@ impl CooldownOverlay {
 
         let mut y = rows_start_y;
 
-        let icon_size_u32 = icon_size as u32;
+        // Must match the rounding in bar_or_icon_size() or the cache misses
+        let icon_size_u32 = icon_size.round() as u32;
 
         for entry in self.data.entries.iter().take(max_display) {
             let x = padding;

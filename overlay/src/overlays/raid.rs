@@ -752,17 +752,19 @@ impl RaidOverlay {
     /// of frames, clear of the detect button in the corner.
     fn clear_all_button_bounds(&self) -> (f32, f32, f32, f32) {
         let (x, _, size, _) = self.detect_button_bounds();
-        let h = size * 3.4;
         let row_mid = self.padding() + self.frame_height() * 0.5;
-        let y = (row_mid - h * 0.5)
-            .min(self.frame.height() as f32 - h - 2.0)
-            .max(2.0);
+        // Stay below the top-right frame's own "x" button, which shares this edge
+        let (_, btn_y, btn_size) = self.clear_button_rect(0);
+        let top = btn_y + btn_size + 2.0;
+        let y = (row_mid - size * 1.7).max(top);
+        let h = (size * 3.4).min(self.frame.height() as f32 - y - 2.0).max(0.0);
         (x, y, size, h)
     }
 
     fn hit_test_clear_all_button(&self, px: f32, py: f32) -> bool {
         let (x, y, w, h) = self.clear_all_button_bounds();
-        px >= x && px < x + w && py >= y && py < y + h
+        h >= w * 2.0
+            && px >= x && px < x + w && py >= y && py < y + h
     }
 
     /// Find which slot (if any) contains the given point
@@ -776,14 +778,19 @@ impl RaidOverlay {
         None
     }
 
-    /// Check if point is in the clear button for a slot
-    fn hit_test_clear_button(&self, slot: u8, px: f32, py: f32) -> bool {
+    /// Per-frame clear ("x") button: (x, y, size), top-right of the slot
+    fn clear_button_rect(&self, slot: u8) -> (f32, f32, f32) {
         let (x, y, w, h) = self.slot_bounds(slot);
-        let btn_size = (h * 0.35).clamp(12.0, 18.0);
-        let btn_x = x + w - btn_size - 3.0;
-        let btn_y = y + 3.0;
+        let size = (h * 0.35).clamp(12.0, 18.0);
+        (x + w - size - 3.0, y + 3.0, size)
+    }
 
-        px >= btn_x && px < btn_x + btn_size && py >= btn_y && py < btn_y + btn_size
+    /// Slot whose clear button contains the point (occupied frames only)
+    fn clear_button_slot_at(&self, px: f32, py: f32) -> Option<u8> {
+        self.frames.iter().filter(|f| !f.is_empty()).map(|f| f.slot).find(|&slot| {
+            let (bx, by, size) = self.clear_button_rect(slot);
+            px >= bx && px < bx + size && py >= by && py < by + size
+        })
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1105,6 +1112,10 @@ impl RaidOverlay {
 
     fn render_clear_all_button(&mut self) {
         let (x, y, w, h) = self.clear_all_button_bounds();
+        // Too short to hold the lettering (tiny window): hide it
+        if h < w * 2.0 {
+            return;
+        }
         self.frame
             .fill_rounded_rect(x, y, w, h, w / 2.0, Color::from_rgba8(20, 24, 32, 150));
         self.frame.stroke_rounded_rect(
@@ -1710,9 +1721,7 @@ impl RaidOverlay {
 
         // Clear button (×) for ALL occupied frames (including self)
         if !raid_frame.is_empty() {
-            let btn_size = (h * 0.35).clamp(12.0, 18.0);
-            let btn_x = x + w - btn_size - 3.0;
-            let btn_y = y + 3.0;
+            let (btn_x, btn_y, btn_size) = self.clear_button_rect(raid_frame.slot);
 
             self.frame.fill_rounded_rect(
                 btn_x,
@@ -1752,16 +1761,22 @@ impl RaidOverlay {
     /// Handle a click in rearrange mode
     /// Instead of modifying local state, we queue actions for the registry.
     fn handle_rearrange_click(&mut self, px: f32, py: f32) {
-        // Check clear buttons first - queue ClearSlot action
-        for i in 0..self.frames.len() {
-            let frame = &self.frames[i];
-            // All non-empty frames can be cleared (including self)
-            if !frame.is_empty() && self.hit_test_clear_button(frame.slot, px, py) {
-                self.pending_registry_actions
-                    .push(RaidRegistryAction::ClearSlot(frame.slot));
-                self.needs_render = true;
-                return;
-            }
+        // Per-frame clear buttons win over everything else, including the
+        // Clear All pill on the same edge: a near-miss must clear one slot,
+        // never the whole roster.
+        if let Some(slot) = self.clear_button_slot_at(px, py) {
+            self.pending_registry_actions
+                .push(RaidRegistryAction::ClearSlot(slot));
+            self.needs_render = true;
+            return;
+        }
+
+        if self.hit_test_clear_all_button(px, py) {
+            self.clear_all_frames();
+            self.swap_state.cancel();
+            self.pending_registry_actions
+                .push(RaidRegistryAction::ClearAll);
+            return;
         }
 
         // Then check slot selection for swapping
@@ -1864,14 +1879,7 @@ impl Overlay for RaidOverlay {
             {
                 self.emit_detect_action();
             } else if self.interaction_mode == InteractionMode::Rearrange {
-                if self.hit_test_clear_all_button(px, py) {
-                    self.clear_all_frames();
-                    self.swap_state.cancel();
-                    self.pending_registry_actions
-                        .push(RaidRegistryAction::ClearAll);
-                } else {
-                    self.handle_rearrange_click(px, py);
-                }
+                self.handle_rearrange_click(px, py);
             }
         }
 

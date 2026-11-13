@@ -251,9 +251,9 @@ impl MetricOverlay {
         self.icon_mode = mode;
     }
 
-    /// Update font scale (clamped to 0.3-2.0)
+    /// Update font scale (clamped to 0.3-3.0, same as construction)
     pub fn set_font_scale(&mut self, scale: f32) {
-        self.font_scale = scale.clamp(0.3, 2.0);
+        self.font_scale = scale.clamp(0.3, 3.0);
     }
 
     /// Update gradient darkening intensity (clamped to 0.0-1.0)
