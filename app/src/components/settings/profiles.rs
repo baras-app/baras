@@ -7,11 +7,8 @@ use crate::api;
 use crate::components::{ToastSeverity, use_toast};
 use crate::types::{MAX_PROFILES, MetricType, OverlaySettings};
 
-use super::draft::SettingsDraft;
-
 #[component]
 pub fn ProfilesSection(
-    draft: SettingsDraft,
     mut settings: Signal<OverlaySettings>,
     mut profile_names: Signal<Vec<String>>,
     mut active_profile: Signal<Option<String>>,
@@ -101,7 +98,6 @@ pub fn ProfilesSection(
                                                                 profile_dirty.set(false);
                                                                 profile_status.set(format!("Loaded '{}'", pname));
                                                                 if let Some(config) = api::get_config().await {
-                                                                    draft.replace(config.overlay_settings.clone());
                                                                     settings.set(config.overlay_settings);
                                                                 }
                                                                 if let Some(status) = api::get_overlay_status().await {

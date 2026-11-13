@@ -228,7 +228,6 @@ pub fn SettingsPanel(
                     // behavioral flags) rather than the stale draft, so we don't overwrite
                     // global settings like hide_when_not_live or hide_during_conversations.
                     settings.set(config.overlay_settings.clone());
-                    draft.replace(config.overlay_settings);
                     // Save to the active profile so it stays in sync
                     if let Some(ref profile_name) = active_profile() {
                         let _ = api::save_profile(profile_name).await;
@@ -273,7 +272,6 @@ pub fn SettingsPanel(
     let tab_content = match section() {
         SettingsSection::Profiles => rsx! {
             ProfilesSection {
-                draft,
                 settings,
                 profile_names,
                 active_profile,

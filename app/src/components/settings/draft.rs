@@ -19,13 +19,17 @@ pub struct SettingsDraft {
 }
 
 pub fn use_settings_draft(settings: Signal<OverlaySettings>) -> SettingsDraft {
-    SettingsDraft {
+    let draft = SettingsDraft {
         #[allow(clippy::redundant_closure)]
         settings: use_signal(|| settings()),
         has_changes: use_signal(|| false),
         status: use_signal(String::new),
         preview_request_id: use_signal(|| 0),
-    }
+    };
+    // Follow the persisted settings one way: any save, profile load (header,
+    // panel or role auto-switch) or late config load resets the draft
+    use_effect(move || draft.replace(settings()));
+    draft
 }
 
 impl SettingsDraft {
@@ -71,11 +75,14 @@ impl SettingsDraft {
         self.update(s);
     }
 
-    /// Replace the draft with persisted settings (after a save, profile load or reset)
-    pub fn replace(&self, settings: OverlaySettings) {
-        let (mut current, mut has_changes) = (self.settings, self.has_changes);
+    /// Replace the draft with persisted settings, dropping any pending preview
+    /// so a stale edit can't land on the newly loaded settings
+    fn replace(&self, settings: OverlaySettings) {
+        let (mut current, mut has_changes, mut request_id) =
+            (self.settings, self.has_changes, self.preview_request_id);
         current.set(settings);
         has_changes.set(false);
+        *request_id.write() += 1;
     }
 
     /// Unmount cleanup (leaving the Overlays page): stop any pending preview;
