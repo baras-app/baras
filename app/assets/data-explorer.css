@@ -689,16 +689,6 @@
   overflow-x: auto;
 }
 
-/* Deaths: a full-width strip between the overview table and the columns */
-.overview-deaths {
-  margin-top: var(--space-md);
-  padding-top: var(--space-md);
-  border-top: 1px solid var(--border-subtle);
-}
-.overview-deaths + .overview-columns {
-  margin-top: var(--space-md);
-}
-
 .overview-column-header {
   font-size: 11px;
   font-weight: 500;
@@ -1059,78 +1049,34 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Death Tracker
+   Deaths column (overview table)
    ───────────────────────────────────────────────────────────────────────────── */
 
-.death-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.overview-table .death-col {
+  min-width: 52px;
+  white-space: nowrap;
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
-.death-item {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  padding: 4px 10px;
-  background: rgba(var(--fg-rgb), 0.04);
-  border: 1px solid rgba(var(--fg-rgb), 0.1);
-  border-left: 2px solid var(--lt-red, #e74c3c);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: background-color var(--transition-fast), border-color var(--transition-fast);
-  font-size: 12px;
+.overview-table th.death-col {
+  border-bottom: 2px solid var(--border-subtle);
 }
 
-.death-item:hover {
-  background: color-mix(in srgb, var(--lt-red, #e74c3c) 12%, transparent);
-  border-color: color-mix(in srgb, var(--lt-red, #e74c3c) 45%, transparent);
-  border-left-color: var(--lt-red, #e74c3c);
-}
-
-/* PvP: local player's own death / killing blow highlights */
-.death-item.local-death {
-  background: hsla(0, 65%, 50%, 0.3);
-  border-color: hsla(0, 65%, 60%, 0.7);
-}
-
-.death-item.local-death:hover {
-  background: hsla(0, 65%, 55%, 0.45);
-}
-
-.death-item.local-kill {
-  background: hsla(120, 40%, 45%, 0.3);
-  border-color: hsla(120, 40%, 55%, 0.7);
-}
-
-.death-item.local-kill:hover {
-  background: hsla(120, 40%, 50%, 0.45);
-}
-
-/* PvP: friendly/enemy death subgroups */
-.death-subgroup {
-  margin-top: 6px;
-}
-
-.death-subgroup-label {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.death-subgroup-label.friendly {
-  color: var(--lt-green, #4caf50);
-}
-
-.death-subgroup-label.enemy {
+.overview-table .death-col.has-death {
   color: var(--lt-red, #e74c3c);
+  cursor: pointer;
 }
 
-.death-subgroup-label.unknown {
-  color: var(--text-secondary);
+.overview-table .death-col.has-death:hover {
+  background: color-mix(in srgb, var(--lt-red, #e74c3c) 12%, transparent);
+}
+
+/* PvP: the local player landed a killing blow on this player */
+.overview-table .death-col.local-kill {
+  color: var(--lt-green, #4caf50);
 }
 
 /* PvP: friendly/enemy overview table split */
@@ -1153,17 +1099,6 @@
 
 .overview-side-label.unknown {
   color: var(--text-secondary);
-}
-
-.death-name {
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.death-time {
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 10px;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -1192,16 +1127,51 @@
 
 .recap-header h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recap-header-skull {
+  color: var(--lt-red, #e74c3c);
+  font-size: 16px;
+}
+
+.recap-header .role-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.recap-header .class-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.recap-nav {
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-right: auto;
+}
+
+.recap-nav .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.recap-nav-count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 0 4px;
 }
 
 .recap-header-time {
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .recap-phase-chip {
@@ -1539,8 +1509,13 @@
 }
 
 .recap-footer {
+  flex-shrink: 0;
+  margin-top: var(--space-sm);
   display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
   justify-content: flex-end;
+  align-items: center;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

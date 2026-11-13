@@ -1441,12 +1441,14 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
             // the root so it stays open across tabs of the same encounter
             if let Some(d) = recap_death() {
                 DeathRecapDrawer {
-                    key: "{d.name}-{d.death_time_secs}",
                     encounter_idx: *selected_encounter.read(),
                     player_name: d.name.clone(),
                     death_time_secs: d.death_time_secs,
                     european: eu,
                     on_close: move |_| recap_death.set(None),
+                    player: overview_table_data.read().rows.iter().find(|r| r.name == d.name && r.faction == d.faction).cloned(),
+                    deaths: player_deaths.read().clone(),
+                    on_select: move |d: PlayerDeath| recap_death.set(Some(d)),
                     on_open_combat_log: move |window_start: f32| {
                         if let Some(d) = recap_death() {
                             time_range.set(TimeRange {
@@ -1861,6 +1863,12 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                             // Overview table - uses memoized data
                             {
                                 let table_data = overview_table_data.read();
+                                let deaths = player_deaths.read().clone();
+                                // Same death again closes the recap; another one switches to it
+                                let open_death = move |d: PlayerDeath| {
+                                    let open = recap_death.peek().as_ref() == Some(&d);
+                                    recap_death.set((!open).then_some(d));
+                                };
                                 rsx! {
                                     // PvP encounters split into friendly/enemy tables; PvE gets one
                                     {
@@ -1877,6 +1885,8 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                     sort_col: overview_sort_col,
                                                     sort_asc: overview_sort_asc,
                                                     european: eu,
+                                                    deaths: deaths.clone(),
+                                                    on_death_click: open_death,
                                                     hovered: Some(overview_hovered),
                                                 }
                                                 OverviewTable {
@@ -1886,6 +1896,8 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                     sort_col: overview_sort_col,
                                                     sort_asc: overview_sort_asc,
                                                     european: eu,
+                                                    deaths: deaths.clone(),
+                                                    on_death_click: open_death,
                                                 }
                                                 if !unknown.is_empty() {
                                                     OverviewTable {
@@ -1895,6 +1907,8 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                         sort_col: overview_sort_col,
                                                         sort_asc: overview_sort_asc,
                                                         european: eu,
+                                                        deaths: deaths.clone(),
+                                                        on_death_click: open_death,
                                                     }
                                                 }
                                             }
@@ -1906,6 +1920,8 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                     sort_col: overview_sort_col,
                                                     sort_asc: overview_sort_asc,
                                                     european: eu,
+                                                    deaths: deaths.clone(),
+                                                    on_death_click: open_death,
                                                     hovered: Some(overview_hovered),
                                                 }
                                             }
@@ -1921,6 +1937,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                         sort_asc: overview_sort_asc,
                                         hovered: overview_hovered,
                                         european: eu,
+                                        deaths: player_deaths.read().clone(),
                                         on_time_range_change: move |r: TimeRange| time_range.set(r),
                                     }
 
@@ -1967,90 +1984,6 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                         let format_compact = |n: i64| formatting::format_compact(n, eu);
 
                                         rsx! {
-                                            // Deaths strip between the overview table and the columns (only when deaths occurred)
-                                            {
-                                                let deaths = player_deaths.read();
-                                                let death_badge = move |death: &PlayerDeath| {
-                                                    let d = death.clone();
-                                                    let name = death.name.clone();
-                                                    let time_str = formatting::format_duration(death.death_time_secs as i64);
-                                                    // PvP: highlight the local player's own deaths and killing blows
-                                                    let class = if death.is_local {
-                                                        "death-item local-death"
-                                                    } else if death.local_kill {
-                                                        "death-item local-kill"
-                                                    } else {
-                                                        "death-item"
-                                                    };
-                                                    rsx! {
-                                                        button {
-                                                            class: "{class}",
-                                                            title: "Click for death recap",
-                                                            // Same death again closes the drawer; another one switches to it
-                                                            onclick: move |_| {
-                                                                let open = recap_death.peek().as_ref() == Some(&d);
-                                                                recap_death.set((!open).then(|| d.clone()));
-                                                            },
-                                                            span { class: "death-name", "{name}" }
-                                                            span { class: "death-time", "@ {time_str}" }
-                                                        }
-                                                    }
-                                                };
-                                                // PvP: group deaths by side
-                                                let is_pvp = deaths.iter().any(|d| d.faction.is_some());
-                                                let groups: Vec<(&str, &str, Vec<PlayerDeath>)> = if is_pvp {
-                                                    [
-                                                        ("Friendly", "friendly", Some(PvpFaction::Friendly)),
-                                                        ("Enemy", "enemy", Some(PvpFaction::Enemy)),
-                                                        ("Unknown", "unknown", None),
-                                                    ]
-                                                    .into_iter()
-                                                    .map(|(label, cls, side)| {
-                                                        let side_deaths: Vec<PlayerDeath> = deaths
-                                                            .iter()
-                                                            .filter(|d| d.faction == side)
-                                                            .cloned()
-                                                            .collect();
-                                                        (label, cls, side_deaths)
-                                                    })
-                                                    .filter(|(_, _, v)| !v.is_empty())
-                                                    .collect()
-                                                } else {
-                                                    Vec::new()
-                                                };
-                                                rsx! {
-                                                    if !deaths.is_empty() {
-                                                        div { class: "overview-deaths",
-                                                            div { class: "overview-column-header",
-                                                                i { class: "fa-solid fa-skull" }
-                                                                " Deaths"
-                                                                span { class: "text-muted", " ({deaths.len()})" }
-                                                            }
-                                                            if is_pvp {
-                                                                for (label, cls, side_deaths) in groups {
-                                                                    div { class: "death-subgroup",
-                                                                        span { class: "death-subgroup-label {cls}",
-                                                                            "{label} ({side_deaths.len()})"
-                                                                        }
-                                                                        div { class: "death-list",
-                                                                            for death in side_deaths.iter() {
-                                                                                {death_badge(death)}
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            } else {
-                                                                div { class: "death-list",
-                                                                    for death in deaths.iter() {
-                                                                        {death_badge(death)}
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-
                                             if has_npcs || has_challenges {
                                                 div { class: "overview-columns",
                                                     // ─── NPC Health column ───────────────────

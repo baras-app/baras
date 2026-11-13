@@ -14,7 +14,7 @@ extern "C" {
     // `catch`: when the CDN script failed to load, `echarts` is undefined and
     // the ReferenceError would otherwise unwind through wasm and wedge the UI
     #[wasm_bindgen(catch, js_namespace = echarts, js_name = init)]
-    fn echarts_init(dom: &web_sys::Element) -> Result<JsValue, JsValue>;
+    fn echarts_init(dom: &web_sys::Element, theme: &JsValue, opts: &JsValue) -> Result<JsValue, JsValue>;
 
     #[wasm_bindgen(catch, js_namespace = echarts, js_name = getInstanceByDom)]
     fn echarts_get_instance(dom: &web_sys::Element) -> Result<JsValue, JsValue>;
@@ -23,12 +23,23 @@ extern "C" {
 /// The instance bound to `element_id`, creating one if needed. None when the
 /// element is not in the DOM (yet).
 pub fn init_chart(element_id: &str) -> Option<JsValue> {
+    init_with_renderer(element_id, "canvas")
+}
+
+/// `init_chart`, drawn as SVG: text stays crisp at fractional display scales
+/// and partial redraws leave no artifacts. Suits charts with light data.
+pub fn init_svg_chart(element_id: &str) -> Option<JsValue> {
+    init_with_renderer(element_id, "svg")
+}
+
+fn init_with_renderer(element_id: &str, renderer: &str) -> Option<JsValue> {
     let element = web_sys::window()?.document()?.get_element_by_id(element_id)?;
     let existing = echarts_get_instance(&element).ok()?;
     if !existing.is_null() && !existing.is_undefined() {
         return Some(existing);
     }
-    echarts_init(&element).ok()
+    let opts = json_to_js(&serde_json::json!({ "renderer": renderer }))?;
+    echarts_init(&element, &JsValue::NULL, &opts).ok()
 }
 
 /// An already-initialized instance for `element_id`; never creates one.

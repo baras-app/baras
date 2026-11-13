@@ -7,9 +7,9 @@ use dioxus::prelude::*;
 use serde_json::{Value, json};
 use wasm_bindgen::JsCast;
 
-use crate::api::{self, GroupMetric, GroupTimeSeries, RaidOverviewRow, TimeRange};
+use crate::api::{self, GroupMetric, GroupTimeSeries, PlayerDeath, RaidOverviewRow, TimeRange};
 use crate::components::echarts::{
-    activate_brush, apply_brush_config, dispatch_action, dispose_chart, get_chart, init_chart, json_to_js, next_animation_frame, register_brush_handler, set_js_fn, set_option_replace, use_resize_charts,
+    activate_brush, apply_brush_config, dispatch_action, dispose_chart, get_chart, init_svg_chart, json_to_js, next_animation_frame, register_brush_handler, set_chart_option, set_js_fn, set_option_replace, use_resize_charts,
 };
 use crate::components::overview_table::OverviewSort;
 use crate::utils::{LightTheme, css_var};
@@ -18,6 +18,14 @@ const CHART_ID: &str = "overview-group-chart";
 /// Categorical slots (validated order); past eight players the rest fold
 /// into grey "Others"
 const OTHERS: &str = "Others";
+/// Series id of the death markers (no data of its own; skipped in the tooltip)
+const DEATHS_ID: &str = "deaths";
+const GRID_LEFT: f64 = 52.0;
+const GRID_RIGHT: f64 = 16.0;
+/// Death label metrics (10px font): rough glyph width, padding, row height
+const LABEL_CHAR_PX: f64 = 6.0;
+const LABEL_PAD_PX: f64 = 10.0;
+const LABEL_ROW_PX: f64 = 16.0;
 
 const TABS: [(&str, OverviewSort); 4] = [
     ("DPS", OverviewSort::DPS),
@@ -74,15 +82,17 @@ const MMSS: &str = "var m = Math.floor(v / 60), s = Math.floor(v % 60); return m
 /// second, highest first. Stacked points carry the value as `raw`.
 fn tooltip_js(eu: bool, stacked: bool) -> String {
     format!(
-        "var fmt = function (v) {{ {c} }}, mmss = function (v) {{ {MMSS} }};\
+        "params = params.filter(function (p) {{ return p.seriesId !== '{DEATHS_ID}'; }});\
+         if (!params.length) return '';\
+         var fmt = function (v) {{ {c} }}, mmss = function (v) {{ {MMSS} }};\
          var val = function (p) {{ return p.data && p.data.raw !== undefined ? p.data.raw : p.value; }};\
          var ps = params.slice().sort(function (a, b) {{ return val(b) - val(a); }});\
          var total = ps.reduce(function (t, p) {{ return t + val(p); }}, 0);\
-         var r = '<div style=\"opacity:.7;margin-bottom:2px\">' + mmss(params[0].axisValue) + '</div>';\
-         if ({stacked}) r += '<div style=\"margin-bottom:2px\">Group <b style=\"float:right;margin-left:16px\">' + fmt(total) + '</b></div>';\
+         var r = '<div style=\"opacity:.7;margin-bottom:2px;text-align:left\">' + mmss(params[0].axisValue) + '</div>';\
+         if ({stacked}) r += '<div style=\"display:flex;gap:16px;margin-bottom:2px\"><span style=\"flex:1;text-align:left\">Group</span><b>' + fmt(total) + '</b></div>';\
          ps.forEach(function (p) {{\
            var pct = {stacked} ? ' <span style=\"opacity:.6\">' + Math.round(p.data.value) + '%</span>' : '';\
-           r += '<div>' + p.marker + p.seriesName + '<b style=\"float:right;margin-left:16px\">' + fmt(val(p)) + pct + '</b></div>';\
+           r += '<div style=\"display:flex;gap:16px\"><span style=\"flex:1;text-align:left\">' + p.marker + p.seriesName + '</span><b style=\"text-align:right\">' + fmt(val(p)) + pct + '</b></div>';\
          }});\
          return r;",
         c = compact_js(eu),
@@ -91,7 +101,7 @@ fn tooltip_js(eu: bool, stacked: bool) -> String {
 
 /// Players in the table, coloured in a stable (alphabetical) order. Past
 /// eight, the top seven by total keep a colour and the rest share grey.
-fn build_option(data: &GroupTimeSeries, metric: GroupMetric, roster: &[String], stacked: bool) -> Option<Value> {
+fn build_option(data: &GroupTimeSeries, metric: GroupMetric, roster: &[String], stacked: bool, deaths: &[PlayerDeath]) -> Option<Value> {
     let mut players: Vec<(&str, Vec<f64>, f64)> = data
         .series
         .iter()
@@ -129,7 +139,7 @@ fn build_option(data: &GroupTimeSeries, metric: GroupMetric, roster: &[String], 
             .collect();
         if stacked {
             json!({
-                "type": "line", "name": name, "showSymbol": false, "stack": "group", "data": points,
+                "type": "line", "name": name, "showSymbol": false, "stack": "group", "data": points, "silent": true,
                 "itemStyle": { "color": color },
                 "lineStyle": { "width": 0 },
                 "areaStyle": { "color": color, "opacity": 0.9 },
@@ -137,7 +147,7 @@ fn build_option(data: &GroupTimeSeries, metric: GroupMetric, roster: &[String], 
             })
         } else {
             json!({
-                "type": "line", "name": name, "showSymbol": false, "sampling": "lttb", "data": points,
+                "type": "line", "name": name, "showSymbol": false, "sampling": "lttb", "data": points, "silent": true,
                 "itemStyle": { "color": color },
                 "lineStyle": { "color": color, "width": 1.5 },
                 "emphasis": { "focus": "series", "lineStyle": { "width": 2.5 } },
@@ -162,10 +172,37 @@ fn build_option(data: &GroupTimeSeries, metric: GroupMetric, roster: &[String], 
     let times: Vec<f64> = (0..players[0].1.len()).map(|i| data.start_secs + i as f64 * data.bucket_secs).collect();
     let muted = css_var("--text-muted");
     let rule = css_var("--border-light");
+
+    // Death markers: a dashed rule per roster death in range, snapped to its
+    // bucket, named just inside the top of the plot (rows staggered once the
+    // width is known)
+    let last = times.len() as f64 - 1.0;
+    let marks: Vec<Value> = deaths
+        .iter()
+        .filter(|d| roster.contains(&d.name))
+        .filter_map(|d| {
+            let i = ((d.death_time_secs as f64 - data.start_secs) / data.bucket_secs).round();
+            (0.0..=last).contains(&i).then(|| json!({ "xAxis": i, "name": d.name }))
+        })
+        .collect();
+    if !marks.is_empty() {
+        let red = Some(css_var("--lt-red")).filter(|c| !c.is_empty()).unwrap_or_else(|| "#e74c3c".into());
+        series.push(json!({
+            "type": "line", "id": DEATHS_ID, "data": [],
+            "markLine": {
+                "symbol": ["none", "none"], "animation": false, "silent": true, "data": marks,
+                "lineStyle": { "color": red, "type": "dashed", "width": 1, "opacity": 0.7 },
+                "label": { "position": "end", "formatter": "{b}", "color": red, "fontSize": 10, "distance": 2, "offset": [0.0, LABEL_ROW_PX],
+                           "backgroundColor": css_var("--bg-elevated"), "padding": [1, 4], "borderRadius": 2 },
+                // Highlighting a player's line blurs the other series; keep the markers as they are
+                "blur": { "lineStyle": { "opacity": 0.7 }, "label": { "opacity": 1 } },
+            },
+        }));
+    }
     Some(json!({
         "animation": false,
-        "grid": { "left": 52, "right": 16, "top": 30, "bottom": 24 },
-        "legend": { "type": "scroll", "top": 0, "data": legend, "itemWidth": 14, "itemHeight": 8,
+        "grid": { "left": GRID_LEFT, "right": GRID_RIGHT, "top": 30, "bottom": 24 },
+        "legend": { "type": "scroll", "top": 0, "data": legend, "selectedMode": false, "itemWidth": 14, "itemHeight": 8,
                     "textStyle": { "color": muted, "fontSize": 10 }, "pageTextStyle": { "color": muted } },
         "tooltip": { "trigger": "axis", "backgroundColor": css_var("--bg-elevated"), "borderColor": css_var("--border-strong"),
                      "textStyle": { "color": css_var("--text-primary"), "fontSize": 11 } },
@@ -190,11 +227,14 @@ pub fn OverviewGroupChart(
     /// Player whose table row is hovered
     hovered: ReadSignal<Option<String>>,
     european: bool,
+    /// Encounter deaths; roster players' deaths are marked on the chart
+    deaths: Vec<PlayerDeath>,
     /// Drag across the chart to narrow the timeline to that span
     on_time_range_change: EventHandler<TimeRange>,
 ) -> Element {
     let metric = metric_of(sort_col());
     let mut stacked = use_signal(|| false);
+    let mut show_deaths = use_signal(|| true);
     let roster: Vec<String> = rows.iter().map(|r| r.name.clone()).collect();
     // Colours resolve from CSS when the option is built; reading the theme
     // subscribes this render, so a theme flip rebuilds the option
@@ -219,8 +259,11 @@ pub fn OverviewGroupChart(
         }
     });
 
-    let option = data.read().as_ref().and_then(|d| d.as_ref()).and_then(|d| build_option(d, metric, &roster, stacked()));
+    let option = data.read().as_ref().and_then(|d| d.as_ref()).and_then(|d| build_option(d, metric, &roster, stacked(), if show_deaths() { &deaths } else { &[] }));
     let has_data = option.is_some();
+
+    // Death markers as last drawn (labels staggered), restyled on row hover
+    let mut drawn_marks: Signal<Vec<Value>> = use_signal(Vec::new);
 
     use_resize_charts(&[CHART_ID]);
     use_effect(use_reactive!(|option, european| {
@@ -228,7 +271,11 @@ pub fn OverviewGroupChart(
         spawn(async move {
             next_animation_frame().await;
             next_animation_frame().await;
-            let (Some(option), Some(chart)) = (option, init_chart(CHART_ID)) else { return };
+            let (Some(mut option), Some(chart)) = (option, init_svg_chart(CHART_ID)) else { return };
+            if let Some(el) = web_sys::window().and_then(|w| w.document()).and_then(|d| d.get_element_by_id(CHART_ID)) {
+                stagger_death_labels(&mut option, el.client_width() as f64);
+            }
+            drawn_marks.set(death_marks(&mut option).map(|m| m.clone()).unwrap_or_default());
             let Some(js) = json_to_js(&option) else { return };
             set_js_fn(&js, &["tooltip", "formatter"], "params", &tooltip_js(european, stacked));
             set_js_fn(&js, &["xAxis", "axisLabel", "formatter"], "v", MMSS);
@@ -241,10 +288,40 @@ pub fn OverviewGroupChart(
         });
     }));
 
-    // Table row hover → emphasise that player's series, dim the rest
+    // Table row hover → emphasise that player's series and death markers,
+    // dim the rest
     use_effect(move || {
         let name = hovered();
+        let marks = drawn_marks();
         if let Some(chart) = get_chart(CHART_ID) {
+            if !marks.is_empty() {
+                let styled: Vec<Value> = marks
+                    .into_iter()
+                    .map(|mut m| {
+                        // Hovered player's deaths go full opacity (bold label); everyone else's fade.
+                        // The row's line highlight puts this series in its blur state,
+                        // so each marker's blur style must match too.
+                        let (line, label) = match name.as_deref() {
+                            Some(n) if m["name"] == n => (
+                                json!({ "opacity": 1 }),
+                                json!({ "fontWeight": "bold", "opacity": 1 }),
+                            ),
+                            Some(_) => (json!({ "opacity": 0.15 }), json!({ "opacity": 0.25 })),
+                            None => return m,
+                        };
+                        m["lineStyle"] = line.clone();
+                        m["blur"] = json!({ "lineStyle": line, "label": label.clone() });
+                        for (k, v) in label.as_object().into_iter().flatten() {
+                            m["label"][k] = v.clone();
+                        }
+                        m
+                    })
+                    .collect();
+                let patch = json!({ "series": [{ "id": DEATHS_ID, "markLine": { "data": styled } }] });
+                if let Some(js) = json_to_js(&patch) {
+                    set_chart_option(&chart, &js);
+                }
+            }
             dispatch_action(&chart, &json!({ "type": "downplay" }));
             if let Some(name) = name {
                 dispatch_action(&chart, &json!({ "type": "highlight", "seriesName": name }));
@@ -270,6 +347,15 @@ pub fn OverviewGroupChart(
                 }
                 span { class: "overview-chart-note", "{chart_note(metric)}" }
                 div { class: "filter-pills ml-auto",
+                    button {
+                        class: if show_deaths() { "seg active" } else { "seg" },
+                        title: "Mark player deaths on the chart",
+                        onclick: move |_| show_deaths.toggle(),
+                        i { class: "fa-solid fa-skull" }
+                        " Deaths"
+                    }
+                }
+                div { class: "filter-pills",
                     button { class: if !stacked() { "seg active" } else { "seg" }, onclick: move |_| stacked.set(false), "Lines" }
                     button { class: if stacked() { "seg active" } else { "seg" }, onclick: move |_| stacked.set(true), "Stacked" }
                 }
@@ -281,4 +367,43 @@ pub fn OverviewGroupChart(
             }
         }
     }
+}
+
+/// Death labels sit level at the top of the plot, over their line (the label
+/// anchors above the line's end, so every row shifts down one); one that would overlap a label
+/// to its left drops a row (only crowded PvP fights stack). Labels at the
+/// plot edges align inward so they don't clip.
+fn stagger_death_labels(option: &mut Value, chart_px: f64) {
+    let slots = option["xAxis"]["data"].as_array().map_or(0, |a| a.len());
+    let plot = chart_px - GRID_LEFT - GRID_RIGHT;
+    let Some(marks) = death_marks(option).filter(|_| slots > 1 && plot > 0.0) else { return };
+    let step = plot / (slots - 1) as f64;
+    // Right edge of the last label in each row; marks arrive in time order
+    let mut rows: Vec<f64> = Vec::new();
+    for m in marks.iter_mut() {
+        let x = m["xAxis"].as_f64().unwrap_or(0.0) * step;
+        let w = m["name"].as_str().map_or(0, |n| n.chars().count()) as f64 * LABEL_CHAR_PX + LABEL_PAD_PX;
+        let (align, left) = if x + w / 2.0 > plot {
+            ("right", x - w)
+        } else if x - w / 2.0 < 0.0 {
+            ("left", x)
+        } else {
+            ("center", x - w / 2.0)
+        };
+        let row = rows.iter().position(|&end| end + 4.0 <= left).unwrap_or(rows.len());
+        if row == rows.len() {
+            rows.push(0.0);
+        }
+        rows[row] = left + w;
+        m["label"] = json!({ "align": align, "offset": [0.0, (row + 1) as f64 * LABEL_ROW_PX] });
+    }
+}
+
+/// The death markers' `markLine.data`, if the option has any
+fn death_marks(option: &mut Value) -> Option<&mut Vec<Value>> {
+    option["series"]
+        .as_array_mut()?
+        .iter_mut()
+        .find(|s| s["id"] == DEATHS_ID)?["markLine"]["data"]
+        .as_array_mut()
 }

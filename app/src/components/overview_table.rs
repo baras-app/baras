@@ -8,7 +8,7 @@ use dioxus::prelude::*;
 
 use baras_types::formatting;
 
-use crate::api::RaidOverviewRow;
+use crate::api::{PlayerDeath, RaidOverviewRow};
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 
 /// Sortable columns for the overview table
@@ -109,6 +109,11 @@ pub struct OverviewTableProps {
     /// Set to the row's player while the pointer is over it (group chart highlight)
     #[props(default)]
     pub hovered: Option<Signal<Option<String>>>,
+    /// Every death in the encounter, chronological; matched to rows by name + side
+    #[props(default)]
+    pub deaths: Vec<PlayerDeath>,
+    /// Clicked a row's deaths cell: opens that player's first death
+    pub on_death_click: EventHandler<PlayerDeath>,
 }
 
 #[component]
@@ -140,6 +145,11 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
         }
     };
 
+    let row_deaths = |row: &RaidOverviewRow| -> Vec<PlayerDeath> {
+        props.deaths.iter().filter(|d| d.name == row.name && d.faction == row.faction).cloned().collect()
+    };
+    let table_deaths = props.rows.iter().map(|r| row_deaths(r).len()).sum::<usize>();
+
     rsx! {
         if let Some((class, text)) = props.side_label {
             span { class: "overview-side-label {class}", "{text}" }
@@ -149,6 +159,7 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
                 thead {
                     tr {
                         th { class: "name-col", "Name" }
+                        th { class: "death-col", title: "Deaths" }
                         th { class: "section-header", colspan: "2", "Damage Dealt" }
                         th { class: "section-header", colspan: "2", "Threat" }
                         th { class: "section-header", colspan: "3", "Damage Taken" }
@@ -157,6 +168,7 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
                         th { class: "section-header", colspan: "2", "Activity" }
                     }
                     tr { class: "sub-header",
+                        th {}
                         th {}
                         th { class: "num sortable", onclick: sort_click(OverviewSort::DamageTotal), "Total{arrow(OverviewSort::DamageTotal)}" }
                         th { class: "num sortable", onclick: sort_click(OverviewSort::DPS), "DPS{arrow(OverviewSort::DPS)}" }
@@ -207,6 +219,7 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
                                     "{row.name}"
                                 }
                             }
+                            {death_cell(row_deaths(row), props.on_death_click)}
                             td { class: "num dmg", "{format_number(row.damage_total)}" }
                             td { class: "num dmg", "{format_number(row.dps)}" }
                             td { class: "num threat", "{format_number(row.threat_total)}" }
@@ -229,6 +242,9 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
                     for (label, t) in props.total_rows.iter() {
                         tr { class: "totals-row",
                             td { class: "name-col", "{label}" }
+                            td { class: "death-col",
+                                if table_deaths > 0 { "{table_deaths}" }
+                            }
                             td { class: "num dmg", "{format_number(t.damage)}" }
                             td { class: "num dmg", "{format_number(t.dps)}" }
                             td { class: "num threat", "{format_number(t.threat)}" }
@@ -248,6 +264,26 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
                     }
                 }
             }
+        }
+    }
+}
+
+/// `💀 1:13` for one death, `💀 ×3` for more (times in the tooltip); empty
+/// when the player survived. PvP: tinted when the local player landed a kill.
+fn death_cell(deaths: Vec<PlayerDeath>, on_click: EventHandler<PlayerDeath>) -> Element {
+    let Some(first) = deaths.first().cloned() else {
+        return rsx! { td { class: "death-col" } };
+    };
+    let times: Vec<String> = deaths.iter().map(|d| formatting::format_duration(d.death_time_secs as i64)).collect();
+    let label = if deaths.len() == 1 { times[0].clone() } else { format!("\u{00D7}{}", deaths.len()) };
+    let class = if deaths.iter().any(|d| d.local_kill) { "death-col has-death local-kill" } else { "death-col has-death" };
+    rsx! {
+        td {
+            class: "{class}",
+            title: "{times.join(\" · \")} — click for death recap",
+            onclick: move |_| on_click.call(first.clone()),
+            i { class: "fa-solid fa-skull" }
+            " {label}"
         }
     }
 }

@@ -9,7 +9,8 @@ use baras_types::{DeathRecapDamageSource, DeathRecapEvent, DeathRecapHealSource,
 use dioxus::prelude::*;
 use wasm_bindgen_futures::spawn_local as spawn;
 
-use crate::api::{self, DeathRecap, DeathRecapEventKind};
+use crate::api::{self, DeathRecap, DeathRecapEventKind, PlayerDeath, RaidOverviewRow};
+use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::components::editor_drawer::{ResizeHandle, window_width};
 
 /// Width (px) the user dragged the drawer to; None = the CSS default. Kept
@@ -30,6 +31,13 @@ pub struct DeathRecapDrawerProps {
     pub death_time_secs: f32,
     pub european: bool,
     pub on_close: EventHandler<()>,
+    /// The player's overview row, for the role/class icons in the header
+    #[props(default)]
+    pub player: Option<RaidOverviewRow>,
+    /// Every death in the encounter, chronological (for prev/next navigation)
+    pub deaths: Vec<PlayerDeath>,
+    /// Navigated to another death
+    pub on_select: EventHandler<PlayerDeath>,
     /// Payload is the recap window start (combat seconds) for the log filter
     pub on_open_combat_log: EventHandler<f32>,
 }
@@ -39,18 +47,20 @@ pub fn DeathRecapDrawer(props: DeathRecapDrawerProps) -> Element {
     // None = loading, Some(None) = query failed/empty, Some(Some) = loaded
     let mut recap = use_signal(|| None::<Option<DeathRecap>>);
 
-    use_effect({
-        let name = props.player_name.clone();
-        let idx = props.encounter_idx;
-        let death_time = props.death_time_secs;
-        move || {
-            let name = name.clone();
-            spawn(async move {
-                let result = api::query_death_recap(idx, &name, death_time).await;
+    // Not keyed by death, so stepping between deaths swaps the content in place
+    // (no reopen animation). The old recap stays up until the new one lands;
+    // `latest` drops responses that a quicker click has already superseded.
+    let mut latest = use_signal(|| (String::new(), 0.0f32));
+    let (idx, name, death_time) = (props.encounter_idx, props.player_name.clone(), props.death_time_secs);
+    use_effect(use_reactive!(|(idx, name, death_time)| {
+        latest.set((name.clone(), death_time));
+        spawn(async move {
+            let result = api::query_death_recap(idx, &name, death_time).await;
+            if *latest.peek() == (name, death_time) {
                 recap.set(Some(result));
-            });
-        }
-    });
+            }
+        });
+    }));
 
     let eu = props.european;
     let time_str = formatting::format_duration(props.death_time_secs as i64);
@@ -59,6 +69,10 @@ pub fn DeathRecapDrawer(props: DeathRecapDrawerProps) -> Element {
         .as_ref()
         .and_then(|o| o.as_ref())
         .and_then(|r| r.phase_name.clone());
+    let window_start = state.as_ref().and_then(|o| o.as_ref()).map(|r| r.window_start_secs);
+    let role_icon = props.player.as_ref().and_then(|p| p.role_icon.as_deref()).and_then(get_role_icon);
+    let class_icon = props.player.as_ref().and_then(|p| p.class_icon.as_deref()).and_then(get_class_icon);
+    let discipline = props.player.as_ref().and_then(|p| p.discipline_name.clone()).unwrap_or_default();
 
     rsx! {
         aside {
@@ -74,8 +88,14 @@ pub fn DeathRecapDrawer(props: DeathRecapDrawerProps) -> Element {
             ResizeHandle { width: RECAP_WIDTH.signal(), fallback: (window_width() * 0.92).min(760.0) }
             div { class: "recap-header",
                 h3 {
-                    i { class: "fa-solid fa-skull" }
-                    " Death Recap: {props.player_name}"
+                    i { class: "fa-solid fa-skull recap-header-skull" }
+                    if let Some(icon) = role_icon {
+                        img { class: "role-icon", src: *icon, alt: "" }
+                    }
+                    if let Some(icon) = class_icon {
+                        img { class: "class-icon", src: *icon, title: "{discipline}", alt: "" }
+                    }
+                    "{props.player_name}"
                     span { class: "recap-header-time", " @ {time_str}" }
                     if let Some(phase) = phase_chip {
                         span { class: "recap-phase-chip", "{phase}" }
@@ -99,11 +119,23 @@ pub fn DeathRecapDrawer(props: DeathRecapDrawerProps) -> Element {
                         },
                         Some(Some(r)) => rsx! {
                             RecapBody {
+                                key: "{r.death_time_secs}",
                                 recap: r,
                                 european: eu,
-                                on_open_combat_log: props.on_open_combat_log,
                             }
                         },
+                    }
+                }
+            }
+            // Pinned below the body so the controls don't move between deaths
+            div { class: "recap-footer",
+                {recap_nav(&props.deaths, &props.player_name, props.death_time_secs, props.on_select)}
+                if let Some(start) = window_start {
+                    button {
+                        class: "btn",
+                        onclick: move |_| props.on_open_combat_log.call(start),
+                        i { class: "fa-solid fa-list" }
+                        " Open in Combat Log"
                     }
                 }
             }
@@ -112,11 +144,10 @@ pub fn DeathRecapDrawer(props: DeathRecapDrawerProps) -> Element {
 }
 
 #[component]
-fn RecapBody(recap: DeathRecap, european: bool, on_open_combat_log: EventHandler<f32>) -> Element {
+fn RecapBody(recap: DeathRecap, european: bool) -> Element {
     let r = &recap;
     let eu = european;
     let fmt = move |n: i64| formatting::format_compact(n, eu);
-    let window_start = r.window_start_secs;
 
     rsx! {
         div { class: "recap-content",
@@ -184,15 +215,6 @@ fn RecapBody(recap: DeathRecap, european: bool, on_open_combat_log: EventHandler
                     for ev in r.events.iter().cloned() {
                         {event_row(&ev, r.death_time_secs, eu)}
                     }
-                }
-            }
-
-            div { class: "recap-footer",
-                button {
-                    class: "btn",
-                    onclick: move |_| on_open_combat_log.call(window_start),
-                    i { class: "fa-solid fa-list" }
-                    " Open in Combat Log"
                 }
             }
         }
@@ -485,6 +507,62 @@ fn event_row(ev: &DeathRecapEvent, death_time: f32, european: bool) -> Element {
                     span { class: "ledger-hp-fill", style: "width: {hp_width}" }
                 }
                 span { class: "ledger-hp-label", "{hp_label}" }
+            }
+        }
+    }
+}
+
+/// Footer navigation: `‹ 2/3 ›` steps through this player's deaths (hidden
+/// for a single death); the outer buttons jump to the previous/next player by
+/// first death, so next walks a wipe in the order it happened
+fn recap_nav(deaths: &[PlayerDeath], name: &str, time: f32, on_select: EventHandler<PlayerDeath>) -> Element {
+    let Some(cur) = deaths.iter().find(|d| d.name == name && d.death_time_secs == time) else {
+        return rsx! {};
+    };
+    let same = |a: &PlayerDeath, b: &PlayerDeath| a.name == b.name && a.faction == b.faction;
+    let own: Vec<&PlayerDeath> = deaths.iter().filter(|d| same(d, cur)).collect();
+    let k = own.iter().position(|d| d.death_time_secs == time).unwrap_or(0);
+    let mut firsts: Vec<&PlayerDeath> = Vec::new();
+    for d in deaths {
+        if !firsts.iter().any(|f| same(f, d)) {
+            firsts.push(d);
+        }
+    }
+    let p = firsts.iter().position(|f| same(f, cur)).unwrap_or(0);
+
+    // Icon before the label when going back, after it when going forward
+    let btn = |target: Option<&PlayerDeath>, icon: &'static str, label: String, title: &'static str, back: bool| {
+        let target = target.cloned();
+        rsx! {
+            button {
+                class: "btn",
+                title: "{title}",
+                disabled: target.is_none(),
+                onclick: move |_| if let Some(d) = target.clone() { on_select.call(d) },
+                if back { i { class: "fa-solid {icon}" } }
+                if !label.is_empty() { span { "{label}" } }
+                if !back { i { class: "fa-solid {icon}" } }
+            }
+        }
+    };
+    let player_btn = |i: Option<usize>, back: bool| {
+        let d = i.and_then(|i| firsts.get(i)).copied();
+        let label = d.map_or(String::new(), |d| d.name.clone());
+        let (icon, title) = if back { ("fa-backward-step", "Previous player to die") } else { ("fa-forward-step", "Next player to die") };
+        btn(d, icon, label, title, back)
+    };
+    rsx! {
+        div { class: "recap-nav",
+            if firsts.len() > 1 {
+                {player_btn(p.checked_sub(1), true)}
+            }
+            if own.len() > 1 {
+                {btn(k.checked_sub(1).and_then(|i| own.get(i)).copied(), "fa-chevron-left", String::new(), "Previous death", true)}
+                span { class: "recap-nav-count", "Death {k + 1}/{own.len()}" }
+                {btn(own.get(k + 1).copied(), "fa-chevron-right", String::new(), "Next death", false)}
+            }
+            if firsts.len() > 1 {
+                {player_btn(Some(p + 1), false)}
             }
         }
     }
