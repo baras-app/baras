@@ -12,7 +12,7 @@ use tiny_skia::Color;
 
 use crate::frame::OverlayFrame;
 use crate::utils::shared_scaled_icons;
-use crate::widgets::{ProgressBar, draw_icon_placeholder};
+use crate::widgets::{ProgressBar, colors, draw_icon_placeholder};
 
 /// Source RGBA icon as carried on overlay entries: (width, height, rgba)
 pub type IconRgba = (u32, u32, Vec<u8>);
@@ -47,12 +47,13 @@ pub struct IconBarRow {
     /// Row height; the icon is a square of this size
     pub height: f32,
     pub radius: f32,
-    overlap: f32,
+    /// Frame scale factor; the bar overlaps the icon by 1px at this scale
+    scale: f32,
 }
 
 impl IconBarRow {
     pub fn new(x: f32, width: f32, height: f32, radius: f32, scale: f32) -> Self {
-        Self { x, width, height, radius, overlap: scale }
+        Self { x, width, height, radius, scale }
     }
 
     /// Icon pixel size, used as the shared icon cache key
@@ -88,10 +89,22 @@ impl IconBarRow {
             }
         };
 
-        let bar_x = self.x + size - self.overlap;
-        let bar_width = self.width - size + self.overlap;
+        let bar_x = self.x + size - self.scale;
+        let bar_width = self.width - size + self.scale;
         bar.render(frame, bar_x, y, bar_width, size, font_size, self.radius);
         drawn
+    }
+
+    /// Draw a count (stacks/charges) in the bottom-right corner of the icon.
+    /// Bold with a full glow so it reads over any icon art; call after
+    /// `outline` so the border doesn't cut through the digits.
+    pub fn draw_icon_badge(&self, frame: &mut OverlayFrame, y: f32, text: &str) {
+        let font_size = self.height * 0.6;
+        let inset = 2.0 * self.scale;
+        let (text_w, _) = frame.measure_text_styled(text, font_size, true, false);
+        let x = self.x + self.height - text_w - inset;
+        let baseline = y + self.height - inset;
+        frame.draw_text_with_glow(text, x, baseline, font_size, colors::white(), true, false);
     }
 
     /// Stroke one continuous outline around icon + bar

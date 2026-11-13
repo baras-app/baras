@@ -841,26 +841,11 @@ impl EffectsABOverlay {
             let icon = scaled_icon.map_or(RowIcon::None, RowIcon::Scaled);
             let icon_drawn = row.render(&mut self.frame, y, icon, bar_color, &bar, font_size);
 
-            // Stack count in the bottom-right corner of the icon
-            if icon_drawn && effect.stacks >= 1 {
-                let stack_text = format!("{}", effect.stacks);
-                // Sized against the bar, not the icon, so it stays in scale with the label text
-                let stack_font_size = (bar_height - 4.0 * scale) * 0.5;
-                let stack_x = padding + bar_height
-                    - self.frame.measure_text(&stack_text, stack_font_size).0
-                    - 2.0 * scale;
-                let stack_y = y + bar_height - 3.0 * scale;
-                self.frame.draw_text_glowed(
-                    &stack_text,
-                    stack_x,
-                    stack_y,
-                    stack_font_size,
-                    colors::white(),
-                );
-            }
-
             if let Some(c) = border {
                 row.outline(&mut self.frame, y, 0.8 * scale, c);
+            }
+            if icon_drawn && effect.stacks >= 1 {
+                row.draw_icon_badge(&mut self.frame, y, &effect.stacks.to_string());
             }
 
             y += bar_height + entry_spacing;
