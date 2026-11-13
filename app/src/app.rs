@@ -1059,15 +1059,6 @@ pub fn App() -> Element {
 
                                     // Session tools on the left; character, duration and status on the right
                                     div { class: "dashboard-summary",
-                                        // Combat status icon (live only)
-                                        if live_tailing && !session_ended() && !info.stale_session {
-                                            span {
-                                                class: if info.in_combat { "combat-indicator in-combat" } else { "combat-indicator" },
-                                                title: if info.in_combat { "In Combat" } else { "Out of Combat" },
-                                                i { class: "fa-solid fa-khanda" }
-                                            }
-                                        }
-
                                         AlacrityPill {}
                                         OpTimerControl { op_timer_secs, op_timer_running, live: live_tailing }
                                         if notes_enabled() {
