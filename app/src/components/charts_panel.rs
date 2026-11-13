@@ -10,7 +10,7 @@ use wasm_bindgen_futures::spawn_local as spawn;
 use crate::api::{self, EffectChartData, EffectWindow, HpPoint, TimeRange, TimeSeriesPoint};
 use crate::components::ability_icon::AbilityIcon;
 use crate::components::echarts::{
-    activate_brush, apply_brush_config, dispose_chart, get_chart, init_chart, next_animation_frame,
+    TOOLTIP_ROWS_JS, activate_brush, apply_brush_config, dispose_chart, get_chart, init_chart, next_animation_frame,
     register_brush_handler, resize_chart, set_chart_option,
 };
 use crate::utils::{css_var, css_var_or, js_set};
@@ -252,29 +252,16 @@ fn build_time_series_option(
     let tooltip = axis_tooltip();
     let tip_formatter = js_sys::Function::new_with_args(
         "params",
-        concat!(
-            "if (!params || !params.length) return '';",
-            "var t = params[0].value[0];",
-            "var m = Math.floor(t / 60);",
-            "var s = Math.floor(t % 60);",
-            "var time = m + ':' + (s < 10 ? '0' : '') + s;",
-            "var r = '<div style=\"margin-bottom:4px\">' + time + '</div>';",
-            "for (var i = 0; i < params.length; i++) {",
-            "  var p = params[i];",
-            "  var val = Math.round(p.value[1]).toLocaleString();",
-            "  if (p.seriesName === 'Burst') {",
-            "    r += '<div>' + p.seriesName",
-            "      + '<span style=\"float:right;margin-left:20px;font-weight:bold\">'",
-            "      + val + '</span></div>';",
-            "  } else {",
-            "    r += '<div><span style=\"display:inline-block;width:10px;height:10px;",
-            "border-radius:50%;background:' + p.color + ';margin-right:5px\"></span>'",
-            "      + p.seriesName",
-            "      + '<span style=\"float:right;margin-left:20px;font-weight:bold\">'",
-            "      + val + '</span></div>';",
-            "  }",
-            "}",
-            "return r;",
+        &format!(
+            "{TOOLTIP_ROWS_JS}\
+             if (!params || !params.length) return '';\
+             var t = params[0].value[0], s = Math.floor(t % 60);\
+             var r = tipHead(Math.floor(t / 60) + ':' + (s < 10 ? '0' : '') + s);\
+             params.forEach(function (p) {{\
+               var label = p.seriesName === 'Burst' ? p.seriesName : p.marker + p.seriesName;\
+               r += tipRow(label, Math.round(p.value[1]).toLocaleString());\
+             }});\
+             return r;"
         ),
     );
     js_set(&tooltip, "formatter", &tip_formatter);
@@ -541,25 +528,17 @@ fn build_hp_chart_option(
     let tooltip = axis_tooltip();
     let tip_formatter = js_sys::Function::new_with_args(
         "params",
-        concat!(
-            "if (!params || !params.length) return '';",
-            "var p = params[0];",
-            "var v = p.value;",
-            "var t = v[0];",
-            "var m = Math.floor(t / 60);",
-            "var s = Math.floor(t % 60);",
-            "var time = m + ':' + (s < 10 ? '0' : '') + s;",
-            "var pct = v[1].toFixed(1) + '%';",
-            "var hp = Math.round(v[2]).toLocaleString();",
-            "var max = Math.round(v[3]).toLocaleString();",
-            "var result = time + '  ' + pct + '  (' + hp + ' / ' + max + ')';",
-            "for (var i = 1; i < params.length; i++) {",
-            "  if (params[i].seriesName === 'EHT') {",
-            "    var eht = Math.round(params[i].value[1]).toLocaleString();",
-            "    result += '<br/><span style=\"color:#2ecc71\">EHT: ' + eht + '</span>';",
-            "  }",
-            "}",
-            "return result;",
+        &format!(
+            "{TOOLTIP_ROWS_JS}\
+             if (!params || !params.length) return '';\
+             var v = params[0].value, t = v[0], s = Math.floor(t % 60);\
+             var r = tipHead(Math.floor(t / 60) + ':' + (s < 10 ? '0' : '') + s);\
+             r += tipRow(params[0].marker + 'HP', v[1].toFixed(1) + '%');\
+             r += tipRow('Health', Math.round(v[2]).toLocaleString() + ' / ' + Math.round(v[3]).toLocaleString());\
+             params.forEach(function (p) {{\
+               if (p.seriesName === 'EHT') r += tipRow(p.marker + 'EHT', Math.round(p.value[1]).toLocaleString());\
+             }});\
+             return r;"
         ),
     );
     js_set(&tooltip, "formatter", &tip_formatter);

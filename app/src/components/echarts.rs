@@ -39,7 +39,25 @@ fn init_with_renderer(element_id: &str, renderer: &str) -> Option<JsValue> {
         return Some(existing);
     }
     let opts = json_to_js(&serde_json::json!({ "renderer": renderer }))?;
-    echarts_init(&element, &JsValue::NULL, &opts).ok()
+    let chart = echarts_init(&element, &JsValue::NULL, &opts).ok()?;
+    hide_tooltip_on_leave(&chart);
+    Some(chart)
+}
+
+/// ECharts does not cancel a pending delayed show when the cursor leaves, so
+/// the tooltip would pop up (and stick) after exit. Hide it once that pending
+/// show has fired, unless the cursor came back in the meantime.
+fn hide_tooltip_on_leave(chart: &JsValue) {
+    let body = format!(
+        "const zr = chart.getZr(); let out = false;
+         zr.on('mousemove', () => {{ out = false; }});
+         zr.on('globalout', () => {{
+             out = true;
+             setTimeout(() => {{ if (out && !chart.isDisposed()) chart.dispatchAction({{ type: 'hideTip' }}); }}, {});
+         }});",
+        TOOLTIP_SHOW_DELAY_MS + 20.0
+    );
+    let _ = js_sys::Function::new_with_args("chart", &body).call1(&JsValue::NULL, chart);
 }
 
 /// An already-initialized instance for `element_id`; never creates one.
@@ -60,7 +78,30 @@ fn call0(target: &JsValue, name: &str) {
     }
 }
 
+/// Tooltips wait for the cursor to rest this long (ms) instead of re-rendering
+/// on every mousemove while sweeping across a chart. ECharts restarts the timer
+/// on each move, so this is a true debounce; the axis pointer still tracks live.
+const TOOLTIP_SHOW_DELAY_MS: f64 = 45.0;
+
+/// Default `tooltip.showDelay` on options that carry a tooltip, unless set.
+fn with_tooltip_delay(option: &JsValue) {
+    let key = JsValue::from_str("showDelay");
+    if let Ok(tooltip) = js_sys::Reflect::get(option, &JsValue::from_str("tooltip"))
+        && tooltip.is_object()
+        && !js_sys::Reflect::has(&tooltip, &key).unwrap_or(true)
+    {
+        let _ = js_sys::Reflect::set(&tooltip, &key, &JsValue::from_f64(TOOLTIP_SHOW_DELAY_MS));
+    }
+}
+
+/// JS helpers for tooltip formatters: a dimmed header line and a
+/// `label ⟷ value` row (label left, bold value right). Prepend to a formatter
+/// body so every chart's tooltip shares one layout.
+pub const TOOLTIP_ROWS_JS: &str = "var tipHead = function (t) { return '<div style=\"opacity:.7;margin-bottom:2px;text-align:left\">' + t + '</div>'; };\
+     var tipRow = function (label, value, style) { return '<div style=\"display:flex;gap:16px;' + (style || '') + '\"><span style=\"flex:1;text-align:left\">' + label + '</span><b style=\"text-align:right\">' + value + '</b></div>'; };";
+
 pub fn set_chart_option(chart: &JsValue, option: &JsValue) {
+    with_tooltip_delay(option);
     if let Some(func) = method(chart, "setOption") {
         let _ = func.call1(chart, option);
     }
@@ -93,6 +134,7 @@ pub fn set_js_fn(obj: &JsValue, path: &[&str], args: &str, body: &str) {
 /// Apply an option (`notMerge`, so a smaller series set replaces the previous
 /// one instead of stacking).
 pub fn set_option_replace(chart: &JsValue, option: &JsValue) {
+    with_tooltip_delay(option);
     if let Some(func) = method(chart, "setOption") {
         let _ = func.call2(chart, option, &JsValue::TRUE);
     }

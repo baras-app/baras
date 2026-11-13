@@ -10,7 +10,7 @@ use wasm_bindgen::JsCast;
 
 use crate::api::{self, GroupMetric, GroupTimeSeries, PlayerDeath, RaidOverviewRow, TimeRange};
 use crate::components::echarts::{
-    activate_brush, apply_brush_config, register_span_click, dispatch_action, dispose_chart, get_chart, init_svg_chart, json_to_js, next_animation_frame, register_brush_handler, set_chart_option, set_js_fn, set_option_replace, use_resize_charts,
+    TOOLTIP_ROWS_JS, activate_brush, apply_brush_config, register_span_click, dispatch_action, dispose_chart, get_chart, init_svg_chart, json_to_js, next_animation_frame, register_brush_handler, set_chart_option, set_js_fn, set_option_replace, use_resize_charts,
 };
 use crate::components::overview_table::OverviewSort;
 use crate::utils::{LightTheme, css_var};
@@ -85,17 +85,18 @@ const MMSS: &str = "var m = Math.floor(v / 60), s = Math.floor(v % 60); return m
 /// second, highest first. Stacked points carry the value as `raw`.
 fn tooltip_js(eu: bool, stacked: bool) -> String {
     format!(
-        "params = params.filter(function (p) {{ return p.seriesId !== '{DEATHS_ID}'; }});\
+        "{TOOLTIP_ROWS_JS}\
+         params = params.filter(function (p) {{ return p.seriesId !== '{DEATHS_ID}'; }});\
          if (!params.length) return '';\
          var fmt = function (v) {{ {c} }}, mmss = function (v) {{ {MMSS} }};\
          var val = function (p) {{ return p.data && p.data.raw !== undefined ? p.data.raw : p.value; }};\
          var ps = params.slice().sort(function (a, b) {{ return val(b) - val(a); }});\
          var total = ps.reduce(function (t, p) {{ return t + val(p); }}, 0);\
-         var r = '<div style=\"opacity:.7;margin-bottom:2px;text-align:left\">' + mmss(params[0].axisValue) + '</div>';\
-         if ({stacked}) r += '<div style=\"display:flex;gap:16px;margin-bottom:2px\"><span style=\"flex:1;text-align:left\">Group</span><b>' + fmt(total) + '</b></div>';\
+         var r = tipHead(mmss(params[0].axisValue));\
+         if ({stacked}) r += tipRow('Group', fmt(total), 'margin-bottom:2px');\
          ps.forEach(function (p) {{\
            var pct = {stacked} ? ' <span style=\"opacity:.6\">' + Math.round(p.data.value) + '%</span>' : '';\
-           r += '<div style=\"display:flex;gap:16px\"><span style=\"flex:1;text-align:left\">' + p.marker + p.seriesName + '</span><b style=\"text-align:right\">' + fmt(val(p)) + pct + '</b></div>';\
+           r += tipRow(p.marker + p.seriesName, fmt(val(p)) + pct);\
          }});\
          return r;",
         c = compact_js(eu),

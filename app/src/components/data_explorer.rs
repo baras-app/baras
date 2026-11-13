@@ -3530,14 +3530,7 @@ fn UsageTab(
                 }
 
                 let option = build_usage_timeline_option(&rows_for_chart, &sel, dur);
-                let not_merge = js_sys::Object::new();
-                js_set(&not_merge, "notMerge", &JsValue::from_bool(true));
-                let set_option = js_sys::Reflect::get(&chart, &JsValue::from_str("setOption"))
-                    .ok()
-                    .and_then(|f| f.dyn_into::<js_sys::Function>().ok());
-                if let Some(func) = set_option {
-                    let _ = func.call2(&chart, &option, &not_merge);
-                }
+                crate::components::echarts::set_option_replace(&chart, &option);
 
                 // Resize again after setOption in case the option changed dimensions
                 if let Some(func) = &resize_fn {
