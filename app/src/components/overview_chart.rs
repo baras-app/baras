@@ -209,6 +209,9 @@ fn build_option(data: &GroupTimeSeries, metric: GroupMetric, roster: &[String], 
                     "textStyle": { "color": muted, "fontSize": 10 }, "pageTextStyle": { "color": muted } },
         "tooltip": { "trigger": "axis", "backgroundColor": css_var("--bg-elevated"), "borderColor": css_var("--border-strong"),
                      "textStyle": { "color": css_var("--text-primary"), "fontSize": 11 } },
+        // Hovering shouldn't bold every line at the cursor (row hover still highlights one).
+        // Top level: ECharts ignores this under tooltip.axisPointer
+        "axisPointer": { "triggerEmphasis": false },
         // Category (one per second), not value: ECharts stacks the x values
         // on a value/value grid, which tore the stacked bands
         "xAxis": { "type": "category", "boundaryGap": false, "data": times,

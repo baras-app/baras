@@ -121,6 +121,7 @@ fn base_option(title: &str) -> Value {
         "grid": { "left": 52, "right": 16, "top": 32, "bottom": 28 },
         "animation": false,
         "tooltip": { "trigger": "axis", "backgroundColor": css_var("--bg-elevated"), "borderColor": css_var("--border-strong"), "textStyle": { "color": css_var("--text-primary") } },
+        "axisPointer": { "triggerEmphasis": false },
     })
 }
 

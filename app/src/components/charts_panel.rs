@@ -141,6 +141,22 @@ fn axis_tooltip() -> js_sys::Object {
     tooltip
 }
 
+/// No hover highlighting: neither the axis pointer bolding every series at the
+/// cursor (top level only; ECharts ignores `triggerEmphasis` under
+/// `tooltip.axisPointer`) nor a hovered line / filled area bolding its series.
+/// Call after `series` is set.
+fn no_hover_emphasis(opt: &js_sys::Object) {
+    let pointer = js_sys::Object::new();
+    js_set(&pointer, "triggerEmphasis", &JsValue::FALSE);
+    js_set(opt, "axisPointer", &pointer);
+    let Ok(series) = js_sys::Reflect::get(opt, &JsValue::from_str("series")) else { return };
+    for s in js_sys::Array::from(&series).iter() {
+        let emphasis = js_sys::Object::new();
+        js_set(&emphasis, "disabled", &JsValue::TRUE);
+        js_set(&s, "emphasis", &emphasis);
+    }
+}
+
 /// Await one animation frame — used in place of a fixed sleep to wait for the DOM
 /// to be laid out/painted before initializing charts.
 fn build_time_series_option(
@@ -429,6 +445,7 @@ fn build_time_series_option(
         js_set(&obj, "animationEasing", &JsValue::from_str("linear"));
     }
 
+    no_hover_emphasis(&obj);
     // Brush selection for drag-to-select time range
     apply_brush_config(&obj);
 
@@ -659,6 +676,7 @@ fn build_hp_chart_option(
         js_set(&obj, "animationEasing", &JsValue::from_str("linear"));
     }
 
+    no_hover_emphasis(&obj);
     // Brush selection for drag-to-select time range
     apply_brush_config(&obj);
 
