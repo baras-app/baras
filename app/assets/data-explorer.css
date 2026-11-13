@@ -1065,40 +1065,34 @@
   border-bottom: 2px solid var(--border-subtle);
 }
 
-.overview-table .death-col.has-death {
-  color: var(--lt-red, #e74c3c);
+.overview-table .death-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  font: inherit;
+  color: var(--text-secondary);
+  background: rgba(var(--fg-rgb), 0.05);
+  border: 1px solid rgba(var(--fg-rgb), 0.14);
+  border-radius: var(--radius-sm);
   cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
 
-.overview-table .death-col.has-death:hover {
-  background: color-mix(in srgb, var(--lt-red, #e74c3c) 12%, transparent);
+.overview-table .death-badge i {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.overview-table .death-badge:hover {
+  color: var(--text-primary);
+  background: rgba(var(--fg-rgb), 0.1);
+  border-color: rgba(var(--fg-rgb), 0.28);
 }
 
 /* PvP: the local player landed a killing blow on this player */
-.overview-table .death-col.local-kill {
-  color: var(--lt-green, #4caf50);
-}
-
-/* PvP: friendly/enemy overview table split */
-.overview-side-label {
-  display: block;
-  margin: 16px 0 4px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.overview-side-label.friendly {
-  color: var(--lt-green, #4caf50);
-}
-
-.overview-side-label.enemy {
-  color: var(--lt-red, #e74c3c);
-}
-
-.overview-side-label.unknown {
-  color: var(--text-secondary);
+.overview-table .death-col.local-kill .death-badge {
+  border-color: color-mix(in srgb, var(--lt-green, #4caf50) 55%, transparent);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

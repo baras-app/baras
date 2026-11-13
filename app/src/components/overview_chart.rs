@@ -15,9 +15,11 @@ use crate::components::overview_table::OverviewSort;
 use crate::utils::{LightTheme, css_var};
 
 const CHART_ID: &str = "overview-group-chart";
-/// Categorical slots (validated order); past eight players the rest fold
+/// Categorical slots (validated order); past sixteen players the rest fold
 /// into grey "Others"
 const OTHERS: &str = "Others";
+/// `--series-1..=16` in styles.css: enough for a full 16-player raid
+const SERIES_COLORS: usize = 16;
 /// Series id of the death markers (no data of its own; skipped in the tooltip)
 const DEATHS_ID: &str = "deaths";
 const GRID_LEFT: f64 = 52.0;
@@ -100,7 +102,7 @@ fn tooltip_js(eu: bool, stacked: bool) -> String {
 }
 
 /// Players in the table, coloured in a stable (alphabetical) order. Past
-/// eight, the top seven by total keep a colour and the rest share grey.
+/// sixteen, the top fifteen by total keep a colour and the rest share grey.
 fn build_option(data: &GroupTimeSeries, metric: GroupMetric, roster: &[String], stacked: bool, deaths: &[PlayerDeath]) -> Option<Value> {
     let mut players: Vec<(&str, Vec<f64>, f64)> = data
         .series
@@ -113,7 +115,7 @@ fn build_option(data: &GroupTimeSeries, metric: GroupMetric, roster: &[String], 
         return None;
     }
     // Theme palette (--series-N in styles.css)
-    let palette: Vec<String> = (1..=8).map(|i| css_var(&format!("--series-{i}"))).collect();
+    let palette: Vec<String> = (1..=SERIES_COLORS).map(|i| css_var(&format!("--series-{i}"))).collect();
     players.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
     let keep = if players.len() > palette.len() { palette.len() - 1 } else { players.len() };
     let rest = players.split_off(keep);

@@ -84,6 +84,15 @@
   --series-6: #008300;
   --series-7: #9085e9;
   --series-8: #e66767;
+  /* 9–16: extra hues for 16-player raids */
+  --series-9: #22b5c9;
+  --series-10: #8cb400;
+  --series-11: #c05ad0;
+  --series-12: #b07848;
+  --series-13: #8a9bb0;
+  --series-14: #e0c832;
+  --series-15: #b8406a;
+  --series-16: #7fd1b0;
   /* Ability usage timeline series */
   --usage-1: rgba(255, 200, 50, 0.85);
   --usage-2: rgba(100, 200, 255, 0.85);
@@ -227,6 +236,14 @@
   --series-6: #008300;
   --series-7: #6250d6;
   --series-8: #e34948;
+  --series-9: #0f8fa3;
+  --series-10: #6a8a00;
+  --series-11: #a23bb3;
+  --series-12: #8f5a2e;
+  --series-13: #5e6f85;
+  --series-14: #b39b00;
+  --series-15: #9a2a52;
+  --series-16: #3f9e7c;
   --usage-1: #b7791f;
   --usage-2: #1f7ab8;
   --usage-3: #c2255c;

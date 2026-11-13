@@ -148,7 +148,6 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
     let row_deaths = |row: &RaidOverviewRow| -> Vec<PlayerDeath> {
         props.deaths.iter().filter(|d| d.name == row.name && d.faction == row.faction).cloned().collect()
     };
-    let table_deaths = props.rows.iter().map(|r| row_deaths(r).len()).sum::<usize>();
 
     rsx! {
         if let Some((class, text)) = props.side_label {
@@ -242,9 +241,7 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
                     for (label, t) in props.total_rows.iter() {
                         tr { class: "totals-row",
                             td { class: "name-col", "{label}" }
-                            td { class: "death-col",
-                                if table_deaths > 0 { "{table_deaths}" }
-                            }
+                            td { class: "death-col" }
                             td { class: "num dmg", "{format_number(t.damage)}" }
                             td { class: "num dmg", "{format_number(t.dps)}" }
                             td { class: "num threat", "{format_number(t.threat)}" }
@@ -276,14 +273,16 @@ fn death_cell(deaths: Vec<PlayerDeath>, on_click: EventHandler<PlayerDeath>) -> 
     };
     let times: Vec<String> = deaths.iter().map(|d| formatting::format_duration(d.death_time_secs as i64)).collect();
     let label = if deaths.len() == 1 { times[0].clone() } else { format!("\u{00D7}{}", deaths.len()) };
-    let class = if deaths.iter().any(|d| d.local_kill) { "death-col has-death local-kill" } else { "death-col has-death" };
+    let class = if deaths.iter().any(|d| d.local_kill) { "death-col local-kill" } else { "death-col" };
     rsx! {
-        td {
-            class: "{class}",
-            title: "{times.join(\" · \")} — click for death recap",
-            onclick: move |_| on_click.call(first.clone()),
-            i { class: "fa-solid fa-skull" }
-            " {label}"
+        td { class: "{class}",
+            button {
+                class: "death-badge",
+                title: "{times.join(\" · \")} — click for death recap",
+                onclick: move |_| on_click.call(first.clone()),
+                i { class: "fa-solid fa-skull" }
+                "{label}"
+            }
         }
     }
 }
