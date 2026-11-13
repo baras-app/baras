@@ -202,6 +202,7 @@
 .char-name {
   font-weight: 500;
   color: var(--text-primary);
+  white-space: nowrap;
 }
 
 .char-auto {
@@ -211,23 +212,17 @@
   vertical-align: middle;
 }
 
-.char-faction-cell {
-  text-align: center;
-}
-
 .char-faction {
-  font-size: 0.85em;
-  vertical-align: middle;
-}
-
-img.char-faction {
   display: inline-block;
   width: 20px;
   height: 20px;
+  vertical-align: middle;
   object-fit: contain;
 }
 
-.char-faction.unknown { color: var(--text-disabled); }
+.char-name .char-faction {
+  margin-right: 0.5em;
+}
 
 .char-icons {
   display: inline-flex;

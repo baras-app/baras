@@ -23,7 +23,8 @@ pub fn FactionIcon(faction: Faction) -> Element {
         Faction::Republic => rsx! {
             img { class: "char-faction republic", src: ICON_REPUBLIC, alt: "Republic", title: "Republic" }
         },
-        Faction::Unknown => rsx! { span { class: "char-faction unknown", title: "Faction not set", "—" } },
+        // Blank slot the icon's width, so names stay aligned
+        Faction::Unknown => rsx! { span { class: "char-faction unknown", title: "Faction not set" } },
     }
 }
 
@@ -102,7 +103,6 @@ pub fn CharacterTable(
                     tr {
                         th { class: sort_class(SortKey::Name), onclick: move |_| on_sort(SortKey::Name), "Character" }
                         th { class: sort_class(SortKey::Server), onclick: move |_| on_sort(SortKey::Server), "Server" }
-                        th { "Faction" }
                         th { "Classes" }
                         th { "Roles" }
                         th { "Guild" }
@@ -114,7 +114,7 @@ pub fn CharacterTable(
                 }
                 tbody {
                     if rows.is_empty() {
-                        tr { td { colspan: "11", class: "library-empty", "No characters match. Characters appear here once a log names them, or add one by hand." } }
+                        tr { td { colspan: "10", class: "library-empty", "No characters match. Characters appear here once a log names them, or add one by hand." } }
                     }
                     for row in rows.iter() {
                         {
@@ -122,11 +122,11 @@ pub fn CharacterTable(
                             rsx! {
                                 tr { key: "{row.key}", class: if row.hidden { "hidden-row" } else { "" },
                                     td { class: "char-name",
+                                        FactionIcon { faction: row.faction }
                                         span { "{row.name}" }
                                         if !row.saved { i { class: "fa-regular fa-circle char-auto", title: "Found in your logs; not saved yet. Edit to add details." } }
                                     }
                                     td { if row.server.is_empty() { span { class: "text-muted", "Unknown" } } else { "{row.server}" } }
-                                    td { class: "char-faction-cell", FactionIcon { faction: row.faction } }
                                     td {
                                         div { class: "char-icons", title: if row.classes_auto { "From your logs" } else { "Assigned" },
                                             for c in row.classes.iter() {
