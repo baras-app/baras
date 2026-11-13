@@ -133,6 +133,20 @@ impl Difficulty {
         }
     }
 
+    /// Short display label: tier + group size (e.g., "Master 8")
+    pub fn short_label(&self) -> &'static str {
+        match self {
+            Difficulty::Veteran4 => "Veteran 4",
+            Difficulty::Master4 => "Master 4",
+            Difficulty::Story8 => "Story 8",
+            Difficulty::Veteran8 => "Veteran 8",
+            Difficulty::Master8 => "Master 8",
+            Difficulty::Story16 => "Story 16",
+            Difficulty::Veteran16 => "Veteran 16",
+            Difficulty::Master16 => "Master 16",
+        }
+    }
+
     /// Config key for TOML serialization (e.g., "veteran", "master", "story")
     pub fn config_key(&self) -> &'static str {
         match self {

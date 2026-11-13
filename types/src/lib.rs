@@ -1970,29 +1970,37 @@ pub enum PersonalStat {
     EncounterName,
     Difficulty,
     EncounterTime,
+    /// Operation timer elapsed time
+    OperationTime,
     EncounterCount,
     ClassDiscipline,
 
     // ── Compound metric groups ──
-    /// DPS  |  Total  |  Crit: X%
+    /// Total  |  DPS
     DamageGroup,
-    /// Boss DPS  |  Boss Total
+    /// Boss Total  |  Boss DPS
     BossDamageGroup,
-    /// HPS  |  eHPS  |  Eff: X%
+    /// HPS  |  eHPS
     HealingGroup,
-    /// Total  |  Total Eff  |  Crit: X%
+    /// Total  |  Total Eff
     HealingAdvanced,
-    /// TPS  |  Total
+    /// Effective heal %  |  Heal crit %
+    HealPctGroup,
+    /// Effective healing received: Total  |  Per second
+    HealingTakenGroup,
+    /// Total  |  TPS
     ThreatGroup,
-    /// eDTPS  |  Total Taken
+    /// Total Taken  |  eDTPS
     MitigationGroup,
     /// Def: X%  |  Shield: X%
     DefensiveGroup,
     /// Phase  |  Time
     PhaseGroup,
 
-    // ── Standalone metric ──
+    // ── Standalone metrics ──
     Apm,
+    /// Damage crit %
+    DamageCritPct,
 
     // ── Layout ──
     /// Visual separator line (not a real stat)
@@ -2012,7 +2020,6 @@ pub enum PersonalStat {
     Dtps,
     Tps,
     TotalThreat,
-    DamageCritPct,
     HealCritPct,
     EffectiveHealPct,
     Phase,
@@ -2026,17 +2033,21 @@ impl PersonalStat {
             Self::EncounterName => "Encounter Name",
             Self::Difficulty => "Difficulty",
             Self::EncounterTime => "Duration",
+            Self::OperationTime => "Operation Time",
             Self::EncounterCount => "Encounter",
             Self::ClassDiscipline => "Spec",
             Self::DamageGroup => "Damage",
             Self::BossDamageGroup => "Boss Dmg",
             Self::HealingGroup => "Healing",
             Self::HealingAdvanced => "Heal+",
+            Self::HealPctGroup => "Heal %",
+            Self::HealingTakenGroup => "Heal Taken",
             Self::ThreatGroup => "Threat",
             Self::MitigationGroup => "DTPS",
             Self::DefensiveGroup => "Defense",
             Self::PhaseGroup => "Phase",
             Self::Apm => "APM",
+            Self::DamageCritPct => "Dmg Crit",
             Self::Separator => "── Separator ──",
             // Legacy no-ops
             Self::Dps => "DPS (legacy)",
@@ -2050,7 +2061,6 @@ impl PersonalStat {
             Self::Dtps => "eDTPS (legacy)",
             Self::Tps => "TPS (legacy)",
             Self::TotalThreat => "Total Threat (legacy)",
-            Self::DamageCritPct => "Dmg Crit % (legacy)",
             Self::HealCritPct => "Heal Crit % (legacy)",
             Self::EffectiveHealPct => "Eff Heal % (legacy)",
             Self::Phase => "Phase (legacy)",
@@ -2073,7 +2083,6 @@ impl PersonalStat {
                 | Self::Dtps
                 | Self::Tps
                 | Self::TotalThreat
-                | Self::DamageCritPct
                 | Self::HealCritPct
                 | Self::EffectiveHealPct
                 | Self::Phase
@@ -2087,12 +2096,18 @@ impl PersonalStat {
             Self::EncounterName
             | Self::Difficulty
             | Self::EncounterTime
+            | Self::OperationTime
             | Self::EncounterCount
             | Self::ClassDiscipline => PersonalStatCategory::Info,
 
-            Self::DamageGroup | Self::BossDamageGroup => PersonalStatCategory::Damage,
+            Self::DamageGroup | Self::BossDamageGroup | Self::DamageCritPct => {
+                PersonalStatCategory::Damage
+            }
 
-            Self::HealingGroup | Self::HealingAdvanced => PersonalStatCategory::Healing,
+            Self::HealingGroup
+            | Self::HealingAdvanced
+            | Self::HealPctGroup
+            | Self::HealingTakenGroup => PersonalStatCategory::Healing,
 
             Self::MitigationGroup => PersonalStatCategory::Mitigation,
 
@@ -2115,7 +2130,6 @@ impl PersonalStat {
             | Self::TotalHealing
             | Self::HealCritPct
             | Self::EffectiveHealPct => PersonalStatCategory::Healing,
-            Self::DamageCritPct => PersonalStatCategory::Damage,
             Self::Dtps => PersonalStatCategory::Mitigation,
             Self::Tps | Self::TotalThreat => PersonalStatCategory::Threat,
             Self::Phase | Self::PhaseTime => PersonalStatCategory::Info,
@@ -2129,6 +2143,7 @@ impl PersonalStat {
             Self::EncounterName
                 | Self::Difficulty
                 | Self::EncounterTime
+                | Self::OperationTime
                 | Self::EncounterCount
                 | Self::ClassDiscipline
         )
@@ -2142,6 +2157,8 @@ impl PersonalStat {
                 | Self::BossDamageGroup
                 | Self::HealingGroup
                 | Self::HealingAdvanced
+                | Self::HealPctGroup
+                | Self::HealingTakenGroup
                 | Self::ThreatGroup
                 | Self::MitigationGroup
                 | Self::DefensiveGroup
@@ -2155,12 +2172,16 @@ impl PersonalStat {
             Self::EncounterName,
             Self::Difficulty,
             Self::EncounterTime,
+            Self::OperationTime,
             Self::EncounterCount,
             Self::ClassDiscipline,
             Self::DamageGroup,
             Self::BossDamageGroup,
+            Self::DamageCritPct,
             Self::HealingGroup,
             Self::HealingAdvanced,
+            Self::HealPctGroup,
+            Self::HealingTakenGroup,
             Self::ThreatGroup,
             Self::MitigationGroup,
             Self::DefensiveGroup,

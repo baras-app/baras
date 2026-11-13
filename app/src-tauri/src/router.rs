@@ -826,15 +826,26 @@ async fn process_overlay_update(
             }
         }
         OverlayUpdate::OperationTimerUpdated(timer_data) => {
-            let tx = {
+            // Personal overlay shows elapsed time as its "Op Time" row
+            let (timer_tx, personal_tx) = {
                 let state = match overlay_state.lock() {
                     Ok(s) => s,
                     Err(_) => return,
                 };
-                state.get_operation_timer_tx().cloned()
+                (
+                    state.get_operation_timer_tx().cloned(),
+                    state.get_personal_tx().cloned(),
+                )
             };
 
-            if let Some(tx) = tx {
+            if let Some(tx) = personal_tx {
+                let _ = tx
+                    .send(OverlayCommand::UpdateData(OverlayData::OperationTimer(
+                        timer_data.clone(),
+                    )))
+                    .await;
+            }
+            if let Some(tx) = timer_tx {
                 let _ = tx
                     .send(OverlayCommand::UpdateData(
                         OverlayData::OperationTimer(timer_data),

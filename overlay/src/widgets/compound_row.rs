@@ -1,21 +1,28 @@
 //! Compound row widget for displaying a label with multiple values
 //!
-//! Renders a category label on the left and multiple values right-aligned
-//! on the right. Used for grouped personal stats like
-//! "Damage: 6,541  45.2K  Crit: 32.5%"
+//! Renders a category label on the left and multiple values in right-aligned
+//! columns. Rows that share a [`CompoundLayout`] line their columns up and use
+//! the same value font size. Used for grouped personal stats like
+//! "Damage  6.5K  45.2K"
 
 use tiny_skia::Color;
 
 use crate::frame::OverlayFrame;
 use crate::widgets::colors;
 
-/// Smallest value font scale before values stop shrinking
+/// Smallest row font scale before labels start truncating
 const MIN_VALUE_SCALE: f32 = 0.55;
+/// Gap between label and first value column, relative to font size
+const LABEL_GAP: f32 = 0.4;
+/// Gap between value columns, relative to value font size
+const COLUMN_GAP: f32 = 0.5;
 
-/// A value with an optional prefix label (e.g., "Crit:" before "32.5%")
+/// A value with an optional prefix drawn directly before it (e.g. "*" before "32.5%")
 #[derive(Debug, Clone)]
 pub struct CompoundValue {
-    pub prefix: Option<String>,
+    pub prefix: Option<&'static str>,
+    /// Prefix font size relative to the value font size
+    pub prefix_scale: f32,
     pub value: String,
 }
 
@@ -23,17 +30,91 @@ impl CompoundValue {
     pub fn new(value: impl Into<String>) -> Self {
         Self {
             prefix: None,
+            prefix_scale: 1.0,
             value: value.into(),
         }
     }
 
-    pub fn with_prefix(mut self, prefix: impl Into<String>) -> Self {
-        self.prefix = Some(prefix.into());
+    pub fn with_prefix(mut self, prefix: &'static str) -> Self {
+        self.prefix = Some(prefix);
         self
+    }
+
+    pub fn with_prefix_scale(mut self, scale: f32) -> Self {
+        self.prefix_scale = scale;
+        self
+    }
+
+    fn prefix_width(&self, frame: &mut OverlayFrame, vfs: f32) -> f32 {
+        self.prefix.map_or(0.0, |p| {
+            frame
+                .measure_text_styled(p, vfs * self.prefix_scale, false, false)
+                .0
+        })
+    }
+
+    fn width(&self, frame: &mut OverlayFrame, vfs: f32) -> f32 {
+        self.prefix_width(frame, vfs) + frame.measure_text_styled(&self.value, vfs, true, false).0
     }
 }
 
-/// A row displaying a label and multiple right-aligned values
+/// Shared column widths and row scale for a set of compound rows
+#[derive(Debug, Clone, Default)]
+pub struct CompoundLayout {
+    /// Column widths measured at the unscaled font size
+    col_widths: Vec<f32>,
+    scale: f32,
+}
+
+impl CompoundLayout {
+    /// Measure all rows and pick the largest scale (down to `MIN_VALUE_SCALE`)
+    /// at which the widest label plus the value grid fits. Labels and values
+    /// shrink together so their proportions stay fixed.
+    pub fn new<'a>(
+        frame: &mut OverlayFrame,
+        rows: impl IntoIterator<Item = &'a CompoundRow>,
+        width: f32,
+        font_size: f32,
+    ) -> Self {
+        let mut col_widths: Vec<f32> = Vec::new();
+        let mut max_label = 0.0f32;
+        for row in rows {
+            max_label = max_label.max(
+                frame
+                    .measure_text_styled(&row.label, font_size, false, false)
+                    .0,
+            );
+            for (i, cv) in row.values.iter().enumerate() {
+                let w = cv.width(frame, font_size);
+                match col_widths.get_mut(i) {
+                    Some(cw) => *cw = cw.max(w),
+                    None => col_widths.push(w),
+                }
+            }
+        }
+
+        let needed =
+            max_label + font_size * LABEL_GAP + Self::grid_width(&col_widths, 1.0, font_size);
+        let scale = if col_widths.is_empty() {
+            1.0
+        } else {
+            (width / needed).clamp(MIN_VALUE_SCALE, 1.0)
+        };
+        Self { col_widths, scale }
+    }
+
+    /// Font scale applied to rows using this layout
+    pub fn scale(&self) -> f32 {
+        self.scale
+    }
+
+    fn grid_width(col_widths: &[f32], scale: f32, font_size: f32) -> f32 {
+        let gap = font_size * scale * COLUMN_GAP;
+        col_widths.iter().sum::<f32>() * scale + gap * col_widths.len().saturating_sub(1) as f32
+    }
+}
+
+/// A row displaying a label and multiple right-aligned value columns
 #[derive(Debug, Clone)]
 pub struct CompoundRow {
     pub label: String,
@@ -62,66 +143,48 @@ impl CompoundRow {
         self
     }
 
-    /// Width of the optional "prefix " part of a value (0 when no prefix).
-    fn prefix_width(frame: &mut OverlayFrame, cv: &CompoundValue, vfs: f32) -> f32 {
-        cv.prefix.as_deref().map_or(0.0, |prefix| {
-            frame.measure_text_styled(prefix, vfs, false, false).0
-                + frame.measure_text_styled(" ", vfs, false, false).0
-        })
-    }
-
-    /// Per-value widths and total width (including gaps) at a given font size.
-    fn measure_values(frame: &mut OverlayFrame, values: &[CompoundValue], vfs: f32) -> (Vec<f32>, f32) {
-        let gap = vfs * 0.5;
-        let widths: Vec<f32> = values
-            .iter()
-            .map(|cv| {
-                Self::prefix_width(frame, cv, vfs)
-                    + frame.measure_text_styled(&cv.value, vfs, true, false).0
-            })
-            .collect();
-        let total = widths.iter().sum::<f32>() + gap * values.len().saturating_sub(1) as f32;
-        (widths, total)
-    }
-
     /// Render the row with `y` as the text baseline.
     ///
-    /// Label is left-aligned; values are laid out right-to-left from the row
-    /// edge. Values shrink (down to `MIN_VALUE_SCALE`) when they don't fit
-    /// beside the label.
-    pub fn render(&self, frame: &mut OverlayFrame, x: f32, y: f32, width: f32, font_size: f32) {
-        frame.draw_text_with_glow(&self.label, x, y, font_size, self.label_color, false, false);
+    /// The value grid sits flush with the right edge; each value is
+    /// right-aligned in its column. Rows with fewer values than the layout
+    /// leave their trailing columns empty. Label and values render at the
+    /// layout's scale.
+    pub fn render(
+        &self,
+        frame: &mut OverlayFrame,
+        x: f32,
+        y: f32,
+        width: f32,
+        font_size: f32,
+        layout: &CompoundLayout,
+    ) {
+        let s = layout.scale;
+        let vfs = font_size * s;
+        let gap = vfs * COLUMN_GAP;
+        let grid_left = x + width - CompoundLayout::grid_width(&layout.col_widths, s, font_size);
 
-        if self.values.is_empty() {
-            return;
+        // Truncation only kicks in once the layout hit MIN_VALUE_SCALE
+        let label_max = grid_left - x - vfs * LABEL_GAP;
+        if label_max > 0.0 {
+            let label = frame.truncate_to_width(&self.label, label_max, vfs, false);
+            frame.draw_text_with_glow(&label, x, y, vfs, self.label_color, false, false);
         }
 
-        let (label_width, _) = frame.measure_text_styled(&self.label, font_size, false, false);
-        let available = width - label_width - font_size * 0.4;
-
-        let (mut widths, total) = Self::measure_values(frame, &self.values, font_size);
-        let scale = if available <= 0.0 || total <= 0.0 {
-            MIN_VALUE_SCALE
-        } else {
-            (available / total).clamp(MIN_VALUE_SCALE, 1.0)
-        };
-        let vfs = font_size * scale;
-        if scale < 1.0 {
-            widths = Self::measure_values(frame, &self.values, vfs).0;
-        }
-        let gap = vfs * 0.5;
-
-        // Last value flush right, earlier values placed leftward
-        let mut cursor = x + width;
         let prefix_color = colors::label_dim();
-        for (cv, w) in self.values.iter().zip(&widths).rev() {
-            let text_x = cursor - w;
-            cursor = text_x - gap;
+        let mut col_left = grid_left;
+        for (cv, cw) in self.values.iter().zip(&layout.col_widths) {
+            let col_right = col_left + cw * s;
+            col_left = col_right + gap;
 
-            if let Some(prefix) = cv.prefix.as_deref() {
-                frame.draw_text_with_glow(prefix, text_x, y, vfs, prefix_color, false, false);
+            let text_x = col_right - cv.width(frame, vfs);
+            if text_x < x {
+                continue;
             }
-            let value_x = text_x + Self::prefix_width(frame, cv, vfs);
+            if let Some(prefix) = cv.prefix {
+                let pfs = vfs * cv.prefix_scale;
+                frame.draw_text_with_glow(prefix, text_x, y, pfs, prefix_color, false, false);
+            }
+            let value_x = text_x + cv.prefix_width(frame, vfs);
             frame.draw_text_with_glow(&cv.value, value_x, y, vfs, self.value_color, true, false);
         }
     }

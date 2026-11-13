@@ -26,7 +26,7 @@ use baras_core::context::{AppConfig, AppConfigExt, ChallengeColumns, DirectoryIn
 use baras_core::directory_watcher::DirectoryWatcher;
 use baras_core::encounter::{EncounterState, PhaseType};
 use baras_core::encounter::summary::classify_encounter;
-use baras_core::game_data::{Discipline, Role};
+use baras_core::game_data::{Difficulty, Discipline, Role};
 use baras_core::timers::FiredAlert;
 use baras_core::{
     ActiveEffect, BossEncounterDefinition, DefinitionConfig, DefinitionSet, DisplayTarget,
@@ -2287,7 +2287,6 @@ impl CombatService {
                                 // Don't call push_new_encounter() - we'll continue accumulating
                                 // to the existing encounter (ID 0) and it will be written with the correct ID
                                 // Update the current encounter's area context
-                                use baras_core::game_data::Difficulty;
                                 let difficulty = Difficulty::from_difficulty_id(cache.current_area.difficulty_id);
                                 let area_id = if cache.current_area.area_id != 0 {
                                     Some(cache.current_area.area_id)
@@ -3096,17 +3095,11 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
 
     // Get player info for class/discipline and entity ID
     let player_info = &cache.player;
-    let class_discipline =
-        if !player_info.class_name.is_empty() && !player_info.discipline_name.is_empty() {
-            Some(format!(
-                "{} / {}",
-                player_info.class_name, player_info.discipline_name
-            ))
-        } else if !player_info.class_name.is_empty() {
-            Some(player_info.class_name.clone())
-        } else {
-            None
-        };
+    // Spec shows the discipline alone; class is the fallback before it's known
+    let class_discipline = [&player_info.discipline_name, &player_info.class_name]
+        .into_iter()
+        .find(|s| !s.is_empty())
+        .cloned();
     let player_entity_id = player_info.id;
 
     // Try live encounter first, fall back to historical summary for initial hydration
@@ -3171,12 +3164,9 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
             }
         };
 
-        // Get difficulty from area info (blank for non-instanced content)
-        let difficulty = if !cache.current_area.difficulty_name.is_empty() {
-            Some(cache.current_area.difficulty_name.clone())
-        } else {
-            None
-        };
+        // Short "Master 8" label from the difficulty id; the localized area
+        // name is the fallback for ids we don't know (blank in open world)
+        let difficulty = short_difficulty(difficulty_id_for_classification, &cache.current_area.difficulty_name);
 
         // Calculate metrics for all players (use session-level discipline registry)
         let entity_metrics = encounter.calculate_entity_metrics(&cache.player_disciplines, session.interpolated_game_time())?;
@@ -3442,7 +3432,10 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
         let encounter_count = cache.encounter_history.summaries().len();
         let encounter_time_secs = summary.duration_seconds.max(0) as u64;
         let encounter_name = Some(summary.display_name.clone());
-        let difficulty = summary.difficulty.clone();
+        let difficulty = short_difficulty(
+            cache.current_area.difficulty_id,
+            summary.difficulty.as_deref().unwrap_or_default(),
+        );
         let metrics = summary.player_metrics.clone();
 
         // Lookup map for class/discipline icons from the persisted player
@@ -4740,6 +4733,14 @@ pub struct LogFileInfo {
     pub parsely: Option<String>,
 }
 
+/// Difficulty label for overlays: "Master 8" when the id is known, else the
+/// raw game string, `None` when that's empty (open world).
+fn short_difficulty(difficulty_id: i64, fallback: &str) -> Option<String> {
+    Difficulty::from_difficulty_id(difficulty_id)
+        .map(|d| d.short_label().to_string())
+        .or_else(|| (!fallback.is_empty()).then(|| fallback.to_string()))
+}
+
 /// Unified combat data for metric overlays
 #[derive(Debug, Clone)]
 pub struct CombatData {
@@ -4751,7 +4752,7 @@ pub struct CombatData {
     pub encounter_time_secs: u64,
     /// Number of encounters in the session
     pub encounter_count: usize,
-    /// Player's class and discipline (e.g., "Sorcerer / Corruption")
+    /// Player's discipline (e.g., "Corruption"), or class if discipline is unknown
     pub class_discipline: Option<String>,
     /// Current encounter display name (e.g., "Raid Trash 3" or "Dread Master Bestia Pull 1")
     pub encounter_name: Option<String>,
@@ -4798,6 +4799,8 @@ impl CombatData {
             edtps: player.edtps as i32,
             total_damage_taken: player.total_damage_taken,
             total_damage_taken_effective: player.total_damage_taken_effective,
+            ehtps: player.ehtps as i32,
+            total_healing_received_effective: player.total_healing_received_effective,
             tps: player.tps as i32,
             total_threat: player.total_threat,
             damage_crit_pct: player.damage_crit_pct,

@@ -20,7 +20,7 @@ mod labeled_value;
 mod progress_bar;
 
 pub use colors::*;
-pub use compound_row::{CompoundRow, CompoundValue};
+pub use compound_row::{CompoundLayout, CompoundRow, CompoundValue};
 pub use header::{Footer, Header};
 pub use icon_bar::{IconBarRow, RowIcon};
 pub use labeled_value::LabeledValue;

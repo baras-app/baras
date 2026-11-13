@@ -51,22 +51,28 @@ impl LabeledValue {
     }
 
     /// Render the row with `y` as the text baseline and `width` as the total row width.
+    /// The value keeps priority; the label is truncated to the space left beside it.
     pub fn render(&self, frame: &mut OverlayFrame, x: f32, y: f32, width: f32, font_size: f32) {
-        frame.draw_text_with_glow(
-            &self.label,
-            x,
-            y,
-            font_size,
-            self.label_color,
-            self.label_bold,
-            false,
-        );
+        let value = frame.truncate_to_width(&self.value, width, font_size, self.value_bold);
+        let (value_width, _) = frame.measure_text_styled(&value, font_size, self.value_bold, false);
 
-        let (text_width, _) =
-            frame.measure_text_styled(&self.value, font_size, self.value_bold, false);
+        let label_max = width - value_width - font_size * 0.4;
+        if label_max > 0.0 {
+            let label = frame.truncate_to_width(&self.label, label_max, font_size, self.label_bold);
+            frame.draw_text_with_glow(
+                &label,
+                x,
+                y,
+                font_size,
+                self.label_color,
+                self.label_bold,
+                false,
+            );
+        }
+
         frame.draw_text_with_glow(
-            &self.value,
-            x + width - text_width,
+            &value,
+            x + width - value_width,
             y,
             font_size,
             self.value_color,
