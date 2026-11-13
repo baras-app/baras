@@ -1803,42 +1803,42 @@ pub fn App() -> Element {
                             }
                             div { class: "hotkey-grid",
                                 div { class: "setting-row",
-                                    label { "Show/Hide" }
+                                    label { "Show/Hide Overlays" }
                                     HotkeyInput {
                                         value: hotkey_visibility(),
                                         on_change: move |v| hotkey_visibility.set(v),
                                     }
                                 }
                                 div { class: "setting-row",
-                                    label { "Move Mode" }
+                                    label { "Lock/Unlock Overlays" }
                                     HotkeyInput {
                                         value: hotkey_move_mode(),
                                         on_change: move |v| hotkey_move_mode.set(v),
                                     }
                                 }
                                 div { class: "setting-row",
-                                    label { "Rearrange" }
+                                    label { "Toggle Raid Frame Interactivity" }
                                     HotkeyInput {
                                         value: hotkey_rearrange(),
                                         on_change: move |v| hotkey_rearrange.set(v),
                                     }
                                 }
                                 div { class: "setting-row",
-                                    label { "Op Timer" }
+                                    label { "Start/Stop Operations Timer" }
                                     HotkeyInput {
                                         value: hotkey_op_timer(),
                                         on_change: move |v| hotkey_op_timer.set(v),
                                     }
                                 }
                                 div { class: "setting-row",
-                                    label { "Detect Raid Names" }
+                                    label { "Run Raid Frame OCR Name Recognition" }
                                     HotkeyInput {
                                         value: hotkey_detect_raid(),
                                         on_change: move |v| hotkey_detect_raid.set(v),
                                     }
                                 }
                                 div { class: "setting-row",
-                                    label { "Go Live" }
+                                    label { "Resume Live Tailing" }
                                     HotkeyInput {
                                         value: hotkey_live_mode(),
                                         on_change: move |v| hotkey_live_mode.set(v),
@@ -1848,7 +1848,7 @@ pub fn App() -> Element {
                             if is_macos() {
                                 p { class: "hint hint-warning",
                                     i { class: "fa-solid fa-triangle-exclamation" }
-                                    " Detect Raid Names is not supported on macOS."
+                                    " Raid Frame OCR Name Recognition is not supported on macOS."
                                 }
                             }
                             div { class: "settings-footer",
