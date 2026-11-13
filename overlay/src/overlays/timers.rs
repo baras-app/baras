@@ -10,7 +10,7 @@ use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
 use crate::utils::{color_from_rgba, shared_scaled_icons};
-use crate::widgets::{colors, draw_icon_placeholder, ProgressBar};
+use crate::widgets::{colors, IconBarRow, ProgressBar, RowIcon};
 
 /// A single timer entry for display
 #[derive(Debug, Clone)]
@@ -178,14 +178,9 @@ impl TimerOverlay {
 
         self.frame.begin_frame();
 
-        let content_width = width - padding * 2.0;
-        let bar_radius = 2.0 * self.frame.scale_factor();
-
-        // Reserved icon column: full bar height, left of every bar
-        let icon_size = bar_height;
-        let icon_overlap = 1.0 * self.frame.scale_factor();
-        let bar_x = padding + icon_size - icon_overlap;
-        let bar_width = content_width - icon_size + icon_overlap;
+        let scale = self.frame.scale_factor();
+        let row = IconBarRow::new(padding, width - padding * 2.0, bar_height, 2.0 * scale, scale);
+        let border = self.config.show_border.then(|| color_from_rgba(self.config.border_color));
 
         let previews = [
             ("Mechanic A", "12.3", 0.75_f32),
@@ -203,44 +198,17 @@ impl TimerOverlay {
         };
 
         for (name, time_text, progress) in &previews {
-            // Placeholder icon slot
-            draw_icon_placeholder(
-                &mut self.frame,
-                padding,
-                y,
-                icon_size,
-                bar_height,
-                bar_radius,
-                colors::effect_icon_bg(),
-            );
-
-            ProgressBar::new(*name, *progress)
-                .with_fill_color(colors::effect_icon_bg())
+            let accent = colors::effect_icon_bg();
+            let bar = ProgressBar::new(*name, *progress)
+                .with_fill_color(accent)
                 .with_bg_color(colors::dps_bar_bg())
                 .with_text_color(font_color)
                 .with_right_text(*time_text)
                 .with_bold_text()
-                .with_text_glow()
-                .render(
-                    &mut self.frame,
-                    bar_x,
-                    y,
-                    bar_width,
-                    bar_height,
-                    font_size,
-                    bar_radius,
-                );
-
-            if self.config.show_border {
-                self.frame.stroke_rounded_rect(
-                    padding,
-                    y,
-                    content_width,
-                    bar_height,
-                    bar_radius,
-                    0.8 * self.frame.scale_factor(),
-                    color_from_rgba(self.config.border_color),
-                );
+                .with_text_glow();
+            row.render(&mut self.frame, y, RowIcon::None, accent, &bar, font_size);
+            if let Some(c) = border {
+                row.outline(&mut self.frame, y, 0.8 * scale, c);
             }
 
             y += bar_height + entry_spacing;
@@ -316,18 +284,9 @@ impl TimerOverlay {
             return;
         }
 
-        let content_width = width - padding * 2.0;
-        let bar_radius = 2.0 * self.frame.scale_factor();
-
-        // Reserved icon column: full bar height, left of every bar. Always
-        // reserved so bars stay aligned whether or not an entry has an icon.
-        // The bar overlaps the icon's right edge by 1px so they read as one
-        // continuous shape under a single outline.
-        let icon_size = bar_height;
-        let icon_overlap = 1.0 * self.frame.scale_factor();
-        let icon_size_u32 = icon_size.round() as u32;
-        let bar_x = padding + icon_size - icon_overlap;
-        let bar_width = content_width - icon_size + icon_overlap;
+        let scale = self.frame.scale_factor();
+        let row = IconBarRow::new(padding, width - padding * 2.0, bar_height, 2.0 * scale, scale);
+        let border = self.config.show_border.then(|| color_from_rgba(self.config.border_color));
 
         let mut y = bars_start_y;
 
@@ -343,72 +302,21 @@ impl TimerOverlay {
             let bar_color = color_from_rgba(entry.color);
             let time_text = entry.format_time(self.european_number_format);
 
-            // Draw icon in the reserved column first so the bar's left edge
-            // overlaps its right border; entries without an icon get a filler
-            // square so bars stay aligned with no hole in the row.
-            let mut icon_drawn = false;
-            if let Some(ability_id) = entry.icon_ability_id {
-                if let Some(scaled_icon) = shared_scaled_icons().get(ability_id, icon_size_u32) {
-                    self.frame.draw_image(
-                        &scaled_icon,
-                        icon_size_u32,
-                        icon_size_u32,
-                        padding,
-                        y,
-                        icon_size,
-                        icon_size,
-                    );
-                    icon_drawn = true;
-                } else if let Some(ref icon_arc) = entry.icon {
-                    let (img_w, img_h, ref rgba) = **icon_arc;
-                    self.frame
-                        .draw_image(rgba, img_w, img_h, padding, y, icon_size, icon_size);
-                    icon_drawn = true;
-                }
-            }
-            if !icon_drawn {
-                draw_icon_placeholder(
-                    &mut self.frame,
-                    padding,
-                    y,
-                    icon_size,
-                    bar_height,
-                    bar_radius,
-                    bar_color,
-                );
-            }
-
-            // Draw timer bar with name on left, time on right
-            ProgressBar::new(&entry.name, entry.progress())
+            let icon = match entry.icon_ability_id {
+                Some(id) => RowIcon::lookup(id, row.icon_px(), entry.icon.as_deref()),
+                None => RowIcon::None,
+            };
+            let bar = ProgressBar::new(&entry.name, entry.progress())
                 .with_fill_color(bar_color)
                 .with_bg_color(colors::dps_bar_bg())
                 .with_text_color(font_color)
                 .with_right_text(time_text)
                 .with_bold_text()
                 .with_gradient(self.config.bar_gradient)
-                .with_text_glow()
-                .render(
-                    &mut self.frame,
-                    bar_x,
-                    y,
-                    bar_width,
-                    bar_height,
-                    font_size,
-                    bar_radius,
-                );
-
-            // Per-entry border outline (user-configurable colour, toggleable):
-            // one continuous outline around the icon slot + bar.
-            if self.config.show_border {
-                self.frame.stroke_rounded_rect(
-                    padding,
-                    y,
-                    content_width,
-                    bar_height,
-                    bar_radius,
-                    0.8 * self.frame.scale_factor(),
-                    color_from_rgba(self.config.border_color),
-                );
+                .with_text_glow();
+            row.render(&mut self.frame, y, icon, bar_color, &bar, font_size);
+            if let Some(c) = border {
+                row.outline(&mut self.frame, y, 0.8 * scale, c);
             }
 
             y += bar_height + entry_spacing;

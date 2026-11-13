@@ -10,8 +10,7 @@ use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
 use crate::utils::{color_from_rgba, shared_scaled_icons};
-use crate::widgets::{colors, draw_icon_placeholder, ProgressBar};
-use crate::widgets::Header;
+use crate::widgets::{colors, Header, IconBarRow, ProgressBar, RowIcon};
 
 /// A single DOT entry on a target
 #[derive(Debug, Clone)]
@@ -559,18 +558,10 @@ impl DotTrackerOverlay {
         let content_width = self.frame.width() as f32 - 2.0 * padding;
         let header_font_size = font_size * 1.4;
 
-        // Reserved icon column: full bar height, left of every bar. Always
-        // reserved so bars stay aligned whether or not an entry has an icon.
-        // The bar overlaps the icon's right edge by 1px so they read as one
-        // continuous shape under a single outline.
-        let icon_size = bar_height;
-        let icon_overlap = 1.0 * scale;
-        let icon_size_u32 = icon_size.round() as u32;
-        let bar_x = padding + icon_size - icon_overlap;
-        let bar_width = content_width - icon_size + icon_overlap;
+        let row = IconBarRow::new(padding, content_width, bar_height, bar_radius, scale);
+        let border = self.config.show_border.then(|| color_from_rgba(self.config.border_color));
 
         let header_space =
-
             Header::space(self.config.show_header, header_font_size, entry_spacing, scale);
 
         // Group layout: target name line, then one bar per DOT
@@ -691,57 +682,14 @@ impl DotTrackerOverlay {
                     bar = bar.with_right_text(dot.format_time(self.european_number_format));
                 }
 
-                // Draw icon in the reserved column first so the bar's left
-                // edge overlaps its right border; entries without an icon get
-                // the shared tinted placeholder so bars stay aligned.
-                let mut icon_drawn = false;
-                if has_icon {
-                    if let Some(scaled_icon) =
-                        shared_scaled_icons().get(dot.icon_ability_id, icon_size_u32)
-                    {
-                        self.frame.draw_image(
-                            &scaled_icon,
-                            icon_size_u32,
-                            icon_size_u32,
-                            padding,
-                            y,
-                            icon_size,
-                            icon_size,
-                        );
-                        icon_drawn = true;
-                    } else if let Some(ref icon_arc) = dot.icon {
-                        let (img_w, img_h, ref rgba) = **icon_arc;
-                        self.frame
-                            .draw_image(rgba, img_w, img_h, padding, y, icon_size, icon_size);
-                        icon_drawn = true;
-                    }
-                }
-                if !icon_drawn {
-                    draw_icon_placeholder(
-                        &mut self.frame,
-                        padding,
-                        y,
-                        icon_size,
-                        bar_height,
-                        bar_radius,
-                        color_from_rgba(dot.color),
-                    );
-                }
-
-                bar.render(&mut self.frame, bar_x, y, bar_width, bar_height, font_size, bar_radius);
-
-                // Per-entry border outline (user-configurable colour, toggleable):
-                // one continuous outline around the icon slot + bar.
-                if self.config.show_border {
-                    self.frame.stroke_rounded_rect(
-                        padding,
-                        y,
-                        content_width,
-                        bar_height,
-                        bar_radius,
-                        0.8 * scale,
-                        color_from_rgba(self.config.border_color),
-                    );
+                let icon = if has_icon {
+                    RowIcon::lookup(dot.icon_ability_id, row.icon_px(), dot.icon.as_deref())
+                } else {
+                    RowIcon::None
+                };
+                row.render(&mut self.frame, y, icon, color_from_rgba(dot.color), &bar, font_size);
+                if let Some(c) = border {
+                    row.outline(&mut self.frame, y, 0.8 * scale, c);
                 }
 
                 y += bar_height + entry_spacing;
@@ -769,7 +717,6 @@ impl DotTrackerOverlay {
         let header_font_size = font_size * 1.4;
 
         let header_space =
-
             Header::space(self.config.show_header, header_font_size, entry_spacing, scale);
 
         let name_line_height = name_font_size + entry_spacing;
@@ -817,6 +764,8 @@ impl DotTrackerOverlay {
                 );
         }
 
+        let row = IconBarRow::new(padding, content_width, bar_height, bar_radius, scale);
+        let border = self.config.show_border.then(|| color_from_rgba(self.config.border_color));
         let mut y = groups_start_y;
 
         for (target_name, dots) in &targets {
@@ -830,24 +779,9 @@ impl DotTrackerOverlay {
             y += name_line_height;
 
             for (name, time_text, progress) in dots {
-                // Placeholder icon slot (matches render_bar_mode geometry)
-                let icon_size = bar_height;
-                let icon_overlap = 1.0 * scale;
-                let bar_x = padding + icon_size - icon_overlap;
-                let bar_width = content_width - icon_size + icon_overlap;
-
-                draw_icon_placeholder(
-                    &mut self.frame,
-                    padding,
-                    y,
-                    icon_size,
-                    bar_height,
-                    bar_radius,
-                    colors::effect_icon_bg(),
-                );
-
+                let accent = colors::effect_icon_bg();
                 let mut bar = ProgressBar::new(*name, *progress)
-                    .with_fill_color(colors::effect_icon_bg())
+                    .with_fill_color(accent)
                     .with_bg_color(colors::dps_bar_bg())
                     .with_text_color(colors::white())
                     .with_bold_text()
@@ -855,18 +789,9 @@ impl DotTrackerOverlay {
                 if self.config.show_countdown {
                     bar = bar.with_right_text(*time_text);
                 }
-                bar.render(&mut self.frame, bar_x, y, bar_width, bar_height, font_size, bar_radius);
-
-                if self.config.show_border {
-                    self.frame.stroke_rounded_rect(
-                        padding,
-                        y,
-                        content_width,
-                        bar_height,
-                        bar_radius,
-                        0.8 * scale,
-                        color_from_rgba(self.config.border_color),
-                    );
+                row.render(&mut self.frame, y, RowIcon::None, accent, &bar, font_size);
+                if let Some(c) = border {
+                    row.outline(&mut self.frame, y, 0.8 * scale, c);
                 }
 
                 y += bar_height + entry_spacing;

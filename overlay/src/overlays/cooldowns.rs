@@ -9,8 +9,7 @@ use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
 use crate::utils::{color_from_rgba, shared_scaled_icons};
-use crate::widgets::{colors, draw_icon_placeholder, ProgressBar};
-use crate::widgets::Header;
+use crate::widgets::{colors, Header, IconBarRow, ProgressBar, RowIcon};
 
 /// A single cooldown entry for display
 #[derive(Debug, Clone)]
@@ -670,18 +669,10 @@ impl CooldownOverlay {
         let content_width = self.frame.width() as f32 - 2.0 * padding;
         let header_font_size = font_size * 1.4;
 
-        // Reserved icon column: full bar height, left of every bar. Always
-        // reserved so bars stay aligned whether or not an entry has an icon.
-        // The bar overlaps the icon's right edge by 1px so they read as one
-        // continuous shape under a single outline.
-        let icon_size = bar_height;
-        let icon_overlap = 1.0 * scale;
-        let icon_size_u32 = icon_size.round() as u32;
-        let bar_x = padding + icon_size - icon_overlap;
-        let bar_width = content_width - icon_size + icon_overlap;
+        let row = IconBarRow::new(padding, content_width, bar_height, bar_radius, scale);
+        let border = self.config.show_border.then(|| color_from_rgba(self.config.border_color));
 
         let header_space =
-
             Header::space(self.config.show_header, header_font_size, entry_spacing, scale);
 
         let n = self.data.entries.iter().take(max_display).count();
@@ -769,60 +760,19 @@ impl CooldownOverlay {
                 .with_gradient(self.config.bar_gradient)
                 .with_text_glow();
 
-            // Draw icon in the reserved column first so the bar's left edge
-            // overlaps its right border; entries without an icon get the
-            // shared tinted placeholder so bars stay aligned with no hole.
-            let mut icon_drawn = false;
-            if has_icon {
-                if let Some(scaled) = shared_scaled_icons().get(entry.icon_ability_id, icon_size_u32)
-                {
-                    self.frame.draw_image(&scaled, icon_size_u32, icon_size_u32, padding, y, icon_size, icon_size);
-                    icon_drawn = true;
-                } else if let Some(ref icon_arc) = entry.icon {
-                    let (img_w, img_h, ref rgba) = **icon_arc;
-                    self.frame.draw_image(rgba, img_w, img_h, padding, y, icon_size, icon_size);
-                    icon_drawn = true;
-                }
-            }
-            if !icon_drawn {
-                draw_icon_placeholder(
-                    &mut self.frame,
-                    padding,
-                    y,
-                    icon_size,
-                    bar_height,
-                    bar_radius,
-                    bar_color,
-                );
-            }
+            let icon = if has_icon {
+                RowIcon::lookup(entry.icon_ability_id, row.icon_px(), entry.icon.as_deref())
+            } else {
+                RowIcon::None
+            };
+            row.render(&mut self.frame, y, icon, bar_color, &bar, font_size);
 
-            bar.render(&mut self.frame, bar_x, y, bar_width, bar_height, font_size, bar_radius);
-
-            // Outline around icon + bar as one continuous shape. Drawn before
-            // the ready-state border so the ready highlight wins.
-            let (outline_x, outline_w) = (padding, content_width);
-            if self.config.show_border {
-                self.frame.stroke_rounded_rect(
-                    outline_x,
-                    y,
-                    outline_w,
-                    bar_height,
-                    bar_radius,
-                    0.8 * scale,
-                    color_from_rgba(self.config.border_color),
-                );
+            // Outline drawn before the ready-state border so the ready highlight wins
+            if let Some(c) = border {
+                row.outline(&mut self.frame, y, 0.8 * scale, c);
             }
-
-            // Light-blue border for ready state
             if entry.is_in_ready_state {
-                let c = tiny_skia::Color::from_rgba(
-                    READY_BORDER[0] as f32 / 255.0,
-                    READY_BORDER[1] as f32 / 255.0,
-                    READY_BORDER[2] as f32 / 255.0,
-                    READY_BORDER[3] as f32 / 255.0,
-                )
-                .unwrap_or(tiny_skia::Color::WHITE);
-                self.frame.stroke_rounded_rect(outline_x, y, outline_w, bar_height, bar_radius, 1.5 * scale, c);
+                row.outline(&mut self.frame, y, 1.5 * scale, color_from_rgba(READY_BORDER));
             }
 
             y += bar_height + entry_spacing;
@@ -860,53 +810,31 @@ impl CooldownOverlay {
             padding
         };
 
-        // Reserved icon column (matches render_bar_mode geometry)
-        let icon_size = bar_height;
-        let icon_overlap = 1.0 * self.frame.scale_factor();
-        let bar_x = padding + icon_size - icon_overlap;
-        let bar_width = content_width - icon_size + icon_overlap;
+        let scale = self.frame.scale_factor();
+        let row = IconBarRow::new(padding, content_width, bar_height, bar_radius, scale);
+        let border = self.config.show_border.then(|| color_from_rgba(self.config.border_color));
 
         for (name, time_text, is_ready) in previews {
-            // Placeholder icon slot
-            draw_icon_placeholder(&mut self.frame, padding, y, icon_size, bar_height, bar_radius, accent);
-
             let label = if self.config.show_ability_names { name } else { "" };
-            ProgressBar::new(label, if is_ready { 1.0 } else { 0.4 })
+            let bar = ProgressBar::new(label, if is_ready { 1.0 } else { 0.4 })
                 .with_fill_color(accent)
                 .with_bg_color(colors::dps_bar_bg())
                 .with_text_color(font_color)
                 .with_right_text(time_text)
                 .with_bold_text()
-                .with_text_glow()
-                .render(&mut self.frame, bar_x, y, bar_width, bar_height, font_size, bar_radius);
+                .with_text_glow();
+            row.render(&mut self.frame, y, RowIcon::None, accent, &bar, font_size);
 
-            if self.config.show_border {
-                self.frame.stroke_rounded_rect(
-                    padding,
-                    y,
-                    content_width,
-                    bar_height,
-                    bar_radius,
-                    0.8 * self.frame.scale_factor(),
-                    color_from_rgba(self.config.border_color),
-                );
+            if let Some(c) = border {
+                row.outline(&mut self.frame, y, 0.8 * scale, c);
             }
-
             if is_ready {
-                let c = tiny_skia::Color::from_rgba(
-                    READY_BORDER[0] as f32 / 255.0,
-                    READY_BORDER[1] as f32 / 255.0,
-                    READY_BORDER[2] as f32 / 255.0,
-                    READY_BORDER[3] as f32 / 255.0,
-                )
-                .unwrap_or(tiny_skia::Color::WHITE);
-                self.frame.stroke_rounded_rect(padding, y, content_width, bar_height, bar_radius, 1.5 * self.frame.scale_factor(), c);
+                row.outline(&mut self.frame, y, 1.5 * scale, color_from_rgba(READY_BORDER));
             }
 
             y += bar_height + entry_spacing;
         }
 
-        let _ = y;
         self.frame.end_frame();
     }
 }
