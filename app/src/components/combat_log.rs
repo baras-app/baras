@@ -840,219 +840,225 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
 
     rsx! {
         div { class: "combat-log-panel",
-            // Filter bar - row 1
+            // Filter bar
             div { class: "log-filters",
-                // Source filter
-                select {
-                    class: "log-filter-select",
-                    value: filter_base_name(&source_filter.read(), &sources_grouped.npc_spawns).unwrap_or_default(),
-                    onchange: move |e| {
-                        let val = e.value();
-                        source_filter.set(if val.is_empty() { None } else { Some(val) });
-                    },
-                    option { value: "", "All Sources" }
-                    if !sources_grouped.friendly.is_empty() {
-                        optgroup { label: "Friendly",
-                            option { value: "__ALL_FRIENDLY__", "All Friendly" }
-                            for name in sources_grouped.friendly.iter().filter(|n| !n.is_empty()) {
-                                option { value: "{name}", "{name}" }
-                            }
-                        }
-                    }
-                    if !sources_grouped.npcs.is_empty() {
-                        optgroup { label: "NPCs",
-                            option { value: "__ALL_NPCS__", "All NPCs" }
-                            for name in sources_grouped.npcs.iter().filter(|n| !n.is_empty()) {
-                                option { value: "{name}", "{name}" }
-                            }
-                        }
-                    }
-                }
-                SpawnPicker { filter: source_filter, spawns: sources_grouped.npc_spawns.clone() }
-
-                // Target filter
-                select {
-                    class: "log-filter-select",
-                    value: filter_base_name(&target_filter.read(), &targets_grouped.npc_spawns).unwrap_or_default(),
-                    onchange: move |e| {
-                        let val = e.value();
-                        target_filter.set(if val.is_empty() { None } else { Some(val) });
-                    },
-                    option { value: "", "All Targets" }
-                    if !targets_grouped.friendly.is_empty() {
-                        optgroup { label: "Friendly",
-                            option { value: "__ALL_FRIENDLY__", "All Friendly" }
-                            for name in targets_grouped.friendly.iter().filter(|n| !n.is_empty()) {
-                                option { value: "{name}", "{name}" }
-                            }
-                        }
-                    }
-                    if !targets_grouped.npcs.is_empty() {
-                        optgroup { label: "NPCs",
-                            option { value: "__ALL_NPCS__", "All NPCs" }
-                            for name in targets_grouped.npcs.iter().filter(|n| !n.is_empty()) {
-                                option { value: "{name}", "{name}" }
-                            }
-                        }
-                    }
-                }
-                SpawnPicker { filter: target_filter, spawns: targets_grouped.npc_spawns.clone() }
-
-                // Event type filter: nothing picked = every type
-                MultiSelect {
-                    any_label: "All Events",
-                    noun: "event types",
-                    entries: plain_entries(&LogEventCategory::ALL.map(|c| c.label().to_string())),
-                    picked: event_categories.read().iter().map(|c| c.label().to_string()).collect::<Vec<_>>(),
-                    on_change: move |picked: Vec<String>| {
-                        event_categories.set(
-                            LogEventCategory::ALL.into_iter().filter(|c| picked.iter().any(|p| p == c.label())).collect(),
-                        );
-                    },
-                }
-
-                // Search input (filter)
-                input {
-                    class: "log-search",
-                    r#type: "text",
-                    placeholder: "Filter... (AND, OR, NOT, parens, id:N)",
-                    value: "{search_text}",
-                    oninput: move |e| search_text.set(e.value()),
-                }
-
-                // Clear all filters button: muted until something diverges from the defaults
-                button {
-                    class: if filters_active { "log-clear-filters active" } else { "log-clear-filters" },
-                    r#type: "button",
-                    title: "Reset all filters to defaults (X)",
-                    "data-shortcut": "x",
-                    onclick: move |_| {
-                        source_filter.set(None);
-                        target_filter.set(None);
-                        search_text.set(String::new());
-                        event_categories.set(Vec::new());
-                    },
-                    i { class: "fa-solid fa-filter-circle-xmark" }
-                    "Clear Filters"
-                }
-
-                // Find group (searches all data via backend)
-                div { class: "log-find-group",
-                    input {
-                        class: "log-find-input",
-                        r#type: "text",
-                        placeholder: "Find...",
-                        value: "{find_text}",
-                        oninput: move |e| find_text.set(e.value()),
-                    }
-                    button {
-                        class: "find-nav-btn",
-                        r#type: "button",
-                        disabled: find_match_count == 0,
-                        onclick: move |_| {
-                            // Clone data out of signals to avoid borrow issues
-                            let matches_vec = find_matches.read().clone();
-                            if matches_vec.is_empty() {
-                                return;
-                            }
-                            let current = *find_current_idx.read();
-                            let prev = if current == 0 {
-                                matches_vec.len().saturating_sub(1)
-                            } else {
-                                current - 1
-                            };
-                            let m = &matches_vec[prev];
-
-                            // Now update state
-                            find_current_idx.set(prev);
-                            highlighted_row.set(Some(m.row_idx));
-
-                            // Scroll to center match in viewport
-                            if let Some(window) = web_sys::window()
-                                && let Some(doc) = window.document()
-                                && let Some(elem) = doc.get_element_by_id("combat-log-scroll")
-                                && let Some(html_elem) = elem.dyn_ref::<web_sys::HtmlElement>()
-                            {
-                                let container_h = html_elem.client_height() as f64;
-                                let scroll_y = (m.pos as f64 * ROW_HEIGHT) - (container_h / 2.0) + (ROW_HEIGHT / 2.0);
-                                elem.set_scroll_top(scroll_y.max(0.0) as i32);
-                            }
-                        },
-                        "▲"
-                    }
-                    button {
-                        class: "find-nav-btn",
-                        r#type: "button",
-                        disabled: find_match_count == 0,
-                        onclick: move |_| {
-                            // Clone data out of signals to avoid borrow issues
-                            let matches_vec = find_matches.read().clone();
-                            if matches_vec.is_empty() {
-                                return;
-                            }
-                            let current = *find_current_idx.read();
-                            let next = if current + 1 >= matches_vec.len() {
-                                0
-                            } else {
-                                current + 1
-                            };
-                            let m = &matches_vec[next];
-
-                            // Now update state
-                            find_current_idx.set(next);
-                            highlighted_row.set(Some(m.row_idx));
-
-                            // Scroll to center match in viewport
-                            if let Some(window) = web_sys::window()
-                                && let Some(doc) = window.document()
-                                && let Some(elem) = doc.get_element_by_id("combat-log-scroll")
-                                && let Some(html_elem) = elem.dyn_ref::<web_sys::HtmlElement>()
-                            {
-                                let container_h = html_elem.client_height() as f64;
-                                let scroll_y = (m.pos as f64 * ROW_HEIGHT) - (container_h / 2.0) + (ROW_HEIGHT / 2.0);
-                                elem.set_scroll_top(scroll_y.max(0.0) as i32);
-                            }
-                        },
-                        "▼"
-                    }
-                    if find_match_count > 0 {
-                        span { class: "find-count", "{find_idx + 1}/{find_match_count}" }
-                    }
-                }
-
-                // Show IDs toggle
-                label { class: "log-show-ids",
-                    input {
-                        r#type: "checkbox",
-                        checked: show_ids_val,
+                // Filters: wrap to their own line before squeezing
+                div { class: "log-filter-group",
+                    // Source filter
+                    select {
+                        class: "log-filter-select",
+                        value: filter_base_name(&source_filter.read(), &sources_grouped.npc_spawns).unwrap_or_default(),
                         onchange: move |e| {
-                            let checked = e.checked();
-                            show_ids.set(checked);
-                            // Persist to config
-                            spawn(async move {
-                                if let Some(mut cfg) = api::get_config().await {
-                                    cfg.show_log_ids = checked;
-                                    let _ = api::update_config(&cfg).await;
+                            let val = e.value();
+                            source_filter.set(if val.is_empty() { None } else { Some(val) });
+                        },
+                        option { value: "", "All Sources" }
+                        if !sources_grouped.friendly.is_empty() {
+                            optgroup { label: "Friendly",
+                                option { value: "__ALL_FRIENDLY__", "All Friendly" }
+                                for name in sources_grouped.friendly.iter().filter(|n| !n.is_empty()) {
+                                    option { value: "{name}", "{name}" }
                                 }
-                            });
+                            }
+                        }
+                        if !sources_grouped.npcs.is_empty() {
+                            optgroup { label: "NPCs",
+                                option { value: "__ALL_NPCS__", "All NPCs" }
+                                for name in sources_grouped.npcs.iter().filter(|n| !n.is_empty()) {
+                                    option { value: "{name}", "{name}" }
+                                }
+                            }
+                        }
+                    }
+                    SpawnPicker { filter: source_filter, spawns: sources_grouped.npc_spawns.clone() }
+
+                    // Target filter
+                    select {
+                        class: "log-filter-select",
+                        value: filter_base_name(&target_filter.read(), &targets_grouped.npc_spawns).unwrap_or_default(),
+                        onchange: move |e| {
+                            let val = e.value();
+                            target_filter.set(if val.is_empty() { None } else { Some(val) });
+                        },
+                        option { value: "", "All Targets" }
+                        if !targets_grouped.friendly.is_empty() {
+                            optgroup { label: "Friendly",
+                                option { value: "__ALL_FRIENDLY__", "All Friendly" }
+                                for name in targets_grouped.friendly.iter().filter(|n| !n.is_empty()) {
+                                    option { value: "{name}", "{name}" }
+                                }
+                            }
+                        }
+                        if !targets_grouped.npcs.is_empty() {
+                            optgroup { label: "NPCs",
+                                option { value: "__ALL_NPCS__", "All NPCs" }
+                                for name in targets_grouped.npcs.iter().filter(|n| !n.is_empty()) {
+                                    option { value: "{name}", "{name}" }
+                                }
+                            }
+                        }
+                    }
+                    SpawnPicker { filter: target_filter, spawns: targets_grouped.npc_spawns.clone() }
+
+                    // Event type filter: nothing picked = every type
+                    MultiSelect {
+                        any_label: "All Events",
+                        noun: "event types",
+                        entries: plain_entries(&LogEventCategory::ALL.map(|c| c.label().to_string())),
+                        picked: event_categories.read().iter().map(|c| c.label().to_string()).collect::<Vec<_>>(),
+                        on_change: move |picked: Vec<String>| {
+                            event_categories.set(
+                                LogEventCategory::ALL.into_iter().filter(|c| picked.iter().any(|p| p == c.label())).collect(),
+                            );
                         },
                     }
-                    "Show IDs"
-                }
 
-                // Time format toggle
-                label { class: "log-show-ids",
-                    title: "Show raw log timestamp (HH:MM:SS) instead of combat time",
+                    // Search input (filter)
                     input {
-                        r#type: "checkbox",
-                        checked: absolute_time,
-                        onchange: move |e| show_absolute_time.set(e.checked()),
+                        class: "log-search",
+                        r#type: "text",
+                        placeholder: "Filter... (AND, OR, NOT, parens, id:N)",
+                        value: "{search_text}",
+                        oninput: move |e| search_text.set(e.value()),
                     }
-                    "Raw Time"
+
+                    // Clear all filters button: muted until something diverges from the defaults
+                    button {
+                        class: if filters_active { "log-clear-filters active" } else { "log-clear-filters" },
+                        r#type: "button",
+                        title: "Reset all filters to defaults (X)",
+                        "data-shortcut": "x",
+                        onclick: move |_| {
+                            source_filter.set(None);
+                            target_filter.set(None);
+                            search_text.set(String::new());
+                            event_categories.set(Vec::new());
+                        },
+                        i { class: "fa-solid fa-filter-circle-xmark" }
+                        "Clear Filters"
+                    }
                 }
 
-                // Row count
-                span { class: "log-count", "{total} events" }
+                // Tools: find, display toggles, row count
+                div { class: "log-tools-group",
+                    // Find group (searches all data via backend)
+                    div { class: "log-find-group",
+                        input {
+                            class: "log-find-input",
+                            r#type: "text",
+                            placeholder: "Find...",
+                            value: "{find_text}",
+                            oninput: move |e| find_text.set(e.value()),
+                        }
+                        button {
+                            class: "find-nav-btn",
+                            r#type: "button",
+                            disabled: find_match_count == 0,
+                            onclick: move |_| {
+                                // Clone data out of signals to avoid borrow issues
+                                let matches_vec = find_matches.read().clone();
+                                if matches_vec.is_empty() {
+                                    return;
+                                }
+                                let current = *find_current_idx.read();
+                                let prev = if current == 0 {
+                                    matches_vec.len().saturating_sub(1)
+                                } else {
+                                    current - 1
+                                };
+                                let m = &matches_vec[prev];
+
+                                // Now update state
+                                find_current_idx.set(prev);
+                                highlighted_row.set(Some(m.row_idx));
+
+                                // Scroll to center match in viewport
+                                if let Some(window) = web_sys::window()
+                                    && let Some(doc) = window.document()
+                                    && let Some(elem) = doc.get_element_by_id("combat-log-scroll")
+                                    && let Some(html_elem) = elem.dyn_ref::<web_sys::HtmlElement>()
+                                {
+                                    let container_h = html_elem.client_height() as f64;
+                                    let scroll_y = (m.pos as f64 * ROW_HEIGHT) - (container_h / 2.0) + (ROW_HEIGHT / 2.0);
+                                    elem.set_scroll_top(scroll_y.max(0.0) as i32);
+                                }
+                            },
+                            "▲"
+                        }
+                        button {
+                            class: "find-nav-btn",
+                            r#type: "button",
+                            disabled: find_match_count == 0,
+                            onclick: move |_| {
+                                // Clone data out of signals to avoid borrow issues
+                                let matches_vec = find_matches.read().clone();
+                                if matches_vec.is_empty() {
+                                    return;
+                                }
+                                let current = *find_current_idx.read();
+                                let next = if current + 1 >= matches_vec.len() {
+                                    0
+                                } else {
+                                    current + 1
+                                };
+                                let m = &matches_vec[next];
+
+                                // Now update state
+                                find_current_idx.set(next);
+                                highlighted_row.set(Some(m.row_idx));
+
+                                // Scroll to center match in viewport
+                                if let Some(window) = web_sys::window()
+                                    && let Some(doc) = window.document()
+                                    && let Some(elem) = doc.get_element_by_id("combat-log-scroll")
+                                    && let Some(html_elem) = elem.dyn_ref::<web_sys::HtmlElement>()
+                                {
+                                    let container_h = html_elem.client_height() as f64;
+                                    let scroll_y = (m.pos as f64 * ROW_HEIGHT) - (container_h / 2.0) + (ROW_HEIGHT / 2.0);
+                                    elem.set_scroll_top(scroll_y.max(0.0) as i32);
+                                }
+                            },
+                            "▼"
+                        }
+                        if find_match_count > 0 {
+                            span { class: "find-count", "{find_idx + 1}/{find_match_count}" }
+                        }
+                    }
+
+                    // Show IDs toggle
+                    label { class: "log-show-ids",
+                        input {
+                            r#type: "checkbox",
+                            checked: show_ids_val,
+                            onchange: move |e| {
+                                let checked = e.checked();
+                                show_ids.set(checked);
+                                // Persist to config
+                                spawn(async move {
+                                    if let Some(mut cfg) = api::get_config().await {
+                                        cfg.show_log_ids = checked;
+                                        let _ = api::update_config(&cfg).await;
+                                    }
+                                });
+                            },
+                        }
+                        "Show IDs"
+                    }
+
+                    // Time format toggle
+                    label { class: "log-show-ids",
+                        title: "Show raw log timestamp (HH:MM:SS) instead of combat time",
+                        input {
+                            r#type: "checkbox",
+                            checked: absolute_time,
+                            onchange: move |e| show_absolute_time.set(e.checked()),
+                        }
+                        "Raw Time"
+                    }
+
+                    // Row count
+                    span { class: "log-count", "{total} events" }
+                }
             }
 
             // Table container with virtual scrolling
