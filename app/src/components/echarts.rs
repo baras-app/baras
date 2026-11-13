@@ -41,7 +41,22 @@ fn init_with_renderer(element_id: &str, renderer: &str) -> Option<JsValue> {
     let opts = json_to_js(&serde_json::json!({ "renderer": renderer }))?;
     let chart = echarts_init(&element, &JsValue::NULL, &opts).ok()?;
     hide_tooltip_on_leave(&chart);
+    resize_with_host(&chart);
     Some(chart)
+}
+
+/// ECharts does not watch its container, so layout changes that are not a
+/// window resize (sidebar collapse, fullscreen, a panel appearing) would leave
+/// it at the old size. The observer fires at most once per frame, skips hidden
+/// hosts, and lets go once the chart is disposed.
+fn resize_with_host(chart: &JsValue) {
+    const BODY: &str = "const ro = new ResizeObserver((entries) => {
+             if (chart.isDisposed()) { ro.disconnect(); return; }
+             const r = entries[0].contentRect;
+             if (r.width > 0 && r.height > 0) chart.resize();
+         });
+         ro.observe(chart.getDom());";
+    let _ = js_sys::Function::new_with_args("chart", BODY).call1(&JsValue::NULL, chart);
 }
 
 /// ECharts does not cancel a pending delayed show when the cursor leaves, so
@@ -140,10 +155,6 @@ pub fn set_option_replace(chart: &JsValue, option: &JsValue) {
     }
 }
 
-pub fn resize_chart(chart: &JsValue) {
-    call0(chart, "resize");
-}
-
 pub fn dispose_chart(element_id: &str) {
     if let Some(chart) = get_chart(element_id) {
         call0(&chart, "dispose");
@@ -161,31 +172,6 @@ pub async fn next_animation_frame() {
         }
     });
     let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-}
-
-/// Keep the charts bound to `ids` sized to their hosts while the component
-/// is mounted: ECharts does not watch its container, so a window resize
-/// would otherwise leave the canvas at the old size until the next option.
-pub fn use_resize_charts(ids: &'static [&'static str]) {
-    // Rc: hooks hand out clones, and the listener must outlive this render
-    let closure: std::rc::Rc<Closure<dyn FnMut()>> = use_hook(|| {
-        let closure = Closure::new(move || {
-            for id in ids {
-                if let Some(chart) = get_chart(id) {
-                    resize_chart(&chart);
-                }
-            }
-        });
-        if let Some(win) = web_sys::window() {
-            let _ = win.add_event_listener_with_callback("resize", closure.as_ref().unchecked_ref());
-        }
-        std::rc::Rc::new(closure)
-    });
-    use_drop(move || {
-        if let Some(win) = web_sys::window() {
-            let _ = win.remove_event_listener_with_callback("resize", (*closure).as_ref().unchecked_ref());
-        }
-    });
 }
 
 /// Click anywhere in the plot area (not just on a drawn item) → `handler`

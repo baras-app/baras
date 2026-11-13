@@ -2478,9 +2478,6 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                     selected_source: selected_source,
                                                     selected_source_id: selected_source_id,
                                                     european: eu,
-                                                    sidebar_collapsed: sidebar_collapsed,
-                                                    entity_collapsed: entity_collapsed,
-                                                    overview_fullscreen: overview_fullscreen,
                                                     on_time_range_change: move |new_range: TimeRange| {
                                                         time_range.set(new_range);
                                                     },

@@ -10,7 +10,7 @@ use wasm_bindgen::JsCast;
 
 use crate::api::{self, GroupMetric, GroupTimeSeries, PlayerDeath, RaidOverviewRow, TimeRange};
 use crate::components::echarts::{
-    TOOLTIP_ROWS_JS, activate_brush, apply_brush_config, register_span_click, dispatch_action, dispose_chart, get_chart, init_svg_chart, json_to_js, next_animation_frame, register_brush_handler, set_chart_option, set_js_fn, set_option_replace, use_resize_charts,
+    TOOLTIP_ROWS_JS, activate_brush, apply_brush_config, register_span_click, dispatch_action, dispose_chart, get_chart, init_svg_chart, json_to_js, next_animation_frame, register_brush_handler, set_chart_option, set_js_fn, set_option_replace,
 };
 use crate::components::overview_table::OverviewSort;
 use crate::utils::{LightTheme, css_var};
@@ -281,7 +281,6 @@ pub fn OverviewGroupChart(
     // Death markers as last drawn (labels staggered), restyled on row hover
     let mut drawn_marks: Signal<Vec<Value>> = use_signal(Vec::new);
 
-    use_resize_charts(&[CHART_ID]);
     use_effect(use_reactive!(|option, european| {
         let stacked = stacked();
         let alive = alive_view();

@@ -11,7 +11,7 @@ use crate::api::{self, EffectChartData, EffectWindow, HpPoint, TimeRange, TimeSe
 use crate::components::ability_icon::AbilityIcon;
 use crate::components::echarts::{
     TOOLTIP_ROWS_JS, activate_brush, apply_brush_config, dispose_chart, get_chart, init_chart, next_animation_frame,
-    register_brush_handler, resize_chart, set_chart_option,
+    register_brush_handler, set_chart_option,
 };
 use crate::utils::{css_var, css_var_or, js_set};
 use baras_types::formatting;
@@ -24,14 +24,6 @@ enum EffectSort {
     Uptime,
     #[default]
     Pct,
-}
-
-fn resize_all_charts() {
-    for id in ["chart-dps", "chart-hps", "chart-dtps", "chart-hp"] {
-        if let Some(chart) = get_chart(id) {
-            resize_chart(&chart);
-        }
-    }
 }
 
 /// Merge overlapping/adjacent windows into continuous regions
@@ -688,10 +680,6 @@ pub struct ChartsPanelProps {
     /// Callback when the user brush-selects a time range on a chart
     #[props(default)]
     pub on_time_range_change: EventHandler<TimeRange>,
-    /// Layout signals — used to trigger chart resize when sidebars/fullscreen toggle
-    pub sidebar_collapsed: Signal<bool>,
-    pub entity_collapsed: Signal<bool>,
-    pub overview_fullscreen: Signal<bool>,
 }
 
 #[component]
@@ -1034,9 +1022,6 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                     }
                 }
 
-                // Resize all visible charts after DOM has settled
-                gloo_timers::future::TimeoutFuture::new(50).await;
-                resize_all_charts();
             });
         }
     });
@@ -1077,36 +1062,6 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
             if show_hp_val && let Some(chart) = get_chart("chart-hp") {
                 apply_effect_markareas(&chart, &windows, 100.0);
             }
-        });
-    });
-
-    // Window resize listener - resize all ECharts instances
-    use_effect(|| {
-        use wasm_bindgen::closure::Closure;
-
-        let closure = Closure::wrap(Box::new(move || {
-            resize_all_charts();
-        }) as Box<dyn Fn()>);
-
-        if let Some(window) = web_sys::window() {
-            let _ =
-                window.add_event_listener_with_callback("resize", closure.as_ref().unchecked_ref());
-        }
-
-        // Keep closure alive and remove listener on cleanup
-        closure.forget();
-    });
-
-    // Resize charts when layout changes (sidebar collapse, entity panel collapse, fullscreen)
-    // CSS transitions take ~250ms, so delay resize to let the layout settle
-    use_effect(move || {
-        let _sidebar = *props.sidebar_collapsed.read();
-        let _entity = *props.entity_collapsed.read();
-        let _fullscreen = *props.overview_fullscreen.read();
-
-        spawn(async move {
-            gloo_timers::future::TimeoutFuture::new(300).await;
-            resize_all_charts();
         });
     });
 

@@ -20,7 +20,6 @@ use crate::components::class_icons::{get_class_icon, get_role_icon};
 
 use crate::components::echarts::{
     dispose_chart, init_chart, json_to_js, next_animation_frame, on_column_click, set_js_fn, set_option_replace,
-    use_resize_charts,
 };
 
 /// What a chart click selects. Carried on every data item as `pick`, so the
@@ -353,7 +352,6 @@ fn options(rows: &[PullRow], kills_only: bool) -> [(&'static str, Option<Value>)
 #[component]
 pub fn PullCharts(pulls: Resource<Option<Vec<PullRow>>>, pick: Signal<Option<ChartPick>>, kills_only: bool) -> Element {
     let [(_, dps), (_, ehps), (_, nights)] = options(&chronological(&pulls), kills_only);
-    use_resize_charts(&CHART_IDS);
     // Click handlers live as long as the component; replaced on every refresh
     let handlers: Rc<RefCell<Vec<Closure<dyn FnMut(JsValue)>>>> = use_hook(|| Rc::new(RefCell::new(Vec::new())));
 
