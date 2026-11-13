@@ -2182,6 +2182,10 @@ difficulties = ["story", "veteran", "master"]
 type = "timer_expires"
 timer_id = "nahut_k_adds_p2_1st"
 
+[boss.timer.cancel_trigger]
+type = "timer_started"
+timer_id = "nahut_k_r_p2_c"
+
 [[boss.timer]]
 id = "nahut_k_r_p2"
 name = "Railgun"
