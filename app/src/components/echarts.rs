@@ -168,6 +168,36 @@ pub fn on_column_click(chart: &JsValue, handler: &Closure<dyn FnMut(JsValue)>) {
     let _ = install.call2(&JsValue::NULL, chart, handler.as_ref().unchecked_ref());
 }
 
+/// Click inside a span-bar chart (horizontal stacked bars on a value x-axis
+/// and category y-axis, each data item `{ value, from, to }`) → `sink` gets
+/// the `(from, to)` of the span under the cursor. Uses the plot area rather
+/// than item hits, so it works under the always-on brush. Replaces the
+/// chart's previous handler.
+pub fn register_span_click(chart: &JsValue, mut sink: Signal<Option<(f64, f64)>>) {
+    use wasm_bindgen::closure::Closure;
+    const INSTALL: &str = "var zr = chart.getZr();\
+        if (chart.__spanClick) zr.off('click', chart.__spanClick);\
+        chart.__spanClick = function (e) {\
+          var pt = [e.offsetX, e.offsetY];\
+          if (!chart.containPixel('grid', pt)) return;\
+          var c = chart.convertFromPixel({ gridIndex: 0 }, pt), x = c[0], row = Math.round(c[1]);\
+          var series = chart.getOption().series || [];\
+          for (var k = 0; k < series.length; k++) {\
+            var d = (series[k].data || [])[row];\
+            if (d && d.from !== undefined && d.from <= x && x <= d.to) { cb(d.from, d.to); return; }\
+          }\
+        };\
+        zr.on('click', chart.__spanClick);";
+    let closure = Closure::wrap(Box::new(move |from: f64, to: f64| {
+        if to > from {
+            sink.set(Some((from, to)));
+        }
+    }) as Box<dyn FnMut(f64, f64)>);
+    let install = js_sys::Function::new_with_args("chart, cb", INSTALL);
+    let _ = install.call2(&JsValue::NULL, chart, closure.as_ref().unchecked_ref());
+    closure.forget();
+}
+
 /// `chart.dispatchAction(action)`, e.g. highlight / downplay a series
 pub fn dispatch_action(chart: &JsValue, action: &serde_json::Value) {
     if let Some(action) = json_to_js(action)

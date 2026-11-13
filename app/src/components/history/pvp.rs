@@ -286,6 +286,8 @@ pub fn PvpTab(european: bool, backfill: Backfill) -> Element {
                     button {
                         class: if f.active() > 0 { "btn btn-xs history-clear active" } else { "btn btn-xs history-clear" },
                         disabled: f.active() == 0,
+                        title: "Clear filters (X)",
+                        "data-shortcut": "x",
                         onclick: move |_| filter.set(PvpFilter::default()),
                         i { class: "fa-solid fa-filter-circle-xmark" } " Clear filters"
                     }

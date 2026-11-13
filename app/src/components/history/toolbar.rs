@@ -149,7 +149,8 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>, runs: bool) -> Element {
                 button {
                     class: if active > 0 { "btn btn-xs history-clear active" } else { "btn btn-xs history-clear" },
                     disabled: active == 0,
-                    title: "Show everything: any difficulty, size and role, and nothing under More filters",
+                    title: "Show everything: any difficulty, size and role, and nothing under More filters (X)",
+                    "data-shortcut": "x",
                     // The flashpoints switch is a remembered preference, not a filter to clear
                     onclick: move |_| {
                         let flashpoints = filter.peek().flashpoints;

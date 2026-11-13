@@ -350,6 +350,9 @@ pub struct PlayerDeath {
     pub name: String,
     /// Time of death in seconds from combat start
     pub death_time_secs: f32,
+    /// First revive after this death, in seconds from combat start (None = stayed dead)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub revive_time_secs: Option<f32>,
     /// Victim's side (PvP encounters only)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub faction: Option<PvpFaction>,

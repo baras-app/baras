@@ -144,7 +144,8 @@ pub fn EffectFilterBar(effects: Memo<Vec<EffectListItem>>, filters: Signal<Effec
                 class: "btn btn-xs history-clear",
                 class: if active > 0 { "active" },
                 disabled: active == 0,
-                title: "Show every effect: any origin, overlay and discipline",
+                title: "Show every effect: any origin, overlay and discipline (X)",
+                "data-shortcut": "x",
                 onclick: move |_| filters.set(EffectFilters::default()),
                 i { class: "fa-solid fa-filter-circle-xmark" }
                 " Clear filters"

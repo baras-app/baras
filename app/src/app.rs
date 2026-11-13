@@ -1888,6 +1888,7 @@ pub fn App() -> Element {
                                         ("[  ]", "Previous / next tab"),
                                         ("S", "Collapse / expand the sidebar"),
                                         ("F", "Toggle Analysis fullscreen"),
+                                        ("X", "Clear all filters"),
                                     ] {
                                         li { kbd { "{key}" } span { "{action}" } }
                                     }

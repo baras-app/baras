@@ -936,7 +936,8 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                 button {
                     class: if filters_active { "log-clear-filters active" } else { "log-clear-filters" },
                     r#type: "button",
-                    title: "Reset all filters to defaults",
+                    title: "Reset all filters to defaults (X)",
+                    "data-shortcut": "x",
                     onclick: move |_| {
                         source_filter.set(None);
                         target_filter.set(None);

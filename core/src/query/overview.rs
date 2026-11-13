@@ -262,6 +262,24 @@ impl EncounterQuery<'_> {
             ))
             .await?;
 
+        // Revives (the player is the event's source), per player in time order
+        let revive_batches = self
+            .sql(&format!(
+                "SELECT source_id, combat_time_secs FROM events \
+                 WHERE effect_id = {} AND source_entity_type IN ('Player', 'Companion') \
+                   AND combat_time_secs IS NOT NULL ORDER BY combat_time_secs ASC",
+                effect_id::REVIVED
+            ))
+            .await?;
+        let mut revives: HashMap<i64, Vec<f32>> = HashMap::new();
+        for batch in &revive_batches {
+            let ids = col_i64(batch, 0)?;
+            let times = col_f32(batch, 1)?;
+            for i in 0..batch.num_rows() {
+                revives.entry(ids[i]).or_default().push(times[i]);
+            }
+        }
+
         let mut results = Vec::new();
         for batch in &batches {
             let names = col_strings(batch, 0)?;
@@ -367,6 +385,24 @@ impl EncounterQuery<'_> {
             (None, HashMap::new())
         };
 
+        // Revives (the player is the event's source), per player in time order
+        let revive_batches = self
+            .sql(&format!(
+                "SELECT source_id, combat_time_secs FROM events \
+                 WHERE effect_id = {} AND source_entity_type IN ('Player', 'Companion') \
+                   AND combat_time_secs IS NOT NULL ORDER BY combat_time_secs ASC",
+                effect_id::REVIVED
+            ))
+            .await?;
+        let mut revives: HashMap<i64, Vec<f32>> = HashMap::new();
+        for batch in &revive_batches {
+            let ids = col_i64(batch, 0)?;
+            let times = col_f32(batch, 1)?;
+            for i in 0..batch.num_rows() {
+                revives.entry(ids[i]).or_default().push(times[i]);
+            }
+        }
+
         let mut results = Vec::new();
         for batch in &batches {
             let names = col_strings(batch, 0)?;
@@ -382,6 +418,9 @@ impl EncounterQuery<'_> {
                     is_local,
                     // Killing blow by the local player (own deaths don't count)
                     local_kill: !is_local && local_id.is_some_and(|id| source_ids[i] == id),
+                    revive_time_secs: revives
+                        .get(&target_ids[i])
+                        .and_then(|r| r.iter().copied().find(|&t| t >= times[i])),
                     name,
                     death_time_secs: times[i],
                 });
@@ -467,6 +506,24 @@ impl EncounterQuery<'_> {
                 death_id = effect_id::DEATH,
             ))
             .await?;
+
+        // Revives (the player is the event's source), per player in time order
+        let revive_batches = self
+            .sql(&format!(
+                "SELECT source_id, combat_time_secs FROM events \
+                 WHERE effect_id = {} AND source_entity_type IN ('Player', 'Companion') \
+                   AND combat_time_secs IS NOT NULL ORDER BY combat_time_secs ASC",
+                effect_id::REVIVED
+            ))
+            .await?;
+        let mut revives: HashMap<i64, Vec<f32>> = HashMap::new();
+        for batch in &revive_batches {
+            let ids = col_i64(batch, 0)?;
+            let times = col_f32(batch, 1)?;
+            for i in 0..batch.num_rows() {
+                revives.entry(ids[i]).or_default().push(times[i]);
+            }
+        }
 
         let mut results = Vec::new();
         for batch in &batches {

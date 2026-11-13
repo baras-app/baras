@@ -1,7 +1,8 @@
 //! Overview group chart: every player's DPS / EHPS / DTPS / TPS over time,
 //! as lines or stacked so each band is that player's share. The metric
 //! follows the table's sort column (the tabs just set it), and hovering a
-//! table row highlights that player's line.
+//! table row highlights that player's line. The Alive tab swaps in one row
+//! per player, green while alive and red while dead.
 
 use dioxus::prelude::*;
 use serde_json::{Value, json};
@@ -9,7 +10,7 @@ use wasm_bindgen::JsCast;
 
 use crate::api::{self, GroupMetric, GroupTimeSeries, PlayerDeath, RaidOverviewRow, TimeRange};
 use crate::components::echarts::{
-    activate_brush, apply_brush_config, dispatch_action, dispose_chart, get_chart, init_svg_chart, json_to_js, next_animation_frame, register_brush_handler, set_chart_option, set_js_fn, set_option_replace, use_resize_charts,
+    activate_brush, apply_brush_config, register_span_click, dispatch_action, dispose_chart, get_chart, init_svg_chart, json_to_js, next_animation_frame, register_brush_handler, set_chart_option, set_js_fn, set_option_replace, use_resize_charts,
 };
 use crate::components::overview_table::OverviewSort;
 use crate::utils::{LightTheme, css_var};
@@ -228,6 +229,10 @@ pub fn OverviewGroupChart(
     sort_asc: Signal<bool>,
     /// Player whose table row is hovered
     hovered: ReadSignal<Option<String>>,
+    /// View toggles, owned by the parent so they persist across encounters
+    mut alive_view: Signal<bool>,
+    mut stacked: Signal<bool>,
+    mut show_deaths: Signal<bool>,
     european: bool,
     /// Encounter deaths; roster players' deaths are marked on the chart
     deaths: Vec<PlayerDeath>,
@@ -235,8 +240,6 @@ pub fn OverviewGroupChart(
     on_time_range_change: EventHandler<TimeRange>,
 ) -> Element {
     let metric = metric_of(sort_col());
-    let mut stacked = use_signal(|| false);
-    let mut show_deaths = use_signal(|| true);
     let roster: Vec<String> = rows.iter().map(|r| r.name.clone()).collect();
     // Colours resolve from CSS when the option is built; reading the theme
     // subscribes this render, so a theme flip rebuilds the option
@@ -256,12 +259,19 @@ pub fn OverviewGroupChart(
     use_effect(move || {
         let Some((a, b)) = brush() else { return };
         if let Some(Some(d)) = data.peek().as_ref() {
-            let at = |i: f64| (d.start_secs + i * d.bucket_secs) as f32;
+            // The Alive view's x axis is already in seconds
+            let at = |i: f64| if *alive_view.peek() { i as f32 } else { (d.start_secs + i * d.bucket_secs) as f32 };
             on_time_range_change.call(TimeRange { start: at(a), end: at(b) });
         }
     });
 
-    let option = data.read().as_ref().and_then(|d| d.as_ref()).and_then(|d| build_option(d, metric, &roster, stacked(), if show_deaths() { &deaths } else { &[] }));
+    let option = data.read().as_ref().and_then(|d| d.as_ref()).and_then(|d| {
+        if alive_view() {
+            build_alive_option(d, &roster, &deaths)
+        } else {
+            build_option(d, metric, &roster, stacked(), if show_deaths() { &deaths } else { &[] })
+        }
+    });
     let has_data = option.is_some();
 
     // Death markers as last drawn (labels staggered), restyled on row hover
@@ -270,6 +280,7 @@ pub fn OverviewGroupChart(
     use_resize_charts(&[CHART_ID]);
     use_effect(use_reactive!(|option, european| {
         let stacked = stacked();
+        let alive = alive_view();
         spawn(async move {
             next_animation_frame().await;
             next_animation_frame().await;
@@ -279,14 +290,22 @@ pub fn OverviewGroupChart(
             }
             drawn_marks.set(death_marks(&mut option).map(|m| m.clone()).unwrap_or_default());
             let Some(js) = json_to_js(&option) else { return };
-            set_js_fn(&js, &["tooltip", "formatter"], "params", &tooltip_js(european, stacked));
             set_js_fn(&js, &["xAxis", "axisLabel", "formatter"], "v", MMSS);
-            let y_fmt = if stacked { "return v + '%';".to_string() } else { compact_js(european) };
-            set_js_fn(&js, &["yAxis", "axisLabel", "formatter"], "v", &y_fmt);
+            if alive {
+                set_js_fn(&js, &["tooltip", "formatter"], "p", &alive_tooltip_js());
+            } else {
+                set_js_fn(&js, &["tooltip", "formatter"], "params", &tooltip_js(european, stacked));
+                let y_fmt = if stacked { "return v + '%';".to_string() } else { compact_js(european) };
+                set_js_fn(&js, &["yAxis", "axisLabel", "formatter"], "v", &y_fmt);
+            }
             apply_brush_config(js.unchecked_ref());
             set_option_replace(&chart, &js);
             register_brush_handler(&chart, brush);
             activate_brush(&chart);
+            // Alive view: clicking a span narrows the timeline to it (same path as a brush drag)
+            if alive {
+                register_span_click(&chart, brush);
+            }
         });
     }));
 
@@ -326,7 +345,9 @@ pub fn OverviewGroupChart(
             }
             dispatch_action(&chart, &json!({ "type": "downplay" }));
             if let Some(name) = name {
-                dispatch_action(&chart, &json!({ "type": "highlight", "seriesName": name }));
+                // Alive view: the player is a y category (data name) in every series
+                let target = if alive_view() { "name" } else { "seriesName" };
+                dispatch_action(&chart, &json!({ "type": "highlight", target: name }));
             }
         }
     });
@@ -338,28 +359,39 @@ pub fn OverviewGroupChart(
                 div { class: "filter-pills", title: "Metric (follows the table's sort column)",
                     for (label, sort) in TABS {
                         button {
-                            class: if metric_of(sort) == metric { "seg active" } else { "seg" },
+                            class: if !alive_view() && metric_of(sort) == metric { "seg active" } else { "seg" },
                             onclick: move |_| {
+                                alive_view.set(false);
                                 sort_col.set(sort);
                                 sort_asc.set(false);
                             },
                             "{label}"
                         }
                     }
-                }
-                span { class: "overview-chart-note", "{chart_note(metric)}" }
-                div { class: "filter-pills ml-auto",
                     button {
-                        class: if show_deaths() { "seg active" } else { "seg" },
-                        title: "Mark player deaths on the chart",
-                        onclick: move |_| show_deaths.toggle(),
-                        i { class: "fa-solid fa-skull" }
-                        " Deaths"
+                        class: if alive_view() { "seg active" } else { "seg" },
+                        title: "When each player was alive (green) or dead (red)",
+                        onclick: move |_| alive_view.set(true),
+                        "Alive"
                     }
                 }
-                div { class: "filter-pills",
-                    button { class: if !stacked() { "seg active" } else { "seg" }, onclick: move |_| stacked.set(false), "Lines" }
-                    button { class: if stacked() { "seg active" } else { "seg" }, onclick: move |_| stacked.set(true), "Stacked" }
+                if alive_view() {
+                    span { class: "overview-chart-note", "Alive / dead over time" }
+                } else {
+                    span { class: "overview-chart-note", "{chart_note(metric)}" }
+                    div { class: "filter-pills ml-auto",
+                        button {
+                            class: if show_deaths() { "seg active" } else { "seg" },
+                            title: "Mark player deaths on the chart",
+                            onclick: move |_| show_deaths.toggle(),
+                            i { class: "fa-solid fa-skull" }
+                            " Deaths"
+                        }
+                    }
+                    div { class: "filter-pills",
+                        button { class: if !stacked() { "seg active" } else { "seg" }, onclick: move |_| stacked.set(false), "Lines" }
+                        button { class: if stacked() { "seg active" } else { "seg" }, onclick: move |_| stacked.set(true), "Stacked" }
+                    }
                 }
             }
             if has_data {
@@ -369,6 +401,80 @@ pub fn OverviewGroupChart(
             }
         }
     }
+}
+
+/// Alive tab: one bar per player on a seconds axis, stacked spans that
+/// alternate alive (even series) / dead (odd), in table order. Spans start at
+/// 0 and run to the end of the shown window; the axis clips to the window.
+fn build_alive_option(data: &GroupTimeSeries, roster: &[String], deaths: &[PlayerDeath]) -> Option<Value> {
+    let len = data.series.first().map(|s| s.1.len()).filter(|&n| n > 0 && !roster.is_empty())?;
+    let start = data.start_secs;
+    let end = start + (len - 1) as f64 * data.bucket_secs;
+
+    let spans: Vec<Vec<(f64, f64)>> = roster
+        .iter()
+        .map(|name| {
+            let mut out = Vec::new();
+            let mut t = 0.0;
+            for d in deaths.iter().filter(|d| &d.name == name) {
+                let died = (d.death_time_secs as f64).max(t);
+                if died >= end {
+                    break;
+                }
+                let back = d.revive_time_secs.map_or(end, |r| (r as f64).clamp(died, end));
+                out.extend([(t, died), (died, back)]);
+                t = back;
+                if t >= end {
+                    break;
+                }
+            }
+            if t < end {
+                out.push((t, end));
+            }
+            out
+        })
+        .collect();
+
+    let green = css_var("--lt-green");
+    let red = css_var("--lt-red");
+    let highlight = css_var("--text-primary");
+    let max_spans = spans.iter().map(Vec::len).max().unwrap_or(0);
+    let series: Vec<Value> = (0..max_spans)
+        .map(|k| {
+            let alive = k % 2 == 0;
+            let points: Vec<Value> = spans
+                .iter()
+                .map(|p| p.get(k).map_or(json!(0), |&(a, b)| json!({ "value": b - a, "from": a, "to": b })))
+                .collect();
+            json!({
+                "type": "bar", "name": if alive { "Alive" } else { "Dead" }, "stack": "life", "barWidth": "60%",
+                "data": points,
+                "itemStyle": { "color": if alive { &green } else { &red }, "opacity": if alive { 0.8 } else { 1.0 } },
+                "emphasis": { "itemStyle": { "opacity": 1, "borderColor": highlight, "borderWidth": 1 } },
+            })
+        })
+        .collect();
+
+    let muted = css_var("--text-muted");
+    Some(json!({
+        "animation": false,
+        "grid": { "left": 8, "right": GRID_RIGHT, "top": 8, "bottom": 24, "containLabel": true },
+        "tooltip": { "trigger": "item", "backgroundColor": css_var("--bg-elevated"), "borderColor": css_var("--border-strong"),
+                     "textStyle": { "color": css_var("--text-primary"), "fontSize": 11 } },
+        "xAxis": { "type": "value", "min": start, "max": end,
+                   "axisLabel": { "color": muted }, "splitLine": { "lineStyle": { "color": css_var("--border-light") } } },
+        "yAxis": { "type": "category", "inverse": true, "data": roster,
+                   "axisLabel": { "color": muted, "fontSize": 10, "width": 110, "overflow": "truncate" }, "axisTick": { "show": false } },
+        "series": series,
+    }))
+}
+
+fn alive_tooltip_js() -> String {
+    format!(
+        "if (!p.data || p.data.from === undefined) return '';\
+         var mmss = function (v) {{ {MMSS} }};\
+         return '<b>' + p.name + '</b><br>' + p.marker + p.seriesName + ' ' + mmss(p.data.from) + ' – ' + mmss(p.data.to);"
+    )
 }
 
 /// Death labels sit level at the top of the plot, over their line (the label

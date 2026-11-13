@@ -147,6 +147,10 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
     // Overview table sort (not persisted - default DPS descending)
     let overview_sort_col = use_signal(OverviewSort::default);
     let overview_sort_asc = use_signal(|| false);
+    // Group chart view toggles; live here so they survive encounter switches (the chart remounts)
+    let overview_alive_view = use_signal(|| false);
+    let overview_stacked = use_signal(|| false);
+    let overview_show_deaths = use_signal(|| true);
     // Overview table row under the pointer, highlighted on the group chart
     let overview_hovered = use_signal(|| None::<String>);
 
@@ -1939,6 +1943,9 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                         sort_col: overview_sort_col,
                                         sort_asc: overview_sort_asc,
                                         hovered: overview_hovered,
+                                        alive_view: overview_alive_view,
+                                        stacked: overview_stacked,
+                                        show_deaths: overview_show_deaths,
                                         european: eu,
                                         deaths: player_deaths.read().clone(),
                                         on_time_range_change: move |r: TimeRange| time_range.set(r),
