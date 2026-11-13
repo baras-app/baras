@@ -444,24 +444,24 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         closure.forget();
     });
 
-    // Listen for parsely upload success (DOM CustomEvent from ParselyUploadModal)
-    use_future(move || async move {
-        if let Some(window) = web_sys::window() {
-            let closure = Closure::<dyn Fn(web_sys::Event)>::new(move |_event: web_sys::Event| {
-                // Refresh encounter list to pick up persisted parsely links
-                // (JS callback: outside the Dioxus runtime, so not scoped `spawn`)
-                wasm_bindgen_futures::spawn_local(async move {
-                    if let Some(list) = api::get_encounter_history().await {
-                        let _ = encounters.try_write().map(|mut w| *w = list);
-                    }
-                });
+    // Listen for parsely upload success (DOM CustomEvent from ParselyUploadModal).
+    // Registered once per mount and removed on unmount; handing the closure to JS
+    // (into_js_value) lets the GC free it once the listener is gone.
+    let parsely_listener = use_hook(|| {
+        let window = web_sys::window()?;
+        let callback = Closure::<dyn Fn(web_sys::Event)>::new(move |_event: web_sys::Event| {
+            // Refresh encounter list to pick up persisted parsely links
+            // (JS callback: outside the Dioxus runtime, so not scoped `spawn`)
+            wasm_bindgen_futures::spawn_local(async move {
+                if let Some(list) = api::get_encounter_history().await {
+                    let _ = encounters.try_write().map(|mut w| *w = list);
+                }
             });
-            let _ = window.add_event_listener_with_callback(
-                "parsely-upload-success",
-                closure.as_ref().unchecked_ref(),
-            );
-            closure.forget();
-        }
+        })
+        .into_js_value()
+        .unchecked_into::<js_sys::Function>();
+        window.add_event_listener_with_callback("parsely-upload-success", &callback).ok()?;
+        Some(callback)
     });
 
     // Cleanup on component unmount
@@ -469,6 +469,11 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         // Call unlisten to clean up the event listener
         if let Some(func) = unlisten_handle.peek().as_ref() {
             let _ = func.call0(&JsValue::NULL);
+        }
+        if let Some(callback) = &parsely_listener
+            && let Some(window) = web_sys::window()
+        {
+            let _ = window.remove_event_listener_with_callback("parsely-upload-success", callback);
         }
     });
 

@@ -2917,6 +2917,11 @@
   padding: 0.3em 0.75em 0.5em;
 }
 
+/* An ancestor centers text; names (and their header) read left-to-right */
+.challenge-player-name {
+  text-align: left;
+}
+
 .challenge-player-header {
   color: var(--text-secondary);
   font-size: 11px;
