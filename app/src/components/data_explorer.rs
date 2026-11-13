@@ -1971,7 +1971,12 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                             for npc in npcs.iter() {
                                                 map.entry(npc.name.clone()).or_default().push(npc);
                                             }
-                                            map.into_iter().collect()
+                                            map.into_iter()
+                                                .map(|(name, mut members)| {
+                                                    members.sort_by(|a, b| a.first_seen_secs.total_cmp(&b.first_seen_secs));
+                                                    (name, members)
+                                                })
+                                                .collect()
                                         };
 
                                         // Sort: unique NPCs first (by max_hp desc), then grouped NPCs (by max_hp desc)
