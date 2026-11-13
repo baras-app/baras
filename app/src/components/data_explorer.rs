@@ -6,7 +6,6 @@
 use dioxus::prelude::*;
 use std::collections::{HashMap, HashSet};
 use wasm_bindgen::prelude::*;
-use wasm_bindgen_futures::spawn_local as spawn;
 
 use crate::api::{
     self, AbilityBreakdown, AbilityUsageRow, DamageTakenSummary, EncounterTimeline,
@@ -415,21 +414,23 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                         let should_auto_follow = *auto_live.peek();
                         let _ = auto_follow.try_write().map(|mut w| *w = should_auto_follow);
                     }
-                    spawn(async move {
+                    // JS callback: outside the Dioxus runtime, so not scoped `spawn`.
+                    // The task can outlive the component, hence try_* accessors only.
+                    wasm_bindgen_futures::spawn_local(async move {
                         // Refresh encounter list and auto-select latest if auto-follow
                         if let Some(list) = api::get_encounter_history().await {
                             let latest_id = list.last().map(|e| e.encounter_id as u32);
                             let _ = encounters.try_write().map(|mut w| *w = list);
-                            if *auto_follow.peek() {
-                                if let Some(id) = latest_id {
-                                    let _ = selected_encounter.try_write().map(|mut w| *w = Some(id));
-                                }
+                            if auto_follow.try_peek().is_ok_and(|v| *v)
+                                && let Some(id) = latest_id
+                            {
+                                let _ = selected_encounter.try_write().map(|mut w| *w = Some(id));
                             }
                         }
                         // Safety: clear transition flag after encounter is set, in case
                         // the timeline effect didn't fire (e.g., encounter didn't change)
-                        if *transitioning_from_live.peek() {
-                            transitioning_from_live.set(false);
+                        if transitioning_from_live.try_peek().is_ok_and(|v| *v) {
+                            let _ = transitioning_from_live.try_write().map(|mut w| *w = false);
                         }
                     });
                 }
@@ -448,7 +449,8 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         if let Some(window) = web_sys::window() {
             let closure = Closure::<dyn Fn(web_sys::Event)>::new(move |_event: web_sys::Event| {
                 // Refresh encounter list to pick up persisted parsely links
-                spawn(async move {
+                // (JS callback: outside the Dioxus runtime, so not scoped `spawn`)
+                wasm_bindgen_futures::spawn_local(async move {
                     if let Some(list) = api::get_encounter_history().await {
                         let _ = encounters.try_write().map(|mut w| *w = list);
                     }

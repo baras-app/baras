@@ -1,7 +1,6 @@
 //! Effect edit form, shown in the editor drawer
 
 use dioxus::prelude::*;
-use wasm_bindgen_futures::spawn_local as spawn;
 
 use super::discipline_selector::DisciplineSelector;
 use super::effect_editor::effect_origin;

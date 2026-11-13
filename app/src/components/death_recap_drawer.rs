@@ -7,7 +7,6 @@
 
 use baras_types::{DeathRecapDamageSource, DeathRecapEvent, DeathRecapHealSource, formatting};
 use dioxus::prelude::*;
-use wasm_bindgen_futures::spawn_local as spawn;
 
 use crate::api::{self, DeathRecap, DeathRecapEventKind, PlayerDeath, RaidOverviewRow};
 use crate::components::ability_icon::use_icon_url;

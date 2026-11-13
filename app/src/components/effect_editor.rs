@@ -7,7 +7,6 @@
 
 use crate::components::editor_drawer::{DiscardPrompt, layout_style, EditorDrawer, provide_drawer_guard};
 use dioxus::prelude::*;
-use wasm_bindgen_futures::spawn_local as spawn;
 
 use super::effect_form::EffectEditForm;
 use super::effect_trigger::effect_icon_id;

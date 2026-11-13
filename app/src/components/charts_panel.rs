@@ -5,7 +5,6 @@
 
 use dioxus::prelude::*;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen_futures::spawn_local as spawn;
 
 use crate::api::{self, EffectChartData, EffectWindow, HpPoint, TimeRange, TimeSeriesPoint};
 use crate::components::ability_icon::AbilityIcon;

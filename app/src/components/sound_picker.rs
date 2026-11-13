@@ -7,7 +7,6 @@
 //! folder when no folder prefix is present.
 
 use dioxus::prelude::*;
-use wasm_bindgen_futures::spawn_local as spawn;
 
 use crate::api;
 use crate::components::form_fields::Field;
