@@ -8,8 +8,9 @@ use wasm_bindgen::{JsCast, prelude::*};
 use crate::api::{self, CombatLogFilters, CombatLogFindMatch, CombatLogRow, CombatLogSortColumn, GroupedEntityNames, NpcSpawn, SortDirection, TimeRange};
 use crate::components::ability_icon::AbilityIcon;
 use crate::components::mirror_names::{display_id, display_name};
+use crate::components::multi_select::{MultiSelect, plain_entries};
 use crate::types::CombatLogSessionState;
-use baras_types::formatting;
+use baras_types::{LogEventCategory, formatting};
 
 /// Row height in pixels for virtual scrolling calculations.
 const ROW_HEIGHT: f64 = 24.0;
@@ -302,11 +303,9 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     });
 
     // Event type filter checkboxes (persist across encounters)
-    let mut filter_damage = use_signal(|| if should_restore_filters { state.peek().filter_damage } else { true });
-    let mut filter_healing = use_signal(|| if should_restore_filters { state.peek().filter_healing } else { true });
-    let mut filter_actions = use_signal(|| if should_restore_filters { state.peek().filter_actions } else { true });
-    let mut filter_effects = use_signal(|| if should_restore_filters { state.peek().filter_effects } else { true });
-    let mut filter_other = use_signal(|| if should_restore_filters { state.peek().filter_other } else { true });
+    // Event categories shown; empty = all
+    let mut event_categories =
+        use_signal(|| if should_restore_filters { state.peek().event_categories.clone() } else { Vec::new() });
 
     // Show IDs toggle - NOW PERSISTED!
     let mut show_ids = use_signal(|| if should_restore_filters { state.peek().show_ids } else { true });
@@ -427,26 +426,10 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
         });
     });
 
-    // Build event filters from checkboxes
+    // Event filter for queries: None = every category
     let build_event_filters = move || -> Option<CombatLogFilters> {
-        let damage = *filter_damage.read();
-        let healing = *filter_healing.read();
-        let actions = *filter_actions.read();
-        let effects = *filter_effects.read();
-        let other = *filter_other.read();
-
-        // If all are true, return None (no filtering needed)
-        if damage && healing && actions && effects && other {
-            return None;
-        }
-
-        Some(CombatLogFilters {
-            damage,
-            healing,
-            actions,
-            effects,
-            other,
-        })
+        let categories = event_categories.read().clone();
+        (!categories.is_empty()).then_some(CombatLogFilters { categories })
     };
 
     // Load data when filters, time range, sort, or encounter change
@@ -628,11 +611,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
         let source = source_filter.read().clone();
         let target = target_filter.read().clone();
         let search = search_text.read().clone();
-        let damage = *filter_damage.read();
-        let healing = *filter_healing.read();
-        let actions = *filter_actions.read();
-        let effects = *filter_effects.read();
-        let other = *filter_other.read();
+        let categories = event_categories.read().clone();
         let ids = *show_ids.read();
         let sort_col = *log_sort_column.read();
         let sort_dir = *log_sort_direction.read();
@@ -643,11 +622,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                 source_filter: source,
                 target_filter: target,
                 search_text: search,
-                filter_damage: damage,
-                filter_healing: healing,
-                filter_actions: actions,
-                filter_effects: effects,
-                filter_other: other,
+                event_categories: categories,
                 show_ids: ids,
                 scroll_offset: scroll,
                 sort_column: sort_col,
@@ -744,7 +719,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     let filters_active = source_filter.read().is_some()
         || target_filter.read().is_some()
         || !search_text.read().is_empty()
-        || !(filter_damage() && filter_healing() && filter_actions() && filter_effects() && filter_other());
+        || !event_categories.read().is_empty();
     let show_ids_val = *show_ids.read();
     let absolute_time = *show_absolute_time.read();
     let highlighted_row_idx = *highlighted_row.read();
@@ -923,6 +898,19 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                 }
                 SpawnPicker { filter: target_filter, spawns: targets_grouped.npc_spawns.clone() }
 
+                // Event type filter: nothing picked = every type
+                MultiSelect {
+                    any_label: "All Events",
+                    noun: "event types",
+                    entries: plain_entries(&LogEventCategory::ALL.map(|c| c.label().to_string())),
+                    picked: event_categories.read().iter().map(|c| c.label().to_string()).collect::<Vec<_>>(),
+                    on_change: move |picked: Vec<String>| {
+                        event_categories.set(
+                            LogEventCategory::ALL.into_iter().filter(|c| picked.iter().any(|p| p == c.label())).collect(),
+                        );
+                    },
+                }
+
                 // Search input (filter)
                 input {
                     class: "log-search",
@@ -942,11 +930,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                         source_filter.set(None);
                         target_filter.set(None);
                         search_text.set(String::new());
-                        filter_damage.set(true);
-                        filter_healing.set(true);
-                        filter_actions.set(true);
-                        filter_effects.set(true);
-                        filter_other.set(true);
+                        event_categories.set(Vec::new());
                     },
                     i { class: "fa-solid fa-filter-circle-xmark" }
                     "Clear Filters"
@@ -1069,50 +1053,6 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
 
                 // Row count
                 span { class: "log-count", "{total} events" }
-            }
-
-            // Filter bar - row 2 (event type checkboxes)
-            div { class: "log-event-filters",
-                label { class: "log-filter-checkbox damage",
-                    input {
-                        r#type: "checkbox",
-                        checked: *filter_damage.read(),
-                        onchange: move |e| filter_damage.set(e.checked()),
-                    }
-                    "Damage"
-                }
-                label { class: "log-filter-checkbox healing",
-                    input {
-                        r#type: "checkbox",
-                        checked: *filter_healing.read(),
-                        onchange: move |e| filter_healing.set(e.checked()),
-                    }
-                    "Healing"
-                }
-                label { class: "log-filter-checkbox actions",
-                    input {
-                        r#type: "checkbox",
-                        checked: *filter_actions.read(),
-                        onchange: move |e| filter_actions.set(e.checked()),
-                    }
-                    "Actions"
-                }
-                label { class: "log-filter-checkbox effects",
-                    input {
-                        r#type: "checkbox",
-                        checked: *filter_effects.read(),
-                        onchange: move |e| filter_effects.set(e.checked()),
-                    }
-                    "Effects"
-                }
-                label { class: "log-filter-checkbox other",
-                    input {
-                        r#type: "checkbox",
-                        checked: *filter_other.read(),
-                        onchange: move |e| filter_other.set(e.checked()),
-                    }
-                    "Other"
-                }
             }
 
             // Table container with virtual scrolling

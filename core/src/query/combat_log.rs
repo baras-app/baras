@@ -4,66 +4,62 @@ use std::collections::HashMap;
 
 use super::*;
 use crate::game_data::{effect_id, effect_type_id};
-use baras_types::{CombatLogSortColumn, NpcSpawn, SortDirection};
+use baras_types::{CombatLogSortColumn, LogEventCategory, NpcSpawn, SortDirection};
 
 use super::search_parser::build_search_clause;
 
-/// Build event type filter clause based on CombatLogFilters.
-fn build_event_filter_clause(filters: &CombatLogFilters) -> Option<String> {
-    let mut conditions = Vec::new();
-
-    // If all filters are enabled, no additional filtering needed
-    let all_enabled =
-        filters.damage && filters.healing && filters.actions && filters.effects && filters.other;
-    if all_enabled {
-        return None;
-    }
-
-    if filters.damage {
-        conditions.push(format!("effect_id = {}", effect_id::DAMAGE));
-    }
-    if filters.healing {
-        conditions.push(format!("effect_id = {}", effect_id::HEAL));
-    }
-    if filters.actions {
-        conditions.push(format!(
-            "(effect_type_id = {} AND effect_id IN ({}, {}, {}))",
-            effect_type_id::EVENT,
+/// SQL condition matching one event category's rows
+fn category_sql(category: LogEventCategory) -> String {
+    use LogEventCategory as C;
+    let event_in = |ids: &[i64]| {
+        let ids: Vec<String> = ids.iter().map(i64::to_string).collect();
+        format!("(effect_type_id = {} AND effect_id IN ({}))", effect_type_id::EVENT, ids.join(", "))
+    };
+    match category {
+        C::Damage => format!("effect_id = {}", effect_id::DAMAGE),
+        C::Healing => format!("effect_id = {}", effect_id::HEAL),
+        C::Actions => event_in(&[
             effect_id::ABILITYACTIVATE,
             effect_id::ABILITYDEACTIVATE,
-            effect_id::ABILITYINTERRUPT
-        ));
-    }
-    if filters.effects {
+            effect_id::ABILITYINTERRUPT,
+            effect_id::ABILITYCANCEL,
+        ]),
         // Buffs/debuffs applied or removed, excluding damage/heal effects
-        conditions.push(format!(
+        C::Effects => format!(
             "(effect_type_id IN ({}, {}) AND effect_id NOT IN ({}, {}))",
             effect_type_id::APPLYEFFECT,
             effect_type_id::REMOVEEFFECT,
             effect_id::DAMAGE,
             effect_id::HEAL
-        ));
+        ),
+        C::Targeting => event_in(&[effect_id::TARGETSET, effect_id::TARGETCLEARED]),
+        C::Threat => event_in(&[effect_id::MODIFYTHREAT, effect_id::TAUNT]),
+        C::Charges => format!("effect_type_id = {}", effect_type_id::MODIFYCHARGES),
+        C::Resources => format!("effect_type_id IN ({}, {})", effect_type_id::SPEND, effect_type_id::RESTORE),
+        C::Combat => event_in(&[
+            effect_id::ENTERCOMBAT,
+            effect_id::EXITCOMBAT,
+            effect_id::DEATH,
+            effect_id::REVIVED,
+        ]),
+        C::Other => {
+            let named: Vec<String> =
+                LogEventCategory::ALL.into_iter().filter(|c| *c != C::Other).map(category_sql).collect();
+            format!("NOT ({})", named.join(" OR "))
+        }
     }
-    if filters.other {
-        // Other EVENT types not covered by actions (TargetSet, Death, EnterCombat, etc.)
-        // Includes ModifyCharges and other misc event types
-        conditions.push(format!(
-            "((effect_type_id = {} AND effect_id NOT IN ({}, {}, {})) OR effect_type_id = {})",
-            effect_type_id::EVENT,
-            effect_id::ABILITYACTIVATE,
-            effect_id::ABILITYDEACTIVATE,
-            effect_id::ABILITYINTERRUPT,
-            effect_type_id::MODIFYCHARGES
-        ));
-    }
+}
 
-    // Build the main OR clause
-    if conditions.is_empty() {
-        // All filters are off - show nothing
-        Some("1=0".to_string())
-    } else {
-        Some(format!("({})", conditions.join(" OR ")))
+/// Event type filter clause: rows in any picked category (None = no filtering)
+fn build_event_filter_clause(filters: &CombatLogFilters) -> Option<String> {
+    if LogEventCategory::ALL.iter().all(|c| filters.categories.contains(c)) {
+        return None;
     }
+    if filters.categories.is_empty() {
+        return Some("1=0".to_string());
+    }
+    let conditions: Vec<String> = filters.categories.iter().copied().map(category_sql).collect();
+    Some(format!("({})", conditions.join(" OR ")))
 }
 
 /// WHERE fragment for a Source/Target dropdown value: the sentinel groups, an

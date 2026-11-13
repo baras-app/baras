@@ -586,19 +586,64 @@ pub struct CombatLogRow {
     pub target_facing: Option<f32>,
 }
 
-/// Filter options for combat log event types.
+/// Combat log event category, for the combat log's event type filter
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LogEventCategory {
+    Damage,
+    Healing,
+    /// AbilityActivate/Deactivate/Interrupt/Cancel
+    Actions,
+    /// Buffs/debuffs gained or lost
+    Effects,
+    /// TargetSet/TargetCleared
+    Targeting,
+    /// ModifyThreat/Taunt
+    Threat,
+    /// ModifyCharges
+    Charges,
+    /// Spend/Restore
+    Resources,
+    /// EnterCombat/ExitCombat/Death/Revived
+    Combat,
+    /// Anything not in another category
+    Other,
+}
+
+impl LogEventCategory {
+    pub const ALL: [Self; 10] = [
+        Self::Damage,
+        Self::Healing,
+        Self::Actions,
+        Self::Effects,
+        Self::Targeting,
+        Self::Threat,
+        Self::Charges,
+        Self::Resources,
+        Self::Combat,
+        Self::Other,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Damage => "Damage",
+            Self::Healing => "Healing",
+            Self::Actions => "Actions",
+            Self::Effects => "Effects",
+            Self::Targeting => "Targeting",
+            Self::Threat => "Threat",
+            Self::Charges => "Charges",
+            Self::Resources => "Resources",
+            Self::Combat => "Combat State",
+            Self::Other => "Other",
+        }
+    }
+}
+
+/// Combat log event type filter: the categories to show
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CombatLogFilters {
-    /// Show damage events
-    pub damage: bool,
-    /// Show healing events
-    pub healing: bool,
-    /// Show action events (AbilityActivate/Deactivate/Interrupt)
-    pub actions: bool,
-    /// Show effect events (buff/debuff gained/lost)
-    pub effects: bool,
-    /// Show other events (TargetSet, Death, EnterCombat, etc.)
-    pub other: bool,
+    pub categories: Vec<LogEventCategory>,
 }
 
 /// One NPC spawn, for names that occur with several instance ids in an encounter.
@@ -4218,12 +4263,8 @@ pub struct CombatLogSessionState {
     pub target_filter: Option<String>,
     /// Search text
     pub search_text: String,
-    /// Event type filters
-    pub filter_damage: bool,
-    pub filter_healing: bool,
-    pub filter_actions: bool,
-    pub filter_effects: bool,
-    pub filter_other: bool,
+    /// Event categories shown; empty = all
+    pub event_categories: Vec<LogEventCategory>,
     /// Show IDs toggle (IMPORTANT: now persisted!)
     pub show_ids: bool,
     /// Scroll position
@@ -4241,11 +4282,7 @@ impl Default for CombatLogSessionState {
             source_filter: None,
             target_filter: None,
             search_text: String::new(),
-            filter_damage: true,
-            filter_healing: true,
-            filter_actions: true,
-            filter_effects: true,
-            filter_other: true,
+            event_categories: Vec::new(),
             show_ids: true,
             scroll_offset: 0.0,
             sort_column: CombatLogSortColumn::default(),
@@ -4263,8 +4300,7 @@ impl CombatLogSessionState {
         self.target_filter = None;
         self.search_text = String::new();
         self.scroll_offset = 0.0;
-        // Preserve: show_ids, filter_damage, filter_healing, filter_actions,
-        // filter_effects, filter_other
+        // Preserve: show_ids, event_categories
     }
 }
 

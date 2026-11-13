@@ -2109,49 +2109,8 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Event Type Filter Checkboxes
+   Clear Filters Button
    ───────────────────────────────────────────────────────────────────────────── */
-
-.log-event-filters {
-  display: flex;
-  gap: var(--space-sm);
-  padding: var(--space-xs) var(--space-sm);
-  border-bottom: 1px solid var(--border-subtle);
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.log-filter-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  transition: background var(--transition-fast);
-  white-space: nowrap;
-}
-
-.log-filter-checkbox:hover {
-  background: rgba(var(--fg-rgb), 0.06);
-}
-
-.log-filter-checkbox.damage {
-  color: var(--lt-red, hsl(0, 70%, 65%));
-}
-
-.log-filter-checkbox.healing {
-  color: var(--lt-green, hsl(120, 60%, 55%));
-}
-
-.log-filter-checkbox.actions {
-  color: var(--swtor-blue);
-}
-
-.log-filter-checkbox.effects {
-  color: var(--lt-yellow, hsl(45, 70%, 60%));
-}
 
 .log-clear-filters {
   display: inline-flex;
