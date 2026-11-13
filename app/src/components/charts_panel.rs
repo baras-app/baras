@@ -551,6 +551,8 @@ fn build_hp_chart_option(
     js_set(&encode, "y", &JsValue::from_f64(1.0));
     js_set(&series, "encode", &encode);
 
+    // Series color drives the tooltip marker; lineStyle alone leaves it on the palette
+    js_set(&series, "color", &JsValue::from_str("#f1c40f"));
     let line_style = js_sys::Object::new();
     js_set(&line_style, "color", &JsValue::from_str("#f1c40f"));
     js_set(&line_style, "width", &JsValue::from_f64(2.0));
@@ -613,6 +615,7 @@ fn build_hp_chart_option(
         js_set(&eht_series, "yAxisIndex", &JsValue::from_f64(1.0));
 
         // Thin green line
+        js_set(&eht_series, "color", &JsValue::from_str("#2ecc71"));
         let eht_line_style = js_sys::Object::new();
         js_set(&eht_line_style, "color", &JsValue::from_str("#2ecc71"));
         js_set(&eht_line_style, "width", &JsValue::from_f64(1.0));
