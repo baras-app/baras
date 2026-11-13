@@ -10,34 +10,45 @@ use crate::components::class_icons::{get_class_icon, get_role_icon};
 
 use super::lockouts::ago;
 
-/// Faction emblems (Sith cog, Jedi wings) drawn inline on a colored disc
+static ICON_EMPIRE: Asset = asset!("/assets/icons/faction/empire.png");
+static ICON_REPUBLIC: Asset = asset!("/assets/icons/faction/republic.png");
+
+/// Faction emblem images
 #[component]
 pub fn FactionIcon(faction: Faction) -> Element {
     match faction {
         Faction::Empire => rsx! {
-            svg { class: "char-faction empire", view_box: "0 0 100 100", role: "img",
-                title { "Empire" }
-                circle { cx: "50", cy: "50", r: "50", fill: "#141414" }
-                path { fill: "#d83a32", fill_rule: "evenodd", d: "M50.0 3.0L90.7 26.5L90.7 73.5L50.0 97.0L9.3 73.5L9.3 26.5ZM15.4 30.0L15.4 70.0L50.0 90.0L84.6 70.0L84.6 30.0L50.0 10.0ZM50.0 37.0L61.3 43.5L61.3 56.5L50.0 63.0L38.7 56.5L38.7 43.5ZM45.5 37.0L45.5 28.0L37.0 28.0L33.0 16.0L43.0 16.0L45.0 21.0L55.0 21.0L57.0 16.0L67.0 16.0L63.0 28.0L54.5 28.0L54.5 37.0ZM59.0 39.6L66.8 35.1L62.6 27.7L70.9 18.3L75.9 26.9L72.6 31.2L77.6 39.8L82.9 39.1L87.9 47.7L75.6 50.3L71.3 42.9L63.5 47.4ZM63.5 52.6L71.3 57.1L75.6 49.7L87.9 52.3L82.9 60.9L77.6 60.2L72.6 68.8L75.9 73.1L70.9 81.7L62.6 72.3L66.8 64.9L59.0 60.4ZM54.5 63.0L54.5 72.0L63.0 72.0L67.0 84.0L57.0 84.0L55.0 79.0L45.0 79.0L43.0 84.0L33.0 84.0L37.0 72.0L45.5 72.0L45.5 63.0ZM41.0 60.4L33.2 64.9L37.4 72.3L29.1 81.7L24.1 73.1L27.4 68.8L22.4 60.2L17.1 60.9L12.1 52.3L24.4 49.7L28.7 57.1L36.5 52.6ZM36.5 47.4L28.7 42.9L24.4 50.3L12.1 47.7L17.1 39.1L22.4 39.8L27.4 31.2L24.1 26.9L29.1 18.3L37.4 27.7L33.2 35.1L41.0 39.6Z" }
-            }
+            img { class: "char-faction empire", src: ICON_EMPIRE, alt: "Empire", title: "Empire" }
         },
         Faction::Republic => rsx! {
-            svg { class: "char-faction republic", view_box: "0 0 100 100", role: "img",
-                title { "Republic" }
-                circle { cx: "50", cy: "50", r: "50", fill: "#1f5fb8" }
-                path { fill: "#ffffff", d: "M48.4 74.0L51.6 74.0L50.9 6.0L49.1 6.0ZM50.0 65.0L51.3 72.8L57.8 68.2L53.2 74.7L61.0 76.0L53.2 77.3L57.8 83.8L51.3 79.2L50.0 87.0L48.7 79.2L42.2 83.8L46.8 77.3L39.0 76.0L46.8 74.7L42.2 68.2L48.7 72.8ZM46 96 C26 93 8 76 9 52 C10 38 16 27 25 18 C22 30 24 40 31 48 C27 37 30 28 38 22 C35 33 38 43 44 52 C42 62 43 78 46 96 ZM54 96 C74 93 92 76 91 52 C90 38 84 27 75 18 C78 30 76 40 69 48 C73 37 70 28 62 22 C65 33 62 43 56 52 C58 62 57 78 54 96 Z" }
-            }
+            img { class: "char-faction republic", src: ICON_REPUBLIC, alt: "Republic", title: "Republic" }
         },
         Faction::Unknown => rsx! { span { class: "char-faction unknown", title: "Faction not set", "—" } },
     }
 }
 
-/// `--class-color` for a class icon disc, from the default overlay class colors
-fn class_color_style(name: &str) -> String {
-    ClassColorConfig::default()
-        .for_class_name(name)
-        .map(|[r, g, b, _]| format!("--class-color: rgb({r}, {g}, {b})"))
-        .unwrap_or_default()
+/// Class glyph recolored to its default overlay class color (as in the overlays).
+/// Recolored with an SVG filter rather than a CSS mask: masks are downsampled
+/// without smoothing in WebKit, which breaks thin glyphs apart at 24px.
+#[component]
+fn ClassGlyph(name: String, icon: String) -> Element {
+    let Some(src) = get_class_icon(&icon) else { return rsx! {} };
+    let color = ClassColorConfig::default()
+        .for_class_name(&name)
+        .map(|[r, g, b, _]| format!("rgb({r}, {g}, {b})"))
+        .unwrap_or_else(|| "currentColor".into());
+    let id = format!("class-tint-{icon}");
+    rsx! {
+        svg { class: "char-class-glyph", view_box: "0 0 24 24",
+            defs {
+                filter { id: "{id}", color_interpolation_filters: "sRGB",
+                    feFlood { flood_color: "{color}" }
+                    feComposite { in2: "SourceAlpha", operator: "in" }
+                }
+            }
+            image { href: "{src}", width: "24", height: "24", filter: "url(#{id})" }
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -122,8 +133,7 @@ pub fn CharacterTable(
                                                 span {
                                                     class: "char-class",
                                                     title: "{c.name}",
-                                                    style: class_color_style(&c.name),
-                                                    if let Some(icon) = get_class_icon(&c.icon) { img { src: *icon, alt: "" } }
+                                                    ClassGlyph { name: c.name.clone(), icon: c.icon.clone() }
                                                     "{c.name}"
                                                 }
                                             }

@@ -220,12 +220,11 @@
   vertical-align: middle;
 }
 
-svg.char-faction {
+img.char-faction {
   display: inline-block;
   width: 20px;
   height: 20px;
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px rgba(var(--fg-rgb), 0.12);
+  object-fit: contain;
 }
 
 .char-faction.unknown { color: var(--text-disabled); }
@@ -247,15 +246,16 @@ svg.char-faction {
   height: 18px;
 }
 
-/* White class glyph on a disc of its class color (as in the overlays) */
-.char-class img {
-  width: 20px;
-  height: 20px;
-  padding: 2px;
-  box-sizing: border-box;
-  border-radius: 50%;
-  background: var(--class-color, var(--text-disabled));
-  box-shadow: 0 0 0 1px rgba(var(--fg-rgb), 0.12);
+/* Dark outline around the tinted class glyph (as in the overlays) */
+.char-class-glyph {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.85));
+}
+
+:root[data-theme="light"] .char-class-glyph {
+  filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.4));
 }
 
 .char-note {
