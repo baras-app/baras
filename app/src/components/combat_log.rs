@@ -917,7 +917,8 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                     input {
                         class: "log-search",
                         r#type: "text",
-                        placeholder: "Filter... (AND, OR, NOT, parens, id:N)",
+                        placeholder: "Filter by name, ability, or effect...",
+                        title: "Matches source/target names, abilities, effects, and IDs.\nCombine with AND, OR, NOT and (parentheses).\nid:N pins an exact instance ID; src_id:N / tgt_id:N limit it to source or target.",
                         value: "{search_text}",
                         oninput: move |e| search_text.set(e.value()),
                     }
