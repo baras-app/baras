@@ -17,6 +17,7 @@ use chrono::NaiveDateTime;
 use crate::combat_log::{CombatEvent, Entity, EntityType};
 use crate::context::resolve;
 use crate::dsl::{EntityDefinition, MapMarkerDefinition, MarkerPosition, Trigger};
+use crate::timers::matches_source_target_filters;
 
 /// A marker currently shown for a group, in **game space** as returned by
 /// [`MarkerTracker::active`]. [`crate::encounter`]'s
@@ -170,7 +171,7 @@ impl GroupState {
 
         // 5. Remove: the instance that fired the despawn condition (e.g. detonation).
         if let Some(remove_on) = &self.def.remove_on
-            && remove_matches(remove_on, ev)
+            && remove_matches(remove_on, ev, entities, self.def.remove_require_typed_damage)
         {
             let src = ev.source_entity.log_id;
             self.instances.retain(|i| i.log_id != src);
@@ -226,28 +227,72 @@ fn secs_since(from: NaiveDateTime, to: NaiveDateTime) -> f32 {
     (to - from).num_milliseconds() as f32 / 1000.0
 }
 
-/// Whether an event satisfies a marker's `remove_on` condition. For
-/// `damage_dealt` this requires *real, typed* damage (`dmg_type_id != 0`) so the
-/// no-damage knockback (`(272792 )`, same ability id as the detonation) does not
-/// count — only the actual detonation removes the marker.
+/// Whether an event satisfies a marker's `remove_on` condition.
 ///
-/// TODO(markers, review #3): only the `abilities` filter of `damage_dealt` is
-/// honored — its `source`/`target`/`mitigation` filters are silently ignored,
-/// diverging from how `DamageDealt` is evaluated elsewhere. Reuse the shared
-/// trigger evaluation when generalizing.
-/// TODO(markers, review #4): the `dmg_type_id != 0` knockback guard is hardcoded
-/// for every fight's `damage_dealt` removal, with no opt-out. Move it to config
-/// (e.g. a `require_typed_damage` / mitigation option) when a fight needs it.
-fn remove_matches(remove_on: &Trigger, ev: &CombatEvent) -> bool {
+/// For `damage_dealt` this honors all of the trigger's filters — `abilities`,
+/// `mitigation`, and (via the shared [`matches_source_target_filters`])
+/// `source`/`target`/`position` — so it evaluates exactly like `DamageDealt`
+/// does elsewhere. `require_typed_damage` (marker config, default true) adds the
+/// typed-damage guard: it requires *real, typed* damage (`dmg_type_id != 0`) so a
+/// no-damage knockback that shares the detonation's ability id (e.g. Revan's
+/// `(272792 )`) doesn't count — only the actual detonation removes the marker.
+///
+/// The marker engine has no local-player / current-target / boss context, so
+/// `local_player`, `current_target`, and `boss` entity filters never match here.
+fn remove_matches(
+    remove_on: &Trigger,
+    ev: &CombatEvent,
+    entities: &[EntityDefinition],
+    require_typed_damage: bool,
+) -> bool {
     match remove_on {
-        Trigger::DamageDealt { abilities, .. } => {
-            ev.details.dmg_type_id != 0
-                && (abilities.is_empty()
-                    || abilities
-                        .iter()
-                        .any(|s| s.matches(ev.action.action_id as u64, Some(resolve(ev.action.name)))))
+        Trigger::DamageDealt {
+            abilities,
+            mitigation,
+            ..
+        } => {
+            // Typed-damage guard (config): skip the untyped knockback line.
+            if require_typed_damage && ev.details.dmg_type_id == 0 {
+                return false;
+            }
+            // Ability filter (empty = any).
+            let ability_ok = abilities.is_empty()
+                || abilities
+                    .iter()
+                    .any(|s| s.matches(ev.action.action_id as u64, Some(resolve(ev.action.name))));
+            if !ability_ok {
+                return false;
+            }
+            // Mitigation filter (empty = any).
+            let mitigation_ok = mitigation.is_empty()
+                || mitigation
+                    .iter()
+                    .any(|m| m.defense_type_id() == ev.details.defense_type_id);
+            if !mitigation_ok {
+                return false;
+            }
+            // Source/target/position filters, evaluated the shared way.
+            matches_source_target_filters(
+                remove_on,
+                entities,
+                ev.source_entity.log_id,
+                ev.source_entity.entity_type,
+                ev.source_entity.name,
+                ev.source_entity.class_id,
+                ev.target_entity.log_id,
+                ev.target_entity.entity_type,
+                ev.target_entity.name,
+                ev.target_entity.class_id,
+                None,
+                None,
+                &HashSet::new(),
+                ev.source_entity.position,
+                ev.target_entity.position,
+            )
         }
-        Trigger::AnyOf { conditions } => conditions.iter().any(|c| remove_matches(c, ev)),
+        Trigger::AnyOf { conditions } => conditions
+            .iter()
+            .any(|c| remove_matches(c, ev, entities, require_typed_damage)),
         _ => false,
     }
 }
@@ -443,5 +488,94 @@ elements  = [ { type = "text" } ]
         assert_eq!(t.active().len(), 1, "kept across p4->core");
         t.on_event(&parse(&p, 2, benign), &[], Some("revan_burn"));
         assert!(t.active().is_empty(), "cleared on leaving the phase set");
+    }
+
+    // A synthetic aberration knockback: the detonation ability id but a no-type
+    // `(272792 )` payload (dmg_type_id == 0), like the real `(272792 )` line.
+    fn knockback_line(ts: &str, inst: i64) -> String {
+        format!(
+            "[{ts}] [Unstable Aberration {{3449584588161024}}:{inst}|(497.00,1076.00,320.00,0.00)|(100/100)] \
+             [@P#1|(0.00,0.00,0.00,0.00)|(100/100)] [ {{3449069192085504}}] \
+             [ApplyEffect {{836045448945477}}: Damage {{836045448945501}}] (272792 )"
+        )
+    }
+
+    // Build marker defs from the standard aberrations config with a custom
+    // `remove_on` (and optional extra keys) supplied as the TOML `body`.
+    fn marker_defs(body: &str) -> Vec<MapMarkerDefinition> {
+        let toml = format!(
+            "[[boss]]\nid = \"revan\"\n\n\
+             [[boss.map_marker]]\n\
+             id = \"aberrations\"\n\
+             phases = [\"revan_core\"]\n\
+             trigger = {{ type = \"npc_appears\", selector = [3449584588161024] }}\n\
+             calibration.x = {{ scale = 1.0, offset = 0.0 }}\n\
+             calibration.y = {{ scale = 1.0, offset = 0.0 }}\n\
+             position = \"entity\"\n\
+             remove_after_secs = 30.0\n\
+             elements = [ {{ type = \"text\" }} ]\n\
+             {body}\n"
+        );
+        toml::from_str::<BossConfig>(&toml)
+            .unwrap()
+            .bosses
+            .remove(0)
+            .map_markers
+    }
+
+    /// #4: the typed-damage guard is config-driven. With it off, an untyped
+    /// knockback that shares the detonation's ability id now despawns; with it on
+    /// (default) the same knockback is ignored.
+    #[test]
+    fn remove_require_typed_damage_toggles_knockback_despawn() {
+        let p = test_parser();
+        let appear = appear_line("22:38:10.000", 1001, 497.0, 1076.0);
+        let knockback = knockback_line("22:38:11.000", 1001);
+
+        // Guard OFF: the untyped knockback despawns the marker.
+        let d = marker_defs(
+            "remove_on = { type = \"damage_dealt\", abilities = [3449069192085504] }\n\
+             remove_require_typed_damage = false",
+        );
+        let mut t = MarkerTracker::new(&d);
+        t.on_event(&parse(&p, 0, &appear), &[], Some("revan_core"));
+        assert_eq!(t.active().len(), 1);
+        t.on_event(&parse(&p, 1, &knockback), &[], Some("revan_core"));
+        assert!(t.active().is_empty(), "guard off: untyped knockback despawns");
+
+        // Guard ON (default): the same knockback is ignored.
+        let d = defs();
+        assert!(d[0].remove_require_typed_damage, "guard defaults on");
+        let mut t = MarkerTracker::new(&d);
+        t.on_event(&parse(&p, 0, &appear), &[], Some("revan_core"));
+        t.on_event(&parse(&p, 1, &knockback), &[], Some("revan_core"));
+        assert_eq!(t.active().len(), 1, "guard on: untyped knockback ignored");
+    }
+
+    /// #3: `remove_on`'s source filter is honored. A detonation from a source that
+    /// doesn't match the filter must not despawn; one that matches does.
+    #[test]
+    fn remove_honors_source_filter() {
+        let p = test_parser();
+        let appear = appear_line("22:38:10.000", 1001, 497.0, 1076.0);
+        let detonate = detonate_line("22:38:20.000", 1001); // source = aberration 3449584588161024
+
+        // Source filter for a different NPC → detonation must NOT despawn.
+        let defs = marker_defs(
+            "remove_on = { type = \"damage_dealt\", abilities = [3449069192085504], source = { selector = [999999] } }",
+        );
+        let mut t = MarkerTracker::new(&defs);
+        t.on_event(&parse(&p, 0, &appear), &[], Some("revan_core"));
+        t.on_event(&parse(&p, 1, &detonate), &[], Some("revan_core"));
+        assert_eq!(t.active().len(), 1, "non-matching source filter must not despawn");
+
+        // Source filter matching the aberration → despawns.
+        let defs = marker_defs(
+            "remove_on = { type = \"damage_dealt\", abilities = [3449069192085504], source = { selector = [3449584588161024] } }",
+        );
+        let mut t = MarkerTracker::new(&defs);
+        t.on_event(&parse(&p, 0, &appear), &[], Some("revan_core"));
+        t.on_event(&parse(&p, 1, &detonate), &[], Some("revan_core"));
+        assert!(t.active().is_empty(), "matching source filter despawns");
     }
 }

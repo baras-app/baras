@@ -91,6 +91,14 @@ pub struct MapMarkerDefinition {
     /// (log-time) since it was last seen.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub remove_after_secs: Option<f32>,
+
+    /// For a `damage_dealt` `remove_on`, require *real, typed* damage
+    /// (`dmg_type_id != 0`) so a no-damage knockback that shares the detonation's
+    /// ability id doesn't count as the despawn. Defaults `true` (the Revan
+    /// aberration case); set `false` for fights where the removal event is an
+    /// untyped hit.
+    #[serde(default = "crate::serde_defaults::default_true")]
+    pub remove_require_typed_damage: bool,
 }
 
 /// One drawable layer of a marker.
