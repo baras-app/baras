@@ -13,8 +13,9 @@ pub fn capture_region(
     width: u32,
     height: u32,
 ) -> Result<CapturedImage, CaptureError> {
-    // Same test the overlay window uses, so the two can never disagree: an X11
-    // GetImage cannot read a Wayland session's surfaces.
+    // Keyed on the session, not on the overlay backend. On GNOME the overlay is
+    // an Xwayland window, but only the compositor can read the screen, because
+    // an X11 GetImage cannot see native Wayland surfaces.
     if std::env::var("WAYLAND_DISPLAY").is_ok() {
         match wayland::capture_region(x, y, width, height) {
             Ok(image) => Ok(image),
