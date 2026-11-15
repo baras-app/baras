@@ -77,6 +77,7 @@ pub fn App() -> Element {
     let mut operation_timer_enabled = use_signal(|| false);
     let mut ability_queue_enabled = use_signal(|| false);
     let mut ability_cast_enabled = use_signal(|| false);
+    let mut map_enabled = use_signal(|| false);
     // Operation timer state from Tauri events
     let mut op_timer_secs = use_signal(|| 0u64);
     let mut op_timer_running = use_signal(|| false);
@@ -281,6 +282,7 @@ pub fn App() -> Element {
                 &mut ability_queue_enabled,
                 &mut enemy_frames_enabled,
                 &mut ability_cast_enabled,
+                &mut map_enabled,
                 &mut overlays_visible,
                 &mut move_mode,
                 &mut rearrange_mode,
@@ -386,7 +388,7 @@ pub fn App() -> Element {
                         &mut effects_a_enabled, &mut effects_b_enabled, &mut effects_c_enabled,
                         &mut cooldowns_enabled, &mut cooldowns_b_enabled, &mut dot_tracker_enabled, &mut notes_enabled,
                         &mut combat_time_enabled, &mut operation_timer_enabled,
-                        &mut ability_queue_enabled, &mut enemy_frames_enabled, &mut ability_cast_enabled,
+                        &mut ability_queue_enabled, &mut enemy_frames_enabled, &mut ability_cast_enabled, &mut map_enabled,
                         &mut overlays_visible, &mut move_mode, &mut rearrange_mode, &mut auto_hidden);
                 }
             });
@@ -629,6 +631,7 @@ pub fn App() -> Element {
     let ability_queue_on = ability_queue_enabled();
     let enemy_frames_on = enemy_frames_enabled();
     let ability_cast_on = ability_cast_enabled();
+    let map_on = map_enabled();
     let any_enabled = enabled_map.values().any(|&v| v)
         || personal_on
         || raid_on
@@ -648,7 +651,8 @@ pub fn App() -> Element {
         || operation_timer_on
         || ability_queue_on
         || enemy_frames_on
-        || ability_cast_on;
+        || ability_cast_on
+        || map_on;
     let is_visible = overlays_visible();
     let is_move_mode = move_mode();
     let is_rearrange = rearrange_mode();
@@ -687,7 +691,7 @@ pub fn App() -> Element {
     // Enabled counts for the category card headers on the Overlays page
     let count_on = |flags: &[bool]| flags.iter().filter(|on| **on).count();
     let general_on = count_on(&[personal_on, raid_on, alerts_on, combat_time_on, operation_timer_on, ability_cast_on]);
-    let encounter_on = count_on(&[boss_health_on, challenges_on, timers_on, timers_b_on, notes_on, ability_queue_on]);
+    let encounter_on = count_on(&[boss_health_on, challenges_on, timers_on, timers_b_on, notes_on, ability_queue_on, map_on]);
     let effects_on = count_on(&[effects_a_on, effects_b_on, effects_c_on, cooldowns_on, cooldowns_b_on, dot_tracker_on]);
     let pvp_metrics = MetricType::pvp();
     let metric_on = |m: &MetricType| enabled_map.get(m).copied().unwrap_or(false);
@@ -972,7 +976,7 @@ pub fn App() -> Element {
                                                         &mut effects_a_enabled, &mut effects_b_enabled, &mut effects_c_enabled,
                                                         &mut cooldowns_enabled, &mut cooldowns_b_enabled, &mut dot_tracker_enabled, &mut notes_enabled,
                                                         &mut combat_time_enabled, &mut operation_timer_enabled,
-                                                        &mut ability_queue_enabled, &mut enemy_frames_enabled, &mut ability_cast_enabled,
+                                                        &mut ability_queue_enabled, &mut enemy_frames_enabled, &mut ability_cast_enabled, &mut map_enabled,
                                                         &mut overlays_visible, &mut move_mode, &mut rearrange_mode, &mut auto_hidden);
                                                 }
                                             }
@@ -1350,7 +1354,7 @@ pub fn App() -> Element {
                             div { class: "overlay-category",
                                 div { class: "category-header",
                                     h4 { class: "category-title", "Encounter" }
-                                    span { class: "category-count", "{encounter_on} of 6" }
+                                    span { class: "category-count", "{encounter_on} of 7" }
                                 }
                                 div { class: "category-buttons",
                                     OverlayToggle {
@@ -1437,6 +1441,21 @@ pub fn App() -> Element {
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::AbilityQueue, ability_queue_on).await {
                                                 ability_queue_enabled.set(!ability_queue_on);
+                                                profile_dirty.set(api::is_profile_dirty().await);
+                                            }
+                                        }); },
+                                        on_settings: open_overlay_settings,
+                                        drawer_overlay: drawer_overlay.clone(),
+                                    }
+                                    OverlayToggle {
+                                        label: "Map",
+                                        icon: "fa-solid fa-map",
+                                        title: "Shows a map for the current encounter and phase",
+                                        active: map_on,
+                                        tab_key: "map",
+                                        on_toggle: move |_| { spawn(async move {
+                                            if api::toggle_overlay(OverlayType::Map, map_on).await {
+                                                map_enabled.set(!map_on);
                                                 profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
@@ -2714,6 +2733,7 @@ fn apply_status(
     ability_queue_enabled: &mut Signal<bool>,
     enemy_frames_enabled: &mut Signal<bool>,
     ability_cast_enabled: &mut Signal<bool>,
+    map_enabled: &mut Signal<bool>,
     overlays_visible: &mut Signal<bool>,
     move_mode: &mut Signal<bool>,
     rearrange_mode: &mut Signal<bool>,
@@ -2743,6 +2763,7 @@ fn apply_status(
     ability_queue_enabled.set(status.ability_queue_enabled);
     enemy_frames_enabled.set(status.enemy_frames_enabled);
     ability_cast_enabled.set(status.ability_cast_enabled);
+    map_enabled.set(status.map_enabled);
     overlays_visible.set(status.overlays_visible);
     move_mode.set(status.move_mode);
     rearrange_mode.set(status.rearrange_mode);
