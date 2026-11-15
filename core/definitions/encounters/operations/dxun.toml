@@ -664,7 +664,20 @@ victory_conditions = [
       "shelleigh",
     ] },
   ] },
+  { type = "counter_compare", counter_id = "shelleigh_engaged", operator = "eq", value = 0 },
 ]
+
+# Toxic Cloud only lands on players when Shelleigh survives the bird insta-kill. Once it has,
+# the source-less Critical Injury removal is no longer a kill signal (it also fires
+# on player deaths/wipe cleanup) and her logged death is the only victory. The
+# reset on her death reopens the gate for that entity_death branch.
+[[boss.counter]]
+id = "shelleigh_engaged"
+name = "Shelleigh Engaged"
+increment_on = { type = "effect_applied", effects = [
+  4282395926724878,
+], target = "any_player" }
+reset_on = { type = "entity_death", selector = ["Shelleigh"] }
 
 [[boss.counter]]
 id = "huntmaster_adrenaline_rush"
