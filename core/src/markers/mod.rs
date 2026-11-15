@@ -286,6 +286,7 @@ fn remove_matches(
                 None,
                 None,
                 &HashSet::new(),
+                None,
                 ev.source_entity.position,
                 ev.target_entity.position,
             )

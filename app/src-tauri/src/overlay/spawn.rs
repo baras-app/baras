@@ -1285,6 +1285,7 @@ pub fn create_map_overlay(
         namespace: "baras-map".to_string(),
         click_through: true,
         target_monitor_id: position.monitor_id.clone(),
+        snap_to_grid: true,
     };
 
     let kind = OverlayType::Map;

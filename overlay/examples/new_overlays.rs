@@ -121,6 +121,7 @@ fn main() {
         namespace: "map_example".to_string(),
         click_through: true,
         target_monitor_id: None,
+        snap_to_grid: true,
     };
 
     // Create overlays with show_effect_names enabled
@@ -242,7 +243,7 @@ fn main() {
         if TEST_MAP {
             map_overlay.update_data(OverlayData::Map(MapData {
                 svg: Some(map_svg.clone()),
-                placeholder: None,
+                ..Default::default()
             }));
             if !SKIP_RENDER {
                 map_overlay.render();
