@@ -1037,6 +1037,7 @@ name = "Apex Vanguard"
 ids = [4282872668094464, 4350020186800128]
 is_boss = true
 is_kill_target = true
+single_instance = true
 
 [[boss.entities.hp_markers]]
 hp_percent = 5.0
