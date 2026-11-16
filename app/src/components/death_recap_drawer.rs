@@ -77,7 +77,7 @@ pub fn DeathRecapDrawer(props: DeathRecapDrawerProps) -> Element {
 
     rsx! {
         aside {
-            class: "drawer death-recap-drawer",
+            class: "death-recap-drawer",
             style: RECAP_WIDTH().map(|w| format!("width: {w:.0}px")).unwrap_or_default(),
             // Default matches the CSS min(760px, 92vw)
             ResizeHandle { width: RECAP_WIDTH.signal(), fallback: (window_width() * 0.92).min(760.0) }

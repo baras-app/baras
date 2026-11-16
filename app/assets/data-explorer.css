@@ -1099,10 +1099,39 @@
    Death Recap Modal
    ───────────────────────────────────────────────────────────────────────────── */
 
-/* Positioning and slide-in come from .drawer; the body scrolls under the header */
+/* Docks at the right of .data-explorer (its containing block) and overlays it,
+   like .editor-drawer; the body scrolls under the header */
+.data-explorer {
+  position: relative;
+  overflow: clip;
+}
+
 .death-recap-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
   width: min(760px, 92vw);
+  max-width: 94%;
+  box-sizing: border-box;
+  padding: 1em;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  background: var(--bg-mid);
+  border-left: 1px solid var(--border-accent-strong);
+  border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
   outline: none;
+  animation: settings-drawer-in 0.18s ease-out;
+}
+
+/* Fullscreen analysis is fixed over the window: follow it there and stay on top */
+.data-explorer:has(.data-panel.fullscreen) > .death-recap-drawer {
+  position: fixed;
+  z-index: 1001;
+  border-radius: 0;
 }
 
 .death-recap-body {

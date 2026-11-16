@@ -1448,31 +1448,6 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
 
     rsx! {
         div { class: "data-explorer",
-            // Death recap drawer (opened from the Overview's death tracker); lives at
-            // the root so it stays open across tabs of the same encounter
-            if let Some(d) = recap_death() {
-                DeathRecapDrawer {
-                    encounter_idx: *selected_encounter.read(),
-                    player_name: d.name.clone(),
-                    death_time_secs: d.death_time_secs,
-                    european: eu,
-                    on_close: move |_| recap_death.set(None),
-                    player: overview_table_data.read().rows.iter().find(|r| r.name == d.name && r.faction == d.faction).cloned(),
-                    deaths: player_deaths.read().clone(),
-                    on_select: move |d: PlayerDeath| recap_death.set(Some(d)),
-                    on_open_combat_log: move |window_start: f32| {
-                        if let Some(d) = recap_death() {
-                            time_range.set(TimeRange {
-                                start: window_start.max(0.0),
-                                end: d.death_time_secs + 1.5,
-                            });
-                            death_target_filter.set(Some(d.name.clone()));
-                            view_mode.set(ViewMode::CombatLog);
-                        }
-                    },
-                }
-            }
-
             // Sidebar with encounter list
             aside { class: if *sidebar_collapsed.read() { "explorer-sidebar collapsed" } else { "explorer-sidebar" },
                 div { class: "sidebar-header",
@@ -3228,6 +3203,31 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
 
                     } // end timeline-loaded gate
                     } // end tab-content-area
+                }
+            }
+
+            // Death recap drawer (opened from the Overview's death tracker); lives at
+            // the root so it stays open across tabs, and last so Esc closes it before fullscreen
+            if let Some(d) = recap_death() {
+                DeathRecapDrawer {
+                    encounter_idx: *selected_encounter.read(),
+                    player_name: d.name.clone(),
+                    death_time_secs: d.death_time_secs,
+                    european: eu,
+                    on_close: move |_| recap_death.set(None),
+                    player: overview_table_data.read().rows.iter().find(|r| r.name == d.name && r.faction == d.faction).cloned(),
+                    deaths: player_deaths.read().clone(),
+                    on_select: move |d: PlayerDeath| recap_death.set(Some(d)),
+                    on_open_combat_log: move |window_start: f32| {
+                        if let Some(d) = recap_death() {
+                            time_range.set(TimeRange {
+                                start: window_start.max(0.0),
+                                end: d.death_time_secs + 1.5,
+                            });
+                            death_target_filter.set(Some(d.name.clone()));
+                            view_mode.set(ViewMode::CombatLog);
+                        }
+                    },
                 }
             }
         }
