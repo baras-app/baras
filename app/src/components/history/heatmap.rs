@@ -27,6 +27,8 @@ pub struct DayStat {
     pub logs: u32,
     pub bytes: u64,
     pub kills: u32,
+    /// How many of the day's logs sit compressed in the archive
+    pub archived: u32,
     pub tags: Vec<ContentTag>,
 }
 
@@ -72,6 +74,7 @@ pub fn day_stats(rows: &[LibraryRow]) -> Vec<DayStat> {
         s.logs += 1;
         s.bytes += r.size;
         s.kills += r.kills;
+        s.archived += u32::from(r.status.is_archived());
         for t in &r.content {
             if !s.tags.contains(t) {
                 s.tags.push(*t);
@@ -113,6 +116,8 @@ pub struct HeatDay {
     pub day: i64,
     pub level: u8,
     pub tone: &'static str,
+    /// Extra class drawn over the shade (`archived`, `part-archived`); empty for none
+    pub mark: &'static str,
     pub title: String,
 }
 
@@ -133,10 +138,20 @@ pub fn LogHeatmap(days: Vec<DayStat>, selected: Signal<Option<DayRange>>) -> Ele
                 day: s.day,
                 level: level(s.bytes as f64, max_bytes),
                 tone: tone(&s.tags),
+                mark: match s.archived {
+                    0 => "",
+                    n if n == s.logs => "archived",
+                    _ => "part-archived",
+                },
                 title: format!(
-                    "{} log{} · {}{}{}",
+                    "{} log{}{} · {}{}{}",
                     s.logs,
                     if s.logs == 1 { "" } else { "s" },
+                    match s.archived {
+                        0 => String::new(),
+                        n if n == s.logs => " (archived)".to_string(),
+                        n => format!(" ({n} archived)"),
+                    },
                     fmt_bytes(s.bytes),
                     if s.kills > 0 { format!(" · {} kills", s.kills) } else { String::new() },
                     if tags.is_empty() { String::new() } else { format!("\n{}", tags.join(", ")) }
@@ -145,7 +160,7 @@ pub fn LogHeatmap(days: Vec<DayStat>, selected: Signal<Option<DayRange>>) -> Ele
         })
         .collect();
     rsx! {
-        Heatmap { days: cells, selected, title: "Logging activity", hint: "Click a day or month to filter the table", legend: "pvp" }
+        Heatmap { days: cells, selected, title: "Logging activity", hint: "Click a day or month to filter the table", legend: "pvp", archive_legend: true }
     }
 }
 
@@ -157,6 +172,9 @@ pub fn Heatmap(
     hint: &'static str,
     /// Tone class the legend swatches use
     legend: &'static str,
+    /// Explain the archived marks (Log Management only)
+    #[props(default)]
+    archive_legend: bool,
 ) -> Element {
     let by_day: HashMap<i64, &HeatDay> = days.iter().map(|s| (s.day, s)).collect();
     // Window: the last 53 weeks, columns starting on a Monday
@@ -179,6 +197,12 @@ pub fn Heatmap(
                 span { class: "log-heatmap-title", i { class: "fa-solid fa-calendar-days" } " {title}" }
                 if !hint.is_empty() { span { class: "hint", "{hint}" } }
                 div { class: "log-heatmap-legend",
+                    if archive_legend {
+                        span { class: "heatmap-cell {legend} l3 archived" }
+                        span { "Archived" }
+                        span { class: "heatmap-cell {legend} l3 part-archived" }
+                        span { class: "legend-gap", "Partly" }
+                    }
                     span { "Less" }
                     for lvl in 1..=4 { span { class: "heatmap-cell {legend} l{lvl}" } }
                     span { "More" }
@@ -227,7 +251,7 @@ pub fn Heatmap(
                                 let future = day > end;
                                 let picked = range.as_ref().is_some_and(|r| date >= r.0 && date <= r.1);
                                 let class = match cell {
-                                    Some(c) => format!("heatmap-cell {} l{}{}", c.tone, c.level, if picked { " picked" } else { "" }),
+                                    Some(c) => format!("heatmap-cell {} l{} {}{}", c.tone, c.level, c.mark, if picked { " picked" } else { "" }),
                                     None if future => "heatmap-cell future".to_string(),
                                     None => format!("heatmap-cell l0{}", if picked { " picked" } else { "" }),
                                 };

@@ -292,7 +292,9 @@ fn summarize(
         // Matches `bosses_total`: optional encounters never count as a boss kill
         kills: g.iter().filter(|r| r.success && !def.is_some_and(|a| a.is_optional(&r.boss))).count() as u32,
         bosses_total: def.map_or(0, |a| a.bosses_at(&tier_key, size).count() as u32),
-        cleared: final_kill.is_some(),
+        // A last-boss lockout ends an operation without clearing it. Flashpoint
+        // definitions list bonus bosses, so there the final kill still decides.
+        cleared: final_kill.is_some() && (first.is_flashpoint || full_clear),
         deaths: g.iter().map(|r| u32::from(r.deaths)).sum(),
         my_deaths: g.iter().map(|r| u32::from(r.my_deaths)).sum(),
         pull_secs: g.iter().map(|r| r.duration_seconds).sum(),

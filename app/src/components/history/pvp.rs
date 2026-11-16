@@ -110,6 +110,7 @@ fn heat_days(rows: &[PvpMatchRow], arena: bool) -> Vec<HeatDay> {
     days.into_iter()
         .map(|(day, (n, w, l))| HeatDay {
             day,
+            mark: "",
             level: level(f64::from(n), max),
             tone: match (arena, w.cmp(&l)) {
                 (false, _) => "pvp",

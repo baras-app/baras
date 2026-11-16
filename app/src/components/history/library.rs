@@ -58,6 +58,17 @@ fn copy_to_clipboard(text: &str) {
     let _ = js_sys::eval(&format!("navigator.clipboard.writeText(`{escaped}`)"));
 }
 
+/// History missing or out of date: the next scan rewrites it
+fn needs_scan(status: LogStatus) -> bool {
+    matches!(status, LogStatus::Stale | LogStatus::NoHistory | LogStatus::ArchivedStale)
+}
+
+const LOCATIONS: [&str; 2] = ["Current", "Archived"];
+
+fn location_of(status: LogStatus) -> &'static str {
+    LOCATIONS[usize::from(status.is_archived())]
+}
+
 pub(super) fn tag_class(t: ContentTag) -> &'static str {
     match t {
         ContentTag::MasterOps | ContentTag::MasterFlashpoint => "nim",
@@ -141,6 +152,9 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
     let mut search = use_signal(|| state.read().history.library_search.clone());
     let mut tags = use_signal(|| state.read().history.library_tags.clone());
     let mut favorites_only = use_signal(|| state.read().history.library_favorites);
+    // Current and/or archived logs (empty = both), and only those awaiting a scan
+    let mut locations = use_signal(Vec::<String>::new);
+    let mut scan_only = use_signal(|| false);
     // Calendar pick: inclusive day bounds, or None for every day
     let mut day_range: Signal<Option<super::heatmap::DayRange>> = use_signal(|| None);
     let mut state = state;
@@ -179,11 +193,20 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
     let visible: Vec<&LibraryRow> = all
         .iter()
         .filter(|r| matches(r, &tags.read(), *favorites_only.read(), &q))
+        .filter(|r| locations.read().is_empty() || locations.read().iter().any(|l| l == location_of(r.status)))
+        .filter(|r| !*scan_only.read() || needs_scan(r.status))
         .filter(|r| picked_days.as_ref().is_none_or(|d| super::heatmap::in_range(&r.date, d)))
         .collect();
     let day_stats = super::heatmap::day_stats(all);
     // Rows render a page at a time; a filter change starts over
-    let page_key = format!("{q}|{:?}|{}|{:?}", *tags.read(), *favorites_only.read(), picked_days);
+    let page_key = format!(
+        "{q}|{:?}|{}|{:?}|{:?}|{}",
+        *tags.read(),
+        *favorites_only.read(),
+        picked_days,
+        *locations.read(),
+        *scan_only.read()
+    );
     let paged = use_paged(&page_key);
     let limit = paged.limit(&page_key);
     let shown = visible.len().min(limit);
@@ -247,7 +270,15 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                         tags.set(ContentTag::ALL.iter().copied().filter(|t| picked.iter().any(|p| p == t.label())).collect());
                     },
                 }
+                MultiSelect {
+                    any_label: "Current + archived",
+                    noun: "locations",
+                    entries: LOCATIONS.iter().map(|l| (l.to_string(), vec![l.to_string()])).collect::<Vec<_>>(),
+                    picked: locations.read().clone(),
+                    on_change: move |picked: Vec<String>| locations.set(picked),
+                }
                 ToggleSwitch { label: "Favorites", checked: *favorites_only.read(), on_change: move |v| favorites_only.set(v) }
+                ToggleSwitch { label: "Needs scan", checked: *scan_only.read(), on_change: move |v| scan_only.set(v) }
                 if let Some((from, to)) = picked_days.clone() {
                     span { class: "library-day-pick",
                         i { class: "fa-solid fa-calendar-day" }
@@ -263,6 +294,8 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                             search.set(String::new());
                             tags.set(Vec::new());
                             favorites_only.set(false);
+                            locations.set(Vec::new());
+                            scan_only.set(false);
                             super::scroll::scroll_to_top(LIB_TABLE);
                         },
                         i { class: "fa-solid fa-location-crosshairs" }
@@ -400,7 +433,15 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                                                 },
                                             }
                                         }
-                                        td { title: "{row.filename}\n{status}", "{row.date}" }
+                                        td { title: "{row.filename}\n{status}",
+                                            "{row.date}"
+                                            if archived {
+                                                i { class: "fa-solid fa-box-archive lib-status-icon" }
+                                            }
+                                            if needs_scan(row.status) {
+                                                i { class: "fa-solid fa-rotate lib-status-icon scan" }
+                                            }
+                                        }
                                         td { {row.character.clone().unwrap_or_else(|| "—".into())} }
                                         td { if row.server.is_empty() { "—" } else { "{row.server}" } }
                                         td { {fmt_bytes(row.size)} }

@@ -127,7 +127,7 @@ fn RunItem(run: RunSummary, selected: bool, on_pick: EventHandler<RunKey>, #[pro
                         span { class: "run-badge timer-ok", title: "Timed run achieved", i { class: "fa-solid fa-stopwatch" } }
                     }
                     if r.cleared {
-                        span { class: "run-badge cleared", title: "Final boss killed", i { class: "fa-solid fa-check" } " Clear" }
+                        span { class: "run-badge cleared", title: "Every boss killed", i { class: "fa-solid fa-check" } " Clear" }
                     } else {
                         span { class: "run-badge", title: "kills / bosses",
                             if r.bosses_total > 0 { "{r.kills}/{r.bosses_total}" } else { "{r.kills} kills" }
@@ -224,7 +224,7 @@ fn RunTable(operation: String, runs: Vec<RunSummary>, on_pick: EventHandler<RunK
                                     td { span { class: "{tier_class(&r.tier)}", {tier_label(r)} } }
                                     td {
                                         if r.cleared {
-                                            span { class: "run-badge cleared", title: "Final boss killed", i { class: "fa-solid fa-check" } " Clear" }
+                                            span { class: "run-badge cleared", title: "Every boss killed", i { class: "fa-solid fa-check" } " Clear" }
                                         } else if r.bosses_total > 0 {
                                             "{r.kills}/{r.bosses_total}"
                                         } else {
@@ -263,8 +263,8 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
     let mut search = use_signal(|| props.state.read().history.run_search.clone());
     // The area whose run table fills the main pane while no run is open
     let mut area = use_signal(|| props.state.read().history.run_area.clone());
-    // The newest runs across every operation, open by default
-    let mut recent_open = use_signal(|| true);
+    // The newest runs across every operation, folded until asked for
+    let mut recent_open = use_signal(|| false);
     let mut state = props.state;
     use_effect(move || {
         let mut s = state.write();

@@ -165,7 +165,7 @@ pub struct RunSummary {
     pub kills: u32,
     /// Bosses in the definition for this difficulty; 0 when the area is unknown
     pub bosses_total: u32,
-    /// Final boss killed
+    /// Operations: every required boss killed. Flashpoints: final boss killed
     pub cleared: bool,
     pub deaths: u32,
     /// Logging character's deaths

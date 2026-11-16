@@ -1311,6 +1311,33 @@
   cursor: pointer;
 }
 
+/* Archived days keep their hue and shade under a hatch; a day with some
+   logs still on disk gets only a corner */
+.heatmap-cell.archived,
+.heatmap-cell.part-archived {
+  position: relative;
+}
+
+.heatmap-cell.archived::after,
+.heatmap-cell.part-archived::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.heatmap-cell.archived::after {
+  background: repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.55) 0 2px, transparent 2px 4px);
+}
+
+.heatmap-cell.part-archived::after {
+  background: linear-gradient(135deg, transparent 50%, rgba(0, 0, 0, 0.6) 50%);
+}
+
+.log-heatmap-legend .legend-gap {
+  margin-right: 8px;
+}
+
 .heatmap-cell.future {
   background: transparent;
   cursor: default;
@@ -1797,3 +1824,7 @@
   flex-shrink: 0;
   padding: 0 var(--space-xs);
 }
+
+/* Log Management: archived / needs-scan markers beside the date */
+.lib-status-icon { margin-left: 6px; font-size: 0.8em; color: var(--text-muted); }
+.lib-status-icon.scan { color: var(--swtor-gold); }
