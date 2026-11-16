@@ -263,7 +263,7 @@ fn DamageTakenTable(rows: Vec<DeathRecapDamageSource>, european: bool) -> Elemen
                                     tr {
                                         class: "recap-row-source",
                                         onclick: move |_| expanded.set((!is_open).then_some(id)),
-                                        td { class: "col-left",
+                                        td { class: "col-left", title: "{src.source_name}",
                                             i { class: "recap-caret fa-solid {caret}" }
                                             span { class: "recap-ability", "{src.source_name}" }
                                         }
@@ -276,7 +276,7 @@ fn DamageTakenTable(rows: Vec<DeathRecapDamageSource>, european: bool) -> Elemen
                                     if is_open {
                                         for ab in src.abilities.iter().cloned() {
                                             tr { class: "recap-row-ability",
-                                                td { class: "col-left", "{ab.ability_name}" }
+                                                td { class: "col-left", title: "{ab.ability_name}", "{ab.ability_name}" }
                                                 td { "{ab.hits}" }
                                                 td { class: "stat-damage", "{fmt(ab.total)}" }
                                                 td { "{fmt(ab.max_hit as i64)}" }
@@ -327,7 +327,7 @@ fn HealingReceivedTable(rows: Vec<DeathRecapHealSource>, european: bool) -> Elem
                                     tr {
                                         class: "recap-row-source",
                                         onclick: move |_| expanded.set((!is_open).then_some(id)),
-                                        td { class: "col-left",
+                                        td { class: "col-left", title: "{src.source_name}",
                                             i { class: "recap-caret fa-solid {caret}" }
                                             span { class: "recap-ability", "{src.source_name}" }
                                         }
@@ -337,7 +337,7 @@ fn HealingReceivedTable(rows: Vec<DeathRecapHealSource>, european: bool) -> Elem
                                     if is_open {
                                         for ab in src.abilities.iter().cloned() {
                                             tr { class: "recap-row-ability",
-                                                td { class: "col-left", "{ab.ability_name}" }
+                                                td { class: "col-left", title: "{ab.ability_name}", "{ab.ability_name}" }
                                                 td { "{ab.casts}" }
                                                 td { class: "stat-heal", "{fmt(ab.effective)}" }
                                             }

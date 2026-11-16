@@ -1418,6 +1418,19 @@
   font-family: var(--font-family);
 }
 
+/* The name column takes the leftover width and truncates; numbers never wrap */
+.recap-table th,
+.recap-table td {
+  white-space: nowrap;
+}
+
+.recap-table td:first-child {
+  width: 100%;
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .recap-ability {
   color: var(--text-primary);
   font-weight: 500;
