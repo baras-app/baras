@@ -359,6 +359,8 @@ victory_trigger = { type = "any_of", conditions = [
   ] },
 ] }
 victory_trigger_difficulties = ["master"]
+# He stops at 1% and casts Dying Light: the group must outlive the cast
+wipe_revokes_victory = true
 
 [[boss.entities]]
 name = "Titax"

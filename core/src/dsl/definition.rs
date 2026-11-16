@@ -462,6 +462,14 @@ pub struct BossEncounterDefinition {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub victory_trigger_difficulties: Vec<String>,
 
+    /// The victory trigger can fire before the fight is settled (the Ultimate
+    /// Hunter reaches his health floor, then casts a raid-wide kill): a group
+    /// left with nobody standing has wiped, whatever fired before or after.
+    /// Off by default, where a group may die after a real kill (e.g. to leave
+    /// a combat that adds keep alive).
+    #[serde(default, skip_serializing_if = "crate::serde_defaults::is_false")]
+    pub wipe_revokes_victory: bool,
+
     /// State conditions that must be satisfied for the victory trigger to fire.
     /// Implicitly AND'd — all conditions must be true.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -507,6 +515,7 @@ impl Default for BossEncounterDefinition {
             has_victory_trigger: false,
             victory_trigger: None,
             victory_trigger_difficulties: Vec::new(),
+            wipe_revokes_victory: false,
             victory_conditions: Vec::new(),
             is_final_boss: false,
             is_optional_boss: false,

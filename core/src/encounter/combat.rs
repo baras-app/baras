@@ -1252,6 +1252,17 @@ impl CombatEncounter {
 
         self.all_players_dead =
             !dominated_players.is_empty() && dominated_players.iter().all(|p| p.is_dead);
+
+        if self.all_players_dead && self.victory_triggered && self.wipe_revokes_victory() {
+            self.victory_triggered = false;
+            self.victory_triggered_at = None;
+        }
+    }
+
+    /// The active boss opts into `wipe_revokes_victory` (see the definition field).
+    pub fn wipe_revokes_victory(&self) -> bool {
+        self.active_boss_idx()
+            .is_some_and(|idx| self.boss_definitions()[idx].wipe_revokes_victory)
     }
 
     /// Decide an arena round from faction deaths: a fully dead team ends the

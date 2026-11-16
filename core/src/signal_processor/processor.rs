@@ -1243,6 +1243,11 @@ impl EventProcessor {
 
         let boss_def = &enc.boss_definitions()[idx];
 
+        // The effects this boss sheds while it resets must not read as a kill
+        if boss_def.wipe_revokes_victory && enc.all_players_dead {
+            return;
+        }
+
         if !boss_def.has_victory_trigger {
             return;
         }
