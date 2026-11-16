@@ -1,62 +1,46 @@
-# v2026.11.13
+# v2026.11.16
 
-## Personal Stats Overlay Rework
+## Phase Awareness
 
-The personal stats overlay has been reworked to reduce text clipping and scaling issues. If this overlay is enabled, it's appearance will chance and you will have to edit it in the settings menu.
+BARAS now has the ability to detect a specific phase instance and account for common events during raids such as:
 
-- Scaling has been changed to width-only. Lengthening the overlay will no longer increase the size of an individual row element
-- Max columns for each element is now 3 instead of 4.
-- The following optional items have been added:
-  - Crit %
-  - Healing % (effective and critical)
-  - Operations timer
-  - Healing taken
-- Difficulty no longer displays when in open world
-- Difficulty strings have been truncated
-- All text is now left-aligned
+- swapping characters to save a lockout
+- resetting a phase for a timer run after wiping on the first boss
+- disconnecting mid-raid
 
-## Keyboard Navigation Shortcuts
+What this means is that the **Raid Summaries** and the **Operations Timer** now account for all these events when determining the length of a raid. Seeing these changes requires the logs to be re-scanned.
 
-Several in-app keyboard shortcuts have been added to streamline app navigation. You can see the list of them in the application settings page.
+## Raid Summaries
 
-## Data Explorer
+- Improved formatting and searchability of the page, now lands on a table view with operation selection in the sidebar
+- Raids are no longer marked as cleared unless all mandatory bosses were killed within the run
 
-### Death Recap Improvements
+## Log Management
 
-- Death recap display buttons now appears in the overview summary table next to player name
-- Deaths now appear on the overview charts
-- A new chart has been added to visualize player death status over time
-- Added controls to navigate to the next/previous death within the death recap window
-- Added the ability to filter the final events table for damage or healing only
+- Added filter to display only logs that require scanning
+- Calendar chart now distinguishes between archived and unarchived logs, updates in response to filters
 
-### Other
+## Characters
 
-- Reduced visual noise caused by chart interactivity options while hovering over graphs
-- Improved chart tooltip formatting
-- Combat log event type filter has been changed to a multi select drop down
-- Added Modify Charges, Modify Threat, and Target Set as filterable combat log event types
+Improved search options in the lockouts menu. You can now toggle between searching for characters who are locked out versus free. Lockouts for specific bosses can also be selected in the filter options.
 
-## Encounter Definitions
+## Alacrity Presets
 
-Minor Cosmetic Timer Improvements:
+Users can now add preset alacrity values for specific disciplines, or a specific discipline/character combination.
 
-- Huntmaster
-- Olok
-- Cartel Warlords
-- Zorn and Toth
-- Firebrand and Storm Caller
-- Warlord Kephess
-- IP-CPT
+## Improved Disconnection Handling
 
-Significant changes and additions:
+The application will now attempt to restore the session information upon the next combat encounter after a disconnect. What this means is that timers, challenges, and the HP overlay will no longer fail to display information after a disconnect without requiring user action.
 
-- Karagga's Palace
-- Eternity Vault
+## Timer Preview Mode
 
-## Bugfixes
+You can now preview timers, alerts, and their associated audio queues from the editor menu.
 
-- Threat metrics overlay now respects the 0 threat floor
-- Overlays now respect the FPS settings properly
-- Increased size of stack count in effects overlay bar mode
-- Fixed various text clipping and truncation issues in overlay element titles
-- Data explorer charts now respond properly to window resizing
+## Other
+
+- Definitions: Huntmaster clear detection logic will no longer classify wipes to NiM Shelleigh as a kill
+- Definitions: Improved detection of Apex Vanguard boss resetting
+- Linux: Enabled XWayland fallback on Wayland DEs that don't support layer-shell (GNOME, etc)
+- Analysis: death recap window no longer covers application navbar
+- Analysis: Encounter select sidebar now displays the time elapsed between the pull and the area being entered, instead of the wall clock time
+- Overlays: Auto-Hide while not live should now properly work with the DX12 SWTOR client
