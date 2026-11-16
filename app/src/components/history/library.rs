@@ -190,14 +190,19 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
 
     let q = search.read().to_lowercase();
     let picked_days = day_range.read().clone();
-    let visible: Vec<&LibraryRow> = all
+    // The calendar follows every filter but its own day pick, so the other
+    // days stay there to click
+    let filtered: Vec<&LibraryRow> = all
         .iter()
         .filter(|r| matches(r, &tags.read(), *favorites_only.read(), &q))
         .filter(|r| locations.read().is_empty() || locations.read().iter().any(|l| l == location_of(r.status)))
         .filter(|r| !*scan_only.read() || needs_scan(r.status))
+        .collect();
+    let day_stats = super::heatmap::day_stats(filtered.iter().copied());
+    let visible: Vec<&LibraryRow> = filtered
+        .into_iter()
         .filter(|r| picked_days.as_ref().is_none_or(|d| super::heatmap::in_range(&r.date, d)))
         .collect();
-    let day_stats = super::heatmap::day_stats(all);
     // Rows render a page at a time; a filter change starts over
     let page_key = format!(
         "{q}|{:?}|{}|{:?}|{:?}|{}",

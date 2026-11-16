@@ -569,6 +569,7 @@ impl ServiceHandle {
             stale_session,
             character_mismatch: cache.character_mismatch,
             missing_area: cache.missing_area,
+            area_resume_pending: cache.missing_area && session.area_resume_pending(),
         })
     }
 

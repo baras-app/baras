@@ -1026,7 +1026,11 @@ pub fn App() -> Element {
                             div { class: "session-dashboard-bar",
                                 div { class: "dashboard-toggle-row dashboard-empty-state",
                                     i { class: "fa-solid fa-triangle-exclamation dashboard-status-icon warning" }
-                                    span { class: "dashboard-empty-text", "Incomplete log file — boss encounters and timers unavailable" }
+                                    if session.as_ref().is_some_and(|s| s.area_resume_pending) {
+                                        span { class: "dashboard-empty-text", "Log resumed after a disconnect — engage an NPC to restore the area, boss encounters and timers" }
+                                    } else {
+                                        span { class: "dashboard-empty-text", "Incomplete log file — boss encounters and timers unavailable" }
+                                    }
                                     ProfileUnsavedHint { active_profile, profile_dirty }
                                     SessionStatusChip { live_tailing, watching, prior: false, on_restart: restart_watcher, on_resume: resume_live }
                                 }

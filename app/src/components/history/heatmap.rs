@@ -65,8 +65,8 @@ fn today() -> i64 {
     day_of(&format!("{:04}-{:02}-{:02}", now.get_full_year(), now.get_month() + 1, now.get_date())).unwrap_or(0)
 }
 
-/// Per-day totals over every log, newest irrelevant: order is by day
-pub fn day_stats(rows: &[LibraryRow]) -> Vec<DayStat> {
+/// Per-day totals over `rows`, ordered by day
+pub fn day_stats<'a>(rows: impl Iterator<Item = &'a LibraryRow>) -> Vec<DayStat> {
     let mut days: HashMap<i64, DayStat> = HashMap::new();
     for r in rows {
         let Some(day) = day_of(&r.date) else { continue };

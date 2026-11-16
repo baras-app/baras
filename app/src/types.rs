@@ -104,6 +104,9 @@ pub struct SessionInfo {
     /// True if the log file started without an AreaEntered event
     #[serde(default)]
     pub missing_area: bool,
+    /// `missing_area`, and engaging an NPC can still restore the session
+    #[serde(default)]
+    pub area_resume_pending: bool,
 }
 
 /// Overlay status response from backend

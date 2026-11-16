@@ -4843,4 +4843,7 @@ pub struct SessionInfo {
     pub character_mismatch: bool,
     /// True if the log file started without an AreaEntered event
     pub missing_area: bool,
+    /// `missing_area`, and engaging an NPC can still restore the previous
+    /// log's area and player (see `AreaResume`)
+    pub area_resume_pending: bool,
 }

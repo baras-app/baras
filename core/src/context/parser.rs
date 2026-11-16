@@ -207,6 +207,12 @@ impl ParsingSession {
         self.effect_tracker = None;
     }
 
+    /// A log that started mid-instance may still be resumed: the lookup has
+    /// not ruled it out and no NPC has settled it yet.
+    pub fn area_resume_pending(&self) -> bool {
+        !matches!(self.area_resume, Some(None))
+    }
+
     /// The entry lines a log resumed after a crash or disconnect never
     /// wrote, once it shows the player is still in the instance the previous
     /// log ended in (see `AreaResume`).
