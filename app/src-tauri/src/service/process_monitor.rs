@@ -1,6 +1,7 @@
 //! Game process monitor
 //!
-//! Detects whether the SWTOR game process (`swtor.exe`) is currently running.
+//! Detects whether the SWTOR game process is currently running. Matches
+//! `swtor.exe` and the DX12 test client builds `swtor_RC*.exe` (e.g. `swtor_RC2.exe`).
 //! Used by the auto-hide feature to hide overlays when the game closes.
 //!
 //! Returns `Some(true)` if the process is found, `Some(false)` if the command
@@ -27,13 +28,15 @@ pub async fn is_game_running() -> Option<bool> {
     }
 }
 
-/// Windows: use `tasklist` to check for swtor.exe
+/// Windows: use `tasklist` to check for `swtor.exe` / `swtor_RC*.exe`
 #[cfg(target_os = "windows")]
 async fn is_game_running_windows() -> Option<bool> {
     use std::os::windows::process::CommandExt;
 
+    // tasklist only allows a trailing wildcard, so filter broadly on `swtor*` and
+    // whitelist exact names below. CSV rows start with `"<image name>"`.
     let output = tokio::process::Command::new("tasklist")
-        .args(["/FI", "IMAGENAME eq swtor.exe", "/NH"])
+        .args(["/FI", "IMAGENAME eq swtor*", "/FO", "CSV", "/NH"])
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::null())
         .creation_flags(0x08000000) // CREATE_NO_WINDOW — prevent console flash
@@ -43,7 +46,10 @@ async fn is_game_running_windows() -> Option<bool> {
     match output {
         Ok(output) if output.status.success() => {
             let stdout = String::from_utf8_lossy(&output.stdout);
-            Some(stdout.contains("swtor.exe"))
+            Some(stdout.lines().any(|l| {
+                let l = l.to_ascii_lowercase();
+                l.starts_with("\"swtor.exe\"") || l.starts_with("\"swtor_rc")
+            }))
         }
         Ok(output) => {
             warn!(
@@ -59,11 +65,13 @@ async fn is_game_running_windows() -> Option<bool> {
     }
 }
 
-/// Linux/macOS: use `pgrep` to check for swtor.exe
+/// Linux/macOS: use `pgrep` to check for `swtor.exe` / `swtor_RC*.exe`
 #[cfg(not(target_os = "windows"))]
 async fn is_game_running_unix() -> Option<bool> {
+    // `-f` matches the full Wine/Proton command line (e.g. `Z:\...\swtor\retailclient\swtor_RC2.exe`),
+    // so anchor to the start of the executable basename rather than the line start.
     let output = tokio::process::Command::new("pgrep")
-        .args(["-f", "swtor.exe"])
+        .args(["-if", r"(^|[/\\])swtor(_rc[^/\\]*)?\.exe"])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .output()
