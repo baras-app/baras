@@ -48,7 +48,10 @@ label = "Death Animation"
 id = "xrr3_missile_salvo_ends"
 name = "Missile Salvo Ends"
 display_text = "Salvo Ends"
-trigger = { type = "ability_cast", abilities = [2508436994523136, 1780259649224704], source = "boss" }
+trigger = { type = "ability_cast", abilities = [
+  2508436994523136,
+  1780259649224704,
+], source = "boss" }
 duration_secs = 20.0
 color = [145, 65, 172, 255]
 icon_ability_id = 2508436994523136
@@ -57,14 +60,23 @@ icon_ability_id = 2508436994523136
 id = "xrr3_shockwave_soon"
 name = "Shockwave Soon"
 trigger = { type = "any_of", conditions = [
-  { type = "boss_hp_below", hp_percent = 97.0, selector = ["Annihilation Droid XRR-3"] },
-  { type = "boss_hp_below", hp_percent = 78.0, selector = ["Annihilation Droid XRR-3"] },
-  { type = "boss_hp_below", hp_percent = 43.0, selector = ["Annihilation Droid XRR-3"] },
-  { type = "boss_hp_below", hp_percent = 13.0, selector = ["Annihilation Droid XRR-3"] },
+  { type = "boss_hp_below", hp_percent = 97.0, selector = [
+    "Annihilation Droid XRR-3",
+  ] },
+  { type = "boss_hp_below", hp_percent = 78.0, selector = [
+    "Annihilation Droid XRR-3",
+  ] },
+  { type = "boss_hp_below", hp_percent = 43.0, selector = [
+    "Annihilation Droid XRR-3",
+  ] },
+  { type = "boss_hp_below", hp_percent = 13.0, selector = [
+    "Annihilation Droid XRR-3",
+  ] },
 ] }
 duration_secs = 30.0
 color = [255, 128, 0, 255]
 icon_ability_id = 2508681807659008
+is_alert = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Gharj
