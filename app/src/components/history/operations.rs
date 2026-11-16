@@ -1,12 +1,13 @@
-//! Operations sub-tab: a rail of runs (one log, one area, one difficulty,
-//! split after the final boss) and the selected run's recap.
+//! Operations sub-tab: a rail of recent runs and areas, the selected area's
+//! run table, and the recap of the run picked from either.
 
 use dioxus::prelude::*;
 
 use baras_types::history::{BackfillEvent, PullFilter, RunSummary};
 
 use super::Backfill;
-use super::scroll::{PAGE, save_scroll, use_restore_scroll};
+use super::overview::short_ts;
+use super::scroll::{save_scroll, use_restore_scroll};
 use super::toolbar::HistoryToolbar;
 use super::run_detail::{RunDetailView, fmt_secs};
 use crate::api;
@@ -145,16 +146,123 @@ fn RunItem(run: RunSummary, selected: bool, on_pick: EventHandler<RunKey>, #[pro
     }
 }
 
+/// Column the area's run table is sorted by
+#[derive(Clone, Copy, PartialEq)]
+enum RunSort {
+    Date,
+    Result,
+    Pulls,
+    Deaths,
+    Time,
+}
+
+/// Every run of one area under the filters; a row opens the run's recap
+#[component]
+fn RunTable(operation: String, runs: Vec<RunSummary>, on_pick: EventHandler<RunKey>) -> Element {
+    let mut sort = use_signal(|| (RunSort::Date, true));
+    let (key, desc) = *sort.read();
+    let mut rows: Vec<&RunSummary> = runs.iter().collect();
+    rows.sort_by(|a, b| {
+        let ord = match key {
+            RunSort::Date => a.start_ms.cmp(&b.start_ms),
+            RunSort::Result => (a.cleared, a.kills).cmp(&(b.cleared, b.kills)),
+            RunSort::Pulls => a.pulls.cmp(&b.pulls),
+            RunSort::Deaths => a.deaths.cmp(&b.deaths),
+            RunSort::Time => a.timer.elapsed_secs.cmp(&b.timer.elapsed_secs),
+        };
+        if desc { ord.reverse() } else { ord }
+    });
+    let mut on_sort = move |k: RunSort| sort.set(if key == k { (k, !desc) } else { (k, true) });
+    let sort_class = move |k: RunSort| match (key == k, desc) {
+        (false, _) => "sortable-header",
+        (true, true) => "sortable-header sorted desc",
+        (true, false) => "sortable-header sorted asc",
+    };
+    rsx! {
+        div { class: "pull-history-header",
+            div { class: "pull-history-title",
+                h3 { "{operation}" }
+                span { class: "pull-history-operation", "{runs.len()} runs" }
+                span { class: "pull-history-operation", "· Click a row to view its details" }
+            }
+        }
+        div { class: "pull-history-table-wrap",
+            table { class: "pull-history-table",
+                thead {
+                    tr {
+                        th { class: sort_class(RunSort::Date), onclick: move |_| on_sort(RunSort::Date), "Date" }
+                        th { "Character" }
+                        th { "Difficulty" }
+                        th { class: sort_class(RunSort::Result), onclick: move |_| on_sort(RunSort::Result), "Result" }
+                        th { class: sort_class(RunSort::Pulls), onclick: move |_| on_sort(RunSort::Pulls), "Pulls" }
+                        th { class: sort_class(RunSort::Deaths), onclick: move |_| on_sort(RunSort::Deaths), "Deaths" }
+                        th { class: sort_class(RunSort::Time), onclick: move |_| on_sort(RunSort::Time), "Time" }
+                        th { "Tags" }
+                    }
+                }
+                tbody {
+                    for r in rows {
+                        {
+                            let pick = key_of(r);
+                            rsx! {
+                                tr {
+                                    key: "{r.filename}:{r.start_ms}",
+                                    class: if r.hidden { "run-row pull-hidden" } else { "run-row" },
+                                    onclick: move |_| on_pick.call(pick.clone()),
+                                    td { {short_ts(&r.started)} }
+                                    td {
+                                        span { class: "pull-discipline", title: "{r.discipline.clone().unwrap_or_default()}",
+                                            if let Some(icon) = r.role_icon.as_deref().and_then(get_role_icon) {
+                                                img { class: "role-icon", src: *icon, alt: "" }
+                                            }
+                                            if let Some(icon) = r.discipline_icon.as_deref().and_then(get_class_icon) {
+                                                img { class: "discipline-icon", src: *icon, alt: "" }
+                                            }
+                                            "{r.character}"
+                                        }
+                                    }
+                                    td { span { class: "{tier_class(&r.tier)}", {tier_label(r)} } }
+                                    td {
+                                        if r.cleared {
+                                            span { class: "run-badge cleared", title: "Final boss killed", i { class: "fa-solid fa-check" } " Clear" }
+                                        } else if r.bosses_total > 0 {
+                                            "{r.kills}/{r.bosses_total}"
+                                        } else {
+                                            "{r.kills} kills"
+                                        }
+                                    }
+                                    td { "{r.pulls}" }
+                                    td { "{r.deaths}" }
+                                    td {
+                                        span {
+                                            class: if r.timer.achieved == Some(true) { "run-time ok" } else { "run-time" },
+                                            title: if r.timer.achieved == Some(true) { "Timed run achieved" } else if r.cleared { "Time to the final kill" } else { "Time to the last pull" },
+                                            {fmt_secs(r.timer.elapsed_secs)}
+                                        }
+                                    }
+                                    td {
+                                        for t in r.tags.iter() {
+                                            span { class: "run-tag small", "{t}" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 #[component]
 pub fn OperationsTab(props: OperationsProps) -> Element {
     let mut filter = props.filter;
     let mut toast = use_toast();
     let mut selected = use_signal(|| props.state.read().history.selected_run.clone());
     let mut search = use_signal(|| props.state.read().history.run_search.clone());
-    // Operations the user has opened in the rail (collapsed by default, like the Overview tree)
-    let mut expanded = use_signal(|| props.state.read().history.run_expanded.clone());
-    // Operations whose every run is listed; others show the newest PAGE
-    let mut unfolded = use_signal(std::collections::HashSet::<String>::new);
+    // The area whose run table fills the main pane while no run is open
+    let mut area = use_signal(|| props.state.read().history.run_area.clone());
     // The newest runs across every operation, open by default
     let mut recent_open = use_signal(|| true);
     let mut state = props.state;
@@ -162,7 +270,7 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
         let mut s = state.write();
         s.history.selected_run = selected.read().clone();
         s.history.run_search = search.read().clone();
-        s.history.run_expanded = expanded.read().clone();
+        s.history.run_area = area.read().clone();
     });
 
     let mut list = use_resource(move || {
@@ -189,6 +297,14 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
     let query = search.read().to_lowercase();
     let visible: Vec<&RunSummary> = runs.iter().filter(|r| run_hit(r, &query)).collect();
     let current = effective(selected.read().clone(), &visible);
+    // Where "back" leads: the open run's own area
+    let current_area = current
+        .as_ref()
+        .and_then(|k| visible.iter().find(|r| key_of(r) == *k))
+        .map(|r| r.operation.clone());
+    let open_area = area.read().clone();
+    let area_runs: Vec<RunSummary> =
+        visible.iter().filter(|r| Some(&r.operation) == open_area.as_ref()).map(|r| (*r).clone()).collect();
 
     // Reads signals, not render values, so it re-runs on selection and refresh
     let mut detail = use_resource(move || {
@@ -282,34 +398,18 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
                                     for (op, group) in ops.iter() {
                                         {
                                             let op_key = op.to_string();
-                                            // A search opens every group so hits are visible
-                                            let is_collapsed = query.is_empty() && !expanded.read().contains(*op);
-                                            let chevron = if is_collapsed { "fa-chevron-right" } else { "fa-chevron-down" };
-                                            let cap = if unfolded.read().contains(*op) { group.len() } else { group.len().min(PAGE) };
-                                            let unfold_key = op.to_string();
+                                            // The open run's area stays marked so the way back is visible
+                                            let active = current_area.as_deref().or(open_area.as_deref()) == Some(*op);
                                             rsx! {
                                                 div {
-                                                    class: "sidebar-section-header",
+                                                    class: if active { "sidebar-encounter-item run-area selected" } else { "sidebar-encounter-item run-area" },
                                                     onclick: move |_| {
-                                                        let mut set = expanded.write();
-                                                        if !set.remove(&op_key) {
-                                                            set.insert(op_key.clone());
-                                                        }
+                                                        area.set(Some(op_key.clone()));
+                                                        selected.set(None);
                                                     },
-                                                    i { class: "fa-solid {chevron} collapse-icon" }
-                                                    span { class: "section-area", "{op}" }
-                                                    span { class: "section-count", "{group.len()}" }
-                                                }
-                                                if !is_collapsed {
-                                                    for r in group[..cap].iter() {
-                                                        RunItem { run: (*r).clone(), selected: current.as_ref() == Some(&key_of(r)), on_pick: move |k| selected.set(Some(k)) }
-                                                    }
-                                                    if cap < group.len() {
-                                                        div { class: "sidebar-encounter-item run-more",
-                                                            onclick: move |_| { unfolded.write().insert(unfold_key.clone()); },
-                                                            i { class: "fa-solid fa-angles-down" }
-                                                            " Show {group.len() - cap} more"
-                                                        }
+                                                    div { class: "encounter-main",
+                                                        span { class: "encounter-name", "{op}" }
+                                                        span { class: "section-count", "{group.len()}" }
                                                     }
                                                 }
                                             }
@@ -323,14 +423,34 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
             }
 
             section { id: OPS_MAIN, class: "pull-history-main", onscroll: move |_| save_scroll(OPS_MAIN),
-                RunDetailView {
-                    detail,
-                    european: props.european,
-                    known_tags,
-                    on_change: move |_| {
-                        list.restart();
-                        detail.restart();
-                    },
+                if let Some(op) = current_area {
+                    div { class: "run-back",
+                        button {
+                            class: "btn btn-sm btn-ghost",
+                            title: "Back to the {op} runs",
+                            onclick: move |_| {
+                                area.set(Some(op.clone()));
+                                selected.set(None);
+                            },
+                            i { class: "fa-solid fa-chevron-left" }
+                            " Return to Table"
+                        }
+                    }
+                    RunDetailView {
+                        detail,
+                        european: props.european,
+                        known_tags,
+                        on_change: move |_| {
+                            list.restart();
+                            detail.restart();
+                        },
+                    }
+                } else if let Some(op) = open_area.filter(|_| !area_runs.is_empty()) {
+                    RunTable { operation: op, runs: area_runs, on_pick: move |k| selected.set(Some(k)) }
+                } else if !loading {
+                    div { class: "sidebar-empty",
+                        p { "Select an operation or a recent run" }
+                    }
                 }
             }
         }

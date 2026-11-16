@@ -278,8 +278,8 @@ pub struct HistoryState {
     pub sort_desc: bool,
     /// Operations rail selection: (filename, first pull start_ms)
     pub selected_run: Option<(String, i64)>,
-    /// Operations rail: opened sections and the search box
-    pub run_expanded: HashSet<String>,
+    /// Operations rail: the area whose run table is open, and the search box
+    pub run_area: Option<String>,
     pub run_search: String,
     /// Library filters
     pub library_search: String,
@@ -302,7 +302,7 @@ impl Default for HistoryState {
             sort_key: PullSortKey::Date,
             sort_desc: true,
             selected_run: None,
-            run_expanded: HashSet::new(),
+            run_area: None,
             run_search: String::new(),
             library_search: String::new(),
             library_tags: Vec::new(),

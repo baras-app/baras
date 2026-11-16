@@ -1788,3 +1788,12 @@
 .pull-history-table tr.pull-hidden td:not(.pull-row-actions) {
   opacity: 0.45;
 }
+
+/* Raid Summaries: area rows in the rail, the area's run table, and the way back from a recap */
+.pull-history-table tr.run-row { cursor: pointer; }
+.pull-history-main > .run-back {
+  display: flex;
+  justify-content: flex-start;
+  flex-shrink: 0;
+  padding: 0 var(--space-xs);
+}
