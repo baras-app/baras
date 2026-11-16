@@ -22,7 +22,7 @@ pub use progress::{BossHpRecord, PhaseRef, PullDeath, PullEnd, PullProgress};
 pub use pvp::{PvpMatchRow, PvpPlayer, PvpRound};
 pub use runs::{
     InstanceVisit, NPC_COUNTER_SPAN, PlayerSpec, RunBoss, RunDetail, RunList, RunMeta, RunPlayer, RunSummary, RunTimer,
-    TimerStart, iso_to_ms,
+    TimerStart, difficulty_parts, iso_to_ms, short_difficulty,
 };
 
 /// One recorded pull, reduced to what the History table shows.

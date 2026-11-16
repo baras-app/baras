@@ -241,3 +241,33 @@ pub struct RunDetail {
     #[serde(default)]
     pub first_deaths: Vec<Option<String>>,
 }
+
+/// `("Master", 8)` from `"8 Player Master"`. Tier words cover the English,
+/// German and French clients; anything else reads as `("", size)`.
+pub fn difficulty_parts(difficulty: &str) -> (&'static str, u8) {
+    let size = difficulty
+        .split(|c: char| !c.is_ascii_digit())
+        .find_map(|t| t.parse().ok())
+        .unwrap_or(0);
+    let lower = difficulty.to_lowercase();
+    let tier = if ["master", "meister", "maître"].iter().any(|w| lower.contains(w)) {
+        "Master"
+    } else if ["veteran", "vétéran"].iter().any(|w| lower.contains(w)) {
+        "Veteran"
+    } else if ["story", "geschichte", "histoire"].iter().any(|w| lower.contains(w)) {
+        "Story"
+    } else {
+        ""
+    };
+    (tier, size)
+}
+
+/// `"Master 8"` from `"8 Player Master"`: the label the overlays use. A
+/// difficulty in an unrecognised language is returned as logged.
+pub fn short_difficulty(difficulty: &str) -> String {
+    match difficulty_parts(difficulty) {
+        ("", _) => difficulty.to_string(),
+        (tier, 0) => tier.to_string(),
+        (tier, size) => format!("{tier} {size}"),
+    }
+}

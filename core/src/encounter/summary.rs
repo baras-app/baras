@@ -85,6 +85,10 @@ pub struct EncounterSummary {
     pub player_metrics: Vec<PlayerMetrics>,
     /// True if this encounter starts a new phase (area change)
     pub is_phase_start: bool,
+    /// ISO 8601 time the encounter's instance was first entered; None in the
+    /// open world. The section's time-in-instance counts from it.
+    #[serde(default)]
+    pub instance_entered: Option<String>,
     /// Names of NPC enemies in the encounter
     pub npc_names: Vec<String>,
 
@@ -396,6 +400,10 @@ pub fn create_encounter_summary(
     history: &mut EncounterHistory,
     player_disciplines: &HashMap<i64, PlayerInfo>,
     local_player_id: i64,
+    // The encounter is the first in a different server instance of its area
+    // (a reset), per the NPC ids of its visit
+    new_instance: bool,
+    instance_entered: Option<&str>,
 ) -> Option<EncounterSummary> {
     // Skip encounters that never started combat
     #[allow(clippy::question_mark)]
@@ -437,15 +445,17 @@ pub fn create_encounter_summary(
     // right one even if the player exited to a different area.
     let area_entered_line = encounter.area_entered_line.or(area.entered_at_line);
 
-    // Check if this is a new phase (area change)
+    // Check if this is a new phase (area change, or a new instance of the area)
     // Compare encounter's area_name with the last summary's area_name
-    // This prevents creating new sections when player temporarily leaves and returns to same area
+    // This prevents creating new sections when player temporarily leaves and returns to same area;
+    // `new_instance` splits where the return landed in a reset instance
     // PvP is the exception: every zone-in is a separate match, so back-to-back
     // queues into the same map (same area_name, different AreaEntered line)
     // start a new section with fresh match/round numbering.
     let is_phase_start = history.summaries().last()
         .map(|last| {
             last.area_name != encounter_area_name
+                || new_instance
                 || (is_pvp_area(area_id_for_classification)
                     && last.area_entered_line != area_entered_line)
         })
@@ -723,6 +733,7 @@ pub fn create_encounter_summary(
         raid_size: player_metrics.len() as u8,
         player_metrics,
         is_phase_start,
+        instance_entered: instance_entered.map(str::to_string),
         npc_names,
         challenges,
         // Line number tracking for per-encounter Parsely uploads

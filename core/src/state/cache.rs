@@ -5,6 +5,7 @@ use crate::combat_log::EntityType;
 use crate::dsl::{BossEncounterDefinition, OperationTimerStart};
 use crate::encounter::entity_info::PlayerInfo;
 use crate::encounter::summary::{create_encounter_summary, EncounterHistory};
+use crate::history::InstanceLineage;
 use crate::encounter::{CombatEncounter, EncounterState, OverlayHealthEntry, ProcessingMode};
 use crate::game_data::{clear_boss_registry, register_hp_overlay_entity, Difficulty};
 use crate::state::info::AreaInfo;
@@ -48,6 +49,10 @@ pub struct SessionCache {
     pub timer_starts: Vec<TimerStart>,
     /// Instanced-area stays in this log, oldest first (see `InstanceVisit`)
     pub visits: Vec<InstanceVisit>,
+    /// The instance being played: `(index of the last visit judged, what its
+    /// visits have shown, when it was first entered)`. A visit that is not a
+    /// return to it (a reset) starts a new encounter section.
+    lineage: Option<(usize, InstanceLineage, String)>,
 
     // NPC tracking (session-scoped)
     /// NPC instance log IDs that have been seen in this session (for NpcFirstSeen signals)
@@ -97,6 +102,7 @@ impl SessionCache {
             timer_start_fired: false,
             timer_starts: Vec::new(),
             visits: Vec::new(),
+            lineage: None,
             seen_npc_instances: HashSet::new(),
             player_disciplines: HashMap::new(),
             inferred_discipline_eviction_pending: false,
@@ -120,12 +126,42 @@ impl SessionCache {
         }
 
         // Trash kills identify the instance: they never respawn without a reset
+        let visit_idx = self.visits.iter().rposition(|v| Some(v.area_id) == encounter.area_id);
         if encounter.active_boss_idx().is_none()
-            && let Some(visit) = self.visits.iter_mut().rev().find(|v| Some(v.area_id) == encounter.area_id)
+            && let Some(idx) = visit_idx
         {
+            let visit = &mut self.visits[idx];
             for npc in encounter.npcs.values().filter(|n| n.is_dead && n.entity_type == EntityType::Npc) {
                 if !visit.trash.contains(&npc.class_id) {
                     visit.trash.push(npc.class_id);
+                }
+            }
+        }
+
+        // Judge each visit once, at its first encounter: a return to the same
+        // instance continues the section, a reset starts a new one
+        let mut new_instance = false;
+        if let Some(idx) = visit_idx {
+            let visit = &self.visits[idx];
+            match &mut self.lineage {
+                Some((judged, facts, entered)) if self.visits[*judged].area_id == visit.area_id => {
+                    if *judged != idx {
+                        let evidence = visit.prefix != 0 && facts.prefix != 0;
+                        new_instance = evidence
+                            && (self.visits[*judged].difficulty_id != visit.difficulty_id || !facts.continues(visit, true));
+                        if new_instance {
+                            *facts = InstanceLineage::default();
+                            entered.clone_from(&visit.entered);
+                        }
+                        *judged = idx;
+                    }
+                    facts.absorb(visit);
+                }
+                // Another area: the area change already starts a section
+                lineage => {
+                    let mut facts = InstanceLineage::default();
+                    facts.absorb(visit);
+                    *lineage = Some((idx, facts, visit.entered.clone()));
                 }
             }
         }
@@ -136,7 +172,14 @@ impl SessionCache {
             &mut self.encounter_history,
             &self.player_disciplines,
             self.player.id,
+            new_instance,
+            visit_idx.and(self.lineage.as_ref()).map(|(.., entered)| entered.as_str()),
         ) {
+            if summary.success && summary.boss_name.is_some()
+                && let Some((_, facts, _)) = &mut self.lineage
+            {
+                facts.has_kill = true;
+            }
             self.encounter_history.add(summary);
         }
     }

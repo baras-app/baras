@@ -72,6 +72,9 @@ pub struct EncounterSummary {
     pub player_metrics: Vec<PlayerMetrics>,
     #[serde(default)]
     pub is_phase_start: bool,
+    /// ISO 8601 time the encounter's instance was first entered
+    #[serde(default)]
+    pub instance_entered: Option<String>,
     #[serde(default)]
     pub npc_names: Vec<String>,
     #[serde(default)]
@@ -116,6 +119,18 @@ pub struct ChallengePlayerSummary {
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper Functions
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// Seconds a section has spent in its instance: from entering it to the end
+/// of its last encounter. None in the open world.
+pub fn time_in_instance(section: &[EncounterSummary]) -> Option<i64> {
+    use baras_types::history::iso_to_ms;
+    let entered = iso_to_ms(section.first()?.instance_entered.as_deref()?)?;
+    let end = section
+        .iter()
+        .filter_map(|e| e.end_time.as_deref().and_then(iso_to_ms))
+        .max()?;
+    (end > entered).then(|| (end - entered) / 1000)
+}
 
 /// Group encounters into sections by area (based on is_phase_start flag or area change)
 pub fn group_by_area(

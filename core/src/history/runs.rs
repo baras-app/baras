@@ -6,31 +6,12 @@ use hashbrown::{HashMap, HashSet};
 
 use baras_types::history::{
     InstanceVisit, PlayerSpec, PullFilter, PullRow, RunBoss, RunDetail, RunMeta, RunPlayer, RunSummary, RunTimer,
-    TimerStart, keeps,
+    TimerStart, difficulty_parts, keeps,
 };
 
 use super::catalog::AreaCatalog;
+use super::lineage::InstanceLineage;
 use super::record::{PullRecord, start_ms_of};
-
-/// `("Master", 8)` from `"8 Player Master"`. Tier words cover the English,
-/// German and French clients; anything else reads as `("", size)`.
-pub fn difficulty_parts(difficulty: &str) -> (&'static str, u8) {
-    let size = difficulty
-        .split(|c: char| !c.is_ascii_digit())
-        .find_map(|t| t.parse().ok())
-        .unwrap_or(0);
-    let lower = difficulty.to_lowercase();
-    let tier = if ["master", "meister", "maître"].iter().any(|w| lower.contains(w)) {
-        "Master"
-    } else if ["veteran", "vétéran"].iter().any(|w| lower.contains(w)) {
-        "Veteran"
-    } else if ["story", "geschichte", "histoire"].iter().any(|w| lower.contains(w)) {
-        "Story"
-    } else {
-        ""
-    };
-    (tier, size)
-}
 
 fn iso_of(ms: i64) -> String {
     chrono::DateTime::from_timestamp_millis(ms)
@@ -77,19 +58,14 @@ struct OpenRun<'a> {
     /// Final boss killed: later pulls start a new run
     closed: bool,
     src: usize,
-    prefix: i64,
-    max_ctr: i64,
-    trash: HashSet<i64>,
-    /// A boss died: the group is saved to this instance's lockout
-    has_kill: bool,
+    facts: InstanceLineage,
     last_ms: i64,
 }
 
 impl<'a> OpenRun<'a> {
     /// Whether `seg` is another visit of this run.
     fn continues_into(&self, seg: &Segment) -> bool {
-        let v = seg.visit;
-        if v.prefix == 0 || self.prefix == 0 {
+        if seg.visit.prefix == 0 || self.facts.prefix == 0 {
             // No NPC seen on one side: nothing to compare, so a log's
             // consecutive visits stay together as they always have
             return seg.src == self.src;
@@ -97,30 +73,12 @@ impl<'a> OpenRun<'a> {
         if seg.entered_ms - self.last_ms > MAX_VISIT_GAP_MS {
             return false;
         }
-        if v.prefix != self.prefix {
-            // An emptied instance is torn down. Coming back under the lockout
-            // lands in a new process with the kills intact; without kills (or
-            // on another character) a new process is a fresh instance.
-            let character = self.rows.last().map(|(_, r)| r.character.as_str());
-            return self.has_kill && seg.rows.first().map(|r| r.character.as_str()) == character;
-        }
-        // An NPC that already existed when the earlier visit ended
-        if v.min_ctr <= self.max_ctr {
-            return true;
-        }
-        // Everything is newer. A kill locks the group to the instance, so
-        // only before the first one can this be a reset, which shows as the
-        // opening trash dying a second time.
-        self.has_kill || !v.trash.iter().any(|c| self.trash.contains(c))
+        let character = self.rows.last().map(|(_, r)| r.character.as_str());
+        self.facts.continues(seg.visit, seg.rows.first().map(|r| r.character.as_str()) == character)
     }
 
     fn absorb(&mut self, seg: &Segment) {
-        let v = seg.visit;
-        if v.prefix != 0 {
-            self.max_ctr = if self.prefix == v.prefix { self.max_ctr.max(v.max_ctr) } else { v.max_ctr };
-            self.prefix = v.prefix;
-        }
-        self.trash.extend(v.trash.iter().copied());
+        self.facts.absorb(seg.visit);
         self.last_ms = self.last_ms.max(seg.entered_ms);
         self.src = seg.src;
     }
@@ -128,7 +86,7 @@ impl<'a> OpenRun<'a> {
     fn push(&mut self, src: usize, r: &'a PullRow, catalog: &AreaCatalog) {
         self.rows.push((src, r));
         self.last_ms = self.last_ms.max(end_ms(r));
-        self.has_kill |= r.success;
+        self.facts.has_kill |= r.success;
         self.closed = is_final_kill(r, catalog);
     }
 }

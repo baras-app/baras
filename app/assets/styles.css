@@ -6179,17 +6179,26 @@ a.contributor-name:hover {
 .sidebar-section-header .section-area {
   font-weight: 500;
   color: var(--text-secondary);
+  /* The name gives way first: one line, cut with an ellipsis */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebar-section-header .section-difficulty {
   color: var(--text-muted);
   font-size: 0.9em;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .sidebar-section-header .section-count {
   margin-left: auto;
   color: var(--text-disabled);
   font-size: 0.9em;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* Top level of the history sidebars: Operations / Flashpoints / Other */

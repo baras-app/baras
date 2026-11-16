@@ -1586,9 +1586,16 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                 collapsed_sections.set(set);
                                             },
                                             i { class: "fa-solid {chevron_class} collapse-icon" }
-                                            span { class: "section-area", "{area_name}" }
+                                            span { class: "section-area", title: "{area_name}", "{area_name}" }
                                             if let Some(diff) = difficulty {
-                                                span { class: "section-difficulty", " • {diff}" }
+                                                span { class: "section-difficulty", title: "{diff}", " • {baras_types::history::short_difficulty(&diff)}" }
+                                            }
+                                            if let Some(secs) = crate::components::encounter_types::time_in_instance(area_encounters) {
+                                                span { class: "section-difficulty", title: "Time in this instance",
+                                                    " • "
+                                                    i { class: "fa-regular fa-clock" }
+                                                    " {formatting::format_duration(secs)}"
+                                                }
                                             }
                                             span { class: "section-count", " ({area_encounters.len()})" }
                                         }
@@ -1635,7 +1642,20 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                                     {
                                                                         // Format ISO timestamp "2026-03-07T21:30:31" → "21:30:31"
                                                                         let display_time = time.split('T').nth(1).unwrap_or(time);
-                                                                        rsx! { span { class: "encounter-time", "{display_time}" } }
+                                                                        // Inside an instance: time since it was entered, clock time on hover
+                                                                        let since_entry = enc
+                                                                            .instance_entered
+                                                                            .as_deref()
+                                                                            .and_then(baras_types::history::iso_to_ms)
+                                                                            .zip(baras_types::history::iso_to_ms(time))
+                                                                            .map(|(entered, start)| (start - entered) / 1000)
+                                                                            .filter(|s| *s >= 0);
+                                                                        match since_entry {
+                                                                            Some(secs) => rsx! {
+                                                                                span { class: "encounter-time", title: "{display_time}", "+{formatting::format_duration(secs)}" }
+                                                                            },
+                                                                            None => rsx! { span { class: "encounter-time", "{display_time}" } },
+                                                                        }
                                                                     }
                                                                 }
                                                                 span { class: "encounter-duration", "({formatting::format_duration(enc.duration_seconds)})" }
