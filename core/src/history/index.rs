@@ -379,6 +379,12 @@ impl PullIndex {
             .map(|l| (l.rows.as_slice(), l.stale))
     }
 
+    /// Instanced visits recorded for one log; these include an area a
+    /// resumed log never named with an `AreaEntered` line.
+    pub fn visits_for(&self, log_filename: &str) -> &[InstanceVisit] {
+        self.logs.get(history_file_name(log_filename).as_str()).map_or(&[], |l| l.visits.as_slice())
+    }
+
     fn rows(&self) -> impl Iterator<Item = &PullRow> {
         self.logs.values().flat_map(|l| l.rows.iter())
     }

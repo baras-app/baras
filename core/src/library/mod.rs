@@ -16,7 +16,9 @@ use std::path::{Path, PathBuf};
 
 use chrono::NaiveDate;
 
-use baras_types::history::{CleanupCandidate, CleanupPlan, ContentTag, DeleteReport, LogCleanup, PullRow};
+use baras_types::history::{
+    CleanupCandidate, CleanupPlan, ContentTag, DeleteReport, InstanceVisit, LogCleanup, PullRow,
+};
 
 pub use archive::{ArchivedLog, Compressed, archive_dir, archived_log, archived_logs, commit, compress_log, restore, sweep_partial};
 
@@ -25,13 +27,30 @@ use crate::game_data::{Difficulty, is_pvp_area};
 use crate::history::{DUMMY_GROUP, LibraryMeta, PullIndex, history_file_for};
 use crate::storage::data_dir;
 
-/// What a log holds, from the areas it visited plus its recorded pulls.
-/// Sorted and deduplicated; `Empty` when neither says anything, so every log
-/// carries at least one tag and retention is purely tag-based.
-pub fn content_tags(areas: Option<&FileAreaIndex>, rows: &[PullRow]) -> Vec<ContentTag> {
-    let mut tags: Vec<ContentTag> = areas
-        .map(|a| a.areas.iter().map(area_tag).collect())
-        .unwrap_or_default();
+/// The areas a log covers: those its `AreaEntered` lines name, plus any its
+/// history recorded a visit to. A log resumed after a disconnect has no such
+/// line for the instance it continues in, only the recovered visit.
+pub fn log_areas(scanned: Option<&FileAreaIndex>, visits: &[InstanceVisit]) -> Vec<FileAreaEntry> {
+    let mut areas: Vec<FileAreaEntry> = scanned.map(|a| a.areas.clone()).unwrap_or_default();
+    for v in visits {
+        if !areas.iter().any(|a| a.area_id == v.area_id && a.difficulty_id == v.difficulty_id) {
+            areas.push(FileAreaEntry {
+                area_id: v.area_id,
+                area_name: v.area_name.clone(),
+                difficulty_id: v.difficulty_id,
+                difficulty_name: v.difficulty.clone(),
+            });
+        }
+    }
+    areas
+}
+
+/// What a log holds, from the areas it covers (see `log_areas`) plus its
+/// recorded pulls. Sorted and deduplicated; `Empty` when neither says
+/// anything, so every log carries at least one tag and retention is purely
+/// tag-based.
+pub fn content_tags(areas: &[FileAreaEntry], rows: &[PullRow]) -> Vec<ContentTag> {
+    let mut tags: Vec<ContentTag> = areas.iter().map(area_tag).collect();
     if rows.iter().any(|r| r.operation == DUMMY_GROUP) {
         tags.push(ContentTag::Dummy);
     }
@@ -140,7 +159,8 @@ pub fn plan(view: &LibraryView<'_>, rules: &LogCleanup, today: NaiveDate) -> Cle
             return;
         }
         let area_index = view.areas.get(path);
-        let content = content_tags(area_index, view.pulls.rows_for(filename));
+        let areas = log_areas(area_index, view.pulls.visits_for(filename));
+        let content = content_tags(&areas, view.pulls.rows_for(filename));
         let Some(action) = retained_action(action, &content, area_index.is_some(), size, rules, age, &view.meta.retain) else {
             out.kept += 1;
             return;

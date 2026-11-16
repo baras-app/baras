@@ -202,9 +202,9 @@ impl ServiceHandle {
                         }
                     };
                     let log_meta = meta.log(&e.filename);
-                    let area_index = areas.get(&e.path);
+                    let log_areas = baras_core::library::log_areas(areas.get(&e.path), pulls.visits_for(&e.filename));
                     LibraryRow {
-                        content: baras_core::library::content_tags(area_index, rows),
+                        content: baras_core::library::content_tags(&log_areas, rows),
                         path: e.path.to_string_lossy().into_owned(),
                         filename: e.filename.clone(),
                         date: e.formatted_datetime(),
@@ -212,9 +212,7 @@ impl ServiceHandle {
                         server: rows.first().map(|r| r.server.clone()).unwrap_or_default(),
                         size: e.file_size,
                         original_size: None,
-                        areas: area_index
-                            .map(|a| a.areas.iter().map(|x| x.display_name()).collect())
-                            .unwrap_or_default(),
+                        areas: log_areas.iter().map(|x| x.display_name()).collect(),
                         pulls: rows.len() as u32,
                         kills: rows.iter().filter(|r| r.success).count() as u32,
                         dummy_only: !rows.is_empty() && rows.iter().all(|r| !r.is_operation && r.operation == baras_core::history::DUMMY_GROUP),
@@ -237,9 +235,9 @@ impl ServiceHandle {
                 let rows = info.map_or(&[][..], |(r, _)| r);
                 let status = if info.is_some_and(|(_, stale)| stale) { LogStatus::ArchivedStale } else { LogStatus::Archived };
                 let log_meta = meta.log(&a.filename);
-                let area_index = areas.get(&a.path);
+                let log_areas = baras_core::library::log_areas(areas.get(&a.path), pulls.visits_for(&a.filename));
                 rows_out.push(LibraryRow {
-                    content: baras_core::library::content_tags(area_index, rows),
+                    content: baras_core::library::content_tags(&log_areas, rows),
                     path: a.path.to_string_lossy().into_owned(),
                     date: baras_core::context::parse_log_filename(&a.filename)
                         .map(|(_, dt)| dt.format("%Y-%m-%d %-H:%M").to_string())
@@ -248,9 +246,7 @@ impl ServiceHandle {
                     server: rows.first().map(|r| r.server.clone()).unwrap_or_default(),
                     size: a.compressed_size,
                     original_size: a.original_size,
-                    areas: area_index
-                        .map(|a| a.areas.iter().map(|x| x.display_name()).collect())
-                        .unwrap_or_default(),
+                    areas: log_areas.iter().map(|x| x.display_name()).collect(),
                     pulls: rows.len() as u32,
                     kills: rows.iter().filter(|r| r.success).count() as u32,
                     dummy_only: !rows.is_empty() && rows.iter().all(|r| !r.is_operation && r.operation == baras_core::history::DUMMY_GROUP),
