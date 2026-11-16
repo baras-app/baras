@@ -97,7 +97,9 @@ impl AudioService {
 
                 AudioEvent::Alert { text, custom_sound } => {
                     if let Some(sound_file) = custom_sound {
-                        self.play_custom_sound(sound_file, volume);
+                        if sound_file != baras_types::NO_SOUND {
+                            self.play_custom_sound(sound_file, volume);
+                        }
                     } else if tts_enabled {
                         self.speak(text, volume);
                     }

@@ -571,7 +571,7 @@ async fn process_overlay_update(
 
             if let Some(tx) = raid_tx {
                 let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::Raid(raid_data)))
+                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(shared, OverlayData::Raid(raid_data))))
                     .await;
             }
         }
@@ -587,8 +587,9 @@ async fn process_overlay_update(
 
             if let Some(tx) = boss_tx {
                 let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::BossHealth(
-                        boss_data,
+                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(
+                        shared,
+                        OverlayData::BossHealth(boss_data),
                     )))
                     .await;
             }
@@ -605,7 +606,7 @@ async fn process_overlay_update(
 
             if let Some(tx) = timer_tx {
                 let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::TimersA(timer_data)))
+                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(shared, OverlayData::TimersA(timer_data))))
                     .await;
             }
         }
@@ -621,7 +622,7 @@ async fn process_overlay_update(
 
             if let Some(tx) = timer_tx {
                 let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::TimersB(timer_data)))
+                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(shared, OverlayData::TimersB(timer_data))))
                     .await;
             }
         }
@@ -719,8 +720,9 @@ async fn process_overlay_update(
 
             if let Some(tx) = tx {
                 let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::EffectsA(
-                        effects_data,
+                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(
+                        shared,
+                        OverlayData::EffectsA(effects_data),
                     )))
                     .await;
             }
@@ -736,8 +738,9 @@ async fn process_overlay_update(
 
             if let Some(tx) = tx {
                 let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::EffectsB(
-                        effects_data,
+                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(
+                        shared,
+                        OverlayData::EffectsB(effects_data),
                     )))
                     .await;
             }
@@ -753,8 +756,9 @@ async fn process_overlay_update(
 
             if let Some(tx) = tx {
                 let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::EffectsC(
-                        effects_data,
+                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(
+                        shared,
+                        OverlayData::EffectsC(effects_data),
                     )))
                     .await;
             }
@@ -770,8 +774,9 @@ async fn process_overlay_update(
 
             if let Some(tx) = tx {
                 let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::Cooldowns(
-                        cooldowns_data,
+                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(
+                        shared,
+                        OverlayData::Cooldowns(cooldowns_data),
                     )))
                     .await;
             }
@@ -787,8 +792,9 @@ async fn process_overlay_update(
 
             if let Some(tx) = tx {
                 let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::CooldownsB(
-                        cooldowns_data,
+                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(
+                        shared,
+                        OverlayData::CooldownsB(cooldowns_data),
                     )))
                     .await;
             }
@@ -804,8 +810,9 @@ async fn process_overlay_update(
 
             if let Some(tx) = tx {
                 let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::DotTracker(
-                        dot_data,
+                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(
+                        shared,
+                        OverlayData::DotTracker(dot_data),
                     )))
                     .await;
             }

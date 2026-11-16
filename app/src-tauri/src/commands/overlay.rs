@@ -378,6 +378,26 @@ pub async fn preview_overlay_settings(
     Ok(true)
 }
 
+/// Show an unsaved timer/effect draft on its overlays for a few seconds.
+/// Returns the labels of requested overlays that are not enabled.
+#[tauri::command]
+pub async fn preview_overlay_entry(
+    request: baras_types::preview::OverlayPreviewRequest,
+    overlay_state: State<'_, SharedOverlayState>,
+    service: State<'_, ServiceHandle>,
+    icon_cache: State<'_, Option<std::sync::Arc<baras_overlay::icons::IconCache>>>,
+    audio_tx: State<'_, crate::audio::AudioSender>,
+) -> Result<Vec<&'static str>, String> {
+    crate::preview::start(
+        request,
+        service.shared.clone(),
+        overlay_state.inner().clone(),
+        icon_cache.inner().clone(),
+        audio_tx.inner().clone(),
+    )
+    .await
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Operation Timer Commands
 // ─────────────────────────────────────────────────────────────────────────────

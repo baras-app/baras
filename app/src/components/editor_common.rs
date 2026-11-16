@@ -1,7 +1,12 @@
 //! Pieces shared by the encounter and effect editors: where a definition came
 //! from, and the Save / Duplicate / Delete-or-Reset action bar.
 
+use baras_types::preview::{OverlayPreviewRequest, PreviewAudio};
 use dioxus::prelude::*;
+
+use crate::api;
+use crate::components::toast::{ToastSeverity, use_toast};
+use crate::types::AudioConfig;
 
 /// Where an editable definition came from
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -178,4 +183,47 @@ pub fn FormCard(
             div { class: "form-card-content", {children} }
         }
     }
+}
+
+/// Shows the form's unsaved draft on its overlays for a few seconds, with its audio cues
+/// at their real timing.
+#[component]
+pub fn PreviewButton(request: OverlayPreviewRequest) -> Element {
+    let mut toast = use_toast();
+    rsx! {
+        button {
+            class: "btn btn-sm",
+            title: "Show this entry on its overlays for a few seconds (unsaved changes included)",
+            onclick: move |_| {
+                let request = request.clone();
+                spawn(async move {
+                    if request.targets.is_empty() && request.audio.is_none() {
+                        toast.show("Nothing to preview: no supported overlay selected", ToastSeverity::Normal);
+                        return;
+                    }
+                    match api::preview_overlay_entry(&request).await {
+                        Ok(missing) if !missing.is_empty() => toast.show(
+                            format!("Overlay not enabled: {}", missing.join(", ")),
+                            ToastSeverity::Normal,
+                        ),
+                        Ok(_) => {}
+                        Err(e) => toast.show(e, ToastSeverity::Normal),
+                    }
+                });
+            },
+            i { class: "fa-solid fa-eye" }
+            " Preview"
+        }
+    }
+}
+
+/// A draft's audio settings as preview cues (`None` when audio is off)
+pub fn preview_audio(audio: &AudioConfig, instant: bool) -> Option<PreviewAudio> {
+    audio.enabled.then(|| PreviewAudio {
+        file: audio.file.clone(),
+        offset: audio.offset,
+        countdown_start: audio.countdown_start,
+        countdown_voice: audio.countdown_voice.clone(),
+        instant,
+    })
 }

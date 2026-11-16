@@ -276,6 +276,7 @@ fn make_effect(
         total_secs,
         color,
         stacks,
+        stack_in_text: false,
         source_name: "Player".to_string(),
         target_name: "Player".to_string(),
         icon: icon.clone(),

@@ -37,8 +37,11 @@ pub struct ActiveEffect {
     /// Display name (cached from definition)
     pub name: String,
 
-    /// Display text for overlay (defaults to name if not set)
+    /// Display text for overlay (defaults to name if not set), placeholders resolved
     pub display_text: String,
+
+    /// Raw display text, kept only when it contains `{stack}` (re-resolved on stack change)
+    display_template: Option<String>,
 
     // ─── Entities ───────────────────────────────────────────────────────────
     /// Entity ID of who applied this effect
@@ -185,11 +188,14 @@ impl ActiveEffect {
         let expires_at = duration
             .map(|d| event_timestamp + chrono::Duration::milliseconds(d.as_millis() as i64));
 
+        let (display_text, display_template) = Self::resolve_display(&display_text, source_name, target_name, 1);
+
         Self {
             definition_id,
             game_effect_id,
             name,
             display_text,
+            display_template,
             source_entity_id,
             source_name,
             target_entity_id,
@@ -292,7 +298,34 @@ impl ActiveEffect {
 
     /// Update stack count
     pub fn set_stacks(&mut self, stacks: u8) {
+        if self.stacks != stacks
+            && let Some(template) = &self.display_template
+        {
+            self.display_text = Self::resolve_display(template, self.source_name, self.target_name, stacks).0;
+        }
         self.stacks = stacks;
+    }
+
+    /// True when the display text carries the stack count via `{stack}`
+    pub fn stack_in_text(&self) -> bool {
+        self.display_template.is_some()
+    }
+
+    /// Replace the display text template (definition reload) and re-resolve placeholders
+    pub fn set_display_template(&mut self, template: &str) {
+        (self.display_text, self.display_template) =
+            Self::resolve_display(template, self.source_name, self.target_name, self.stacks);
+    }
+
+    /// Resolve placeholders; returns the template back only if it needs re-resolving on stack change
+    fn resolve_display(template: &str, source: IStr, target: IStr, stacks: u8) -> (String, Option<String>) {
+        let text = crate::dsl::format_placeholders(
+            template,
+            crate::context::resolve(source),
+            crate::context::resolve(target),
+            Some(stacks),
+        );
+        (text, template.contains("{stack}").then(|| template.to_string()))
     }
 
     /// Mark the effect as removed (starts fade-out)

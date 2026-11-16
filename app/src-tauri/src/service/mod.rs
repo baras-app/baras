@@ -3640,7 +3640,7 @@ fn provisional_raid_frame_data(shared: &Arc<SharedState>) -> Option<RaidFrameDat
     (!frames.is_empty()).then_some(RaidFrameData { frames })
 }
 
-async fn build_raid_frame_data(
+pub(crate) async fn build_raid_frame_data(
     shared: &Arc<SharedState>,
     rearranging: bool,
     icon_cache: Option<&Arc<baras_overlay::icons::IconCache>>,
@@ -4405,6 +4405,7 @@ fn active_to_ab_entry(
         total_secs,
         color: effect.color,
         stacks,
+        stack_in_text: effect.stack_in_text(),
         source_name: resolve(effect.source_name).to_string(),
         target_name: resolve(effect.target_name).to_string(),
         icon: load_ab_icon(icon_cache, effect.icon_ability_id),
@@ -4482,6 +4483,7 @@ async fn build_effects_ab_data(
                     total_secs: 0.0,
                     color: def.effective_color(),
                     stacks: 0,
+                    stack_in_text: false,
                     source_name: String::new(),
                     target_name: String::new(),
                     icon: load_ab_icon(icon_cache, icon_id),

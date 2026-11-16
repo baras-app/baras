@@ -211,6 +211,9 @@ pub struct SharedState {
 
     /// Operation timer state (persistent across encounters, lives in service layer)
     pub operation_timer: Mutex<crate::service::OperationTimerState>,
+
+    /// Editor preview entry currently shown on overlays (see `crate::preview`)
+    pub preview: Mutex<Option<crate::preview::ActivePreview>>,
 }
 
 impl SharedState {
@@ -259,6 +262,7 @@ impl SharedState {
             area_cache: RwLock::new(LogAreaCache::new()),
             // Operation timer (defaults to stopped/empty)
             operation_timer: Mutex::new(crate::service::OperationTimerState::default()),
+            preview: Mutex::new(None),
         }
     }
 

@@ -32,11 +32,12 @@ impl TriggerContext {
     }
 
     pub fn format(&self, text: &str) -> String {
-        if !text.contains('{') {
-            return text.to_string();
-        }
-        text.replace("{source}", self.source_name.as_deref().unwrap_or(""))
-            .replace("{target}", self.target_name.as_deref().unwrap_or(""))
+        crate::dsl::format_placeholders(
+            text,
+            self.source_name.as_deref().unwrap_or(""),
+            self.target_name.as_deref().unwrap_or(""),
+            None,
+        )
     }
 }
 

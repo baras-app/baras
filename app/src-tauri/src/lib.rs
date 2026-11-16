@@ -14,6 +14,7 @@ mod commands;
 mod hotkeys;
 mod logging;
 pub mod overlay;
+mod preview;
 
 mod router;
 pub mod service;
@@ -179,6 +180,7 @@ pub fn run() {
 
                 // Store the service handle for commands
                 app.handle().manage(handle.clone());
+                app.handle().manage(icon_cache.clone());
 
                 // Restore the optional web overlay server before native
                 // overlays are auto-shown and publish their first frames.
@@ -267,6 +269,7 @@ pub fn run() {
             commands::refresh_overlay_settings,
             commands::reset_overlay_position,
             commands::preview_overlay_settings,
+            commands::preview_overlay_entry,
             commands::set_web_overlay_enabled,
             commands::clear_raid_registry,
             commands::swap_raid_slots,

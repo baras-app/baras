@@ -1,10 +1,11 @@
 //! Timer edit form, shown in the editor drawer
 
+use baras_types::preview::{OverlayPreviewRequest, PreviewAlertTiming, PreviewTarget};
 use dioxus::prelude::*;
 
 use crate::api;
 use crate::components::SoundPicker;
-use crate::components::editor_common::{FormCard, ItemActions, Origin};
+use crate::components::editor_common::{FormCard, ItemActions, Origin, PreviewButton, preview_audio};
 use crate::components::form_fields::{CheckField, Deprecated, Field, NumberField, SubSection, TextField, TogglePill};
 use crate::types::{AlertTrigger, BossTimerDefinition, BossWithPath, Condition, EncounterItem, TimerDisplayTarget, Trigger, timer_alert_label};
 use crate::utils::parse_hex_color;
@@ -185,7 +186,7 @@ pub(super) fn TimerEditForm(
                         if !draft().is_alert {
                             TextField {
                                 label: "Display Text",
-                                help: "Text shown on the overlay timer bar. Defaults to timer name.",
+                                help: DISPLAY_TEXT_HELP,
                                 value: draft().display_text.unwrap_or_default(),
                                 placeholder: "(defaults to name)",
                                 on_input: move |v: String| draft.write().display_text = (!v.is_empty()).then_some(v),
@@ -487,7 +488,7 @@ pub(super) fn TimerEditForm(
                                         for s in 1..=10u8 { option { value: "{s}", "{s}s before" } }
                                     }
                                 }
-                                Field { label: "Voice", help: "Voice countdown starting at the specified seconds remaining",
+                                Field { label: "Countdown", help: "Voice countdown starting at the specified seconds remaining",
                                     select {
                                         class: "field-short",
                                         value: "{draft().audio.countdown_start}",
@@ -531,11 +532,51 @@ pub(super) fn TimerEditForm(
                 on_save: handle_save,
                 on_delete: handle_delete,
                 on_duplicate: handle_duplicate,
+                PreviewButton {
+                    request: preview_request(&draft()),
+                }
             }
         }
     }
 }
 
+fn preview_request(timer: &BossTimerDefinition) -> OverlayPreviewRequest {
+    let mut targets = Vec::new();
+    if !timer.is_alert {
+        targets.extend(timer.display_targets.iter().filter_map(|t| match t {
+            TimerDisplayTarget::TimersA => Some(PreviewTarget::TimersA),
+            TimerDisplayTarget::TimersB => Some(PreviewTarget::TimersB),
+            TimerDisplayTarget::AbilityQueue | TimerDisplayTarget::None => None,
+        }));
+    }
+    if timer.is_alert || timer.alert_on != AlertTrigger::None {
+        targets.push(PreviewTarget::Alerts);
+    }
+    OverlayPreviewRequest {
+        text: timer.display_text.clone().unwrap_or_else(|| timer.name.clone()),
+        alert_text: timer.alert_text.clone(),
+        alert_timing: match timer.alert_on {
+            _ if timer.is_alert => PreviewAlertTiming::Start,
+            AlertTrigger::OnExpire => PreviewAlertTiming::Expire,
+            AlertTrigger::Countdown => PreviewAlertTiming::Countdown(timer.alert_countdown_secs.unwrap_or(0.0)),
+            _ => PreviewAlertTiming::Start,
+        },
+        duration_secs: timer.duration_secs,
+        color: timer.color,
+        icon_ability_id: timer.icon_ability_id,
+        show_icon: timer.icon_ability_id.is_some(),
+        display_source: false,
+        show_target: false,
+        show_single_stack: false,
+        show_countdown: true,
+        stack_priority: false,
+        stacks: None,
+        targets,
+        audio: preview_audio(&timer.audio, timer.is_alert),
+    }
+}
+
+const DISPLAY_TEXT_HELP: &str = "Text shown on the overlay timer bar. Defaults to timer name. {source} and {target} will show the source/target names if available";
 const ALERT_TEXT_HELP: &str = "Text shown in the alert notification. Defaults to timer name. {source} and {target} will show the source/target names if available";
 
 #[component]

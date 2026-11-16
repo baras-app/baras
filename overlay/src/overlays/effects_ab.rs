@@ -43,6 +43,8 @@ pub struct EffectABEntry {
     pub color: [u8; 4],
     /// Stack count (0 = don't show)
     pub stacks: u8,
+    /// Display text already carries the count via `{stack}` — skip the bar-mode "Nx " prefix
+    pub stack_in_text: bool,
     /// Source entity name
     pub source_name: String,
     /// Target entity name
@@ -783,7 +785,7 @@ impl EffectsABOverlay {
             // Name is optional, but always shown when there's no icon to
             // identify the effect.
             let mut label = String::new();
-            if effect.stacks > 0 && !has_icon {
+            if effect.stacks > 0 && !has_icon && !effect.stack_in_text {
                 label.push_str(&format!("{}x ", effect.stacks));
             }
             if self.config.show_effect_names || !has_icon {

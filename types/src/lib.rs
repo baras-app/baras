@@ -6,6 +6,11 @@
 pub mod characters;
 pub mod formatting;
 pub mod history;
+pub mod preview;
+
+/// Audio `file` value meaning "play nothing" (countdown voice only), as opposed to an
+/// unset file, which falls back to speaking the entry's name
+pub const NO_SOUND: &str = "none";
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

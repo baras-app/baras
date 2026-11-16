@@ -1183,6 +1183,14 @@ pub async fn preview_sound(filename: &str) {
     let _ = try_invoke("preview_sound", build_args("filename", filename)).await;
 }
 
+/// Show an unsaved timer/effect draft on its overlays; returns overlays that are not enabled
+pub async fn preview_overlay_entry(
+    request: &baras_types::preview::OverlayPreviewRequest,
+) -> Result<Vec<String>, String> {
+    let result = try_invoke("preview_overlay_entry", build_args("request", request)).await?;
+    Ok(from_js(result).unwrap_or_default())
+}
+
 /// Speak a test phrase so the user can hear TTS at the configured volume
 pub async fn preview_tts() {
     let _ = try_invoke("preview_tts", JsValue::NULL).await;

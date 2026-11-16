@@ -24,6 +24,7 @@ mod entity_filter;
 mod error;
 mod loader;
 mod phase;
+mod placeholders;
 pub mod triggers;
 
 pub use audio::*;
@@ -35,4 +36,5 @@ pub use entity_filter::*;
 pub use error::DslError;
 pub use loader::*;
 pub use phase::*;
+pub use placeholders::format_placeholders;
 pub use triggers::*;

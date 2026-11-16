@@ -349,7 +349,7 @@ impl TimerManager {
     fn format_alert_text(&self, text: &str, ctx: Option<&TriggerContext>) -> String {
         match ctx {
             Some(ctx) => ctx.format(text),
-            None => text.to_string(),
+            None => crate::dsl::format_placeholders(text, "", "", None),
         }
     }
 
@@ -957,7 +957,7 @@ impl TimerManager {
         let alert_on_expire = matches!(def.alert_on, baras_types::AlertTrigger::OnExpire);
         let timer = ActiveTimer::new(
             def.id.clone(),
-            def.name.clone(),
+            self.format_alert_text(&def.name, trigger_context.as_ref()),
             target_id,
             timestamp,
             Duration::from_secs_f32(def.duration_secs),

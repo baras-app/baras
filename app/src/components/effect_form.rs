@@ -1,5 +1,6 @@
 //! Effect edit form, shown in the editor drawer
 
+use baras_types::preview::{OverlayPreviewRequest, PreviewAlertTiming, PreviewTarget};
 use dioxus::prelude::*;
 
 use super::discipline_selector::DisciplineSelector;
@@ -12,7 +13,7 @@ use super::effect_trigger::{
 use super::encounter_editor::triggers::{EffectSelectorEditor, EntityFilterDropdown};
 use super::sound_picker::SoundPicker;
 use crate::api;
-use crate::components::editor_common::{FormCard, ItemActions};
+use crate::components::editor_common::{FormCard, ItemActions, PreviewButton, preview_audio};
 use crate::components::form_fields::{CheckField, Field, NumberField, SubSection, TextField, TogglePill};
 use crate::types::{
     AlertTrigger, DisplayTarget, EffectListItem, EntityFilter, RefreshAbility, RefreshScope, Trigger, effect_alert_label,
@@ -62,7 +63,8 @@ impl EffectTriggerType {
 // Effect Edit Form
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ALERT_TEXT_HELP: &str = "Text shown in the alert notification. Leave blank for no alert. {source} and {target} will show the source/target names if available";
+const DISPLAY_TEXT_HELP: &str = "Text shown on the overlay. Defaults to effect name. {source} and {target} will show the source/target names if available, {stack} the current stack count";
+const ALERT_TEXT_HELP: &str = "Text shown in the alert notification. Leave blank for no alert. {source} and {target} will show the source/target names if available, {stack} the current stack count";
 
 const REFRESH_HELP: &str = "Abilities that refresh this effect's duration. Per ability: 'Min Stacks' only refreshes when the effect has at least that many stacks. Trigger 'On Cast' refreshes the moment the ability is used; 'On Heal' waits for a cast-time heal to land; 'On Damage' refreshes on any damage dealt by the ability. For 'On Cast', the 'Refresh on' control chooses Cast vs First Damage timing — 'Default' defers DoT-tracker effects to the ability's first damaging hit and refreshes everything else immediately.";
 
@@ -157,7 +159,7 @@ pub(crate) fn EffectEditForm(
                         }
                         TextField { label: "Name", value: draft().name, on_input: move |v| draft.write().name = v }
                         if !draft().is_alert {
-                            Field { label: "Display Text",
+                            Field { label: "Display Text", help: DISPLAY_TEXT_HELP,
                                 input {
                                     r#type: "text",
                                     placeholder: "{draft().name}",
@@ -602,7 +604,7 @@ pub(crate) fn EffectEditForm(
                                         for s in 1..=10u8 { option { value: "{s}", "{s}s before" } }
                                     }
                                 }
-                                Field { label: "Voice", help: "Voice countdown starting at the specified seconds remaining",
+                                Field { label: "Countdown", help: "Voice countdown starting at the specified seconds remaining",
                                     select {
                                         class: "field-short",
                                         value: "{draft().audio.countdown_start}",
@@ -640,10 +642,56 @@ pub(crate) fn EffectEditForm(
                 },
                 on_delete: move |_| on_delete.call(()),
                 on_duplicate: (!is_draft).then_some(on_duplicate),
+                PreviewButton {
+                    request: preview_request(&draft()),
+                }
                 if !is_draft && is_user_override {
                     button { class: "btn btn-sm", onclick: move |_| on_export.call(()), "Export" }
                 }
             }
         }
+    }
+}
+
+fn preview_request(effect: &EffectListItem) -> OverlayPreviewRequest {
+    let mut targets = Vec::new();
+    if !effect.is_alert {
+        targets.extend(effect.display_targets.iter().filter_map(|t| match t {
+            DisplayTarget::RaidFrames => Some(PreviewTarget::RaidFrames),
+            DisplayTarget::EffectsA => Some(PreviewTarget::EffectsA),
+            DisplayTarget::EffectsB => Some(PreviewTarget::EffectsB),
+            DisplayTarget::EffectsC => Some(PreviewTarget::EffectsC),
+            DisplayTarget::Cooldowns => Some(PreviewTarget::Cooldowns),
+            DisplayTarget::CooldownsB => Some(PreviewTarget::CooldownsB),
+            DisplayTarget::DotTracker => Some(PreviewTarget::DotTracker),
+            DisplayTarget::BossHealth => Some(PreviewTarget::BossHealth),
+            DisplayTarget::EffectsOverlay | DisplayTarget::None => None,
+        }));
+    }
+    // Effects only show alert text when one is set
+    if effect.alert_text.is_some() && (effect.is_alert || effect.alert_on != AlertTrigger::None) {
+        targets.push(PreviewTarget::Alerts);
+    }
+    OverlayPreviewRequest {
+        text: effect.display_text.clone().unwrap_or_else(|| effect.name.clone()),
+        alert_text: effect.alert_text.clone(),
+        alert_timing: match effect.alert_on {
+            _ if effect.is_alert => PreviewAlertTiming::Start,
+            AlertTrigger::OnExpire => PreviewAlertTiming::Expire,
+            AlertTrigger::Countdown => PreviewAlertTiming::Countdown(effect.alert_countdown_secs.unwrap_or(0.0)),
+            _ => PreviewAlertTiming::Start,
+        },
+        duration_secs: effect.duration_secs.unwrap_or(0.0),
+        color: effect.color.unwrap_or([128, 128, 128, 255]),
+        icon_ability_id: effect_icon_id(effect.icon_ability_id, &effect.trigger),
+        show_icon: effect.show_icon,
+        display_source: effect.display_source,
+        show_target: effect.show_target,
+        show_single_stack: effect.show_single_stack,
+        show_countdown: effect.show_countdown,
+        stack_priority: effect.stack_priority,
+        stacks: Some(effect.default_charges.unwrap_or(1)),
+        targets,
+        audio: preview_audio(&effect.audio, effect.is_alert),
     }
 }

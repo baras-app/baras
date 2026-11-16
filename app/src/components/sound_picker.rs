@@ -51,7 +51,8 @@ pub fn SoundPicker(props: SoundPickerProps) -> Element {
     let current_value_for_preview = current_value.clone();
     let active_cat_for_options = active_cat.clone();
 
-    let has_file = !current_value_for_preview.is_empty();
+    let is_silent = current_value == baras_types::NO_SOUND;
+    let has_file = !current_value_for_preview.is_empty() && !is_silent;
 
     rsx! {
         Field { label: "Category",
@@ -82,7 +83,8 @@ pub fn SoundPicker(props: SoundPickerProps) -> Element {
                     let v = e.value();
                     on_change.call(if v.is_empty() { None } else { Some(v) });
                 },
-                option { value: "", "(none)" }
+                option { value: "", "(speak name)" }
+                option { value: baras_types::NO_SOUND, selected: is_silent, "(no sound)" }
                 if let Some(cat) = active_cat_for_options.as_ref() {
                     for name in cat.files.iter() {
                         {
@@ -97,7 +99,7 @@ pub fn SoundPicker(props: SoundPickerProps) -> Element {
                         }
                     }
                 }
-                if !current_value.is_empty() && !value_in_current_view(&current_value, active_cat.as_ref()) {
+                if !current_value.is_empty() && !is_silent && !value_in_current_view(&current_value, active_cat.as_ref()) {
                     option { value: "{current_value}", selected: true, "{current_value} (custom)" }
                 }
             }
