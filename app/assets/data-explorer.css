@@ -2998,6 +2998,13 @@
   text-align: left;
 }
 
+.challenge-player-name img {
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+  vertical-align: -2px;
+}
+
 .challenge-player-header {
   color: var(--text-secondary);
   font-size: 11px;

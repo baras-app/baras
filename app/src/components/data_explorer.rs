@@ -13,7 +13,7 @@ use crate::api::{
 };
 use crate::components::ability_icon::AbilityIcon;
 use crate::components::charts_panel::ChartsPanel;
-use crate::components::class_icons::get_class_icon;
+use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::components::combat_log::CombatLog;
 use crate::components::death_recap_drawer::DeathRecapDrawer;
 use crate::components::encounter_types::{ChallengeSummary, EncounterSummary, group_by_area};
@@ -1956,14 +1956,18 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                     // Side-by-side: Deaths + NPC Health + Challenges
                                     {
                                         let npcs = npc_health.read();
-                                        let challenges: Vec<ChallengeSummary> = if let Some(enc_idx) = *selected_encounter.read() {
-                                            encounters().iter()
-                                                .find(|e| e.encounter_id as u32 == enc_idx)
-                                                .map(|e| e.challenges.clone())
-                                                .unwrap_or_default()
-                                        } else {
-                                            Vec::new()
-                                        };
+                                        // The encounter's challenges and each player's (role, class, discipline) icons
+                                        let (challenges, player_icons): (Vec<ChallengeSummary>, HashMap<String, (Option<String>, Option<String>, String)>) =
+                                            (*selected_encounter.read())
+                                                .and_then(|enc_idx| {
+                                                    encounters().iter().find(|e| e.encounter_id as u32 == enc_idx).map(|e| (
+                                                        e.challenges.clone(),
+                                                        e.player_metrics.iter()
+                                                            .map(|p| (p.name.clone(), (p.role_icon.clone(), p.class_icon.clone(), p.discipline_name.clone().unwrap_or_default())))
+                                                            .collect(),
+                                                    ))
+                                                })
+                                                .unwrap_or_default();
                                         let has_npcs = !npcs.is_empty();
                                         let has_challenges = !challenges.is_empty();
 
@@ -2208,7 +2212,17 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                                                                             class: "challenge-bar-fill",
                                                                                                             style: "width: {player.percent:.1}%; background: {bar_color}",
                                                                                                         }
-                                                                                                        span { class: "challenge-player-name", "{player.name}" }
+                                                                                                        span { class: "challenge-player-name",
+                                                                                                            if let Some((role, class, discipline)) = player_icons.get(&player.name) {
+                                                                                                                if let Some(asset) = role.as_deref().and_then(get_role_icon) {
+                                                                                                                    img { class: "role-icon", src: *asset, alt: "" }
+                                                                                                                }
+                                                                                                                if let Some(asset) = class.as_deref().and_then(get_class_icon) {
+                                                                                                                    img { class: "class-icon", src: *asset, title: "{discipline}", alt: "" }
+                                                                                                                }
+                                                                                                            }
+                                                                                                            "{player.name}"
+                                                                                                        }
                                                                                                         if show_ps && !ps_str.is_empty() {
                                                                                                             span { class: "challenge-player-ps", "{ps_str}/s" }
                                                                                                         }
