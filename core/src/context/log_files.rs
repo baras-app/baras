@@ -462,7 +462,14 @@ pub fn extract_character_name(path: &Path, session_date: NaiveDateTime) -> Resul
             return Ok(Some(resolve(event.source_entity.name).to_string()));
         }
     }
-    Ok(None)
+    // A log resumed mid-instance never names its character: use the one
+    // its session recovered (see `history::AreaResume`)
+    Ok(path
+        .file_name()
+        .and_then(|f| f.to_str())
+        .and_then(|f| crate::history::history_file_for(f).ok())
+        .and_then(|h| crate::history::HistoryHeader::read(&h).ok())
+        .and_then(|h| h.character_name))
 }
 
 /// Read the last line of a log file and extract its timestamp.

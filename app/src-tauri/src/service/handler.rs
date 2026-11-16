@@ -682,10 +682,15 @@ impl ServiceHandle {
         self.with_pull_index(move |index| {
             let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
             let (run, rows) = index.run(&filename, start_ms, &catalog, &meta)?;
-            let records = baras_core::history::history_file_for(&filename)
-                .and_then(|p| baras_core::history::LogHistory::load(&p))
-                .map(|l| l.history.pulls)
-                .unwrap_or_default();
+            // A run can span logs (disconnect, character swap)
+            let mut files: Vec<&str> = rows.iter().map(|r| r.filename.as_str()).collect();
+            files.dedup();
+            let records: Vec<_> = files
+                .into_iter()
+                .filter_map(|f| baras_core::history::history_file_for(f).ok())
+                .filter_map(|p| baras_core::history::LogHistory::load(&p).ok())
+                .flat_map(|l| l.history.pulls)
+                .collect();
             Some(baras_core::history::run_detail(run, rows, &records, &catalog))
         })
         .await

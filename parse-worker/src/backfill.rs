@@ -108,7 +108,14 @@ pub fn run(log_dir: &Path, definitions_dir: Option<&Path>, stale_only: bool) -> 
         };
 
         let character = (!parsed.player.name.is_empty()).then(|| parsed.player.name.clone());
-        let history = LogHistory::from_summaries(path, character, &parsed.encounters, &parsed.timer_starts);
+        let history = LogHistory::from_summaries(
+            path,
+            character,
+            parsed.player_disciplines.iter().find(|d| d.entity_id == parsed.player.entity_id).cloned(),
+            &parsed.encounters,
+            &parsed.timer_starts,
+            &parsed.visits,
+        );
         if let Some(tmp) = &extracted {
             let _ = std::fs::remove_file(tmp);
         }

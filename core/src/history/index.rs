@@ -12,14 +12,15 @@ use std::time::SystemTime;
 use hashbrown::{HashMap, HashSet};
 
 use baras_types::history::{
-    BossNode, HistoryStatus, PullFilter, PullHistoryOverview, keeps, PullRow, PvpMatchRow, RunSummary, TimerStart,
+    BossNode, HistoryStatus, InstanceVisit, PullFilter, PullHistoryOverview, PullRow, PvpMatchRow, RunSummary,
+    TimerStart, keeps,
 };
 
 use super::catalog::AreaCatalog;
 use super::meta::LibraryMeta;
 use super::pvp::pvp_rows;
 use super::record::PullRecord;
-use super::runs::{apply_meta, run_matches, runs_of_log};
+use super::runs::{BuiltRun, RunSource, apply_meta, build_runs, run_matches};
 use crate::game_data::{game_version_at, server_name};
 use super::store::{HISTORY_VERSION, HistoryHeader, LogHistory, history_file_name};
 use super::{DUMMY_GROUP, history_dir};
@@ -43,6 +44,7 @@ struct IndexedLog {
     /// never see them
     pvp: Vec<PvpMatchRow>,
     timer_starts: Vec<TimerStart>,
+    visits: Vec<InstanceVisit>,
 }
 
 /// What a refresh found that the caller may want to act on.
@@ -116,6 +118,7 @@ impl PullIndex {
                             rows,
                             pvp,
                             timer_starts: history.timer_starts,
+                            visits: history.visits,
                         },
                     );
                 }
@@ -233,9 +236,9 @@ impl PullIndex {
         meta: &LibraryMeta,
     ) -> Vec<PullRow> {
         let mut out = Vec::new();
+        let pull_tags = self.pull_tags(catalog, meta);
         for log in self.logs.values() {
             let mut exists = None;
-            let mut ranges = None;
             for r in log
                 .rows
                 .iter()
@@ -245,8 +248,7 @@ impl PullIndex {
                 if hidden && !filter.show_hidden {
                     continue;
                 }
-                let ranges = ranges.get_or_insert_with(|| log.tag_ranges(catalog, meta));
-                let tags = tags_at(ranges, r.start_ms);
+                let tags = tags_of(&pull_tags, r);
                 if !filter.tags.is_empty() && !filter.tags.iter().any(|t| tags.contains(t)) {
                     continue;
                 }
@@ -271,9 +273,9 @@ impl PullIndex {
     /// note attached by `meta`.
     pub fn runs(&self, catalog: &AreaCatalog, filter: &PullFilter, meta: &LibraryMeta) -> Vec<RunSummary> {
         let mut out: Vec<RunSummary> = self
-            .logs
-            .values()
-            .flat_map(|log| log.runs(catalog, meta))
+            .built_runs(catalog, meta)
+            .into_iter()
+            .map(|r| r.summary)
             .filter(|r| run_matches(r, filter))
             .collect();
         out.sort_by(|a, b| b.started.cmp(&a.started));
@@ -288,38 +290,74 @@ impl PullIndex {
         catalog: &AreaCatalog,
         meta: &LibraryMeta,
     ) -> Option<(RunSummary, Vec<PullRow>)> {
-        let log = self.logs.get(history_file_name(log_filename).as_str())?;
-        let run = log.runs(catalog, meta).into_iter().find(|r| r.start_ms == start_ms)?;
-        let end = run.start_ms + run.span_secs * 1000;
-        let mut rows: Vec<PullRow> = log
+        let run = self
+            .built_runs(catalog, meta)
+            .into_iter()
+            .find(|r| r.summary.filename == log_filename && r.summary.start_ms == start_ms)?;
+        // A run can span logs, so each pull opens in its own
+        let rows = run
             .rows
             .iter()
-            .filter(|r| (r.is_operation || r.is_flashpoint) && r.start_ms >= run.start_ms && r.start_ms <= end)
-            .filter(|r| r.area_id == run.area_id && r.difficulty == run.difficulty)
-            .cloned()
+            .map(|r| {
+                let mut row = (*r).clone();
+                if let Some(log) = self.logs.get(history_file_name(&r.filename).as_str()) {
+                    (row.path, row.archived) = log.location();
+                }
+                row.tags = run.summary.tags.clone();
+                row
+            })
             .collect();
-        rows.sort_by_key(|r| r.start_ms);
-        for r in &mut rows {
-            r.path = run.path.clone();
-            r.archived = run.archived;
-            r.tags = run.tags.clone();
+        Some((run.summary, rows))
+    }
+
+    /// Runs across every log, with the user's tags and note attached. A run
+    /// merged from several logs keeps whichever of its old keys carries them.
+    fn built_runs(&self, catalog: &AreaCatalog, meta: &LibraryMeta) -> Vec<BuiltRun<'_>> {
+        // Sorted so equal-time visits chain the same way on every query
+        let mut logs: Vec<(&String, &IndexedLog)> = self.logs.iter().collect();
+        logs.sort_by_key(|(name, _)| *name);
+        let sources: Vec<RunSource> = logs
+            .into_iter()
+            .map(|(_, log)| {
+                let (path, archived) = log.location();
+                RunSource { rows: &log.rows, visits: &log.visits, timer_starts: &log.timer_starts, path, archived }
+            })
+            .collect();
+        let mut runs = build_runs(&sources, catalog);
+        for run in &mut runs {
+            let found = run.rows.iter().find_map(|r| meta.run(&r.filename, r.start_ms));
+            apply_meta(&mut run.summary, found.cloned());
         }
-        Some((run, rows))
+        runs
+    }
+
+    /// Run tags per pull, keyed by `(filename, start_ms)`
+    fn pull_tags(&self, catalog: &AreaCatalog, meta: &LibraryMeta) -> HashMap<(&str, i64), Vec<String>> {
+        let mut out = HashMap::new();
+        if meta.run_tags().is_empty() {
+            return out;
+        }
+        for run in self.built_runs(catalog, meta).into_iter().filter(|r| !r.summary.tags.is_empty()) {
+            for r in run.rows {
+                out.insert((r.filename.as_str(), r.start_ms), run.summary.tags.clone());
+            }
+        }
+        out
     }
 
     /// Every row passing `filter`, across logs. Run tags are only resolved
     /// when the filter asks for one.
     fn filtered(&self, filter: &PullFilter, catalog: &AreaCatalog, meta: &LibraryMeta) -> Vec<&PullRow> {
         let mut out = Vec::new();
+        let pull_tags = (!filter.tags.is_empty()).then(|| self.pull_tags(catalog, meta));
         for log in self.logs.values() {
-            let ranges = (!filter.tags.is_empty()).then(|| log.tag_ranges(catalog, meta));
             for r in log.rows.iter().filter(|r| matches(r, filter)) {
                 // Hidden pulls stay out of the boss counts too
                 if !filter.show_hidden && meta.is_pull_hidden(&r.filename, r.start_ms) {
                     continue;
                 }
-                if let Some(ranges) = &ranges
-                    && !filter.tags.iter().any(|t| tags_at(ranges, r.start_ms).contains(t))
+                if let Some(pull_tags) = &pull_tags
+                    && !filter.tags.iter().any(|t| tags_of(pull_tags, r).contains(t))
                 {
                     continue;
                 }
@@ -382,34 +420,17 @@ pub struct LogRef<'a> {
 }
 
 impl IndexedLog {
-    /// Runs with the user's tags and note attached
-    fn runs(&self, catalog: &AreaCatalog, meta: &LibraryMeta) -> Vec<RunSummary> {
+    /// `(path, archived)`: the log on disk, else whether the archive has it
+    fn location(&self) -> (Option<String>, bool) {
         let path = self.log_path.is_file().then(|| self.log_path.to_string_lossy().into_owned());
         let archived = path.is_none()
             && self.rows.first().is_some_and(|r| crate::library::archived_log(&r.filename).is_some());
-        let mut runs = runs_of_log(&self.rows, &self.timer_starts, path.as_deref(), catalog);
-        for r in &mut runs {
-            r.archived = archived;
-            apply_meta(r, meta.run(&r.filename, r.start_ms).cloned());
-        }
-        runs
-    }
-
-    /// `(start_ms, end_ms, tags)` per run, for tagging pulls
-    fn tag_ranges(&self, catalog: &AreaCatalog, meta: &LibraryMeta) -> Vec<(i64, i64, Vec<String>)> {
-        self.runs(catalog, meta)
-            .into_iter()
-            .filter(|r| !r.tags.is_empty())
-            .map(|r| (r.start_ms, r.start_ms + r.span_secs * 1000, r.tags))
-            .collect()
+        (path, archived)
     }
 }
 
-fn tags_at(ranges: &[(i64, i64, Vec<String>)], start_ms: i64) -> &[String] {
-    ranges
-        .iter()
-        .find(|(s, e, _)| start_ms >= *s && start_ms <= *e)
-        .map_or(&[], |(_, _, t)| t.as_slice())
+fn tags_of<'a>(pull_tags: &'a HashMap<(&'a str, i64), Vec<String>>, r: &'a PullRow) -> &'a [String] {
+    pull_tags.get(&(r.filename.as_str(), r.start_ms)).map_or(&[], Vec::as_slice)
 }
 
 /// Old store version, or the log (in the directory or the archive) no longer
@@ -417,6 +438,7 @@ fn tags_at(ranges: &[(i64, i64, Vec<String>)], start_ms: i64) -> &[String] {
 /// nothing to re-scan from.
 fn is_stale(history: &LogHistory, log_path: &Path) -> bool {
     let header = HistoryHeader {
+        character_name: None,
         version: history.version,
         source_len: history.source_len,
         source_mtime: history.source_mtime,

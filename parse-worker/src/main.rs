@@ -709,6 +709,21 @@ fn parse_file(
         })
         .collect();
 
+    // A log resumed after a crash or disconnect has no entry lines: replay
+    // them from the previous log's history when it shows the same player
+    // in the same instance
+    let mut events = events;
+    if events.first().is_some_and(|e| e.effect.type_id != baras_core::game_data::effect_type_id::AREAENTERED)
+        && let Some(mut resume) = baras_core::history::AreaResume::for_log(file_path)
+        && let Some(Ok(entry)) = events
+            .iter()
+            .take_while(|e| e.effect.type_id != baras_core::game_data::effect_type_id::AREAENTERED)
+            .find_map(|e| resume.entry_events(e))
+    {
+        let (line_number, timestamp) = (events[0].line_number, events[0].timestamp);
+        events.splice(0..0, entry.map(|e| CombatEvent { line_number, timestamp, ..e }));
+    }
+
     let event_count = events.len();
 
     // Process events and write encounters (definitions loaded lazily on AreaEntered)

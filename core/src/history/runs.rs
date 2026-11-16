@@ -1,11 +1,12 @@
-//! Operation runs derived from one log's pulls: consecutive pulls in the same
-//! area at the same difficulty, split after the final boss dies. Nothing is
-//! stored; runs are rebuilt from `PullRow`s on every query.
+//! Operation runs derived from recorded pulls: the pulls made in one server
+//! instance of an area, split after the final boss dies. Nothing is stored;
+//! runs are rebuilt from `PullRow`s and `InstanceVisit`s on every query.
 
 use hashbrown::{HashMap, HashSet};
 
 use baras_types::history::{
-    PlayerSpec, PullFilter, PullRow, keeps, RunBoss, RunDetail, RunMeta, RunPlayer, RunSummary, RunTimer, TimerStart,
+    InstanceVisit, PlayerSpec, PullFilter, PullRow, RunBoss, RunDetail, RunMeta, RunPlayer, RunSummary, RunTimer,
+    TimerStart, keeps,
 };
 
 use super::catalog::AreaCatalog;
@@ -41,37 +42,187 @@ fn end_ms(r: &PullRow) -> i64 {
     r.start_ms + r.duration_seconds * 1000
 }
 
-/// Runs of one log, chronological. `path` is the log's on-disk path when it exists.
-pub(super) fn runs_of_log(
-    rows: &[PullRow],
-    timer_starts: &[TimerStart],
-    path: Option<&str>,
-    catalog: &AreaCatalog,
-) -> Vec<RunSummary> {
-    let mut sorted: Vec<&PullRow> = rows.iter().filter(|r| r.is_operation || r.is_flashpoint).collect();
-    sorted.sort_by_key(|r| r.start_ms);
+/// How long an instance may sit between two visits and still be the same
+/// run. Process numbers are reused after server restarts, so counters from
+/// far-apart visits prove nothing.
+const MAX_VISIT_GAP_MS: i64 = 12 * 3600 * 1000;
 
-    let mut groups: Vec<Vec<&PullRow>> = Vec::new();
-    let mut closed = true;
-    for r in sorted {
-        let same = groups.last().is_some_and(|g| {
-            let f = g[0];
-            f.area_id == r.area_id && f.operation == r.operation && f.difficulty == r.difficulty
-        });
-        if closed || !same {
-            groups.push(Vec::new());
+/// One log's contribution to run building.
+pub(super) struct RunSource<'a> {
+    pub rows: &'a [PullRow],
+    pub visits: &'a [InstanceVisit],
+    pub timer_starts: &'a [TimerStart],
+    pub path: Option<String>,
+    pub archived: bool,
+}
+
+pub(super) struct BuiltRun<'a> {
+    pub summary: RunSummary,
+    /// Chronological; may span logs (disconnects, character swaps)
+    pub rows: Vec<&'a PullRow>,
+}
+
+/// One instanced visit of one log with the pulls made during it.
+struct Segment<'a> {
+    src: usize,
+    entered_ms: i64,
+    visit: &'a InstanceVisit,
+    rows: Vec<&'a PullRow>,
+}
+
+/// A run being assembled, with what its visits say about the instance.
+#[derive(Default)]
+struct OpenRun<'a> {
+    rows: Vec<(usize, &'a PullRow)>,
+    /// Final boss killed: later pulls start a new run
+    closed: bool,
+    src: usize,
+    prefix: i64,
+    max_ctr: i64,
+    trash: HashSet<i64>,
+    /// A boss died: the group is saved to this instance's lockout
+    has_kill: bool,
+    last_ms: i64,
+}
+
+impl<'a> OpenRun<'a> {
+    /// Whether `seg` is another visit of this run.
+    fn continues_into(&self, seg: &Segment) -> bool {
+        let v = seg.visit;
+        if v.prefix == 0 || self.prefix == 0 {
+            // No NPC seen on one side: nothing to compare, so a log's
+            // consecutive visits stay together as they always have
+            return seg.src == self.src;
         }
-        groups.last_mut().unwrap().push(r);
-        closed = r.success && catalog.area(r.area_id).is_some_and(|a| a.is_final(&r.boss));
+        if seg.entered_ms - self.last_ms > MAX_VISIT_GAP_MS {
+            return false;
+        }
+        if v.prefix != self.prefix {
+            // An emptied instance is torn down. Coming back under the lockout
+            // lands in a new process with the kills intact; without kills (or
+            // on another character) a new process is a fresh instance.
+            let character = self.rows.last().map(|(_, r)| r.character.as_str());
+            return self.has_kill && seg.rows.first().map(|r| r.character.as_str()) == character;
+        }
+        // An NPC that already existed when the earlier visit ended
+        if v.min_ctr <= self.max_ctr {
+            return true;
+        }
+        // Everything is newer. A kill locks the group to the instance, so
+        // only before the first one can this be a reset, which shows as the
+        // opening trash dying a second time.
+        self.has_kill || !v.trash.iter().any(|c| self.trash.contains(c))
     }
 
-    let mut prev_end: Option<i64> = None;
-    groups
-        .into_iter()
-        .map(|g| {
-            let run = summarize(&g, prev_end, timer_starts, path, catalog);
-            prev_end = Some(g.iter().map(|r| end_ms(r)).max().unwrap_or(run.start_ms));
-            run
+    fn absorb(&mut self, seg: &Segment) {
+        let v = seg.visit;
+        if v.prefix != 0 {
+            self.max_ctr = if self.prefix == v.prefix { self.max_ctr.max(v.max_ctr) } else { v.max_ctr };
+            self.prefix = v.prefix;
+        }
+        self.trash.extend(v.trash.iter().copied());
+        self.last_ms = self.last_ms.max(seg.entered_ms);
+        self.src = seg.src;
+    }
+
+    fn push(&mut self, src: usize, r: &'a PullRow, catalog: &AreaCatalog) {
+        self.rows.push((src, r));
+        self.last_ms = self.last_ms.max(end_ms(r));
+        self.has_kill |= r.success;
+        self.closed = is_final_kill(r, catalog);
+    }
+}
+
+fn is_final_kill(r: &PullRow, catalog: &AreaCatalog) -> bool {
+    r.success && catalog.area(r.area_id).is_some_and(|a| a.is_final(&r.boss))
+}
+
+/// Every run across `sources`, chronological. Visits chain into one run
+/// while their NPC ids and boss kills say it is the same instance or lockout
+/// (see `OpenRun::continues_into`), across logs when it is. Logs recorded
+/// before visits existed fall back to consecutive same-area pulls.
+pub(super) fn build_runs<'a>(sources: &[RunSource<'a>], catalog: &AreaCatalog) -> Vec<BuiltRun<'a>> {
+    let mut segments: Vec<Segment<'a>> = Vec::new();
+    let mut runs: Vec<OpenRun<'a>> = Vec::new();
+
+    for (src, source) in sources.iter().enumerate() {
+        let mut sorted: Vec<&PullRow> = source.rows.iter().filter(|r| r.is_operation || r.is_flashpoint).collect();
+        sorted.sort_by_key(|r| r.start_ms);
+        let first = segments.len();
+        segments.extend(source.visits.iter().filter_map(|visit| {
+            Some(Segment { src, entered_ms: start_ms_of(&visit.entered)?, visit, rows: Vec::new() })
+        }));
+
+        // Pulls outside any recorded visit: the pre-visit grouping
+        let mut closed = true;
+        let mut legacy: Option<usize> = None;
+        for r in sorted {
+            let seg = segments[first..]
+                .iter_mut()
+                .rev()
+                .find(|s| s.entered_ms <= r.start_ms && s.visit.area_id == r.area_id);
+            if let Some(seg) = seg {
+                seg.rows.push(r);
+                continue;
+            }
+            let same = legacy.is_some_and(|i| {
+                let f = runs[i].rows[0].1;
+                f.area_id == r.area_id && f.operation == r.operation && f.difficulty == r.difficulty
+            });
+            if closed || !same {
+                runs.push(OpenRun { src, ..Default::default() });
+                legacy = Some(runs.len() - 1);
+            }
+            runs[legacy.unwrap()].push(src, r, catalog);
+            closed = runs[legacy.unwrap()].closed;
+        }
+    }
+
+    // A visit without pulls only matters for what its NPC ids prove
+    segments.retain(|s| s.visit.prefix != 0 || !s.rows.is_empty());
+    segments.sort_by_key(|s| s.entered_ms);
+
+    let mut latest: HashMap<(i64, i64), usize> = HashMap::new();
+    for seg in &segments {
+        let key = (seg.visit.area_id, seg.visit.difficulty_id);
+        let open = latest.get(&key).copied().filter(|&i| !runs[i].closed && runs[i].continues_into(seg));
+        if open.is_none() && seg.rows.is_empty() {
+            // Nothing ties this visit to the run and it starts none itself
+            continue;
+        }
+        let mut cur = open.unwrap_or_else(|| {
+            runs.push(OpenRun::default());
+            runs.len() - 1
+        });
+        runs[cur].absorb(seg);
+        for r in &seg.rows {
+            if runs[cur].closed {
+                runs.push(OpenRun::default());
+                cur = runs.len() - 1;
+                runs[cur].absorb(seg);
+            }
+            runs[cur].push(seg.src, r, catalog);
+        }
+        latest.insert(key, cur);
+    }
+
+    runs.retain(|r| !r.rows.is_empty());
+    runs.sort_by_key(|r| r.rows[0].1.start_ms);
+
+    // The clock start must fall after the previous run of the same log
+    let mut prev_end: HashMap<usize, i64> = HashMap::new();
+    runs.into_iter()
+        .map(|run| {
+            let source = &sources[run.rows[0].0];
+            let rows: Vec<&PullRow> = run.rows.iter().map(|(_, r)| *r).collect();
+            let mut summary =
+                summarize(&rows, prev_end.get(&run.rows[0].0).copied(), source.timer_starts, source.path.as_deref(), catalog);
+            summary.archived = source.archived;
+            for (src, r) in &run.rows {
+                let e = prev_end.entry(*src).or_insert(i64::MIN);
+                *e = (*e).max(end_ms(r));
+            }
+            BuiltRun { summary, rows }
         })
         .collect()
 }

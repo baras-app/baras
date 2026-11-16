@@ -176,6 +176,9 @@ pub struct ParseWorkerOutput {
     /// Operation timer start crossings, for the pull history store.
     #[serde(default)]
     pub timer_starts: Vec<baras_types::history::TimerStart>,
+    /// Instanced-area stays, for the pull history store.
+    #[serde(default)]
+    pub visits: Vec<baras_types::history::InstanceVisit>,
     /// Elapsed time in milliseconds.
     pub elapsed_ms: u128,
 }

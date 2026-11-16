@@ -13,6 +13,7 @@ use tracing::{info, warn};
 
 use baras_core::context::{ParsingSession, resolve};
 use baras_core::history::{LogHistory, start_ms_of};
+use baras_core::state::ipc::WorkerPlayerDiscipline;
 use baras_types::history::BackfillEvent;
 
 use crate::state::SharedState;
@@ -29,7 +30,14 @@ pub fn build_pull_history(session: &ParsingSession) -> Option<LogHistory> {
         .player_initialized
         .then(|| resolve(cache.player.name).to_string())
         .filter(|n| !n.is_empty());
-    LogHistory::from_summaries(path, character, cache.encounter_history.summaries(), &cache.timer_starts)
+    LogHistory::from_summaries(
+        path,
+        character,
+        cache.player_disciplines.get(&cache.player.id).map(WorkerPlayerDiscipline::from_player),
+        cache.encounter_history.summaries(),
+        &cache.timer_starts,
+        &cache.visits,
+    )
 }
 
 /// Write off the async runtime and announce it; failures are logged, never fatal.

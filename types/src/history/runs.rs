@@ -35,6 +35,58 @@ pub struct TimerStart {
     pub time: String,
 }
 
+/// NPC log ids are `<server process><9-digit spawn counter>`
+pub const NPC_COUNTER_SPAN: i64 = 1_000_000_000;
+
+/// One stay in an instanced area (an `AreaEntered` carrying a difficulty),
+/// with what its NPC ids say about which server instance it was. Recorded
+/// with the log's pulls; runs are stitched from these at query time.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct InstanceVisit {
+    pub area_id: i64,
+    pub difficulty_id: i64,
+    /// ISO 8601 local time
+    pub entered: String,
+    /// Area, difficulty and server as logged, enough to replay the entry
+    /// for a later log that starts without one
+    #[serde(default)]
+    pub area_name: String,
+    #[serde(default)]
+    pub difficulty: String,
+    #[serde(default)]
+    pub server: String,
+    /// Server process hosting the instance (`npc id / NPC_COUNTER_SPAN`);
+    /// 0 until an NPC is seen. A different prefix is a different instance,
+    /// the same prefix is not proof of the same one.
+    #[serde(default)]
+    pub prefix: i64,
+    /// Lowest and highest spawn counter seen. The counter only climbs within
+    /// a process, so an id at or below an earlier visit's `max_ctr` existed
+    /// before that visit ended.
+    #[serde(default)]
+    pub min_ctr: i64,
+    #[serde(default)]
+    pub max_ctr: i64,
+    /// Class ids of NPCs killed outside boss encounters. Trash does not
+    /// respawn, so the same class dying in a later visit means a reset.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub trash: Vec<i64>,
+}
+
+impl InstanceVisit {
+    /// Fold one NPC log id into the visit. Ids from another process (never
+    /// observed inside an instance) are ignored.
+    pub fn observe_npc(&mut self, log_id: i64) {
+        let (prefix, ctr) = (log_id / NPC_COUNTER_SPAN, log_id % NPC_COUNTER_SPAN);
+        if self.prefix == 0 {
+            (self.prefix, self.min_ctr, self.max_ctr) = (prefix, ctr, ctr);
+        } else if self.prefix == prefix {
+            self.min_ctr = self.min_ctr.min(ctr);
+            self.max_ctr = self.max_ctr.max(ctr);
+        }
+    }
+}
+
 /// User-owned per-run metadata, keyed like a pull by `filename#start_ms` of
 /// the run's first pull.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]

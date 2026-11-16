@@ -12,16 +12,17 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
-use baras_types::history::TimerStart;
+use baras_types::history::{InstanceVisit, TimerStart};
 
 use super::record::PullRecord;
 use super::{history_dir, is_recordable};
 use crate::context::parse_log_filename;
 use crate::encounter::summary::EncounterSummary;
+use crate::state::ipc::WorkerPlayerDiscipline;
 
 /// Bump whenever `PullRecord` gains a field that old files cannot default
 /// sensibly. Files below this version are "stale" and need a re-scan.
-pub const HISTORY_VERSION: u32 = 5;
+pub const HISTORY_VERSION: u32 = 6;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogHistory {
@@ -34,6 +35,10 @@ pub struct LogHistory {
     pub path: Option<PathBuf>,
     /// Local player for this log (None if never initialized)
     pub character_name: Option<String>,
+    /// The local player's identity and discipline, enough to replay them
+    /// for a later log that starts mid-instance without either line
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub player: Option<WorkerPlayerDiscipline>,
     /// Log start time parsed from the filename
     pub started_at: Option<NaiveDateTime>,
     /// Length and mtime (unix seconds) of the log when this file was written
@@ -45,6 +50,9 @@ pub struct LogHistory {
     /// Operation timer start crossings in this log (see `TimerStart`)
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub timer_starts: Vec<TimerStart>,
+    /// Instanced-area stays in this log (see `InstanceVisit`)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub visits: Vec<InstanceVisit>,
 }
 
 /// Just enough of a history file to decide whether it needs a re-scan,
@@ -53,6 +61,8 @@ pub struct LogHistory {
 pub struct HistoryHeader {
     #[serde(default)]
     pub version: u32,
+    #[serde(default)]
+    pub character_name: Option<String>,
     #[serde(default)]
     pub source_len: u64,
     #[serde(default)]
@@ -124,8 +134,10 @@ impl LogHistory {
     pub fn from_summaries(
         path: &Path,
         character_name: Option<String>,
+        player: Option<WorkerPlayerDiscipline>,
         summaries: &[EncounterSummary],
         timer_starts: &[TimerStart],
+        visits: &[InstanceVisit],
     ) -> Option<Self> {
         let filename = path.file_name()?.to_str()?;
         let (source_len, source_mtime) = std::fs::metadata(path)
@@ -136,6 +148,7 @@ impl LogHistory {
             filename: filename.to_string(),
             path: Some(path.to_path_buf()),
             character_name,
+            player,
             started_at: parse_log_filename(filename).map(|(_, dt)| dt),
             source_len,
             source_mtime,
@@ -145,6 +158,7 @@ impl LogHistory {
                 .map(PullRecord::from)
                 .collect(),
             timer_starts: timer_starts.to_vec(),
+            visits: visits.to_vec(),
         })
     }
 
@@ -176,11 +190,13 @@ impl LogHistory {
                 filename: legacy.filename,
                 path: legacy.path,
                 character_name: legacy.character_name,
+                player: None,
                 started_at: legacy.started_at,
                 source_len: 0,
                 source_mtime: 0,
                 pulls,
                 timer_starts: Vec::new(),
+                visits: Vec::new(),
             },
             legacy_parsely,
         })

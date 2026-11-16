@@ -709,6 +709,10 @@ impl EventProcessor {
         if event.effect.difficulty_id != 0 && crate::game_data::is_flashpoint(event.effect.effect_id) {
             cache.record_timer_start(event.timestamp);
         }
+        // The game logs entry twice; only the line carrying the difficulty opens a visit
+        if event.effect.difficulty_id != 0 {
+            cache.begin_visit(event.timestamp);
+        }
 
         // Also update the current encounter's area/difficulty
         // BUT only if the encounter hasn't started combat yet.
@@ -771,6 +775,9 @@ impl EventProcessor {
             // Track by log_id (instance) so each spawn is detected
             // Signal includes npc_id (class_id) for timer matching
             if cache.seen_npc_instances.insert(entity.log_id) {
+                if let Some(visit) = cache.current_visit_mut() {
+                    visit.observe_npc(entity.log_id);
+                }
                 out.push(GameSignal::NpcFirstSeen {
                     entity_id: entity.log_id, // Unique instance
                     npc_id: entity.class_id,  // NPC type for timer matching

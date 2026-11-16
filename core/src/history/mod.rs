@@ -11,6 +11,7 @@ mod index;
 mod meta;
 mod pvp;
 mod record;
+mod resume;
 mod runs;
 mod store;
 
@@ -23,6 +24,7 @@ pub use catalog::AreaCatalog;
 pub use index::{LogRef, PullIndex, RefreshReport};
 pub use runs::{difficulty_parts, run_detail};
 pub use meta::{LibraryMeta, meta_path, now_iso, pull_key};
+pub use resume::AreaResume;
 pub use record::{ChallengeLine, PullRecord, RosterLine, start_ms_of};
 pub use store::{
     HISTORY_VERSION, HistoryHeader, LogHistory, history_file_for, history_file_name, mtime_secs,

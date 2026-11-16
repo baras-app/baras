@@ -58,6 +58,9 @@ pub struct ParsingSession {
     definition_loader: Option<Arc<DefinitionLoader>>,
     /// Last loaded area ID (to avoid reloading on duplicate events)
     loaded_area_id: i64,
+    /// One-shot recovery for a log that starts without `AreaEntered`:
+    /// `None` until the first event decides whether one is needed
+    area_resume: Option<Option<crate::history::AreaResume>>,
     /// Game-time anchor: the highest game time we've seen (monotonic).
     /// Updated via `advance_game_time_anchor()` which ensures this never
     /// moves backward.
@@ -125,6 +128,7 @@ impl ParsingSession {
             encounter_writer: None,
             definition_loader: None,
             loaded_area_id: 0,
+            area_resume: None,
             last_event_time: None,
             last_event_instant: None,
         }
@@ -148,6 +152,7 @@ impl ParsingSession {
             encounter_writer: None,
             definition_loader: None,
             loaded_area_id: 0,
+            area_resume: None,
             last_event_time: None,
             last_event_instant: None,
         }
@@ -178,6 +183,7 @@ impl ParsingSession {
             encounter_writer: None,
             definition_loader: None,
             loaded_area_id: 0,
+            area_resume: None,
             last_event_time: None,
             last_event_instant: None,
         }
@@ -201,11 +207,51 @@ impl ParsingSession {
         self.effect_tracker = None;
     }
 
+    /// The entry lines a log resumed after a crash or disconnect never
+    /// wrote, once it shows the player is still in the instance the previous
+    /// log ended in (see `AreaResume`).
+    fn resumed_entry_events(&mut self, event: &CombatEvent) -> Option<[CombatEvent; 2]> {
+        if matches!(self.area_resume, Some(None))
+            || matches!(event.effect.type_id, effect_type_id::AREAENTERED | effect_type_id::DISCIPLINECHANGED)
+        {
+            return None;
+        }
+        if self.session_cache.as_ref().is_none_or(|c| c.current_area.area_id != 0) {
+            // The log has its area: nothing to recover, now or later
+            self.area_resume = Some(None);
+            return None;
+        }
+        let resume = self
+            .area_resume
+            .get_or_insert_with(|| self.active_file.as_deref().and_then(crate::history::AreaResume::for_log));
+        let outcome = resume.as_mut().map(|r| r.entry_events(event))?;
+        match outcome {
+            // Still waiting for the player and an NPC to show up
+            None => None,
+            Some(found) => {
+                self.area_resume = Some(None);
+                if found.is_ok() {
+                    tracing::info!("Log started mid-instance: resumed the previous log's area and player");
+                }
+                found.ok()
+            }
+        }
+    }
+
     /// Process a single event through the processor and dispatch signals
     pub fn process_event(&mut self, event: CombatEvent) {
         // Advance the game-time anchor (monotonic: never goes backward).
         // This is read by is_session_stale() and interpolated_game_time().
         self.advance_game_time_anchor(event.timestamp);
+
+        if let Some(entry) = self.resumed_entry_events(&event) {
+            for replayed in entry {
+                self.process_event(replayed);
+            }
+            if let Some(cache) = &mut self.session_cache {
+                cache.missing_area = false;
+            }
+        }
 
         // Sync load definitions on AreaEntered BEFORE processing
         // This ensures boss definitions are available when combat events arrive

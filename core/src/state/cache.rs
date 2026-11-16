@@ -1,6 +1,7 @@
-use baras_types::history::TimerStart;
+use baras_types::history::{InstanceVisit, TimerStart};
 use chrono::NaiveDateTime;
 
+use crate::combat_log::EntityType;
 use crate::dsl::{BossEncounterDefinition, OperationTimerStart};
 use crate::encounter::entity_info::PlayerInfo;
 use crate::encounter::summary::{create_encounter_summary, EncounterHistory};
@@ -45,6 +46,8 @@ pub struct SessionCache {
     timer_start_fired: bool,
     /// Every timer start of this session, persisted with the pull history
     pub timer_starts: Vec<TimerStart>,
+    /// Instanced-area stays in this log, oldest first (see `InstanceVisit`)
+    pub visits: Vec<InstanceVisit>,
 
     // NPC tracking (session-scoped)
     /// NPC instance log IDs that have been seen in this session (for NpcFirstSeen signals)
@@ -93,6 +96,7 @@ impl SessionCache {
             timer_start: None,
             timer_start_fired: false,
             timer_starts: Vec::new(),
+            visits: Vec::new(),
             seen_npc_instances: HashSet::new(),
             player_disciplines: HashMap::new(),
             inferred_discipline_eviction_pending: false,
@@ -113,6 +117,17 @@ impl SessionCache {
         };
         if encounter.state == EncounterState::NotStarted {
             return;
+        }
+
+        // Trash kills identify the instance: they never respawn without a reset
+        if encounter.active_boss_idx().is_none()
+            && let Some(visit) = self.visits.iter_mut().rev().find(|v| Some(v.area_id) == encounter.area_id)
+        {
+            for npc in encounter.npcs.values().filter(|n| n.is_dead && n.entity_type == EntityType::Npc) {
+                if !visit.trash.contains(&npc.class_id) {
+                    visit.trash.push(npc.class_id);
+                }
+            }
         }
 
         if let Some(summary) = create_encounter_summary(
@@ -335,6 +350,28 @@ impl SessionCache {
         });
     }
 
+    /// Open a visit for the instanced area just entered.
+    pub fn begin_visit(&mut self, at: chrono::NaiveDateTime) {
+        self.visits.push(InstanceVisit {
+            area_id: self.current_area.area_id,
+            difficulty_id: self.current_area.difficulty_id,
+            entered: at.format("%Y-%m-%dT%H:%M:%S").to_string(),
+            area_name: self.current_area.area_name.clone(),
+            difficulty: self.current_area.difficulty_name.clone(),
+            server: self.current_area.server.clone(),
+            ..Default::default()
+        });
+    }
+
+    /// The visit the player is in right now; None in the open world.
+    pub fn current_visit_mut(&mut self) -> Option<&mut InstanceVisit> {
+        let area = &self.current_area;
+        if area.difficulty_id == 0 {
+            return None;
+        }
+        self.visits.last_mut().filter(|v| v.area_id == area.area_id)
+    }
+
     /// Load boss definitions for the current area.
     /// Replaces any existing definitions and registers HP overlay entities.
     /// Also updates the current encounter with the new definitions.
@@ -445,6 +482,7 @@ impl SessionCache {
             character_mismatch: self.character_mismatch,
             missing_area: self.missing_area,
             timer_starts: self.timer_starts.clone(),
+            visits: self.visits.clone(),
             elapsed_ms: 0, // Filled in by caller
         }
     }
@@ -493,6 +531,7 @@ impl SessionCache {
             self.encounter_history.add(summary.clone());
         }
         self.timer_starts.extend(output.timer_starts.iter().cloned());
+        self.visits.extend(output.visits.iter().cloned());
 
         // Restore generation counter to prevent raid splitting
         if generation_count > 0 {

@@ -20,7 +20,10 @@ pub use library::{
 pub use meta::{LogMeta, ParselyUpload, PullMeta};
 pub use progress::{BossHpRecord, PhaseRef, PullDeath, PullEnd, PullProgress};
 pub use pvp::{PvpMatchRow, PvpPlayer, PvpRound};
-pub use runs::{RunBoss, RunDetail, RunList, RunMeta, PlayerSpec, RunPlayer, RunSummary, RunTimer, TimerStart, iso_to_ms};
+pub use runs::{
+    InstanceVisit, NPC_COUNTER_SPAN, PlayerSpec, RunBoss, RunDetail, RunList, RunMeta, RunPlayer, RunSummary, RunTimer,
+    TimerStart, iso_to_ms,
+};
 
 /// One recorded pull, reduced to what the History table shows.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
