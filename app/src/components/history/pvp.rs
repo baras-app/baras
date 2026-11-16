@@ -384,7 +384,7 @@ pub fn PvpTab(european: bool, backfill: Backfill) -> Element {
                                                         title: "Open in Analysis",
                                                         disabled: opener.busy(),
                                                         onclick: move |_| opener.open(path.clone(), Some(encounter_id)),
-                                                        i { class: "fa-solid fa-arrow-up-right-from-square" }
+                                                        i { class: "fa-solid fa-magnifying-glass-chart" }
                                                     }
                                                 } else {
                                                     span { class: "pull-log-missing", title: "Log file no longer on disk", i { class: "fa-solid fa-file-circle-xmark" } }
