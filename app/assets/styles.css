@@ -7815,6 +7815,82 @@ a.contributor-name:hover {
   background: none;
 }
 
+/* Saved alacrity values: one line each, then the add form */
+.alac-auto {
+  font-size: 0.8em;
+  color: var(--text-muted);
+}
+
+.alac-preset {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: 0.85em;
+}
+
+.alac-preset .name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.alac-preset .who {
+  color: var(--text-muted);
+}
+
+.alac-preset .value {
+  font-variant-numeric: tabular-nums;
+}
+
+.alac-preset .btn-icon {
+  padding: 0 0.3em;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.alac-preset .btn-icon:hover {
+  color: var(--text-primary);
+}
+
+.alac-more {
+  align-self: flex-start;
+  padding: 0;
+  font-size: 0.8em;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.alac-more:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.alac-add {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+}
+
+.alac-add select {
+  height: 1.9em;
+  padding: 0 0.4em;
+  font-size: 0.85em;
+  color: var(--text-primary);
+  background: var(--bg-raised);
+  border: 1px solid rgba(var(--fg-rgb), 0.1);
+  border-radius: var(--radius-sm);
+}
+
+.alac-add-btn {
+  align-self: flex-start;
+}
+
 .session-settings-pop .hint {
   margin: 0;
   font-size: 0.78em;

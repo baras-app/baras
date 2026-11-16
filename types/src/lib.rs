@@ -3607,6 +3607,34 @@ impl ParselySettings {
 /// Note: Persistence methods (load/save) are provided by baras-core via the
 /// `AppConfigExt` trait, as they require platform-specific dependencies.
 /// The frontend derives Default (getting empty values) which is fine for deserialization.
+/// The alacrity a discipline runs at, optionally for one character only.
+/// Gear is not logged, so one value per discipline and character is the limit.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AlacrityPreset {
+    /// Discipline display name, e.g. "Corruption"
+    pub discipline: String,
+    /// None applies to every character playing the discipline
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub character: Option<String>,
+    pub alacrity_percent: f32,
+}
+
+impl AlacrityPreset {
+    /// The preset for a character's discipline; one naming the character wins.
+    pub fn find<'a>(presets: &'a [Self], discipline: &str, character: &str) -> Option<&'a Self> {
+        let of = |named: bool| {
+            presets.iter().find(|p| {
+                p.discipline == discipline
+                    && match &p.character {
+                        Some(c) => named && c == character,
+                        None => !named,
+                    }
+            })
+        };
+        of(true).or_else(|| of(false))
+    }
+}
+
 // Keep the fixed browser-source URL below Windows' default TCP range
 // (49152-65535), where outbound connections can otherwise claim the port.
 pub const WEB_OVERLAY_PORT: u16 = 47684;
@@ -3654,6 +3682,10 @@ pub struct AppConfig {
     /// Used to calculate actual effect durations.
     #[serde(default = "default_alacrity")]
     pub alacrity_percent: f32,
+
+    /// Saved alacrity values, applied when the local player's discipline changes
+    #[serde(default)]
+    pub alacrity_presets: Vec<AlacrityPreset>,
 
     /// Bias adjustment in milliseconds applied to alacrity-scaled effect durations.
     /// Positive lengthens, negative shortens; compensates for a consistent
@@ -3738,6 +3770,7 @@ impl AppConfig {
             show_log_ids: false,
             hide_small_log_files: true,
             alacrity_percent: 0.0,
+            alacrity_presets: Vec::new(),
             latency_ms: 0,
             last_viewed_changelog_version: None,
             european_number_format: false,

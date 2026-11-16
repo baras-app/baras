@@ -154,6 +154,8 @@ pub enum ServiceCommand {
     SetOperationTimerContext { operation_name: Option<String> },
     /// Auto-switch profile based on role change (triggered by DisciplineChanged)
     AutoSwitchProfile { role_name: String },
+    /// The local player's discipline changed: use its saved alacrity, if any
+    ApplyAlacrityPreset,
     /// Emit the current operation timer state to the frontend and overlay
     EmitOperationTimerTick,
 }
@@ -661,6 +663,7 @@ impl SignalHandler for CombatSignalHandler {
                         let role_changed = self.current_role.map_or(true, |r| r != new_role);
                         self.current_role = Some(new_role);
                         self.shared.last_player_role.store(new_role.to_u8(), Ordering::SeqCst);
+                        let _ = self.cmd_tx.try_send(ServiceCommand::ApplyAlacrityPreset);
                         if role_changed {
                             let role_name = format!("{:?}", new_role);
                             let _ = self.cmd_tx.try_send(ServiceCommand::AutoSwitchProfile { role_name });
@@ -1270,6 +1273,35 @@ impl CombatService {
         }
     }
 
+    /// Switch to the alacrity saved for the local player's discipline. Live
+    /// only: opening an old log must not change the user's settings.
+    async fn apply_alacrity_preset(&self, session: &ParsingSession) {
+        if !self.shared.is_live_tailing.load(Ordering::SeqCst) {
+            return;
+        }
+        let Some(cache) = session.session_cache.as_ref().filter(|c| c.player_initialized) else {
+            return;
+        };
+        let mut config = self.shared.config.write().await;
+        let Some(value) = baras_types::AlacrityPreset::find(
+            &config.alacrity_presets,
+            &cache.player.discipline_name,
+            resolve(cache.player.name),
+        )
+        .map(|p| p.alacrity_percent)
+        .filter(|v| *v != config.alacrity_percent) else {
+            return;
+        };
+        config.alacrity_percent = value;
+        if let Err(e) = config.clone().save() {
+            error!(error = %e, "Failed to save configuration");
+        }
+        drop(config);
+        session.set_effect_alacrity(value);
+        info!(value, discipline = %cache.player.discipline_name, "Applied saved alacrity");
+        let _ = self.app_handle.emit("alacrity-auto-set", value);
+    }
+
     /// The area's `[area.timer_start]` region, if the definition file declares one.
     fn load_area_timer_start(&self, area_id: i64) -> Option<baras_core::OperationTimerStart> {
         let entry = self.area_index.get(&area_id)?;
@@ -1632,6 +1664,11 @@ impl CombatService {
                         }
                         ServiceCommand::EmitOperationTimerTick => {
                             self.emit_operation_timer_tick();
+                        }
+                        ServiceCommand::ApplyAlacrityPreset => {
+                            if let Some(session) = self.shared.session.read().await.as_ref() {
+                                self.apply_alacrity_preset(&*session.read().await).await;
+                            }
                         }
                         ServiceCommand::AutoSwitchProfile { role_name } => {
                             // Only auto-switch profiles during live tailing — historical
@@ -2638,6 +2675,8 @@ impl CombatService {
         // Set alacrity/latency from config for duration calculations
         {
             let session_guard = session.read().await;
+            // The parsed part of the log emitted no DisciplineChanged
+            self.apply_alacrity_preset(&session_guard).await;
             let config = self.shared.config.read().await;
             session_guard.set_effect_alacrity(config.alacrity_percent);
             session_guard.set_effect_latency(config.latency_ms);

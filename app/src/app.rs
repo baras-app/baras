@@ -1063,7 +1063,10 @@ pub fn App() -> Element {
 
                                     // Session tools on the left; character, duration and status on the right
                                     div { class: "dashboard-summary",
-                                        AlacrityPill {}
+                                        AlacrityPill {
+                                            player_name: session_info().and_then(|s| s.player_name),
+                                            player_discipline: session_info().and_then(|s| s.player_discipline),
+                                        }
                                         OpTimerControl { op_timer_secs, op_timer_running, live: live_tailing }
                                         if notes_enabled() {
                                             BossNotesMenu { area_bosses, selected_boss_id }
