@@ -221,6 +221,14 @@ pub enum GameSignal {
         timestamp: NaiveDateTime,
     },
 
+    /// The area being played was re-entered as a new instance (the group
+    /// reset it). `run_started` is its run clock start when that already
+    /// happened (the start region is often crossed before any NPC is seen).
+    InstanceReset {
+        run_started: Option<NaiveDateTime>,
+        timestamp: NaiveDateTime,
+    },
+
     // Area transitions
     AreaEntered {
         area_id: i64,
@@ -339,6 +347,7 @@ impl GameSignal {
             | Self::TargetChanged { timestamp, .. }
             | Self::TargetCleared { timestamp, .. }
             | Self::OperationTimerStart { timestamp, .. }
+            | Self::InstanceReset { timestamp, .. }
             | Self::AreaEntered { timestamp, .. }
             | Self::PlayerInitialized { timestamp, .. }
             | Self::DisciplineChanged { timestamp, .. }

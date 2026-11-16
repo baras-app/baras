@@ -775,9 +775,7 @@ impl EventProcessor {
             // Track by log_id (instance) so each spawn is detected
             // Signal includes npc_id (class_id) for timer matching
             if cache.seen_npc_instances.insert(entity.log_id) {
-                if let Some(visit) = cache.current_visit_mut() {
-                    visit.observe_npc(entity.log_id);
-                }
+                cache.observe_npc(entity.log_id);
                 out.push(GameSignal::NpcFirstSeen {
                     entity_id: entity.log_id, // Unique instance
                     npc_id: entity.class_id,  // NPC type for timer matching
@@ -785,6 +783,10 @@ impl EventProcessor {
                     timestamp: event.timestamp,
                 });
             }
+        }
+        // Ahead of boss detection, so a pull in the new instance starts its clock
+        if let Some(run_started) = cache.take_instance_reset() {
+            out.push(GameSignal::InstanceReset { run_started, timestamp: event.timestamp });
         }
     }
 

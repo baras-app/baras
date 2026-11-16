@@ -120,6 +120,7 @@ fn signal_type_name(signal: &GameSignal) -> &'static str {
         GameSignal::TimerStarted { .. } => "TimerStarted",
         GameSignal::TimerExpired { .. } => "TimerExpired",
         GameSignal::TimerCanceled { .. } => "TimerCanceled",
+        GameSignal::InstanceReset { .. } => "InstanceReset",
     }
 }
 
@@ -2089,4 +2090,41 @@ fn test_battle_rez_with_stale_target_and_two_dead_players_is_unattributed() {
     let ended = combat_ended_seconds(&signals);
     assert_eq!(ended.len(), 1, "exactly one CombatEnded: {ended:?}");
     assert!(ended[0] < 30, "combat should end at the revive, not at ExitCombat: {ended:?}");
+}
+
+#[test]
+#[ignore]
+fn tmp_reset_dump() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("definitions/encounters/operations");
+    let areas: Vec<_> = std::fs::read_dir(&dir).unwrap().flatten()
+        .filter_map(|e| { let p = e.path(); let a = crate::dsl::load_area_config(&p).ok()??; Some((a.area_id, a.timer_start, p)) })
+        .collect();
+    for file in std::env::var("LOGS").unwrap().split(',') {
+        eprintln!("== {file}");
+        let bytes = std::fs::read(file).unwrap();
+        let content = String::from_utf8_lossy(&bytes);
+        let parser = LogParser::new(chrono::Local::now().naive_local());
+        let mut processor = EventProcessor::new();
+        let mut cache = SessionCache::default();
+        for (n, line) in content.lines().enumerate() {
+            let Some(event) = parser.parse_line(n as u64, line) else { continue };
+            let (signals, ..) = processor.process_event(event, &mut cache);
+            for s in &signals {
+                match s {
+                    GameSignal::AreaEntered { area_id, area_name, difficulty_id, timestamp, .. } => {
+                        eprintln!("{timestamp} AreaEntered {area_name} diff={difficulty_id}");
+                        if let Some((id, ts, p)) = areas.iter().find(|a| a.0 == *area_id) {
+                            if let Some(cfg) = load_boss_config(p) { cache.load_boss_definitions(cfg.bosses, false); }
+                            cache.set_timer_start(*id, ts.clone());
+                        }
+                    }
+                    GameSignal::OperationTimerStart { timestamp, .. } => eprintln!("{timestamp}   OperationTimerStart"),
+                    GameSignal::InstanceReset { run_started, timestamp } => eprintln!("{timestamp}   *** InstanceReset run_started={run_started:?}"),
+                    GameSignal::BossEncounterDetected { boss_name, timestamp, .. } => eprintln!("{timestamp}   Boss {boss_name}"),
+                    GameSignal::CombatEnded { timestamp, success, .. } => eprintln!("{timestamp}   CombatEnded success={success}"),
+                    _ => {}
+                }
+            }
+        }
+    }
 }

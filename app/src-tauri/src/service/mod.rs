@@ -200,6 +200,11 @@ impl AreaKind {
     }
 }
 
+/// Whole seconds from a game-log (local) timestamp to now.
+fn secs_since(at: chrono::NaiveDateTime) -> u64 {
+    chrono::Local::now().naive_local().signed_duration_since(at).num_seconds().max(0) as u64
+}
+
 /// Stop the operation timer if the player stays outside the instance this long.
 const OP_EXIT_TIMEOUT_SECS: u64 = 600;
 
@@ -891,6 +896,25 @@ impl SignalHandler for CombatSignalHandler {
                 // A `[area.timer_start]` region is explicit opt-in, so no area-kind gate.
                 info!(entity_id, "Operation timer start region crossed");
                 self.try_auto_start_operation_timer();
+            }
+            GameSignal::InstanceReset { run_started, .. } => {
+                // The group reset the operation: the running clock belongs to
+                // the abandoned instance. Restart it from the new instance's
+                // start line, or zero it until that (or the first boss pull).
+                if self.shared.is_live_tailing.load(Ordering::SeqCst)
+                    && matches!(self.current_area_kind(), AreaKind::Operation)
+                {
+                    let mut timer = self.shared.operation_timer.lock().unwrap();
+                    if timer.is_running() && !timer.manually_started {
+                        timer.reset();
+                        if let Some(at) = run_started {
+                            timer.start_with_offset(secs_since(*at));
+                        }
+                        drop(timer);
+                        info!(?run_started, "Operation timer restarted for a reset instance");
+                        let _ = self.cmd_tx.try_send(ServiceCommand::EmitOperationTimerTick);
+                    }
+                }
             }
             GameSignal::AbilityActivated {
                 ability_id,
@@ -2469,10 +2493,19 @@ impl CombatService {
                                         }
                                     }
                                     AreaKind::Operation => {
-                                        // Use earliest boss pull time in this session
-                                        let earliest_start = parse_result.encounters.iter()
-                                            .filter(|s| s.encounter_type == PhaseType::Raid)
-                                            .filter_map(|s| s.start_time.as_ref())
+                                        // The clock of the instance being played (a
+                                        // reset earlier in the log starts another): its
+                                        // start line crossing, else its first boss pull
+                                        let entered = parse_result.encounters.last()
+                                            .and_then(|s| s.instance_entered.as_deref());
+                                        let earliest_start = parse_result.timer_starts.iter()
+                                            .filter(|t| t.area_id == area_id
+                                                && entered.is_some_and(|e| t.time.as_str() >= e))
+                                            .map(|t| &t.time)
+                                            .chain(parse_result.encounters.iter()
+                                                .filter(|s| s.encounter_type == PhaseType::Raid
+                                                    && s.instance_entered.as_deref() == entered)
+                                                .filter_map(|s| s.start_time.as_ref()))
                                             .filter_map(|t| {
                                                 chrono::NaiveDateTime::parse_from_str(
                                                     t, "%Y-%m-%dT%H:%M:%S"
@@ -2490,7 +2523,7 @@ impl CombatService {
                                             if !timer.manually_stopped {
                                                 info!(
                                                     elapsed_secs = capped,
-                                                    "Backfilling operation timer from first boss pull"
+                                                    "Backfilling operation timer from the run start"
                                                 );
                                                 timer.start_with_offset(capped);
                                                 drop(timer);

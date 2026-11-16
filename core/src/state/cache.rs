@@ -49,10 +49,11 @@ pub struct SessionCache {
     pub timer_starts: Vec<TimerStart>,
     /// Instanced-area stays in this log, oldest first (see `InstanceVisit`)
     pub visits: Vec<InstanceVisit>,
-    /// The instance being played: `(index of the last visit judged, what its
-    /// visits have shown, when it was first entered)`. A visit that is not a
-    /// return to it (a reset) starts a new encounter section.
-    lineage: Option<(usize, InstanceLineage, String)>,
+    /// The instance being played. A visit that is not a return to it (a
+    /// reset) starts a new encounter section and restarts the run clock.
+    lineage: Option<LiveInstance>,
+    /// A reset was judged and `GameSignal::InstanceReset` is still owed
+    instance_reset: bool,
 
     // NPC tracking (session-scoped)
     /// NPC instance log IDs that have been seen in this session (for NpcFirstSeen signals)
@@ -82,6 +83,18 @@ pub struct SessionCache {
     pub missing_area: bool,
 }
 
+/// The instance being played, as its visits in this log have shown it.
+#[derive(Debug, Clone)]
+struct LiveInstance {
+    /// Index of the last visit judged
+    judged: usize,
+    facts: InstanceLineage,
+    /// When the instance was first entered (ISO 8601)
+    entered: String,
+    /// Judged a new instance; its next encounter opens the section
+    opens_section: bool,
+}
+
 impl Default for SessionCache {
     fn default() -> Self {
         Self::new()
@@ -103,6 +116,7 @@ impl SessionCache {
             timer_starts: Vec::new(),
             visits: Vec::new(),
             lineage: None,
+            instance_reset: false,
             seen_npc_instances: HashSet::new(),
             player_disciplines: HashMap::new(),
             inferred_discipline_eviction_pending: false,
@@ -138,31 +152,11 @@ impl SessionCache {
             }
         }
 
-        // Judge each visit once, at its first encounter: a return to the same
-        // instance continues the section, a reset starts a new one
         let mut new_instance = false;
         if let Some(idx) = visit_idx {
-            let visit = &self.visits[idx];
-            match &mut self.lineage {
-                Some((judged, facts, entered)) if self.visits[*judged].area_id == visit.area_id => {
-                    if *judged != idx {
-                        let evidence = visit.prefix != 0 && facts.prefix != 0;
-                        new_instance = evidence
-                            && (self.visits[*judged].difficulty_id != visit.difficulty_id || !facts.continues(visit, true));
-                        if new_instance {
-                            *facts = InstanceLineage::default();
-                            entered.clone_from(&visit.entered);
-                        }
-                        *judged = idx;
-                    }
-                    facts.absorb(visit);
-                }
-                // Another area: the area change already starts a section
-                lineage => {
-                    let mut facts = InstanceLineage::default();
-                    facts.absorb(visit);
-                    *lineage = Some((idx, facts, visit.entered.clone()));
-                }
+            Self::judge_visit(&self.visits, &mut self.lineage, &mut self.instance_reset, idx);
+            if let Some(live) = &mut self.lineage {
+                new_instance = std::mem::take(&mut live.opens_section);
             }
         }
 
@@ -173,15 +167,125 @@ impl SessionCache {
             &self.player_disciplines,
             self.player.id,
             new_instance,
-            visit_idx.and(self.lineage.as_ref()).map(|(.., entered)| entered.as_str()),
+            visit_idx.and(self.lineage.as_ref()).map(|live| live.entered.as_str()),
         ) {
             if summary.success && summary.boss_name.is_some()
-                && let Some((_, facts, _)) = &mut self.lineage
+                && let Some(live) = &mut self.lineage
             {
-                facts.has_kill = true;
+                live.facts.has_kill = true;
             }
             self.encounter_history.add(summary);
         }
+    }
+
+    /// Judge a visit once: a return to the instance being played continues
+    /// it, a reset replaces it. Later calls for the same visit only fold in
+    /// what it has shown since.
+    fn judge_visit(
+        visits: &[InstanceVisit],
+        lineage: &mut Option<LiveInstance>,
+        instance_reset: &mut bool,
+        idx: usize,
+    ) {
+        let visit = &visits[idx];
+        match lineage {
+            Some(live) if visits[live.judged].area_id == visit.area_id => {
+                if live.judged != idx {
+                    let evidence = visit.prefix != 0 && live.facts.prefix != 0;
+                    if evidence
+                        && (visits[live.judged].difficulty_id != visit.difficulty_id
+                            || !live.facts.continues(visit, true))
+                    {
+                        live.facts = InstanceLineage::default();
+                        live.entered.clone_from(&visit.entered);
+                        live.opens_section = true;
+                        *instance_reset = true;
+                    }
+                    live.judged = idx;
+                }
+                live.facts.absorb(visit);
+            }
+            // Another area: the area change already starts a section
+            lineage => {
+                let mut facts = InstanceLineage::default();
+                facts.absorb(visit);
+                *lineage = Some(LiveInstance {
+                    judged: idx,
+                    facts,
+                    entered: visit.entered.clone(),
+                    opens_section: false,
+                });
+            }
+        }
+    }
+
+    /// Fold an NPC id into the current visit. An id from another server
+    /// process than the instance being played settles the visit on the spot,
+    /// without waiting for its first encounter to end.
+    pub fn observe_npc(&mut self, log_id: i64) {
+        let area = &self.current_area;
+        if area.difficulty_id == 0 {
+            return;
+        }
+        let Some(idx) = self.visits.len().checked_sub(1).filter(|i| self.visits[*i].area_id == area.area_id)
+        else {
+            return;
+        };
+        self.visits[idx].observe_npc(log_id);
+        if let Some(live) = &self.lineage
+            && live.judged != idx
+            && live.facts.prefix != 0
+            && live.facts.prefix != self.visits[idx].prefix
+        {
+            Self::judge_visit(&self.visits, &mut self.lineage, &mut self.instance_reset, idx);
+        }
+    }
+
+    /// A reset judged since the last call, with the run clock start already
+    /// recorded in the new instance (None: its clock has not started).
+    pub fn take_instance_reset(&mut self) -> Option<Option<NaiveDateTime>> {
+        if !std::mem::take(&mut self.instance_reset) {
+            return None;
+        }
+        let live = self.lineage.as_ref()?;
+        let area_id = self.visits[live.judged].area_id;
+        Some(
+            self.timer_starts
+                .iter()
+                .find(|t| t.area_id == area_id && t.time >= live.entered)
+                .and_then(|t| NaiveDateTime::parse_from_str(&t.time, "%Y-%m-%dT%H:%M:%S").ok()),
+        )
+    }
+
+    /// Rebuild the instance being played from imported visits and summaries,
+    /// so a reset is still recognised after the app restarts mid-run.
+    fn restore_lineage(&mut self) {
+        let summaries = self.encounter_history.summaries();
+        let Some(last) = summaries.last() else { return };
+        let (Some(entered), Some(last_start)) = (&last.instance_entered, &last.start_time) else {
+            return;
+        };
+        let Some(first) = self.visits.iter().position(|v| v.entered == *entered) else {
+            return;
+        };
+        let area_id = self.visits[first].area_id;
+        let mut live = LiveInstance {
+            judged: first,
+            facts: InstanceLineage::default(),
+            entered: entered.clone(),
+            opens_section: false,
+        };
+        // Visits after the last encounter have not been judged yet
+        for (idx, visit) in self.visits.iter().enumerate().skip(first) {
+            if visit.area_id == area_id && visit.entered <= *last_start {
+                live.facts.absorb(visit);
+                live.judged = idx;
+            }
+        }
+        live.facts.has_kill = summaries.iter().any(|s| {
+            s.instance_entered.as_ref() == Some(entered) && s.success && s.boss_name.is_some()
+        });
+        self.lineage = Some(live);
     }
 
     /// Set the next encounter ID (used after importing subprocess results)
@@ -406,15 +510,6 @@ impl SessionCache {
         });
     }
 
-    /// The visit the player is in right now; None in the open world.
-    pub fn current_visit_mut(&mut self) -> Option<&mut InstanceVisit> {
-        let area = &self.current_area;
-        if area.difficulty_id == 0 {
-            return None;
-        }
-        self.visits.last_mut().filter(|v| v.area_id == area.area_id)
-    }
-
     /// Load boss definitions for the current area.
     /// Replaces any existing definitions and registers HP overlay entities.
     /// Also updates the current encounter with the new definitions.
@@ -575,6 +670,7 @@ impl SessionCache {
         }
         self.timer_starts.extend(output.timer_starts.iter().cloned());
         self.visits.extend(output.visits.iter().cloned());
+        self.restore_lineage();
 
         // Restore generation counter to prevent raid splitting
         if generation_count > 0 {
