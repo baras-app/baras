@@ -136,9 +136,9 @@
   justify-content: center;
 }
 
-.op-mode.tier-story { --tier: var(--tier-story); }
-.op-mode.tier-veteran { --tier: var(--tier-veteran); }
-.op-mode.tier-master { --tier: var(--tier-master); }
+.op-mode.tier-story, .op-boss-strip.tier-story { --tier: var(--tier-story); }
+.op-mode.tier-veteran, .op-boss-strip.tier-veteran { --tier: var(--tier-veteran); }
+.op-mode.tier-master, .op-boss-strip.tier-master { --tier: var(--tier-master); }
 
 .op-mode {
   color: rgb(var(--tier));
@@ -186,6 +186,70 @@
   border-color: var(--swtor-blue);
   border-left-color: var(--swtor-blue);
   color: var(--text-primary);
+}
+
+/* Locked / Free switch: what the counts and picks mean */
+.op-seg {
+  display: inline-flex;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.op-seg button {
+  padding: 1px 0.7em;
+  font-family: inherit;
+  font-size: 0.95em;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.op-seg button.on {
+  color: var(--text-primary);
+  background: rgba(74, 158, 255, 0.22);
+}
+
+/* Bosses of one picked operation and mode, in kill order */
+.op-boss-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35em;
+  font-size: 0.82em;
+}
+
+.op-boss-strip-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.op-boss {
+  padding: 0.15em 0.6em;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid rgba(var(--tier), 0.45);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.op-boss:disabled {
+  opacity: var(--tier-none);
+  cursor: default;
+}
+
+.op-boss.lit {
+  color: var(--text-primary);
+  background: rgba(var(--tier), var(--tier-fill));
+  border-color: rgb(var(--tier));
+}
+
+.op-boss-count {
+  font-family: var(--font-mono);
+  color: rgb(var(--tier));
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
