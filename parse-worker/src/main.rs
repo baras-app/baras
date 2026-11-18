@@ -777,10 +777,16 @@ fn process_and_write_encounters(
 
     // Spawn background writer thread
     let (tx, rx) = mpsc::channel::<(RecordBatch, PathBuf)>();
+    // Encounter files are independent, so each one is encoded on the rayon
+    // pool (idle once parsing is done) instead of queueing behind one writer.
     let writer_thread = std::thread::spawn(move || {
-        for (batch, path) in rx {
-            let _ = FastEncounterWriter::write_batch_to_file(batch, path);
-        }
+        rayon::in_place_scope(|scope| {
+            for (batch, path) in rx {
+                scope.spawn(move |_| {
+                    let _ = FastEncounterWriter::write_batch_to_file(batch, path);
+                });
+            }
+        });
     });
 
     let mut cache = SessionCache::new();
