@@ -31,7 +31,7 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   DIOXUS_CLI_VERSION: 0.7.10
-  TAURI_CLI_VERSION: 2.12.4
+  TAURI_CLI_VERSION: 2.12.6
 
 jobs:
   # ───────────────────────────────────────────────────────────────────────────
@@ -149,9 +149,8 @@ jobs:
             libpipewire-0.3-dev \
             libasound2-dev
 
-      # Pinned: Rust 1.100's build-dir layout breaks tauri-build's sidecar copy.
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@1.99.1
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown,${{ matrix.target }}
 
