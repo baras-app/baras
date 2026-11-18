@@ -11,11 +11,11 @@ path = "src/main.rs"
 baras-core = { path = "../core" }
 clap = { version = "4", features = ["derive"] }
 chrono = "0.4"
-toml = "0.8"
+toml = "1"
 atty = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 encoding_rs = "0.8"
-dirs = "6.0.0"
+dirs = "7"
 
 [features]
 default = []

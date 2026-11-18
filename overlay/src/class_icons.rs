@@ -376,10 +376,10 @@ pub fn get_outlined_tinted_icon(name: &str, role: Role) -> Option<ClassIcon> {
 
 /// Decode PNG data to RGBA
 fn decode_png(data: &[u8]) -> Option<ClassIcon> {
-    let decoder = png::Decoder::new(data);
+    let decoder = png::Decoder::new(std::io::Cursor::new(data));
     let mut reader = decoder.read_info().ok()?;
 
-    let mut buf = vec![0; reader.output_buffer_size()];
+    let mut buf = vec![0; reader.output_buffer_size()?];
     let info = reader.next_frame(&mut buf).ok()?;
 
     let width = info.width;

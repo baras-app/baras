@@ -135,9 +135,9 @@ fn parse_readings(text: &str) -> (Vec<SlotRect>, BTreeMap<u8, String>) {
 }
 
 fn load_capture(path: &Path) -> Option<CapturedImage> {
-    let decoder = png::Decoder::new(File::open(path).ok()?);
+    let decoder = png::Decoder::new(std::io::BufReader::new(File::open(path).ok()?));
     let mut reader = decoder.read_info().ok()?;
-    let mut buf = vec![0u8; reader.output_buffer_size()];
+    let mut buf = vec![0u8; reader.output_buffer_size()?];
     let info = reader.next_frame(&mut buf).ok()?;
     buf.truncate(info.buffer_size());
 
