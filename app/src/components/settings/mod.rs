@@ -13,6 +13,7 @@ mod dot_tracker;
 mod draft;
 mod effects;
 mod enemy_frames;
+mod frame_style;
 mod global;
 mod metric;
 mod metrics_global;
@@ -42,6 +43,7 @@ use dot_tracker::DotTrackerTab;
 use draft::use_settings_draft;
 use effects::{EffectsGroup, EffectsTab};
 use enemy_frames::EnemyFramesTab;
+use frame_style::FrameOverrideSection;
 use global::GlobalTab;
 use metric::MetricTab;
 use metrics_global::MetricsGlobalSection;
@@ -162,6 +164,8 @@ pub fn SettingsPanel(
                 let existing_enabled = config.overlay_settings.enabled.clone();
 
                 config.overlay_settings.appearances = new_settings.appearances.clone();
+                config.overlay_settings.frame_style = new_settings.frame_style;
+                config.overlay_settings.frame_overrides = new_settings.frame_overrides.clone();
                 config.overlay_settings.personal_overlay = new_settings.personal_overlay.clone();
                 config.overlay_settings.metric_opacity = new_settings.metric_opacity;
                 config.overlay_settings.metric_show_empty_bars =
@@ -341,6 +345,9 @@ pub fn SettingsPanel(
                 // Shared by every metric overlay, so it sits above whichever one is selected
                 if showing_overlays && is_metric_tab {
                     MetricsGlobalSection { draft, open: metrics_global_open }
+                }
+                if showing_overlays {
+                    FrameOverrideSection { draft, tab_key: selected_tab }
                 }
                 {tab_content}
             }

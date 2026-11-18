@@ -6,6 +6,7 @@ use crate::api;
 use crate::components::{Slider, ToastSeverity, use_toast};
 
 use super::draft::SettingsDraft;
+use super::frame_style::FrameStyleSection;
 
 #[component]
 pub fn GlobalTab(draft: SettingsDraft) -> Element {
@@ -69,6 +70,8 @@ pub fn GlobalTab(draft: SettingsDraft) -> Element {
                 },
             }
         }
+
+        FrameStyleSection { draft }
 
         div { class: "settings-section",
             h4 { "Visibility" }

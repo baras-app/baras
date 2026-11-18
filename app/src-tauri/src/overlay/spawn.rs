@@ -172,6 +172,10 @@ where
                         overlay.frame_mut().set_font_family(&family);
                         needs_render = true;
                     }
+                    OverlayCommand::SetFrameStyle(style) => {
+                        overlay.frame_mut().set_style(style);
+                        needs_render = true;
+                    }
                     OverlayCommand::SetPosition(x, y) => {
                         overlay.frame_mut().window_mut().set_position(x, y);
                         needs_render = true;
@@ -357,6 +361,13 @@ where
                         dispatch::Queue::main().exec_sync(move || {
                             let overlay = unsafe { &mut *overlay_ptr.get() };
                             overlay.frame_mut().set_font_family(&family);
+                        });
+                        needs_render = true;
+                    }
+                    OverlayCommand::SetFrameStyle(style) => {
+                        dispatch::Queue::main().exec_sync(move || {
+                            let overlay = unsafe { &mut *overlay_ptr.get() };
+                            overlay.frame_mut().set_style(style);
                         });
                         needs_render = true;
                     }
