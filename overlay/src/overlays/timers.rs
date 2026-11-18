@@ -124,11 +124,9 @@ impl TimerOverlay {
     pub fn new(
         window_config: OverlayConfig,
         config: TimerOverlayConfig,
-        background_alpha: u8,
         label: &str,
     ) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
-        frame.set_background_alpha(background_alpha);
         frame.set_label(label);
 
         Ok(Self {
@@ -144,10 +142,6 @@ impl TimerOverlay {
         self.config = config;
     }
 
-    /// Update background alpha
-    pub fn set_background_alpha(&mut self, alpha: u8) {
-        self.frame.set_background_alpha(alpha);
-    }
 
     /// Update the data and pre-cache icons at current display size
     pub fn set_data(&mut self, data: TimerData) {
@@ -348,14 +342,12 @@ impl Overlay for TimerOverlay {
 
     fn update_config(&mut self, config: OverlayConfigUpdate) {
         // Handle both TimersA and TimersB config (same config structure)
-        let (timer_config, alpha, european) = match config {
-            OverlayConfigUpdate::TimersA(c, a, eu) | OverlayConfigUpdate::TimersB(c, a, eu) => {
-                (c, a, eu)
-            }
-            _ => return,
+        let (OverlayConfigUpdate::TimersA(timer_config, european)
+        | OverlayConfigUpdate::TimersB(timer_config, european)) = config
+        else {
+            return;
         };
         self.set_config(timer_config);
-        self.set_background_alpha(alpha);
         self.european_number_format = european;
     }
 

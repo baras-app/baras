@@ -630,10 +630,8 @@ impl RaidOverlay {
         window_config: OverlayConfig,
         layout: RaidGridLayout,
         config: RaidOverlayConfig,
-        background_alpha: u8,
     ) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
-        frame.set_background_alpha(background_alpha);
         frame.set_label("Raid Frames");
 
         // Initialize empty frames for all slots
@@ -1819,7 +1817,7 @@ impl Overlay for RaidOverlay {
     }
 
     fn update_config(&mut self, config: OverlayConfigUpdate) {
-        if let OverlayConfigUpdate::Raid(raid_config, _alpha, european) = config {
+        if let OverlayConfigUpdate::Raid(raid_config, european) = config {
             self.config = raid_config;
             // background_alpha is owned by the interaction mode (set_interaction_mode),
             // not by config — Normal/Rearrange = 0, Move = 120 (hardcoded).

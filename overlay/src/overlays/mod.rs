@@ -152,52 +152,52 @@ pub enum OverlayData {
 
 /// Configuration updates that can be sent to overlays
 ///
-/// Each variant carries the overlay-specific config, background alpha (`u8`),
-/// and `european_number_format` (`bool`) for number display formatting.
+/// Each variant carries the overlay-specific config and, where numbers are
+/// shown, `european_number_format` (`bool`).
 #[derive(Debug, Clone)]
 pub enum OverlayConfigUpdate {
-    /// Appearance config for metric overlays (+ alpha, show_empty, stack_bottom, scale, icon_mode, font_scale, dynamic_background, european, show_background_bar, class_colors, gradient_intensity)
-    Metric(OverlayAppearanceConfig, u8, bool, bool, f32, ClassIconMode, f32, bool, bool, bool, ClassColorConfig, f32),
-    /// Config for personal overlay (+ background alpha, european)
-    Personal(PersonalOverlayConfig, u8, bool),
-    /// Config for raid overlay (+ background alpha, european)
-    Raid(RaidOverlayConfig, u8, bool),
-    /// Config for boss health overlay (+ background alpha, european)
-    BossHealth(BossHealthConfig, u8, bool),
-    /// Config for timer A overlay (+ background alpha, european)
-    TimersA(TimerOverlayConfig, u8, bool),
-    /// Config for timer B overlay (+ background alpha, european)
-    TimersB(TimerOverlayConfig, u8, bool),
-    /// Config for effects overlay (+ background alpha, european) - legacy
-    Effects(TimerOverlayConfig, u8, bool),
-    /// Config for challenge overlay (+ background alpha, european, class icon mode)
-    Challenge(ChallengeOverlayConfig, u8, bool, ClassIconMode),
-    /// Config for alerts overlay (+ background alpha, european)
-    Alerts(AlertsOverlayConfig, u8, bool),
-    /// Config for Effects A overlay (+ background alpha, european)
-    EffectsA(EffectsABConfig, u8, bool),
-    /// Config for Effects B overlay (+ background alpha, european)
-    EffectsB(EffectsABConfig, u8, bool),
-    /// Config for Effects C overlay (+ background alpha, european)
-    EffectsC(EffectsABConfig, u8, bool),
-    /// Config for cooldown overlay (+ background alpha, european)
-    Cooldowns(CooldownConfig, u8, bool),
-    /// Config for cooldown B overlay (+ background alpha, european)
-    CooldownsB(CooldownConfig, u8, bool),
-    /// Config for DOT tracker overlay (+ background alpha, european)
-    DotTracker(DotTrackerConfig, u8, bool),
-    /// Config for notes overlay (+ background alpha, european)
-    Notes(NotesConfig, u8, bool),
-    /// Config for combat time overlay (+ background alpha, european)
-    CombatTime(CombatTimeConfig, u8, bool),
-    /// Config for operation timer overlay (+ background alpha)
-    OperationTimer(OperationTimerConfig, u8),
-    /// Config for ability queue overlay (+ background alpha)
-    AbilityQueue(AbilityQueueConfig, u8),
-    /// Config for enemy frames overlay (+ background alpha, european)
-    EnemyFrames(EnemyFramesConfig, u8, bool),
-    /// Config for ability cast overlay (+ background alpha)
-    AbilityCast(AbilityCastConfig, u8),
+    /// Appearance config for metric overlays (+ show_empty, stack_bottom, scale, icon_mode, font_scale, dynamic_background, european, show_background_bar, class_colors, gradient_intensity)
+    Metric(OverlayAppearanceConfig, bool, bool, f32, ClassIconMode, f32, bool, bool, bool, ClassColorConfig, f32),
+    /// Config for personal overlay (+ european)
+    Personal(PersonalOverlayConfig, bool),
+    /// Config for raid overlay (+ european)
+    Raid(RaidOverlayConfig, bool),
+    /// Config for boss health overlay (+ european)
+    BossHealth(BossHealthConfig, bool),
+    /// Config for timer A overlay (+ european)
+    TimersA(TimerOverlayConfig, bool),
+    /// Config for timer B overlay (+ european)
+    TimersB(TimerOverlayConfig, bool),
+    /// Config for effects overlay (+ european) - legacy
+    Effects(TimerOverlayConfig, bool),
+    /// Config for challenge overlay (+ european, class icon mode)
+    Challenge(ChallengeOverlayConfig, bool, ClassIconMode),
+    /// Config for alerts overlay (+ european)
+    Alerts(AlertsOverlayConfig, bool),
+    /// Config for Effects A overlay (+ european)
+    EffectsA(EffectsABConfig, bool),
+    /// Config for Effects B overlay (+ european)
+    EffectsB(EffectsABConfig, bool),
+    /// Config for Effects C overlay (+ european)
+    EffectsC(EffectsABConfig, bool),
+    /// Config for cooldown overlay (+ european)
+    Cooldowns(CooldownConfig, bool),
+    /// Config for cooldown B overlay (+ european)
+    CooldownsB(CooldownConfig, bool),
+    /// Config for DOT tracker overlay (+ european)
+    DotTracker(DotTrackerConfig, bool),
+    /// Config for notes overlay (+ european)
+    Notes(NotesConfig, bool),
+    /// Config for combat time overlay (+ european)
+    CombatTime(CombatTimeConfig, bool),
+    /// Config for operation timer overlay
+    OperationTimer(OperationTimerConfig),
+    /// Config for ability queue overlay
+    AbilityQueue(AbilityQueueConfig),
+    /// Config for enemy frames overlay (+ european)
+    EnemyFrames(EnemyFramesConfig, bool),
+    /// Config for ability cast overlay
+    AbilityCast(AbilityCastConfig),
 }
 
 /// Position information for an overlay

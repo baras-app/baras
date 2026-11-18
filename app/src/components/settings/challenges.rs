@@ -6,7 +6,7 @@ use crate::components::Slider;
 use crate::types::ChallengeLayout;
 
 use super::draft::SettingsDraft;
-use super::widgets::{Check, ColorRow, DynamicBackground, FontScale, Group, OpacitySlider, ResetRow, Row, Section, SelectRow};
+use super::widgets::{Check, ColorRow, DynamicBackground, FontScale, Group, ResetRow, Row, Section, SelectRow};
 
 #[component]
 pub fn ChallengesTab(draft: SettingsDraft, actions: Element) -> Element {
@@ -20,7 +20,6 @@ pub fn ChallengesTab(draft: SettingsDraft, actions: Element) -> Element {
     rsx! {
         div { class: "settings-section",
             Section { group: Group::Background,
-                OpacitySlider { value: s.challenge_opacity, on_change: move |v| draft.edit(|s| s.challenge_opacity = v) }
                 DynamicBackground { checked: cfg.dynamic_background, on_change: move |v| draft.edit(|s| s.challenge_overlay.dynamic_background = v) }
                 ColorRow { label: "Default Bar Color", value: cfg.default_bar_color, on_change: move |v| draft.edit(|s| s.challenge_overlay.default_bar_color = v) }
                 Check { label: "Show Background Bar", checked: cfg.show_background_bar, on_change: move |v| draft.edit(|s| s.challenge_overlay.show_background_bar = v) }
@@ -91,7 +90,6 @@ pub fn ChallengesTab(draft: SettingsDraft, actions: Element) -> Element {
             ResetRow {
                 on_reset: move |_| draft.edit(|s| {
                     s.challenge_overlay = Default::default();
-                    s.challenge_opacity = 180;
                 }),
                 actions,
             }

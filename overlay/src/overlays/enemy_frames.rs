@@ -95,10 +95,8 @@ impl EnemyFramesOverlay {
     pub fn new(
         window_config: OverlayConfig,
         config: EnemyFramesConfig,
-        background_alpha: u8,
     ) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
-        frame.set_background_alpha(background_alpha);
         frame.set_label("Enemy Frames");
 
         Ok(Self {
@@ -113,9 +111,6 @@ impl EnemyFramesOverlay {
         self.config = config;
     }
 
-    pub fn set_background_alpha(&mut self, alpha: u8) {
-        self.frame.set_background_alpha(alpha);
-    }
 
     pub fn render(&mut self) {
         let width = self.frame.width() as f32;
@@ -354,9 +349,8 @@ impl Overlay for EnemyFramesOverlay {
     }
 
     fn update_config(&mut self, config: OverlayConfigUpdate) {
-        if let OverlayConfigUpdate::EnemyFrames(cfg, alpha, european) = config {
+        if let OverlayConfigUpdate::EnemyFrames(cfg, european) = config {
             self.set_config(cfg);
-            self.set_background_alpha(alpha);
             self.european_number_format = european;
         }
     }

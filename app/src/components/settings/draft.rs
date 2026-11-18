@@ -68,7 +68,7 @@ impl SettingsDraft {
         });
     }
 
-    /// Change the draft in place: `draft.edit(|s| s.alerts_opacity = v)`
+    /// Change the draft in place: `draft.edit(|s| s.overlay_fps = v)`
     pub fn edit(&self, f: impl FnOnce(&mut OverlaySettings)) {
         let mut s = self.current();
         f(&mut s);

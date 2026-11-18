@@ -5,7 +5,7 @@ use dioxus::prelude::*;
 use crate::types::{OverlaySettings, TimerOverlayConfig};
 
 use super::draft::SettingsDraft;
-use super::widgets::{BorderRows, Check, ColorRow, DynamicBackground, FontScale, Group, OpacitySlider, ResetRow, Section};
+use super::widgets::{BorderRows, Check, ColorRow, DynamicBackground, FontScale, Group, ResetRow, Section};
 
 /// Which of the timer overlays this tab edits
 #[derive(Clone, Copy, PartialEq)]
@@ -28,20 +28,6 @@ impl TimerGroup {
             Self::B => &mut s.timers_b_overlay,
         }
     }
-
-    fn opacity(self, s: &OverlaySettings) -> u8 {
-        match self {
-            Self::A => s.timers_a_opacity,
-            Self::B => s.timers_b_opacity,
-        }
-    }
-
-    fn opacity_mut(self, s: &mut OverlaySettings) -> &mut u8 {
-        match self {
-            Self::A => &mut s.timers_a_opacity,
-            Self::B => &mut s.timers_b_opacity,
-        }
-    }
 }
 
 #[component]
@@ -53,10 +39,6 @@ pub fn TimersTab(draft: SettingsDraft, group: TimerGroup, actions: Element) -> E
     rsx! {
         div { class: "settings-section",
             Section { group: Group::Background,
-                OpacitySlider {
-                    value: group.opacity(&current_settings),
-                    on_change: move |v| draft.edit(|s| *group.opacity_mut(s) = v),
-                }
                 DynamicBackground { checked: cfg.dynamic_background, on_change: set(|c, v| c.dynamic_background = v) }
                 Check { label: "Gradient Bars", checked: cfg.bar_gradient, on_change: set(|c, v| c.bar_gradient = v) }
                 BorderRows {
@@ -76,7 +58,6 @@ pub fn TimersTab(draft: SettingsDraft, group: TimerGroup, actions: Element) -> E
             ResetRow {
                 on_reset: move |_| draft.edit(|s| {
                     *group.config_mut(s) = TimerOverlayConfig::default();
-                    *group.opacity_mut(s) = 180;
                 }),
                 actions,
             }

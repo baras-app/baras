@@ -6,7 +6,7 @@ use crate::components::Slider;
 use crate::types::{EffectsAConfig, OverlaySettings};
 
 use super::draft::SettingsDraft;
-use super::widgets::{BorderRows, Check, DynamicBackground, FontScale, Group, NumberRow, OpacitySlider, ResetRow, Section};
+use super::widgets::{BorderRows, Check, DynamicBackground, FontScale, Group, NumberRow, ResetRow, Section};
 
 /// Which of the effects overlays this tab edits
 #[derive(Clone, Copy, PartialEq)]
@@ -32,22 +32,6 @@ impl EffectsGroup {
             Self::C => &mut s.effects_c,
         }
     }
-
-    fn opacity(self, s: &OverlaySettings) -> u8 {
-        match self {
-            Self::A => s.effects_a_opacity,
-            Self::B => s.effects_b_opacity,
-            Self::C => s.effects_c_opacity,
-        }
-    }
-
-    fn opacity_mut(self, s: &mut OverlaySettings) -> &mut u8 {
-        match self {
-            Self::A => &mut s.effects_a_opacity,
-            Self::B => &mut s.effects_b_opacity,
-            Self::C => &mut s.effects_c_opacity,
-        }
-    }
 }
 
 #[component]
@@ -59,10 +43,6 @@ pub fn EffectsTab(draft: SettingsDraft, group: EffectsGroup, actions: Element) -
     rsx! {
         div { class: "settings-section",
             Section { group: Group::Background,
-                OpacitySlider {
-                    value: group.opacity(&current_settings),
-                    on_change: move |v| draft.edit(|s| *group.opacity_mut(s) = v),
-                }
                 DynamicBackground { checked: cfg.dynamic_background, on_change: set(|c, v| c.dynamic_background = v) }
                 Check {
                     label: "Gradient Bars",
@@ -112,7 +92,6 @@ pub fn EffectsTab(draft: SettingsDraft, group: EffectsGroup, actions: Element) -
             ResetRow {
                 on_reset: move |_| draft.edit(|s| {
                     *group.config_mut(s) = EffectsAConfig::default();
-                    *group.opacity_mut(s) = 180;
                 }),
                 actions,
             }

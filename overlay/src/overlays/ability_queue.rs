@@ -115,10 +115,8 @@ impl AbilityQueueOverlay {
     pub fn new(
         window_config: OverlayConfig,
         config: AbilityQueueConfig,
-        background_alpha: u8,
     ) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
-        frame.set_background_alpha(background_alpha);
         frame.set_label("Ability Queue");
         Ok(Self { frame, config, data: AbilityQueueData::default() })
     }
@@ -127,9 +125,6 @@ impl AbilityQueueOverlay {
         self.config = config;
     }
 
-    pub fn set_background_alpha(&mut self, alpha: u8) {
-        self.frame.set_background_alpha(alpha);
-    }
 
     pub fn set_data(&mut self, data: AbilityQueueData) {
         let bar_height = self.frame.scaled(BASE_BAR_HEIGHT);
@@ -810,9 +805,8 @@ impl Overlay for AbilityQueueOverlay {
     }
 
     fn update_config(&mut self, config: OverlayConfigUpdate) {
-        if let OverlayConfigUpdate::AbilityQueue(aq_config, alpha) = config {
+        if let OverlayConfigUpdate::AbilityQueue(aq_config) = config {
             self.set_config(aq_config);
-            self.set_background_alpha(alpha);
         }
     }
 

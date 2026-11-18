@@ -6,7 +6,7 @@ use crate::components::Slider;
 use crate::types::{BossHealthConfig, IconPosition};
 
 use super::draft::SettingsDraft;
-use super::widgets::{BorderRows, Check, ColorRow, DynamicBackground, FontScale, Group, OpacitySlider, ResetRow, Section, SelectRow};
+use super::widgets::{BorderRows, Check, ColorRow, DynamicBackground, FontScale, Group, ResetRow, Section, SelectRow};
 
 #[component]
 pub fn BossHealthTab(draft: SettingsDraft, actions: Element) -> Element {
@@ -17,7 +17,6 @@ pub fn BossHealthTab(draft: SettingsDraft, actions: Element) -> Element {
     rsx! {
         div { class: "settings-section",
             Section { group: Group::Background,
-                OpacitySlider { value: s.boss_health_opacity, on_change: move |v| draft.edit(|s| s.boss_health_opacity = v) }
                 DynamicBackground { checked: cfg.dynamic_background, on_change: set(|c, v| c.dynamic_background = v) }
                 ColorRow { label: "Bar Color", value: cfg.bar_color, on_change: move |v| draft.edit(|s| s.boss_health.bar_color = v) }
                 Check { label: "Gradient Bars", checked: cfg.bar_gradient, on_change: set(|c, v| c.bar_gradient = v) }
@@ -92,7 +91,6 @@ pub fn BossHealthTab(draft: SettingsDraft, actions: Element) -> Element {
             ResetRow {
                 on_reset: move |_| draft.edit(|s| {
                     s.boss_health = BossHealthConfig::default();
-                    s.boss_health_opacity = 180;
                 }),
                 actions,
             }

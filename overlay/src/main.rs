@@ -54,7 +54,6 @@ mod examples {
             config,
             "DPS Meter",
             appearance,
-            180,
             true,
             false,
             1.0,
@@ -196,7 +195,6 @@ mod examples {
             config,
             "DPS Meter (8 Players)",
             appearance,
-            180,
             true,
             false,
             1.0,
@@ -308,7 +306,6 @@ mod examples {
             config,
             "DPS Meter (16 Players)",
             appearance,
-            180,
             true,
             false,
             1.0,
@@ -454,7 +451,7 @@ mod examples {
         };
 
         let mut overlay_normal =
-            match RaidOverlay::new(config_normal, layout, raid_config.clone(), 180) {
+            match RaidOverlay::new(config_normal, layout, raid_config.clone()) {
                 Ok(o) => o,
                 Err(e) => {
                     tracing::error!(error = %e, "Failed to create normal raid overlay");
@@ -462,7 +459,7 @@ mod examples {
                 }
             };
 
-        let mut overlay_move = match RaidOverlay::new(config_move, layout, raid_config.clone(), 180)
+        let mut overlay_move = match RaidOverlay::new(config_move, layout, raid_config.clone())
         {
             Ok(o) => o,
             Err(e) => {
@@ -472,7 +469,7 @@ mod examples {
         };
 
         let mut overlay_rearrange =
-            match RaidOverlay::new(config_rearrange, layout, raid_config, 180) {
+            match RaidOverlay::new(config_rearrange, layout, raid_config) {
                 Ok(o) => o,
                 Err(e) => {
                     tracing::error!(error = %e, "Failed to create rearrange raid overlay");
@@ -662,7 +659,7 @@ mod examples {
             target_monitor_id: None,
         };
 
-        let mut overlay = match RaidOverlay::new(config, layout, raid_config, 180) {
+        let mut overlay = match RaidOverlay::new(config, layout, raid_config) {
             Ok(o) => o,
             Err(e) => {
                 tracing::error!(error = %e, "Failed to create raid overlay");
@@ -848,13 +845,14 @@ mod examples {
             ..Default::default()
         };
 
-        let mut overlay = match TimerOverlay::new(config, timer_config, 0, "Timers") {
+        let mut overlay = match TimerOverlay::new(config, timer_config, "Timers") {
             Ok(o) => o,
             Err(e) => {
                 tracing::error!(error = %e, "Failed to create timer overlay");
                 return;
             }
         };
+        overlay.frame_mut().set_background_alpha(0);
 
         let icons = load_demo_icons();
 
@@ -945,7 +943,7 @@ mod examples {
             ..Default::default()
         };
 
-        let mut overlay = match ChallengeOverlay::new(overlay_config, challenge_config, 180) {
+        let mut overlay = match ChallengeOverlay::new(overlay_config, challenge_config) {
             Ok(o) => o,
             Err(e) => {
                 tracing::error!(error = %e, "Failed to create challenge overlay");
@@ -1362,7 +1360,7 @@ mod examples {
             ..Default::default()
         };
 
-        let mut overlay = match ChallengeOverlay::new(overlay_config, challenge_config, 180) {
+        let mut overlay = match ChallengeOverlay::new(overlay_config, challenge_config) {
             Ok(o) => o,
             Err(e) => {
                 tracing::error!(error = %e, "Failed to create horizontal challenge overlay");
@@ -1624,7 +1622,7 @@ mod examples {
                 click_through: true,
                 target_monitor_id: None,
             };
-            match BossHealthOverlay::new(window_config, boss_config, 180) {
+            match BossHealthOverlay::new(window_config, boss_config) {
                 Ok(mut overlay) => {
                     overlay.set_data(BossHealthData {
                         entries: three_bosses.clone(),
@@ -1665,7 +1663,7 @@ mod examples {
                 click_through: true,
                 target_monitor_id: None,
             };
-            match BossHealthOverlay::new(window_config, boss_config, 180) {
+            match BossHealthOverlay::new(window_config, boss_config) {
                 Ok(mut overlay) => {
                     overlay.set_data(BossHealthData {
                         entries: entries.to_vec(),
@@ -1697,7 +1695,7 @@ mod examples {
                 click_through: true,
                 target_monitor_id: None,
             };
-            match BossHealthOverlay::new(window_config, boss_config, 180) {
+            match BossHealthOverlay::new(window_config, boss_config) {
                 Ok(mut overlay) => {
                     overlay.set_data(BossHealthData {
                         entries: markers_and_shields,
@@ -1768,7 +1766,7 @@ mod examples {
             ..Default::default()
         };
 
-        let mut overlay = match AlertsOverlay::new(config, alerts_config.clone(), 180) {
+        let mut overlay = match AlertsOverlay::new(config, alerts_config.clone()) {
             Ok(o) => o,
             Err(e) => {
                 tracing::error!(error = %e, "Failed to create alerts overlay");
@@ -1855,7 +1853,7 @@ mod examples {
 
         let queue_config = AbilityQueueConfig::default();
 
-        let mut overlay = match AbilityQueueOverlay::new(config, queue_config, 180) {
+        let mut overlay = match AbilityQueueOverlay::new(config, queue_config) {
             Ok(o) => o,
             Err(e) => {
                 tracing::error!(error = %e, "Failed to create ability queue overlay");
@@ -2134,7 +2132,7 @@ mod examples {
 
         let ct_config = CombatTimeConfig::default();
 
-        let mut overlay = match CombatTimeOverlay::new(config, ct_config, 180) {
+        let mut overlay = match CombatTimeOverlay::new(config, ct_config) {
             Ok(o) => o,
             Err(e) => {
                 tracing::error!("Failed to create combat time overlay: {}", e);

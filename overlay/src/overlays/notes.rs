@@ -83,10 +83,8 @@ impl NotesOverlay {
     pub fn new(
         window_config: OverlayConfig,
         config: NotesConfig,
-        background_alpha: u8,
     ) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
-        frame.set_background_alpha(background_alpha);
         frame.set_label("Notes");
 
         Ok(Self {
@@ -103,10 +101,6 @@ impl NotesOverlay {
         self.config = config;
     }
 
-    /// Update background alpha
-    pub fn set_background_alpha(&mut self, alpha: u8) {
-        self.frame.set_background_alpha(alpha);
-    }
 
     /// Set the notes data and parse it for rendering
     pub fn set_data(&mut self, data: NotesData) {
@@ -488,9 +482,8 @@ impl Overlay for NotesOverlay {
     }
 
     fn update_config(&mut self, config: OverlayConfigUpdate) {
-        if let OverlayConfigUpdate::Notes(notes_config, alpha, european) = config {
+        if let OverlayConfigUpdate::Notes(notes_config, european) = config {
             self.set_config(notes_config);
-            self.set_background_alpha(alpha);
             self.european_number_format = european;
         }
     }

@@ -174,7 +174,6 @@ const BASE_BAR_FONT_SIZE: f32 = 17.0;
 pub struct EffectsABOverlay {
     frame: OverlayFrame,
     config: EffectsABConfig,
-    background_alpha: u8,
     data: EffectsABData,
     /// Last rendered state for dirty checking: (effect_id, time_string, stacks, inactive, stack_priority, remaining_bits)
     last_rendered: Vec<(u64, String, u8, bool, bool, u32)>,
@@ -190,17 +189,14 @@ impl EffectsABOverlay {
     pub fn new(
         window_config: OverlayConfig,
         config: EffectsABConfig,
-        background_alpha: u8,
         label: &str,
     ) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
-        frame.set_background_alpha(background_alpha);
         frame.set_label(label);
 
         Ok(Self {
             frame,
             config,
-            background_alpha,
             data: EffectsABData::default(),
             last_rendered: Vec::new(),
             last_rendered_bar: Vec::new(),
@@ -217,11 +213,6 @@ impl EffectsABOverlay {
         self.last_rendered_bar.clear();
     }
 
-    /// Update background alpha
-    pub fn set_background_alpha(&mut self, alpha: u8) {
-        self.background_alpha = alpha;
-        self.frame.set_background_alpha(alpha);
-    }
 
     /// Icon pixel size to cache: the drawn size in bar layout, else the configured icon size
     fn bar_or_icon_size(&self, bar_layout: bool) -> u32 {
@@ -1405,11 +1396,10 @@ impl Overlay for EffectsABOverlay {
 
     fn update_config(&mut self, config: OverlayConfigUpdate) {
         match config {
-            OverlayConfigUpdate::EffectsA(cfg, alpha, european)
-            | OverlayConfigUpdate::EffectsB(cfg, alpha, european)
-            | OverlayConfigUpdate::EffectsC(cfg, alpha, european) => {
+            OverlayConfigUpdate::EffectsA(cfg, european)
+            | OverlayConfigUpdate::EffectsB(cfg, european)
+            | OverlayConfigUpdate::EffectsC(cfg, european) => {
                 self.set_config(cfg);
-                self.set_background_alpha(alpha);
                 self.european_number_format = european;
             }
             _ => {}

@@ -80,10 +80,8 @@ impl CombatTimeOverlay {
     pub fn new(
         window_config: OverlayConfig,
         config: CombatTimeConfig,
-        background_alpha: u8,
     ) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
-        frame.set_background_alpha(background_alpha);
         frame.set_label("Combat Time");
 
         Ok(Self {
@@ -99,10 +97,6 @@ impl CombatTimeOverlay {
         self.config = config;
     }
 
-    /// Update the background opacity
-    pub fn set_background_alpha(&mut self, alpha: u8) {
-        self.frame.set_background_alpha(alpha);
-    }
 
     /// Render the overlay
     pub fn render(&mut self) {
@@ -218,9 +212,8 @@ impl Overlay for CombatTimeOverlay {
     }
 
     fn update_config(&mut self, config: OverlayConfigUpdate) {
-        if let OverlayConfigUpdate::CombatTime(ct_config, alpha, european) = config {
+        if let OverlayConfigUpdate::CombatTime(ct_config, european) = config {
             self.set_config(ct_config);
-            self.set_background_alpha(alpha);
             self.european_number_format = european;
         }
     }

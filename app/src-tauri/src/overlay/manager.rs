@@ -52,7 +52,6 @@ impl OverlayManager {
                     metric_type,
                     position,
                     appearance,
-                    settings.metric_opacity,
                     settings.metric_show_empty_bars,
                     settings.metric_stack_from_bottom,
                     settings.metric_scaling_factor,
@@ -65,45 +64,45 @@ impl OverlayManager {
             }
             OverlayType::Personal => {
                 let personal_config = settings.personal_overlay.clone();
-                create_personal_overlay(position, personal_config, settings.personal_opacity)?
+                create_personal_overlay(position, personal_config)?
             }
             OverlayType::Raid => {
                 let raid_settings = &settings.raid_overlay;
                 let layout = RaidGridLayout::from_config(raid_settings);
                 let raid_config: RaidOverlayConfig = raid_settings.clone().into();
-                create_raid_overlay(position, layout, raid_config, settings.raid_opacity)?
+                create_raid_overlay(position, layout, raid_config)?
             }
             OverlayType::BossHealth => {
                 let boss_config = settings.boss_health.clone();
-                create_boss_health_overlay(position, boss_config, settings.boss_health_opacity)?
+                create_boss_health_overlay(position, boss_config)?
             }
             OverlayType::TimersA => {
                 let timer_config = settings.timers_a_overlay.clone();
-                create_timers_a_overlay(position, timer_config, settings.timers_a_opacity)?
+                create_timers_a_overlay(position, timer_config)?
             }
             OverlayType::TimersB => {
                 let timer_config = settings.timers_b_overlay.clone();
-                create_timers_b_overlay(position, timer_config, settings.timers_b_opacity)?
+                create_timers_b_overlay(position, timer_config)?
             }
             OverlayType::Challenges => {
                 let challenge_config = settings.challenge_overlay.clone();
-                create_challenges_overlay(position, challenge_config, settings.challenge_opacity)?
+                create_challenges_overlay(position, challenge_config)?
             }
             OverlayType::Alerts => {
                 let alerts_config = settings.alerts_overlay.clone();
-                create_alerts_overlay(position, alerts_config, settings.alerts_opacity)?
+                create_alerts_overlay(position, alerts_config)?
             }
             OverlayType::EffectsA => {
                 let buffs_config = settings.effects_a.clone();
-                create_effects_overlay(kind, "Effects A", position, buffs_config, settings.effects_a_opacity)?
+                create_effects_overlay(kind, "Effects A", position, buffs_config)?
             }
             OverlayType::EffectsB => {
                 let debuffs_config = settings.effects_b.clone();
-                create_effects_overlay(kind, "Effects B", position, debuffs_config, settings.effects_b_opacity)?
+                create_effects_overlay(kind, "Effects B", position, debuffs_config)?
             }
             OverlayType::EffectsC => {
                 let effects_config = settings.effects_c.clone();
-                create_effects_overlay(kind, "Effects C", position, effects_config, settings.effects_c_opacity)?
+                create_effects_overlay(kind, "Effects C", position, effects_config)?
             }
             OverlayType::Cooldowns => {
                 let cooldowns_config = settings.cooldown_tracker.clone();
@@ -111,7 +110,6 @@ impl OverlayManager {
                     kind,
                     position,
                     cooldowns_config,
-                    settings.cooldown_tracker_opacity,
                 )?
             }
             OverlayType::CooldownsB => {
@@ -120,37 +118,34 @@ impl OverlayManager {
                     kind,
                     position,
                     cooldowns_config,
-                    settings.cooldown_tracker_b_opacity,
                 )?
             }
             OverlayType::DotTracker => {
                 let dot_config = settings.dot_tracker.clone();
-                create_dot_tracker_overlay(position, dot_config, settings.dot_tracker_opacity)?
+                create_dot_tracker_overlay(position, dot_config)?
             }
             OverlayType::Notes => {
                 let notes_config = settings.notes_overlay.clone();
-                create_notes_overlay(position, notes_config, settings.notes_opacity)?
+                create_notes_overlay(position, notes_config)?
             }
             OverlayType::CombatTime => {
                 let ct_config = settings.combat_time.clone();
-                create_combat_time_overlay(position, ct_config, settings.combat_time_opacity)?
+                create_combat_time_overlay(position, ct_config)?
             }
             OverlayType::AbilityCast => create_ability_cast_overlay(
                 position,
                 &settings.ability_cast,
-                settings.ability_cast_opacity,
             )?,
             OverlayType::OperationTimer => {
                 let ot_config = settings.operation_timer.clone();
                 create_operation_timer_overlay(
                     position,
                     ot_config,
-                    settings.operation_timer_opacity,
                 )?
             }
             OverlayType::AbilityQueue => {
                 let aq_config = settings.ability_queue.clone();
-                create_ability_queue_overlay(position, aq_config, settings.ability_queue_opacity)?
+                create_ability_queue_overlay(position, aq_config)?
             }
             OverlayType::EnemyFrames => {
                 let ef_config = settings.enemy_frames.clone();
@@ -158,7 +153,6 @@ impl OverlayManager {
                     position,
                     ef_config,
                     settings.class_colors.clone(),
-                    settings.enemy_frames_opacity,
                 )?
             }
         };
@@ -166,6 +160,7 @@ impl OverlayManager {
         super::set_overlay_fps(settings.overlay_fps);
         // Apply the font and window style to the freshly-spawned overlay.
         // Buffered into the command channel; processed once the loop starts.
+        // The overlay thread holds its first frame for the first of these.
         for cmd in Self::frame_commands(kind, settings) {
             let _ = handle.tx.try_send(cmd);
         }
@@ -387,8 +382,8 @@ impl OverlayManager {
     pub fn frame_commands(kind: OverlayType, settings: &OverlaySettings) -> [OverlayCommand; 2] {
         let key = kind.config_key();
         [
-            OverlayCommand::SetFontFamily(settings.font_family_for(key).to_string()),
             OverlayCommand::SetFrameStyle(settings.frame_style_for(key)),
+            OverlayCommand::SetFontFamily(settings.font_family_for(key).to_string()),
         ]
     }
 
@@ -404,7 +399,6 @@ impl OverlayManager {
                 let appearance = get_appearance_for_type(settings, metric_type);
                 OverlayConfigUpdate::Metric(
                     appearance,
-                    settings.metric_opacity,
                     settings.metric_show_empty_bars,
                     settings.metric_stack_from_bottom,
                     settings.metric_scaling_factor,
@@ -419,56 +413,55 @@ impl OverlayManager {
             }
             OverlayType::Personal => {
                 let personal_config = settings.personal_overlay.clone();
-                OverlayConfigUpdate::Personal(personal_config, settings.personal_opacity, eu)
+                OverlayConfigUpdate::Personal(personal_config, eu)
             }
             OverlayType::Raid => {
                 let raid_config: RaidOverlayConfig = settings.raid_overlay.clone().into();
-                OverlayConfigUpdate::Raid(raid_config, settings.raid_opacity, eu)
+                OverlayConfigUpdate::Raid(raid_config, eu)
             }
             OverlayType::BossHealth => {
                 let boss_config = settings.boss_health.clone();
-                OverlayConfigUpdate::BossHealth(boss_config, settings.boss_health_opacity, eu)
+                OverlayConfigUpdate::BossHealth(boss_config, eu)
             }
             OverlayType::TimersA => {
                 let timer_config = settings.timers_a_overlay.clone();
-                OverlayConfigUpdate::TimersA(timer_config, settings.timers_a_opacity, eu)
+                OverlayConfigUpdate::TimersA(timer_config, eu)
             }
             OverlayType::TimersB => {
                 let timer_config = settings.timers_b_overlay.clone();
-                OverlayConfigUpdate::TimersB(timer_config, settings.timers_b_opacity, eu)
+                OverlayConfigUpdate::TimersB(timer_config, eu)
             }
             OverlayType::Challenges => {
                 let challenge_config = settings.challenge_overlay.clone();
                 OverlayConfigUpdate::Challenge(
                     challenge_config,
-                    settings.challenge_opacity,
                     eu,
                     settings.class_icon_mode,
                 )
             }
             OverlayType::Alerts => {
                 let alerts_config = settings.alerts_overlay.clone();
-                OverlayConfigUpdate::Alerts(alerts_config, settings.alerts_opacity, eu)
+                OverlayConfigUpdate::Alerts(alerts_config, eu)
             }
             OverlayType::EffectsA => {
                 let cfg = effects_ab_config(&settings.effects_a, "Effects A");
-                OverlayConfigUpdate::EffectsA(cfg, settings.effects_a_opacity, eu)
+                OverlayConfigUpdate::EffectsA(cfg, eu)
             }
             OverlayType::EffectsB => {
                 let cfg = effects_ab_config(&settings.effects_b, "Effects B");
-                OverlayConfigUpdate::EffectsB(cfg, settings.effects_b_opacity, eu)
+                OverlayConfigUpdate::EffectsB(cfg, eu)
             }
             OverlayType::EffectsC => {
                 let cfg = effects_ab_config(&settings.effects_c, "Effects C");
-                OverlayConfigUpdate::EffectsC(cfg, settings.effects_c_opacity, eu)
+                OverlayConfigUpdate::EffectsC(cfg, eu)
             }
             OverlayType::Cooldowns => {
                 let cfg = cooldown_config(&settings.cooldown_tracker);
-                OverlayConfigUpdate::Cooldowns(cfg, settings.cooldown_tracker_opacity, eu)
+                OverlayConfigUpdate::Cooldowns(cfg, eu)
             }
             OverlayType::CooldownsB => {
                 let cfg = cooldown_config(&settings.cooldown_tracker_b);
-                OverlayConfigUpdate::CooldownsB(cfg, settings.cooldown_tracker_b_opacity, eu)
+                OverlayConfigUpdate::CooldownsB(cfg, eu)
             }
             OverlayType::DotTracker => {
                 let cfg = &settings.dot_tracker;
@@ -488,7 +481,7 @@ impl OverlayManager {
                     border_color: cfg.border_color,
                     bar_gradient: cfg.bar_gradient,
                 };
-                OverlayConfigUpdate::DotTracker(dot_config, settings.dot_tracker_opacity, eu)
+                OverlayConfigUpdate::DotTracker(dot_config, eu)
             }
             OverlayType::Notes => {
                 let cfg = &settings.notes_overlay;
@@ -497,7 +490,7 @@ impl OverlayManager {
                     font_color: cfg.font_color.clone(),
                     dynamic_background: cfg.dynamic_background,
                 };
-                OverlayConfigUpdate::Notes(notes_config, settings.notes_opacity, eu)
+                OverlayConfigUpdate::Notes(notes_config, eu)
             }
             OverlayType::CombatTime => {
                 use baras_overlay::CombatTimeConfig;
@@ -509,11 +502,10 @@ impl OverlayManager {
                     dynamic_background: cfg.dynamic_background,
                     clear_after_combat: cfg.clear_after_combat,
                 };
-                OverlayConfigUpdate::CombatTime(ct_config, settings.combat_time_opacity, eu)
+                OverlayConfigUpdate::CombatTime(ct_config, eu)
             }
             OverlayType::AbilityCast => OverlayConfigUpdate::AbilityCast(
                 ability_cast_config(&settings.ability_cast),
-                settings.ability_cast_opacity,
             ),
             OverlayType::OperationTimer => {
                 use baras_overlay::OperationTimerConfig;
@@ -526,7 +518,6 @@ impl OverlayManager {
                 };
                 OverlayConfigUpdate::OperationTimer(
                     ot_config,
-                    settings.operation_timer_opacity,
                 )
             }
             OverlayType::AbilityQueue => {
@@ -539,7 +530,7 @@ impl OverlayManager {
                     gcd_color: cfg.gcd_color,
                     dynamic_background: cfg.dynamic_background,
                 };
-                OverlayConfigUpdate::AbilityQueue(aq_config, settings.ability_queue_opacity)
+                OverlayConfigUpdate::AbilityQueue(aq_config)
             }
             OverlayType::EnemyFrames => {
                 let cfg = &settings.enemy_frames;
@@ -548,7 +539,7 @@ impl OverlayManager {
                     scale: cfg.scale,
                     class_colors: settings.class_colors.clone(),
                 };
-                OverlayConfigUpdate::EnemyFrames(ef_config, settings.enemy_frames_opacity, eu)
+                OverlayConfigUpdate::EnemyFrames(ef_config, eu)
             }
         }
     }

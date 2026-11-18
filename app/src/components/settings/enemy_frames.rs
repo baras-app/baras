@@ -5,7 +5,7 @@ use dioxus::prelude::*;
 use crate::components::Slider;
 
 use super::draft::SettingsDraft;
-use super::widgets::{Check, Group, OpacitySlider, Section};
+use super::widgets::{Check, Group, Section};
 
 #[component]
 pub fn EnemyFramesTab(draft: SettingsDraft, actions: Element) -> Element {
@@ -14,7 +14,6 @@ pub fn EnemyFramesTab(draft: SettingsDraft, actions: Element) -> Element {
     rsx! {
         div { class: "settings-section",
             Section { group: Group::Background,
-                OpacitySlider { value: s.enemy_frames_opacity, on_change: move |v| draft.edit(|s| s.enemy_frames_opacity = v) }
                 p { class: "hint",
                     i { class: "fa-solid fa-info-circle" }
                     " HP bars use the class colors from Global Metrics Settings."

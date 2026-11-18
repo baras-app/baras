@@ -94,10 +94,8 @@ impl AbilityCastOverlay {
     pub fn new(
         window_config: OverlayConfig,
         config: AbilityCastConfig,
-        background_alpha: u8,
     ) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
-        frame.set_background_alpha(background_alpha);
         frame.set_label("Abilities Cast");
 
         Ok(Self {
@@ -112,9 +110,6 @@ impl AbilityCastOverlay {
         self.truncate();
     }
 
-    pub fn set_background_alpha(&mut self, alpha: u8) {
-        self.frame.set_background_alpha(alpha);
-    }
 
     fn icon_px(&self) -> f32 {
         self.frame.scaled(self.config.icon_size as f32)
@@ -349,9 +344,8 @@ impl Overlay for AbilityCastOverlay {
     }
 
     fn update_config(&mut self, config: OverlayConfigUpdate) {
-        if let OverlayConfigUpdate::AbilityCast(cfg, alpha) = config {
+        if let OverlayConfigUpdate::AbilityCast(cfg) = config {
             self.set_config(cfg);
-            self.set_background_alpha(alpha);
         }
     }
 

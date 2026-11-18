@@ -1,4 +1,4 @@
-//! Global settings shared by every metric overlay: opacity, bar sizing, class colours.
+//! Global settings shared by every metric overlay: bar sizing, class colours.
 
 use dioxus::prelude::*;
 
@@ -6,7 +6,7 @@ use crate::components::Slider;
 use crate::types::{ClassColorConfig, ClassIconMode, Color};
 
 use super::draft::SettingsDraft;
-use super::widgets::{Check, ColorRow, DynamicBackground, FontScale, Group, OpacitySlider, Section, SelectRow};
+use super::widgets::{Check, ColorRow, DynamicBackground, FontScale, Group, Section, SelectRow};
 
 /// The eight class colours: label and field
 const CLASS_COLORS: [(&str, fn(&mut ClassColorConfig) -> &mut Color); 8] = [
@@ -41,7 +41,6 @@ pub fn MetricsGlobalSection(draft: SettingsDraft, mut open: Signal<bool>) -> Ele
             if open() {
                 div { class: "collapsible-content",
                     Section { group: Group::Background,
-                        OpacitySlider { value: s.metric_opacity, on_change: move |v| draft.edit(|s| s.metric_opacity = v) }
                         DynamicBackground { checked: s.metric_dynamic_background, on_change: move |v| draft.edit(|s| s.metric_dynamic_background = v) }
                         Check { label: "Show Background Bar", checked: s.metric_show_background_bar, on_change: move |v| draft.edit(|s| s.metric_show_background_bar = v) }
                         Slider {

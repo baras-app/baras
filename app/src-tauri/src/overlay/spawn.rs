@@ -143,13 +143,15 @@ where
             }
         };
 
+        // Hold the first frame until the manager's initial window style arrives
+        let mut first_cmd = rx.blocking_recv();
         let mut needs_render = true;
         let mut was_in_resize_corner = false;
         let mut was_resizing = false;
 
         loop {
             // Process all pending commands
-            while let Ok(cmd) = rx.try_recv() {
+            while let Some(cmd) = first_cmd.take().or_else(|| rx.try_recv().ok()) {
                 match cmd {
                     OverlayCommand::SetMoveMode(enabled) => {
                         overlay.set_move_mode(enabled);
@@ -318,13 +320,15 @@ where
             return;
         }
 
+        // Hold the first frame until the manager's initial window style arrives
+        let mut first_cmd = rx.blocking_recv();
         let mut needs_render = true;
         let mut was_in_resize_corner = false;
         let mut was_resizing = false;
 
         loop {
             // Process all pending commands - dispatch each to main thread
-            while let Ok(cmd) = rx.try_recv() {
+            while let Some(cmd) = first_cmd.take().or_else(|| rx.try_recv().ok()) {
                 match cmd {
                     OverlayCommand::SetMoveMode(enabled) => {
                         dispatch::Queue::main().exec_sync(move || {
@@ -537,7 +541,6 @@ pub fn create_metric_overlay(
     overlay_type: MetricType,
     position: OverlayPositionConfig,
     appearance: OverlayAppearanceConfig,
-    background_alpha: u8,
     show_empty_bars: bool,
     stack_from_bottom: bool,
     scaling_factor: f32,
@@ -570,7 +573,6 @@ pub fn create_metric_overlay(
             config,
             &title,
             appearance,
-            background_alpha,
             show_empty_bars,
             stack_from_bottom,
             scaling_factor,
@@ -604,7 +606,6 @@ pub fn create_metric_overlay(
 pub fn create_personal_overlay(
     position: OverlayPositionConfig,
     personal_config: PersonalOverlayConfig,
-    background_alpha: u8,
 ) -> Result<OverlayHandle, String> {
     // Position is already relative to the monitor - pass directly
     let config = OverlayConfig {
@@ -622,7 +623,7 @@ pub fn create_personal_overlay(
 
     // Create a factory closure that will be called inside the spawned thread
     let factory = move || {
-        PersonalOverlay::new(config, personal_config, background_alpha)
+        PersonalOverlay::new(config, personal_config)
             .map_err(|e| format!("Failed to create personal overlay: {}", e))
     };
 
@@ -644,7 +645,6 @@ pub fn create_raid_overlay(
     position: OverlayPositionConfig,
     layout: RaidGridLayout,
     raid_config: RaidOverlayConfig,
-    background_alpha: u8,
 ) -> Result<OverlayHandle, String> {
     let config = OverlayConfig {
         x: position.x,
@@ -665,7 +665,7 @@ pub fn create_raid_overlay(
     let (registry_tx, registry_rx) = std::sync::mpsc::channel::<RaidRegistryAction>();
 
     let factory = move || {
-        RaidOverlay::new(config, layout, raid_config, background_alpha)
+        RaidOverlay::new(config, layout, raid_config)
             .map_err(|e| format!("Failed to create raid overlay: {}", e))
     };
 
@@ -683,7 +683,6 @@ pub fn create_raid_overlay(
 pub fn create_boss_health_overlay(
     position: OverlayPositionConfig,
     boss_config: BossHealthConfig,
-    background_alpha: u8,
 ) -> Result<OverlayHandle, String> {
     let config = OverlayConfig {
         x: position.x,
@@ -699,7 +698,7 @@ pub fn create_boss_health_overlay(
     let kind = OverlayType::BossHealth;
 
     let factory = move || {
-        BossHealthOverlay::new(config, boss_config, background_alpha)
+        BossHealthOverlay::new(config, boss_config)
             .map_err(|e| format!("Failed to create boss health overlay: {}", e))
     };
 
@@ -717,7 +716,6 @@ pub fn create_boss_health_overlay(
 pub fn create_timers_a_overlay(
     position: OverlayPositionConfig,
     timer_config: TimerOverlayConfig,
-    background_alpha: u8,
 ) -> Result<OverlayHandle, String> {
     let config = OverlayConfig {
         x: position.x,
@@ -733,7 +731,7 @@ pub fn create_timers_a_overlay(
     let kind = OverlayType::TimersA;
 
     let factory = move || {
-        TimerOverlay::new(config, timer_config, background_alpha, "Timers A")
+        TimerOverlay::new(config, timer_config, "Timers A")
             .map_err(|e| format!("Failed to create Timers A overlay: {}", e))
     };
 
@@ -751,7 +749,6 @@ pub fn create_timers_a_overlay(
 pub fn create_timers_b_overlay(
     position: OverlayPositionConfig,
     timer_config: TimerOverlayConfig,
-    background_alpha: u8,
 ) -> Result<OverlayHandle, String> {
     let config = OverlayConfig {
         x: position.x,
@@ -767,7 +764,7 @@ pub fn create_timers_b_overlay(
     let kind = OverlayType::TimersB;
 
     let factory = move || {
-        TimerOverlay::new(config, timer_config, background_alpha, "Timers B")
+        TimerOverlay::new(config, timer_config, "Timers B")
             .map_err(|e| format!("Failed to create Timers B overlay: {}", e))
     };
 
@@ -785,7 +782,6 @@ pub fn create_timers_b_overlay(
 pub fn create_challenges_overlay(
     position: OverlayPositionConfig,
     challenge_config: ChallengeOverlayConfig,
-    background_alpha: u8,
 ) -> Result<OverlayHandle, String> {
     let config = OverlayConfig {
         x: position.x,
@@ -801,7 +797,7 @@ pub fn create_challenges_overlay(
     let kind = OverlayType::Challenges;
 
     let factory = move || {
-        ChallengeOverlay::new(config, challenge_config, background_alpha)
+        ChallengeOverlay::new(config, challenge_config)
             .map_err(|e| format!("Failed to create challenges overlay: {}", e))
     };
 
@@ -819,7 +815,6 @@ pub fn create_challenges_overlay(
 pub fn create_alerts_overlay(
     position: OverlayPositionConfig,
     alerts_config: AlertsOverlayConfig,
-    background_alpha: u8,
 ) -> Result<OverlayHandle, String> {
     let config = OverlayConfig {
         x: position.x,
@@ -835,7 +830,7 @@ pub fn create_alerts_overlay(
     let kind = OverlayType::Alerts;
 
     let factory = move || {
-        AlertsOverlay::new(config, alerts_config, background_alpha)
+        AlertsOverlay::new(config, alerts_config)
             .map_err(|e| format!("Failed to create alerts overlay: {}", e))
     };
 
@@ -901,7 +896,6 @@ pub fn create_effects_overlay(
     title: &'static str,
     position: OverlayPositionConfig,
     effects_config: TypesEffectsAConfig,
-    background_alpha: u8,
 ) -> Result<OverlayHandle, String> {
     let config = OverlayConfig {
         x: position.x,
@@ -917,7 +911,7 @@ pub fn create_effects_overlay(
     let overlay_config = effects_ab_config(&effects_config, title);
 
     let factory = move || {
-        EffectsABOverlay::new(config, overlay_config, background_alpha, title)
+        EffectsABOverlay::new(config, overlay_config, title)
             .map_err(|e| format!("Failed to create {} overlay: {}", title, e))
     };
 
@@ -936,7 +930,6 @@ pub fn create_cooldowns_overlay(
     kind: OverlayType,
     position: OverlayPositionConfig,
     cooldowns_config: CooldownTrackerConfig,
-    background_alpha: u8,
 ) -> Result<OverlayHandle, String> {
     let config = OverlayConfig {
         x: position.x,
@@ -952,7 +945,7 @@ pub fn create_cooldowns_overlay(
     let overlay_config = cooldown_config(&cooldowns_config);
 
     let factory = move || {
-        CooldownOverlay::new(config, overlay_config, background_alpha)
+        CooldownOverlay::new(config, overlay_config)
             .map_err(|e| format!("Failed to create cooldowns overlay: {}", e))
     };
 
@@ -970,7 +963,6 @@ pub fn create_cooldowns_overlay(
 pub fn create_dot_tracker_overlay(
     position: OverlayPositionConfig,
     dot_config: TypesDotTrackerConfig,
-    background_alpha: u8,
 ) -> Result<OverlayHandle, String> {
     let config = OverlayConfig {
         x: position.x,
@@ -1004,7 +996,7 @@ pub fn create_dot_tracker_overlay(
     };
 
     let factory = move || {
-        DotTrackerOverlay::new(config, overlay_config, background_alpha)
+        DotTrackerOverlay::new(config, overlay_config)
             .map_err(|e| format!("Failed to create DOT tracker overlay: {}", e))
     };
 
@@ -1023,7 +1015,6 @@ pub fn create_enemy_frames_overlay(
     position: OverlayPositionConfig,
     ef_config: baras_types::EnemyFramesConfig,
     class_colors: baras_types::ClassColorConfig,
-    background_alpha: u8,
 ) -> Result<OverlayHandle, String> {
     let config = OverlayConfig {
         x: position.x,
@@ -1045,7 +1036,7 @@ pub fn create_enemy_frames_overlay(
     };
 
     let factory = move || {
-        baras_overlay::EnemyFramesOverlay::new(config, overlay_config, background_alpha)
+        baras_overlay::EnemyFramesOverlay::new(config, overlay_config)
             .map_err(|e| format!("Failed to create enemy frames overlay: {}", e))
     };
 
@@ -1063,7 +1054,6 @@ pub fn create_enemy_frames_overlay(
 pub fn create_notes_overlay(
     position: OverlayPositionConfig,
     notes_config: TypesNotesOverlayConfig,
-    background_alpha: u8,
 ) -> Result<OverlayHandle, String> {
     let config = OverlayConfig {
         x: position.x,
@@ -1086,7 +1076,7 @@ pub fn create_notes_overlay(
     };
 
     let factory = move || {
-        NotesOverlay::new(config, overlay_config, background_alpha)
+        NotesOverlay::new(config, overlay_config)
             .map_err(|e| format!("Failed to create notes overlay: {}", e))
     };
 
@@ -1117,7 +1107,6 @@ pub fn ability_cast_config(cfg: &TypesAbilityCastConfig) -> AbilityCastConfig {
 pub fn create_ability_cast_overlay(
     position: OverlayPositionConfig,
     ac_config: &TypesAbilityCastConfig,
-    background_alpha: u8,
 ) -> Result<OverlayHandle, String> {
     let kind = OverlayType::AbilityCast;
     let config = OverlayConfig {
@@ -1133,7 +1122,7 @@ pub fn create_ability_cast_overlay(
     let overlay_config = ability_cast_config(ac_config);
 
     let factory = move || {
-        AbilityCastOverlay::new(config, overlay_config, background_alpha)
+        AbilityCastOverlay::new(config, overlay_config)
             .map_err(|e| format!("Failed to create ability cast overlay: {}", e))
     };
 
@@ -1151,7 +1140,6 @@ pub fn create_ability_cast_overlay(
 pub fn create_combat_time_overlay(
     position: OverlayPositionConfig,
     ct_config: TypesCombatTimeConfig,
-    background_alpha: u8,
 ) -> Result<OverlayHandle, String> {
     let config = OverlayConfig {
         x: position.x,
@@ -1175,7 +1163,7 @@ pub fn create_combat_time_overlay(
     };
 
     let factory = move || {
-        CombatTimeOverlay::new(config, overlay_config, background_alpha)
+        CombatTimeOverlay::new(config, overlay_config)
             .map_err(|e| format!("Failed to create combat time overlay: {}", e))
     };
 
@@ -1193,7 +1181,6 @@ pub fn create_combat_time_overlay(
 pub fn create_operation_timer_overlay(
     position: OverlayPositionConfig,
     ot_config: TypesOperationTimerConfig,
-    background_alpha: u8,
 ) -> Result<OverlayHandle, String> {
     let config = OverlayConfig {
         x: position.x,
@@ -1216,7 +1203,7 @@ pub fn create_operation_timer_overlay(
     };
 
     let factory = move || {
-        OperationTimerOverlay::new(config, overlay_config, background_alpha)
+        OperationTimerOverlay::new(config, overlay_config)
             .map_err(|e| format!("Failed to create operation timer overlay: {}", e))
     };
 
@@ -1234,7 +1221,6 @@ pub fn create_operation_timer_overlay(
 pub fn create_ability_queue_overlay(
     position: OverlayPositionConfig,
     aq_config: TypesAbilityQueueConfig,
-    background_alpha: u8,
 ) -> Result<OverlayHandle, String> {
     let config = OverlayConfig {
         x: position.x,
@@ -1258,7 +1244,7 @@ pub fn create_ability_queue_overlay(
     };
 
     let factory = move || {
-        AbilityQueueOverlay::new(config, overlay_config, background_alpha)
+        AbilityQueueOverlay::new(config, overlay_config)
             .map_err(|e| format!("Failed to create ability queue overlay: {}", e))
     };
 

@@ -6,7 +6,7 @@ use crate::components::Slider;
 use crate::types::DotTrackerConfig;
 
 use super::draft::SettingsDraft;
-use super::widgets::{BorderRows, Check, ColorRow, DynamicBackground, FontScale, Group, NumberRow, OpacitySlider, ResetRow, Section};
+use super::widgets::{BorderRows, Check, ColorRow, DynamicBackground, FontScale, Group, NumberRow, ResetRow, Section};
 
 #[component]
 pub fn DotTrackerTab(draft: SettingsDraft, actions: Element) -> Element {
@@ -17,7 +17,6 @@ pub fn DotTrackerTab(draft: SettingsDraft, actions: Element) -> Element {
     rsx! {
         div { class: "settings-section",
             Section { group: Group::Background,
-                OpacitySlider { value: s.dot_tracker_opacity, on_change: move |v| draft.edit(|s| s.dot_tracker_opacity = v) }
                 DynamicBackground { checked: cfg.dynamic_background, on_change: set(|c, v| c.dynamic_background = v) }
                 Check {
                     label: "Gradient Bars",
@@ -79,7 +78,6 @@ pub fn DotTrackerTab(draft: SettingsDraft, actions: Element) -> Element {
             ResetRow {
                 on_reset: move |_| draft.edit(|s| {
                     s.dot_tracker = DotTrackerConfig::default();
-                    s.dot_tracker_opacity = 180;
                 }),
                 actions,
             }

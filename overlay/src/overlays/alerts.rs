@@ -115,10 +115,8 @@ impl AlertsOverlay {
     pub fn new(
         window_config: OverlayConfig,
         config: AlertsOverlayConfig,
-        background_alpha: u8,
     ) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
-        frame.set_background_alpha(background_alpha);
         frame.set_label("Alerts");
 
         Ok(Self {
@@ -134,10 +132,6 @@ impl AlertsOverlay {
         self.config = config;
     }
 
-    /// Update background alpha
-    pub fn set_background_alpha(&mut self, alpha: u8) {
-        self.frame.set_background_alpha(alpha);
-    }
 
     /// Add new alerts (prepends to show newest first) and pre-cache icons.
     /// Alerts carrying an id replace the existing entry with that id in-place
@@ -432,9 +426,8 @@ impl Overlay for AlertsOverlay {
     }
 
     fn update_config(&mut self, config: OverlayConfigUpdate) {
-        if let OverlayConfigUpdate::Alerts(alerts_config, alpha, european) = config {
+        if let OverlayConfigUpdate::Alerts(alerts_config, european) = config {
             self.set_config(alerts_config);
-            self.set_background_alpha(alpha);
             self.european_number_format = european;
         }
     }

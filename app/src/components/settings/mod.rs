@@ -167,7 +167,6 @@ pub fn SettingsPanel(
                 config.overlay_settings.frame_style = new_settings.frame_style;
                 config.overlay_settings.frame_overrides = new_settings.frame_overrides.clone();
                 config.overlay_settings.personal_overlay = new_settings.personal_overlay.clone();
-                config.overlay_settings.metric_opacity = new_settings.metric_opacity;
                 config.overlay_settings.metric_show_empty_bars =
                     new_settings.metric_show_empty_bars;
                 config.overlay_settings.metric_stack_from_bottom =
@@ -180,47 +179,25 @@ pub fn SettingsPanel(
                 config.overlay_settings.metric_show_background_bar = new_settings.metric_show_background_bar;
                 config.overlay_settings.class_icon_mode = new_settings.class_icon_mode;
                 config.overlay_settings.class_colors = new_settings.class_colors.clone();
-                config.overlay_settings.personal_opacity = new_settings.personal_opacity;
                 config.overlay_settings.raid_overlay = new_settings.raid_overlay.clone();
-                config.overlay_settings.raid_opacity = new_settings.raid_opacity;
                 config.overlay_settings.boss_health = new_settings.boss_health.clone();
-                config.overlay_settings.boss_health_opacity = new_settings.boss_health_opacity;
                 config.overlay_settings.timers_a_overlay = new_settings.timers_a_overlay.clone();
-                config.overlay_settings.timers_a_opacity = new_settings.timers_a_opacity;
                 config.overlay_settings.timers_b_overlay = new_settings.timers_b_overlay.clone();
-                config.overlay_settings.timers_b_opacity = new_settings.timers_b_opacity;
                 config.overlay_settings.effects_overlay = new_settings.effects_overlay.clone();
-                config.overlay_settings.effects_opacity = new_settings.effects_opacity;
                 config.overlay_settings.challenge_overlay = new_settings.challenge_overlay.clone();
-                config.overlay_settings.challenge_opacity = new_settings.challenge_opacity;
                 config.overlay_settings.alerts_overlay = new_settings.alerts_overlay.clone();
-                config.overlay_settings.alerts_opacity = new_settings.alerts_opacity;
                 config.overlay_settings.effects_a = new_settings.effects_a.clone();
-                config.overlay_settings.effects_a_opacity = new_settings.effects_a_opacity;
                 config.overlay_settings.effects_b = new_settings.effects_b.clone();
-                config.overlay_settings.effects_b_opacity = new_settings.effects_b_opacity;
                 config.overlay_settings.effects_c = new_settings.effects_c.clone();
-                config.overlay_settings.effects_c_opacity = new_settings.effects_c_opacity;
                 config.overlay_settings.cooldown_tracker = new_settings.cooldown_tracker.clone();
-                config.overlay_settings.cooldown_tracker_opacity =
-                    new_settings.cooldown_tracker_opacity;
                 config.overlay_settings.cooldown_tracker_b = new_settings.cooldown_tracker_b.clone();
-                config.overlay_settings.cooldown_tracker_b_opacity =
-                    new_settings.cooldown_tracker_b_opacity;
                 config.overlay_settings.dot_tracker = new_settings.dot_tracker.clone();
-                config.overlay_settings.dot_tracker_opacity = new_settings.dot_tracker_opacity;
                 config.overlay_settings.notes_overlay = new_settings.notes_overlay.clone();
-                config.overlay_settings.notes_opacity = new_settings.notes_opacity;
                 config.overlay_settings.combat_time = new_settings.combat_time.clone();
-                config.overlay_settings.combat_time_opacity = new_settings.combat_time_opacity;
                 config.overlay_settings.operation_timer = new_settings.operation_timer.clone();
-                config.overlay_settings.operation_timer_opacity = new_settings.operation_timer_opacity;
                 config.overlay_settings.ability_queue = new_settings.ability_queue.clone();
-                config.overlay_settings.ability_queue_opacity = new_settings.ability_queue_opacity;
                 config.overlay_settings.enemy_frames = new_settings.enemy_frames.clone();
-                config.overlay_settings.enemy_frames_opacity = new_settings.enemy_frames_opacity;
                 config.overlay_settings.ability_cast = new_settings.ability_cast.clone();
-                config.overlay_settings.ability_cast_opacity = new_settings.ability_cast_opacity;
                 config.overlay_settings.positions = existing_positions;
                 config.overlay_settings.enabled = existing_enabled;
 
