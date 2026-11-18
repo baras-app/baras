@@ -188,9 +188,9 @@ pub struct PullFilter {
     /// Discipline names to keep; picking a mirror pair adds both. Empty = any
     #[serde(default)]
     pub disciplines: Vec<String>,
-    /// "Story" | "Veteran" | "Master", matched against the difficulty name
+    /// "Story" | "Veteran" | "Master"
     pub tier: String,
-    /// "8" | "16", matched against the leading player count of the difficulty name
+    /// "8" | "16"
     #[serde(default)]
     pub group_size: String,
     /// Flashpoint runs alongside operations in Raid Summaries (Boss Statistics

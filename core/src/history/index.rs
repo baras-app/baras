@@ -23,7 +23,7 @@ use super::record::PullRecord;
 use super::runs::{BuiltRun, RunSource, apply_meta, build_runs, run_matches};
 use crate::game_data::{game_version_at, server_name};
 use super::store::{HISTORY_VERSION, HistoryHeader, LogHistory, history_file_name};
-use super::{DUMMY_GROUP, history_dir};
+use super::{DUMMY_GROUP, difficulty_parts, history_dir};
 use crate::encounter::PhaseType;
 
 struct IndexedLog {
@@ -459,11 +459,12 @@ fn is_stale(history: &LogHistory, log_path: &Path) -> bool {
 }
 
 fn matches(r: &PullRow, f: &PullFilter) -> bool {
+    let (tier, size) = difficulty_parts(&r.difficulty);
     keeps(&f.characters, &r.character)
         && (f.role.is_empty() || r.role.as_deref() == Some(f.role.as_str()))
         && (f.disciplines.is_empty() || r.discipline.as_ref().is_some_and(|d| f.disciplines.contains(d)))
-        && (f.tier.is_empty() || r.difficulty.contains(f.tier.as_str()))
-        && (f.group_size.is_empty() || r.is_flashpoint || r.difficulty.split(' ').next() == Some(f.group_size.as_str()))
+        && (f.tier.is_empty() || tier == f.tier)
+        && (f.group_size.is_empty() || r.is_flashpoint || size.to_string() == f.group_size)
         && (!f.kills_only || r.success)
         && keeps(&f.servers, &r.server)
         && keeps(&f.game_versions, &r.game_version)
