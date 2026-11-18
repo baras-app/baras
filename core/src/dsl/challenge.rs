@@ -7,7 +7,7 @@
 //! The matching system is designed to work for both live and historical data
 //! by using pure functions that take a `ChallengeContext`.
 
-use std::collections::HashMap;
+use hashbrown::HashMap;
 
 use baras_types::ChallengeColumns;
 use serde::{Deserialize, Serialize};

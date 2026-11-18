@@ -140,11 +140,11 @@ async fn try_portal_shortcuts(
 
     // Create portal connection and session
     let portal = GlobalShortcuts::new().await?;
-    let session = portal.create_session().await?;
+    let session = portal.create_session(Default::default()).await?;
     
     // Bind shortcuts (may show user permission dialog on first run)
     let _response = portal
-        .bind_shortcuts(&session, &shortcuts, None)
+        .bind_shortcuts(&session, &shortcuts, None, Default::default())
         .await?
         .response()?;
     

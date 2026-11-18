@@ -48,10 +48,9 @@ pub async fn open_url(url: String) -> Result<(), String> {
 #[cfg(target_os = "linux")]
 async fn open_url_via_portal(url: &str) -> Result<(), ashpd::Error> {
     use ashpd::desktop::open_uri::OpenFileRequest;
-    use tauri::Url;
 
     // Parse URL and send it via the portal
-    let uri = Url::parse(url).map_err(|_| {
+    let uri = ashpd::Uri::parse(url).map_err(|_| {
         ashpd::Error::Response(ashpd::desktop::ResponseError::Other)
     })?;
 

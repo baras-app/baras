@@ -294,6 +294,10 @@ impl TimerPreferences {
 
     /// Get effective enabled state for a timer (preference overrides definition)
     pub fn is_enabled(&self, def: &TimerDefinition) -> bool {
+        // Checked per definition per signal: skip building the key when there is nothing to look up
+        if self.timers.is_empty() {
+            return def.enabled;
+        }
         let key = Self::key_for_definition(def);
         self.timers
             .get(&key)

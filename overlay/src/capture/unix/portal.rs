@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 use ashpd::desktop::{
     PersistMode,
-    screencast::{CursorMode, Screencast, SourceType},
+    screencast::{CursorMode, Screencast, SelectSourcesOptions, SourceType},
 };
 use pipewire as pw;
 use pw::properties::properties;
@@ -86,7 +86,7 @@ async fn start_portal() -> Result<mpsc::Sender<CaptureRequest>, CaptureError> {
         .await
         .map_err(|e| CaptureError::ConnectionFailed(format!("screen cast portal: {e}")))?;
     let session = portal
-        .create_session()
+        .create_session(Default::default())
         .await
         .map_err(|e| CaptureError::Failed(format!("could not create screen cast: {e}")))?;
     let restore_token = token_path()
@@ -102,17 +102,18 @@ async fn start_portal() -> Result<mpsc::Sender<CaptureRequest>, CaptureError> {
     portal
         .select_sources(
             &session,
-            CursorMode::Hidden,
-            SourceType::Monitor.into(),
-            false,
-            restore_token.as_deref(),
-            PersistMode::ExplicitlyRevoked,
+            SelectSourcesOptions::default()
+                .set_cursor_mode(CursorMode::HIDDEN)
+                .set_sources(SourceType::MONITOR)
+                .set_multiple(false)
+                .set_restore_token(restore_token.as_deref())
+                .set_persist_mode(PersistMode::ExplicitlyRevoked),
         )
         .await
         .map_err(|e| CaptureError::Failed(format!("could not select a monitor: {e}")))?;
 
     let response = portal
-        .start(&session, None)
+        .start(&session, None, Default::default())
         .await
         .map_err(|e| CaptureError::Failed(format!("screen capture request failed: {e}")))?
         .response()
@@ -131,7 +132,7 @@ async fn start_portal() -> Result<mpsc::Sender<CaptureRequest>, CaptureError> {
         .unwrap_or((0, 0));
     let new_token = response.restore_token().map(str::to_owned);
     let fd = portal
-        .open_pipe_wire_remote(&session)
+        .open_pipe_wire_remote(&session, Default::default())
         .await
         .map_err(|e| CaptureError::Failed(format!("could not open PipeWire: {e}")))?;
     let tx = spawn_stream(fd, node, origin, logical)?;
