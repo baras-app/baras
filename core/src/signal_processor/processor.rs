@@ -1080,35 +1080,9 @@ impl EventProcessor {
             Absorb(i64, i64),
         }
 
-        // Snapshot active shield keys before mutation so end triggers can scan them.
-        let active_shield_keys: Vec<(i64, String, usize)> = cache
-            .current_encounter()
-            .map(|enc| enc.boss_shields.keys().cloned().collect())
-            .unwrap_or_default();
-
-        // Snapshot live NPC instances (log_id, class_id, resolved name) so non-NPC-
-        // specific start triggers (timer/phase/counter/combat_start) can activate
-        // shields on every matching live boss instance. Matching is roster-based
-        // (class_id lookup against entity.ids) with a case-insensitive name
-        // fallback, mirroring EntitySelector::matches_with_roster — this is
-        // locale-independent because IDs are the same across DE/FR/EN clients.
-        let live_npcs: Vec<(i64, i64, String)> = cache
-            .current_encounter()
-            .map(|enc| {
-                enc.npcs
-                    .values()
-                    .filter(|n| !n.is_dead)
-                    .map(|n| {
-                        (
-                            n.log_id,
-                            n.class_id,
-                            crate::context::resolve(n.name).to_string(),
-                        )
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-
+        // Shield keys and live NPCs are read straight from the encounter: changes
+        // are collected here and applied after the loop, so nothing mutates
+        // mid-scan and no per-event snapshot is needed.
         let mut changes: Vec<ShieldChange> = Vec::new();
 
         for signal in signals {
@@ -1145,19 +1119,22 @@ impl EventProcessor {
                                         total,
                                     ));
                                 } else {
+                                    // Non-NPC signals (timer/phase/counter/combat_start)
+                                    // activate on every matching live instance.
                                     // Roster-based match: prefer class_id lookup
-                                    // against entity.ids (locale-independent). Fall
-                                    // back to case-insensitive name match for entities
+                                    // against entity.ids (locale-independent, IDs are
+                                    // the same across DE/FR/EN clients). Fall back to
+                                    // case-insensitive name match for entities
                                     // without configured ids.
-                                    for (log_id, class_id, npc_name) in &live_npcs {
+                                    for npc in enc.npcs.values().filter(|n| !n.is_dead) {
                                         let matches = if !entity.ids.is_empty() {
-                                            entity.ids.contains(class_id)
+                                            entity.ids.contains(&npc.class_id)
                                         } else {
-                                            npc_name.eq_ignore_ascii_case(&entity.name)
+                                            resolve(npc.name).eq_ignore_ascii_case(&entity.name)
                                         };
                                         if matches {
                                             changes.push(ShieldChange::Activate(
-                                                *log_id,
+                                                npc.log_id,
                                                 entity.name.clone(),
                                                 shield_idx,
                                                 total,
@@ -1179,7 +1156,7 @@ impl EventProcessor {
                             // deactivate all instances of the matching entity's shields.
                             if shield_signal_matches(&shield.end_trigger, signal, entities) {
                                 let sig_log_id = signal_npc_log_id(signal);
-                                for (log_id, entity_name, idx) in &active_shield_keys {
+                                for (log_id, entity_name, idx) in enc.boss_shields.keys() {
                                     if *idx != shield_idx || entity_name != &entity.name {
                                         continue;
                                     }
