@@ -802,12 +802,21 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
             // only one chart redraw instead of up to 5 intermediate redraws.
             // Without batching, each .set() between .await points allows the
             // runtime to process re-renders, causing visible chart flicker.
-            let new_dps = api::query_dps_over_time(idx, bucket_ms, Some(&entity), tr_opt).await;
-            let new_hps = api::query_hps_over_time(idx, bucket_ms, Some(&entity), tr_opt).await;
-            let new_ehps = api::query_ehps_over_time(idx, bucket_ms, Some(&entity), tr_opt).await;
-            let new_dtps = api::query_dtps_over_time(idx, bucket_ms, Some(&entity), tr_opt).await;
-            let new_eht = api::query_eht_over_time(idx, bucket_ms, Some(&entity), tr_opt).await;
-            let new_hp = api::query_hp_over_time(idx, bucket_ms, Some(&entity), tr_opt).await;
+            // The series are independent, so they are requested together.
+            use futures_util::future::join3;
+            let ((new_dps, new_hps, new_ehps), (new_dtps, new_eht, new_hp)) = futures_util::future::join(
+                join3(
+                    api::query_dps_over_time(idx, bucket_ms, Some(&entity), tr_opt),
+                    api::query_hps_over_time(idx, bucket_ms, Some(&entity), tr_opt),
+                    api::query_ehps_over_time(idx, bucket_ms, Some(&entity), tr_opt),
+                ),
+                join3(
+                    api::query_dtps_over_time(idx, bucket_ms, Some(&entity), tr_opt),
+                    api::query_eht_over_time(idx, bucket_ms, Some(&entity), tr_opt),
+                    api::query_hp_over_time(idx, bucket_ms, Some(&entity), tr_opt),
+                ),
+            )
+            .await;
 
             // Check epoch once after all fetches — discard if stale
             if *load_epoch.read() != current_gen { return; }

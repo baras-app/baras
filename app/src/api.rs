@@ -92,6 +92,81 @@ async fn try_invoke(cmd: &str, args: JsValue) -> Result<JsValue, String> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Query Result Cache
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Results held for one encounter at a time; a persisted encounter never changes.
+#[derive(Default)]
+struct QueryCache {
+    encounter: Option<u32>,
+    /// Bumped on every invalidation so in-flight results from before it are dropped
+    epoch: u32,
+    listening: bool,
+    results: std::collections::HashMap<String, JsValue>,
+}
+
+const MAX_CACHED_QUERIES: usize = 128;
+
+thread_local! {
+    static QUERY_CACHE: std::cell::RefCell<QueryCache> = Default::default();
+}
+
+/// Drop cached results whenever the session changes underneath them
+/// (file load, combat end, directory switch).
+fn ensure_query_cache_listener() {
+    if QUERY_CACHE.with_borrow_mut(|c| std::mem::replace(&mut c.listening, true)) {
+        return;
+    }
+    wasm_bindgen_futures::spawn_local(async {
+        let closure = Closure::new(|_: JsValue| {
+            QUERY_CACHE.with_borrow_mut(|c| {
+                c.results.clear();
+                c.epoch = c.epoch.wrapping_add(1);
+            });
+        });
+        tauri_listen("session-updated", &closure).await;
+        closure.forget();
+    });
+}
+
+/// `invoke` for read-only encounter queries. Persisted encounters are answered
+/// from the cache when the same question was already asked; live queries
+/// (`encounterIdx` null) always reach the backend.
+async fn invoke_query(cmd: &str, args: JsValue) -> JsValue {
+    let encounter = js_sys::Reflect::get(&args, &JsValue::from_str("encounterIdx"))
+        .ok()
+        .and_then(|v| v.as_f64())
+        .map(|v| v as u32);
+    let key = js_sys::JSON::stringify(&args).ok().and_then(|s| s.as_string());
+    let (Some(encounter), Some(key)) = (encounter, key) else {
+        return invoke(cmd, args).await;
+    };
+    let key = format!("{cmd}{key}");
+    ensure_query_cache_listener();
+
+    let (hit, epoch) = QUERY_CACHE.with_borrow_mut(|c| {
+        if c.encounter != Some(encounter) || c.results.len() >= MAX_CACHED_QUERIES {
+            c.results.clear();
+            c.encounter = Some(encounter);
+        }
+        (c.results.get(&key).cloned(), c.epoch)
+    });
+    if let Some(hit) = hit {
+        return hit;
+    }
+
+    let result = invoke(cmd, args).await;
+    if !result.is_null() {
+        QUERY_CACHE.with_borrow_mut(|c| {
+            if c.encounter == Some(encounter) && c.epoch == epoch {
+                c.results.insert(key, result.clone());
+            }
+        });
+    }
+    result
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Config Commands
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1280,7 +1355,7 @@ pub async fn query_breakdown(
     } else {
         js_set(&obj, "durationSecs", &JsValue::NULL);
     }
-    let result = invoke("query_breakdown", obj.into()).await;
+    let result = invoke_query("query_breakdown", obj.into()).await;
     from_js(result)
 }
 
@@ -1304,7 +1379,7 @@ pub async fn query_entity_breakdown(
     } else {
         js_set(&obj, "timeRange", &JsValue::NULL);
     }
-    let result = invoke("query_entity_breakdown", obj.into()).await;
+    let result = invoke_query("query_entity_breakdown", obj.into()).await;
     from_js(result)
 }
 
@@ -1331,7 +1406,7 @@ pub async fn query_raid_overview(
     } else {
         js_set(&obj, "durationSecs", &JsValue::NULL);
     }
-    let result = invoke("query_raid_overview", obj.into()).await;
+    let result = invoke_query("query_raid_overview", obj.into()).await;
     from_js(result)
 }
 
@@ -1352,7 +1427,7 @@ pub async fn query_npc_health(
     } else {
         js_set(&obj, "timeRange", &JsValue::NULL);
     }
-    let result = invoke("query_npc_health", obj.into()).await;
+    let result = invoke_query("query_npc_health", obj.into()).await;
     from_js(result)
 }
 
@@ -1381,7 +1456,7 @@ pub async fn query_dps_over_time(
     } else {
         js_set(&obj, "timeRange", &JsValue::NULL);
     }
-    let result = invoke("query_dps_over_time", obj.into()).await;
+    let result = invoke_query("query_dps_over_time", obj.into()).await;
     from_js(result)
 }
 
@@ -1399,7 +1474,7 @@ pub async fn query_effect_uptime_by_target(
     let tr = time_range.and_then(|tr| serde_wasm_bindgen::to_value(tr).ok());
     js_set(&obj, "timeRange", &tr.unwrap_or(JsValue::NULL));
     js_set(&obj, "durationSecs", &JsValue::from_f64(duration_secs as f64));
-    from_js(invoke("query_effect_uptime_by_target", obj.into()).await)
+    from_js(invoke_query("query_effect_uptime_by_target", obj.into()).await)
 }
 
 /// Every player's metric over time, for the Overview's group chart.
@@ -1415,7 +1490,7 @@ pub async fn query_group_over_time(
     js_set(&obj, "metric", &serde_wasm_bindgen::to_value(&metric).unwrap_or(JsValue::NULL));
     let tr = time_range.and_then(|tr| serde_wasm_bindgen::to_value(tr).ok());
     js_set(&obj, "timeRange", &tr.unwrap_or(JsValue::NULL));
-    from_js(invoke("query_group_over_time", obj.into()).await)
+    from_js(invoke_query("query_group_over_time", obj.into()).await)
 }
 
 pub async fn query_encounter_timeline(encounter_idx: Option<u32>) -> Option<EncounterTimeline> {
@@ -1425,7 +1500,7 @@ pub async fn query_encounter_timeline(encounter_idx: Option<u32>) -> Option<Enco
     } else {
         js_set(&obj, "encounterIdx", &JsValue::NULL);
     }
-    let result = invoke("query_encounter_timeline", obj.into()).await;
+    let result = invoke_query("query_encounter_timeline", obj.into()).await;
     from_js(result)
 }
 
@@ -1454,7 +1529,7 @@ pub async fn query_hps_over_time(
     } else {
         js_set(&obj, "timeRange", &JsValue::NULL);
     }
-    let result = invoke("query_hps_over_time", obj.into()).await;
+    let result = invoke_query("query_hps_over_time", obj.into()).await;
     from_js(result)
 }
 
@@ -1483,7 +1558,7 @@ pub async fn query_ehps_over_time(
     } else {
         js_set(&obj, "timeRange", &JsValue::NULL);
     }
-    let result = invoke("query_ehps_over_time", obj.into()).await;
+    let result = invoke_query("query_ehps_over_time", obj.into()).await;
     from_js(result)
 }
 
@@ -1512,7 +1587,7 @@ pub async fn query_eht_over_time(
     } else {
         js_set(&obj, "timeRange", &JsValue::NULL);
     }
-    let result = invoke("query_eht_over_time", obj.into()).await;
+    let result = invoke_query("query_eht_over_time", obj.into()).await;
     from_js(result)
 }
 
@@ -1541,7 +1616,7 @@ pub async fn query_dtps_over_time(
     } else {
         js_set(&obj, "timeRange", &JsValue::NULL);
     }
-    let result = invoke("query_dtps_over_time", obj.into()).await;
+    let result = invoke_query("query_dtps_over_time", obj.into()).await;
     from_js(result)
 }
 
@@ -1570,7 +1645,7 @@ pub async fn query_hp_over_time(
     } else {
         js_set(&obj, "timeRange", &JsValue::NULL);
     }
-    let result = invoke("query_hp_over_time", obj.into()).await;
+    let result = invoke_query("query_hp_over_time", obj.into()).await;
     from_js(result)
 }
 
@@ -1609,7 +1684,7 @@ pub async fn query_effect_uptime(
     } else {
         js_set(&obj, "sourceFilter", &JsValue::NULL);
     }
-    let result = invoke("query_effect_uptime", obj.into()).await;
+    let result = invoke_query("query_effect_uptime", obj.into()).await;
     from_js(result)
 }
 
@@ -1650,7 +1725,7 @@ pub async fn query_effect_windows(
     } else {
         js_set(&obj, "sourceFilter", &JsValue::NULL);
     }
-    let result = invoke("query_effect_windows", obj.into()).await;
+    let result = invoke_query("query_effect_windows", obj.into()).await;
     from_js(result)
 }
 
@@ -1818,7 +1893,7 @@ pub async fn query_source_names(encounter_idx: Option<u32>) -> Option<GroupedEnt
     } else {
         js_set(&obj, "encounterIdx", &JsValue::NULL);
     }
-    let result = invoke("query_source_names", obj.into()).await;
+    let result = invoke_query("query_source_names", obj.into()).await;
     from_js(result)
 }
 
@@ -1830,7 +1905,7 @@ pub async fn query_target_names(encounter_idx: Option<u32>) -> Option<GroupedEnt
     } else {
         js_set(&obj, "encounterIdx", &JsValue::NULL);
     }
-    let result = invoke("query_target_names", obj.into()).await;
+    let result = invoke_query("query_target_names", obj.into()).await;
     from_js(result)
 }
 
@@ -1842,7 +1917,7 @@ pub async fn query_player_deaths(encounter_idx: Option<u32>) -> Option<Vec<Playe
     } else {
         js_set(&obj, "encounterIdx", &JsValue::NULL);
     }
-    let result = invoke("query_player_deaths", obj.into()).await;
+    let result = invoke_query("query_player_deaths", obj.into()).await;
     from_js(result)
 }
 
@@ -1860,7 +1935,7 @@ pub async fn query_death_recap(
     }
     js_set(&obj, "playerName", &JsValue::from_str(player_name));
     js_set(&obj, "deathTimeSecs", &JsValue::from_f64(death_time_secs as f64));
-    let result = invoke("query_death_recap", obj.into()).await;
+    let result = invoke_query("query_death_recap", obj.into()).await;
     from_js(result)
 }
 
@@ -1892,7 +1967,7 @@ pub async fn query_damage_taken_summary(
     } else {
         js_set(&obj, "entityTypes", &JsValue::NULL);
     }
-    let result = invoke("query_damage_taken_summary", obj.into()).await;
+    let result = invoke_query("query_damage_taken_summary", obj.into()).await;
     from_js(result)
 }
 
@@ -1921,7 +1996,7 @@ pub async fn query_rotation(
     } else {
         js_set(&obj, "timeRange", &JsValue::NULL);
     }
-    let result = invoke("query_rotation", obj.into()).await;
+    let result = invoke_query("query_rotation", obj.into()).await;
     from_js(result)
 }
 
@@ -1944,7 +2019,7 @@ pub async fn query_ability_usage(
     } else {
         js_set(&obj, "timeRange", &JsValue::NULL);
     }
-    let result = invoke("query_ability_usage", obj.into()).await;
+    let result = invoke_query("query_ability_usage", obj.into()).await;
     from_js(result)
 }
 

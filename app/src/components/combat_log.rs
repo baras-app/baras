@@ -60,6 +60,9 @@ pub struct CombatLogProps {
     /// Optional callback to update the parent's time range (e.g. from context menu)
     #[props(default)]
     pub on_range_change: Option<EventHandler<TimeRange>>,
+    /// Called each time a page load for the current filters has finished
+    #[props(default)]
+    pub on_ready: Option<EventHandler<()>>,
     /// European number format (swaps `.` and `,`)
     #[props(default)]
     pub european: bool,
@@ -417,10 +420,15 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     use_effect(move || {
         let idx = *encounter_idx_signal.read();
         spawn(async move {
-            if let Some(sources) = api::query_source_names(idx).await {
+            let (sources, targets) = futures_util::future::join(
+                api::query_source_names(idx),
+                api::query_target_names(idx),
+            )
+            .await;
+            if let Some(sources) = sources {
                 source_names.set(sources);
             }
-            if let Some(targets) = api::query_target_names(idx).await {
+            if let Some(targets) = targets {
                 target_names.set(targets);
             }
         });
@@ -433,6 +441,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     };
 
     // Load data when filters, time range, sort, or encounter change
+    let on_ready = props.on_ready;
     use_effect(move || {
         let idx = *encounter_idx_signal.read();
         let tr = time_range_signal.read().clone();
@@ -460,36 +469,38 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                 Some(&tr)
             };
 
-            // Get total count
-            if let Some(count) = api::query_combat_log_count(
-                idx,
-                source.as_deref(),
-                target.as_deref(),
-                search_opt.as_deref(),
-                tr_opt,
-                event_filters.as_ref(),
+            // Count and first page are independent, so they are requested together
+            let (count, data) = futures_util::future::join(
+                api::query_combat_log_count(
+                    idx,
+                    source.as_deref(),
+                    target.as_deref(),
+                    search_opt.as_deref(),
+                    tr_opt,
+                    event_filters.as_ref(),
+                ),
+                api::query_combat_log(
+                    idx,
+                    load_offset,
+                    PAGE_SIZE,
+                    source.as_deref(),
+                    target.as_deref(),
+                    search_opt.as_deref(),
+                    tr_opt,
+                    event_filters.as_ref(),
+                    sort_col,
+                    sort_dir,
+                ),
             )
-            .await
-            {
+            .await;
+            if let Some(count) = count {
                 total_count.set(count);
             }
-
-            // Load page at computed offset
-            if let Some(data) = api::query_combat_log(
-                idx,
-                load_offset,
-                PAGE_SIZE,
-                source.as_deref(),
-                target.as_deref(),
-                search_opt.as_deref(),
-                tr_opt,
-                event_filters.as_ref(),
-                sort_col,
-                sort_dir,
-            )
-            .await
-            {
+            if let Some(data) = data {
                 rows.set(data);
+            }
+            if let Some(on_ready) = on_ready {
+                on_ready.call(());
             }
         });
     });
