@@ -44,7 +44,7 @@ rustix = { version = "1.0", features = ["fs", "mm"] }
 x11rb = { version = "0.14", features = ["randr", "shape", "shm"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-ashpd = { version = "0.12", default-features = false, features = ["tokio"] }
+ashpd = { version = "0.14", default-features = false, features = ["tokio", "screencast"] }
 pipewire = "0.10.1"
 dirs = "7"
 

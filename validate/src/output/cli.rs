@@ -81,7 +81,7 @@ impl CliOutput {
         Self {
             level,
             combat_start: None,
-            use_colors: atty::is(atty::Stream::Stdout),
+            use_colors: std::io::IsTerminal::is_terminal(&std::io::stdout()),
             timers_started: 0,
             timers_expired: 0,
             timers_canceled: 0,
