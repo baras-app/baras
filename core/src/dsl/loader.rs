@@ -617,7 +617,7 @@ conditions = [
     #[test]
     fn test_load_bestia_fixture() {
         // Load the actual Dread Palace fixture file
-        let path = std::path::Path::new("../integration-tests/fixtures/config/dread_palace.toml");
+        let path = std::path::Path::new("../test-log-files/fixtures/config/dread_palace.toml");
         if !path.exists() {
             eprintln!("Fixture file not found, skipping test");
             return;
@@ -744,5 +744,40 @@ area_type = "operation"
 
         // Cleanup
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// The runtime loaders log and skip a file that fails to parse, so a
+    /// broken bundled definition is otherwise only noticed in game.
+    #[test]
+    fn bundled_definitions_parse() {
+        fn collect(dir: &Path, files: &mut Vec<PathBuf>) {
+            for entry in fs::read_dir(dir).expect("read definitions dir").flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    collect(&path, files);
+                } else if path.extension().is_some_and(|ext| ext == "toml") {
+                    files.push(path);
+                }
+            }
+        }
+
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("definitions");
+        let (mut encounters, mut effects) = (Vec::new(), Vec::new());
+        collect(&root.join("encounters"), &mut encounters);
+        collect(&root.join("effects"), &mut effects);
+        assert!(!encounters.is_empty() && !effects.is_empty());
+
+        let mut errors: Vec<String> = encounters
+            .iter()
+            .filter_map(|path| load_bosses_from_file(path).err())
+            .collect();
+        errors.extend(effects.iter().filter_map(|path| {
+            let content = fs::read_to_string(path).expect("read effects file");
+            toml::from_str::<crate::effects::DefinitionConfig>(&content)
+                .err()
+                .map(|e| format!("Failed to parse {}: {}", path.display(), e))
+        }));
+
+        assert!(errors.is_empty(), "{}", errors.join("\n"));
     }
 }
