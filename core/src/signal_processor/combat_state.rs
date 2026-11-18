@@ -365,33 +365,19 @@ fn handle_in_combat(
             return false;
         };
 
-        // Collect all kill target class IDs from the boss definition
-        let kill_target_class_ids: std::collections::HashSet<i64> = enc.boss_definitions()[def_idx]
-            .kill_targets()
-            .flat_map(|e| e.ids.iter().copied())
-            .collect();
-
-        if kill_target_class_ids.is_empty() {
-            return false;
-        }
-
-        // Find all NPC instances that are kill targets (by class_id)
-        let kill_target_instances: Vec<_> = enc
+        // NPC instances that are kill targets (by class_id). Runs per event,
+        // so it scans the definition directly instead of collecting a set.
+        let boss_def = &enc.boss_definitions()[def_idx];
+        let mut kill_target_instances = enc
             .npcs
             .values()
-            .filter(|npc| kill_target_class_ids.contains(&npc.class_id))
-            .collect();
+            .filter(|npc| boss_def.kill_targets().any(|e| e.ids.contains(&npc.class_id)))
+            .peekable();
 
-        // Must have seen at least one kill target instance
-        if kill_target_instances.is_empty() {
-            return false;
-        }
-
-        // All seen kill target instances must be dead
+        // Must have seen at least one kill target instance, and all of them must be dead.
         // Also consider dead if HP <= 0 (handles game race condition where death event is never logged)
-        kill_target_instances
-            .iter()
-            .all(|npc| npc.is_dead || npc.current_hp <= 0)
+        kill_target_instances.peek().is_some()
+            && kill_target_instances.all(|npc| npc.is_dead || npc.current_hp <= 0)
     });
 
     // Check if this is a boss encounter (has boss definitions loaded OR boss NPCs detected)
