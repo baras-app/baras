@@ -27,6 +27,7 @@ use baras_core::combat_log::{CombatEvent, EntityType, LogParser};
 use baras_core::context::resolve;
 use baras_core::encounter::ChallengeTracker;
 use baras_core::encounter::combat::ActiveBoss;
+use baras_core::encounter::entity_info::NpcInfo;
 use baras_core::game_data::{effect_id, effect_type_id};
 use baras_core::signal_processor::{
     EventProcessor, GameSignal, SignalHandler, check_counter_signal_triggers,
@@ -368,8 +369,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         None, // No difficulty context in validation mode
     );
 
-    let mut challenge_ctx = ChallengeContext::default();
-    challenge_ctx.boss_npc_ids = boss_npc_ids.clone();
+    // Owned state the per-event `ChallengeContext` borrows from
+    let mut challenge_phase: Option<String> = None;
+    let mut challenge_counters: hashbrown::HashMap<String, u32> = hashbrown::HashMap::new();
+    let mut challenge_npcs: hashbrown::HashMap<i64, NpcInfo> = hashbrown::HashMap::new();
 
     // Track player names for challenge breakdown
     let mut player_names: HashMap<i64, String> = HashMap::new();
@@ -650,7 +653,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ..
                 } => {
                     cli.phase_change(*timestamp, old_phase.as_deref(), new_phase);
-                    challenge_ctx.current_phase = Some(new_phase.clone());
+                    challenge_phase = Some(new_phase.clone());
                     challenge_tracker.set_phase(new_phase, *timestamp);
                 }
                 GameSignal::PhaseEndTriggered {
@@ -667,9 +670,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ..
                 } => {
                     cli.counter_change(*timestamp, counter_id, *old_value, *new_value);
-                    challenge_ctx
-                        .counters
-                        .insert(counter_id.clone(), *new_value);
+                    challenge_counters.insert(counter_id.clone(), *new_value);
                 }
                 GameSignal::EntityDeath {
                     npc_id,
@@ -724,9 +725,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ..
                 } => {
                     cli.counter_change(*timestamp, counter_id, *old_value, *new_value);
-                    challenge_ctx
-                        .counters
-                        .insert(counter_id.clone(), *new_value);
+                    challenge_counters.insert(counter_id.clone(), *new_value);
                 }
                 GameSignal::PhaseChanged {
                     old_phase,
@@ -735,7 +734,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ..
                 } => {
                     cli.phase_change(*timestamp, old_phase.as_deref(), new_phase);
-                    challenge_ctx.current_phase = Some(new_phase.clone());
+                    challenge_phase = Some(new_phase.clone());
                     challenge_tracker.set_phase(new_phase, *timestamp);
                 }
                 GameSignal::PhaseEndTriggered {
@@ -848,17 +847,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let damage = event.details.dmg_effective as i64;
 
             if target.npc_id.is_some() && event.target_entity.health.1 > 0 {
-                let hp_pct = (event.target_entity.health.0 as f32
-                    / event.target_entity.health.1 as f32)
-                    * 100.0;
-                challenge_ctx
-                    .hp_by_npc_id
-                    .insert(target.npc_id.unwrap(), hp_pct);
+                challenge_npcs.insert(
+                    target.npc_id.unwrap(),
+                    NpcInfo {
+                        current_hp: event.target_entity.health.0,
+                        max_hp: event.target_entity.health.1,
+                        ..Default::default()
+                    },
+                );
             }
 
             let absorbed = event.details.dmg_absorbed as i64;
             challenge_tracker.process_damage(
-                &challenge_ctx,
+                &ChallengeContext {
+                    current_phase: challenge_phase.as_deref(),
+                    counters: &challenge_counters,
+                    npcs: &challenge_npcs,
+                    boss_npc_ids: &boss_npc_ids,
+                },
                 &source,
                 &target,
                 event.action.action_id as u64,

@@ -9,6 +9,7 @@ path = "src/main.rs"
 
 [dependencies]
 baras-core = { path = "../core" }
+hashbrown = "0.17"
 clap = { version = "4", features = ["derive"] }
 chrono = "0.4"
 toml = "1"
