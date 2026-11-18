@@ -477,10 +477,11 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         }
     });
 
-    // Live query polling loop — bumps live_poll_tick every 2s while active
+    // Live query polling loop — bumps live_poll_tick once a second while active.
+    // Faster than this and the numbers change too quickly to read.
     use_future(move || async move {
         loop {
-            gloo_timers::future::TimeoutFuture::new(2_500).await;
+            gloo_timers::future::TimeoutFuture::new(1_000).await;
             if *live_query_active.peek() {
                 let tick = *live_poll_tick.peek();
                 live_poll_tick.set(tick.wrapping_add(1));
