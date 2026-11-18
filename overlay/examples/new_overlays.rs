@@ -117,20 +117,20 @@ fn main() {
     dots_bar_cfg.layout_bar = true;
     dots_bar_cfg.bar_gradient = true;
 
-    let mut buffs_overlay = EffectsABOverlay::new(buffs_config, buffs_cfg, 180, "Effects A")
+    let mut buffs_overlay = EffectsABOverlay::new(buffs_config, buffs_cfg, "Effects A")
         .expect("Failed to create effects overlay");
 
     let mut effects_bar_overlay =
-        EffectsABOverlay::new(effects_bar_config, effects_bar_cfg, 180, "Effects Bar")
+        EffectsABOverlay::new(effects_bar_config, effects_bar_cfg, "Effects Bar")
             .expect("Failed to create bar effects overlay");
 
-    let mut cooldowns_overlay = CooldownOverlay::new(cooldowns_config, cooldowns_cfg, 180)
+    let mut cooldowns_overlay = CooldownOverlay::new(cooldowns_config, cooldowns_cfg)
         .expect("Failed to create cooldowns overlay");
 
-    let mut dots_overlay = DotTrackerOverlay::new(dots_config, dots_cfg, 180)
+    let mut dots_overlay = DotTrackerOverlay::new(dots_config, dots_cfg)
         .expect("Failed to create DOT tracker overlay");
 
-    let mut dots_bar_overlay = DotTrackerOverlay::new(dots_bar_config, dots_bar_cfg, 180)
+    let mut dots_bar_overlay = DotTrackerOverlay::new(dots_bar_config, dots_bar_cfg)
         .expect("Failed to create bar mode DOT tracker overlay");
 
     // Pre-load icons once (avoid allocations every frame)
