@@ -2034,6 +2034,12 @@ impl EffectTracker {
 
                 existing.refresh(timestamp, duration);
 
+                // Recast on a different target: update the displayed target
+                if existing.target_name != target_name {
+                    existing.target_name = target_name;
+                    existing.set_display_template(def.display_text());
+                }
+
                 // Fire OnApply alert on refresh
                 if def.alert_on == AlertTrigger::OnApply
                     && let Some(text) = &def.alert_text
@@ -2061,8 +2067,10 @@ impl EffectTracker {
                     display_text,
                     source_id,
                     source_name,
+                    // Tracked on the caster (keying, death cleanup); only the
+                    // displayed name is the target resolved at cast time
                     source_id,
-                    source_name,
+                    target_name,
                     is_from_local,
                     timestamp,
                     duration,
