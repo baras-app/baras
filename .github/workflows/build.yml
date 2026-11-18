@@ -3,6 +3,10 @@ name: Build
 on:
   workflow_dispatch:
     inputs:
+      release:
+        description: "Publish a release (master only, builds every platform)"
+        type: boolean
+        default: false
       build_linux:
         description: "Build Linux artifacts"
         type: boolean
@@ -16,17 +20,119 @@ on:
         type: boolean
         default: true
 
+# One release at a time; plain builds never queue behind each other.
+concurrency:
+  group: ${{ inputs.release && 'release' || github.run_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
+  DIOXUS_CLI_VERSION: 0.7.10
+  TAURI_CLI_VERSION: 2.12.4
 
 jobs:
-  build-linux:
-    if: ${{ inputs.build_linux }}
+  # ───────────────────────────────────────────────────────────────────────────
+  # Picks the platforms to build and, for a release, checks the version and
+  # opens the draft release every build job uploads into.
+  # ───────────────────────────────────────────────────────────────────────────
+  preflight:
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      version: ${{ steps.plan.outputs.version }}
+      notes: ${{ steps.release.outputs.notes }}
+      release_id: ${{ steps.release.outputs.release_id }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - name: Plan build
+        id: plan
+        env:
+          LINUX: ${{ inputs.release || inputs.build_linux }}
+          WINDOWS: ${{ inputs.release || inputs.build_windows }}
+          MACOS: ${{ inputs.release || inputs.build_macos }}
+        run: |
+          set -euo pipefail
+          matrix=$(jq -cn --argjson linux "$LINUX" --argjson windows "$WINDOWS" --argjson macos "$MACOS" '
+            [
+              { on: $linux, platform: "linux", os: "ubuntu-24.04",
+                target: "x86_64-unknown-linux-gnu", target_args: "", out_dir: "target/release", exe: "" },
+              { on: $windows, platform: "windows", os: "windows-latest",
+                target: "x86_64-pc-windows-msvc", target_args: "", out_dir: "target/release", exe: ".exe" },
+              { on: $macos, platform: "macos", os: "macos-15",
+                target: "aarch64-apple-darwin", target_args: "--target aarch64-apple-darwin",
+                out_dir: "target/aarch64-apple-darwin/release", exe: "" }
+            ] | map(select(.on) | del(.on)) | { include: . }')
+          if [[ $(jq '.include | length' <<< "$matrix") -eq 0 ]]; then
+            echo "::error::No platform selected"
+            exit 1
+          fi
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "version=$(jq -r '.version' app/src-tauri/tauri.conf.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Check version and open draft release
+        id: release
+        if: ${{ inputs.release }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$1"; exit 1; }
+
+          [[ "$GITHUB_REF" == refs/heads/master ]] || fail "Releases are cut from master, not $GITHUB_REF_NAME"
+          [[ "$(head -n 1 CHANGELOG.md)" == "# v$VERSION" ]] \
+            || fail "CHANGELOG.md starts with '$(head -n 1 CHANGELOG.md)', expected '# v$VERSION'"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" > /dev/null; then
+            fail "v$VERSION is already released; bump the version in tauri.conf.json"
+          fi
+
+          # Changelog without its version header is the release body; its
+          # first section heading is the updater's one-line note.
+          tail -n +3 CHANGELOG.md > "$RUNNER_TEMP/body.md"
+          echo "notes=$(grep -m 1 '^## ' CHANGELOG.md | sed 's/^## //' || true)" >> "$GITHUB_OUTPUT"
+
+          # A draft left by an earlier failed run is reused and re-pointed at
+          # this commit, so a retry needs no manual cleanup.
+          releases="repos/$GITHUB_REPOSITORY/releases"
+          release_id=$(gh api "$releases?per_page=100" \
+            --jq "[.[] | select(.draft and .tag_name == \"v$VERSION\")][0].id // empty")
+          if [[ -n "$release_id" ]]; then
+            endpoint="$releases/$release_id"; method=PATCH
+          else
+            endpoint="$releases"; method=POST
+          fi
+          release_id=$(gh api -X "$method" "$endpoint" \
+            -f tag_name="v$VERSION" -f target_commitish="$GITHUB_SHA" \
+            -f name="BARAS v$VERSION" -F body=@"$RUNNER_TEMP/body.md" -F draft=true \
+            --jq '.id')
+          echo "release_id=$release_id" >> "$GITHUB_OUTPUT"
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Builds one platform. With a release id the bundles and their signatures go
+  # to the draft release; otherwise they are kept as workflow artifacts.
+  # ───────────────────────────────────────────────────────────────────────────
+  build:
+    needs: preflight
+    name: build-${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: ${{ inputs.release }}
+      matrix: ${{ fromJSON(needs.preflight.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v5
 
       - name: Install Linux dependencies
+        if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -43,169 +149,169 @@ jobs:
             libpipewire-0.3-dev \
             libasound2-dev
 
+      # Pinned: Rust 1.100's build-dir layout breaks tauri-build's sidecar copy.
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          targets: wasm32-unknown-unknown,${{ matrix.target }}
 
+      # Only master saves, so branch builds cannot evict master's cache from
+      # the 10 GB repository quota.
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: ". -> target"
           cache-on-failure: true
+          save-if: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@main
+        uses: cargo-bins/cargo-binstall@v1.27.0
 
       - name: Install Dioxus and Tauri CLIs
-        run: cargo binstall dioxus-cli@0.7.10 tauri-cli --no-confirm --force --locked
+        shell: bash
+        run: |
+          cargo binstall "dioxus-cli@$DIOXUS_CLI_VERSION" "tauri-cli@$TAURI_CLI_VERSION" \
+            --no-confirm --force --locked
 
       - name: Setup linuxdeploy
+        if: matrix.platform == 'linux'
         run: |
-          mkdir -p ${{ runner.temp }}/tauri-tools/linuxdeploy
-          wget -q -O ${{ runner.temp }}/tauri-tools/linuxdeploy/linuxdeploy-x86_64.AppImage \
+          tools="$RUNNER_TEMP/tauri-tools"
+          mkdir -p "$tools/linuxdeploy"
+          wget -q -O "$tools/linuxdeploy/linuxdeploy-x86_64.AppImage" \
             https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20250213-2/linuxdeploy-x86_64.AppImage
-          chmod +x ${{ runner.temp }}/tauri-tools/linuxdeploy/linuxdeploy-x86_64.AppImage
+          chmod +x "$tools/linuxdeploy/linuxdeploy-x86_64.AppImage"
+          echo "TAURI_TOOLKIT_PATH=$tools" >> "$GITHUB_ENV"
 
       - name: Build parse-worker sidecar
+        shell: bash
         run: |
-          cargo build --release --package baras-parse-worker
+          cargo build --release --package baras-parse-worker ${{ matrix.target_args }}
           mkdir -p app/src-tauri/binaries
-          cp target/release/baras-parse-worker app/src-tauri/binaries/baras-parse-worker-x86_64-unknown-linux-gnu
+          cp "${{ matrix.out_dir }}/baras-parse-worker${{ matrix.exe }}" \
+            "app/src-tauri/binaries/baras-parse-worker-${{ matrix.target }}${{ matrix.exe }}"
 
+      # The release's updater manifest is written by the publish job, after the
+      # Linux AppImage below has been repacked and re-signed.
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          TAURI_TOOLKIT_PATH: ${{ runner.temp }}/tauri-tools
         with:
           projectPath: app
           tauriScript: cargo tauri
+          args: ${{ matrix.target_args }}
+          releaseId: ${{ needs.preflight.outputs.release_id }}
+          includeUpdaterJson: false
 
       # Ubuntu's libpipewire hardcodes Debian's SPA plugin directory
       # (/usr/lib/x86_64-linux-gnu/spa-0.2); bundled into the AppImage it
       # cannot load its plugins on any non-Debian distro and portal screen
       # capture dies with "Creation failed". Strip it so the host's own
-      # libpipewire (which knows its own plugin paths) is loaded instead.
+      # libpipewire (which knows its own plugin paths) is loaded instead. For
+      # a release, re-sign (the updater checks the .sig against the repacked
+      # bytes) and replace the release assets.
       - name: Strip bundled libpipewire and repack AppImage
+        if: matrix.platform == 'linux'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          RELEASE: ${{ inputs.release }}
+          VERSION: ${{ needs.preflight.outputs.version }}
         run: |
           set -euo pipefail
           appdir=target/release/bundle/appimage/BARAS.AppDir
           appimage=$(ls target/release/bundle/appimage/*.AppImage)
           rm -f "$appdir"/usr/lib/libpipewire-0.3.so*
-          wget -q -O /tmp/appimagetool \
-            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
-          chmod +x /tmp/appimagetool
-          ARCH=x86_64 /tmp/appimagetool "$appdir" "$appimage"
+          wget -q -O "$RUNNER_TEMP/appimagetool" \
+            https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+          chmod +x "$RUNNER_TEMP/appimagetool"
+          ARCH=x86_64 "$RUNNER_TEMP/appimagetool" "$appdir" "$appimage"
+          if [[ "$RELEASE" == true ]]; then
+            cargo tauri signer sign \
+              --private-key "$TAURI_SIGNING_PRIVATE_KEY" \
+              --password "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" \
+              "$appimage"
+            gh release upload "v$VERSION" "$appimage" "$appimage.sig" --clobber
+          fi
 
-      - name: Upload Linux artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload artifacts
+        if: ${{ !inputs.release }}
+        uses: actions/upload-artifact@v6
         with:
-          name: linux-artifacts
+          name: ${{ matrix.platform }}-artifacts
           path: |
             target/release/bundle/appimage/*.AppImage
             target/release/bundle/deb/*.deb
-          retention-days: 30
-
-  build-windows:
-    if: ${{ inputs.build_windows }}
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@1.99.1
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: ". -> target"
-          cache-on-failure: true
-
-      - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@main
-
-      - name: Install Dioxus and Tauri CLIs
-        run: cargo binstall dioxus-cli@0.7.10 tauri-cli --no-confirm --force --locked
-
-      - name: Build parse-worker sidecar
-        run: |
-          cargo build --release --package baras-parse-worker
-          mkdir -p app/src-tauri/binaries
-          cp target/release/baras-parse-worker.exe app/src-tauri/binaries/baras-parse-worker-x86_64-pc-windows-msvc.exe
-
-      - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          projectPath: app
-          tauriScript: cargo tauri
-
-      - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-artifacts
-          path: |
             target/release/bundle/nsis/*.exe
-          retention-days: 30
-
-  build-macos:
-    if: ${{ inputs.build_macos }}
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@1.99.1
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: ". -> target"
-          cache-on-failure: true
-
-      - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@main
-
-      - name: Install Dioxus and Tauri CLIs
-        run: cargo binstall dioxus-cli@0.7.10 tauri-cli --no-confirm --force --locked
-
-      - name: Add aarch64 target
-        run: rustup target add aarch64-apple-darwin
-
-      - name: Build parse-worker sidecar
-        run: |
-          cargo build --release --target aarch64-apple-darwin --package baras-parse-worker
-          mkdir -p app/src-tauri/binaries
-          cp target/aarch64-apple-darwin/release/baras-parse-worker app/src-tauri/binaries/baras-parse-worker-aarch64-apple-darwin
-
-      - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          projectPath: app
-          tauriScript: cargo tauri
-          args: --target aarch64-apple-darwin
-
-      - name: Debug - List bundle output
-        run: |
-          echo "=== target/aarch64-apple-darwin/release/bundle ==="
-          find target/aarch64-apple-darwin/release/bundle -type f -name "*.dmg" 2>/dev/null || echo "No .dmg files found"
-          find target/aarch64-apple-darwin/release/bundle -type d -name "*.app" 2>/dev/null || echo "No .app directories found"
-          echo "=== Full bundle tree ==="
-          ls -laR target/aarch64-apple-darwin/release/bundle/ 2>/dev/null || echo "Bundle directory not found"
-
-      - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-artifacts
-          path: |
             target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
             target/aarch64-apple-darwin/release/bundle/macos/*.app
           retention-days: 30
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Runs only once every platform has uploaded: publishes the draft, then
+  # points the in-app updater at it via latest.json on master.
+  # ───────────────────────────────────────────────────────────────────────────
+  publish:
+    if: ${{ inputs.release }}
+    needs: [preflight, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      VERSION: ${{ needs.preflight.outputs.version }}
+      NOTES: ${{ needs.preflight.outputs.notes }}
+    steps:
+      # Master's tip rather than the built commit, so the push below still
+      # fast-forwards if master moved during the build.
+      - uses: actions/checkout@v5
+        with:
+          ref: master
+
+      - name: Generate latest.json
+        run: |
+          set -euo pipefail
+          # Fails if any signature is missing, rather than publishing a
+          # manifest no client can verify.
+          gh release download "v$VERSION" --dir "$RUNNER_TEMP/sigs" --pattern '*.sig'
+          linux_sig=$(cat "$RUNNER_TEMP/sigs/BARAS_${VERSION}_amd64.AppImage.sig")
+          windows_sig=$(cat "$RUNNER_TEMP/sigs/BARAS_${VERSION}_x64-setup.exe.sig")
+          macos_sig=$(cat "$RUNNER_TEMP/sigs/BARAS_aarch64.app.tar.gz.sig")
+
+          jq -n \
+            --arg version "$VERSION" \
+            --arg notes "$NOTES" \
+            --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg base "https://github.com/$GITHUB_REPOSITORY/releases/download/v$VERSION" \
+            --arg linux_sig "$linux_sig" \
+            --arg windows_sig "$windows_sig" \
+            --arg macos_sig "$macos_sig" '
+            {
+              version: $version,
+              notes: $notes,
+              pub_date: $pub_date,
+              platforms: {
+                "linux-x86_64": { signature: $linux_sig, url: "\($base)/BARAS_\($version)_amd64.AppImage" },
+                "windows-x86_64": { signature: $windows_sig, url: "\($base)/BARAS_\($version)_x64-setup.exe" },
+                "darwin-aarch64": { signature: $macos_sig, url: "\($base)/BARAS_aarch64.app.tar.gz" }
+              }
+            }' > latest.json
+          cat latest.json
+
+      # Publish first: the manifest must never point at assets still in draft.
+      - name: Publish release
+        run: gh release edit "v$VERSION" --draft=false --latest
+
+      - name: Commit latest.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add latest.json
+          git commit -m "Update latest.json for v$VERSION"
+          git pull --rebase origin master
+          git push origin HEAD:master

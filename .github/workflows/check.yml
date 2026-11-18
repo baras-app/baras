@@ -1,0 +1,45 @@
+name: Check
+
+# Runs on master too so pull requests have a cache to restore from.
+on:
+  pull_request:
+    paths: &paths
+      - "core/**"
+      - "types/**"
+      - "test-log-files/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/check.yml"
+  push:
+    branches: [master]
+    paths: *paths
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Covers the parser, signal pipeline and DSL, including a test that parses
+  # every bundled encounter and effect definition.
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@1.99.1
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/master' }}
+
+      - name: Test core and types
+        run: cargo test --locked -p baras-core -p baras-types
