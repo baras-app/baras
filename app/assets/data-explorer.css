@@ -3034,3 +3034,24 @@
   color: var(--text-muted);
   text-transform: capitalize;
 }
+
+/* Combat log mount point. While `pending` it is laid out (so scroll restore
+   works) but invisible, letting the previous view stay painted until the
+   first page of rows has loaded. */
+.tab-content-area {
+  position: relative;
+}
+
+.combat-log-host {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.combat-log-host.pending {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+  pointer-events: none;
+}

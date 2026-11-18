@@ -79,9 +79,13 @@ async fn load_actor_entities(
     idx: Option<u32>,
     tr: Option<&TimeRange>,
 ) -> (Vec<EntityBreakdown>, HashMap<String, f64>) {
-    let dmg = api::query_entity_breakdown(DataTab::Damage, idx, tr).await.unwrap_or_default();
-    let heal = api::query_entity_breakdown(DataTab::Healing, idx, tr).await.unwrap_or_default();
-    let roster = api::query_entity_breakdown(DataTab::Charts, idx, tr).await.unwrap_or_default();
+    let (dmg, heal, roster) = futures_util::future::join3(
+        api::query_entity_breakdown(DataTab::Damage, idx, tr),
+        api::query_entity_breakdown(DataTab::Healing, idx, tr),
+        api::query_entity_breakdown(DataTab::Charts, idx, tr),
+    )
+    .await;
+    let (dmg, heal, roster) = (dmg.unwrap_or_default(), heal.unwrap_or_default(), roster.unwrap_or_default());
     let dmg_map: HashMap<String, f64> = dmg.iter()
         .map(|e| (e.source_name.clone(), e.total_value))
         .collect();
@@ -285,10 +289,10 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
 
     // Loading states (not persisted)
     let mut timeline_state = use_signal(LoadState::default);
-    let mut content_state = use_signal(LoadState::default);
-    // Debounced content visibility — delays rendering by 200ms on encounter change
-    // to let data arrive before painting, preventing pop-in
-    let mut content_visible = use_signal(|| false);
+    // The view the content area is painting. It trails `view_mode` until that
+    // view's data has landed, so the previous page stays up instead of a blank
+    // gap or pop-in. None = nothing loaded to show.
+    let mut shown_mode = use_signal(|| None::<ViewMode>);
     // Generation counter to discard stale async results on rapid encounter switching
     let mut load_generation = use_signal(|| 0u32);
 
@@ -489,33 +493,12 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         }
     });
 
-    // Debounce content visibility on encounter or tab change — hides content briefly
-    // to let async data arrive before painting, preventing pop-in.
-    // Live mode is always visible (data streams in continuously).
-    // Track previous values to distinguish encounter vs. tab changes for different delays.
-    let mut prev_debounce_encounter = use_signal(|| None::<u32>);
+    // Live data streams in continuously, so the painted view follows the tab at once.
     use_effect(move || {
-        let idx = *selected_encounter.read();
-        let _mode = *view_mode.read(); // subscribe to tab changes
-        let is_live = *live_query_active.read();
-
-        if is_live {
-            content_visible.set(true);
-            return;
+        let mode = *view_mode.read();
+        if *live_query_active.read() {
+            shown_mode.set(Some(mode));
         }
-
-        // Encounter change = 300ms, tab change within same encounter = 150ms
-        let prev = *prev_debounce_encounter.peek();
-        let delay = if prev != idx { 300 } else { 150 };
-        prev_debounce_encounter.set(idx);
-
-        // Hide content immediately on change
-        content_visible.set(false);
-
-        spawn(async move {
-            gloo_timers::future::TimeoutFuture::new(delay).await;
-            content_visible.set(true);
-        });
     });
 
     // Load timeline when encounter changes - prerequisite for all data loading
@@ -543,21 +526,12 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
             transitioning_from_live.set(false);
         }
 
-        // Skip destructive clearing during live→historical transition — data is the same
-        // encounter that was just promoted from the buffer to a persisted file.
-        // Also skip on initial mount when encounter hasn't changed.
+        // The previous encounter's data stays painted until the new encounter's
+        // lands (each loader overwrites it and then moves `shown_mode`), so only
+        // the fetch marker is reset here. Skipped during the live→historical
+        // transition: that is the same encounter, just promoted to a file.
         if !is_transition && is_encounter_change {
-            // Clear previous tab data when encounter changes.
-            // NOTE: timeline and time_range are NOT cleared here — the old values
-            // keep the PhaseTimelineFilter rendered at its current height, preventing
-            // layout shift in the tab bar during the ~300ms until the new timeline loads.
-            abilities.set(Vec::new());
-            entities.set(Vec::new());
-            overview_data.set(Vec::new());
-            player_deaths.set(Vec::new());
-            npc_health.set(Vec::new());
             last_overview_fetch.set(None);
-            content_state.set(LoadState::Idle);
         }
 
         // Increment generation to invalidate any in-flight requests
@@ -621,6 +595,8 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                             return;
                         }
                         timeline_state.set(LoadState::Idle);
+                        // Nothing loaded for this encounter: don't leave the old one up
+                        shown_mode.set(None);
                     }
                 }
             }
@@ -657,15 +633,9 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
             }
             // Overview tab: skip if same encounter+range AND deaths/NPC HP were already loaded
             if is_overview && last_idx == idx && last_tr == tr && had_overview {
+                shown_mode.set(Some(mode));
                 return;
             }
-        }
-
-        // Set content loading state for Overview tab (skip during live query to avoid flash)
-        if is_overview && !*live_query_active.read() {
-            let _ = content_state
-                .try_write()
-                .map(|mut w| *w = LoadState::Loading);
         }
 
         spawn(async move {
@@ -683,31 +653,37 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                 full_duration
             };
 
-            // Load raid overview - single attempt
-            // None typically means no data available (no encounters dir, etc.) - not an error
-            if let Some(data) = api::query_raid_overview(idx, tr_opt.as_ref(), duration).await {
-                let _ = overview_data.try_write().map(|mut w| *w = data);
+            // Deaths + NPC health are only shown on the Overview tab; they don't
+            // depend on the raid overview, so all three run at once.
+            let (overview, deaths, npcs) = if is_overview {
+                futures_util::future::join3(
+                    api::query_raid_overview(idx, tr_opt.as_ref(), duration),
+                    api::query_player_deaths(idx),
+                    api::query_npc_health(idx, tr_opt.as_ref()),
+                )
+                .await
             } else {
-                // Don't cache failed fetches — allow retry on next effect trigger
-                if is_overview {
-                    let _ = content_state
-                        .try_write()
-                        .map(|mut w| *w = LoadState::Loaded);
-                }
+                (api::query_raid_overview(idx, tr_opt.as_ref(), duration).await, None, None)
+            };
+
+            // Superseded while the queries ran: the newer request owns the signals
+            if *selected_encounter.peek() != idx || *time_range.peek() != tr {
                 return;
             }
 
-            // Load player deaths + NPC health (only needed for Overview tab)
+            // None typically means no data available (no encounters dir, etc.) - not an error.
+            // Not recorded in last_overview_fetch, so the next effect trigger retries.
+            let loaded = overview.is_some();
+            let _ = overview_data.try_write().map(|mut w| *w = overview.unwrap_or_default());
             if is_overview {
-                if let Some(deaths) = api::query_player_deaths(idx).await {
-                    let _ = player_deaths.try_write().map(|mut w| *w = deaths);
+                let _ = player_deaths.try_write().map(|mut w| *w = deaths.unwrap_or_default());
+                let _ = npc_health.try_write().map(|mut w| *w = npcs.unwrap_or_default());
+                if *view_mode.peek() == mode {
+                    shown_mode.set(Some(mode));
                 }
-                if let Some(npcs) = api::query_npc_health(idx, tr_opt.as_ref()).await {
-                    let _ = npc_health.try_write().map(|mut w| *w = npcs);
-                }
-                let _ = content_state
-                    .try_write()
-                    .map(|mut w| *w = LoadState::Loaded);
+            }
+            if !loaded {
+                return;
             }
 
             // Cache after all queries complete — bool tracks whether overview-specific data was loaded
@@ -827,13 +803,11 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                     let _ = abilities.try_write().map(|mut w| *w = data);
                 }
             }
-
-            // Only notify if content_state actually changed
-            if !matches!(*content_state.peek(), LoadState::Loaded) {
-                let _ = content_state.try_write().map(|mut w| *w = LoadState::Loaded);
-            }
         });
     });
+
+    // DamageTaken summary (shown above the ability table for a selected source)
+    let mut dt_summary: Signal<Option<DamageTakenSummary>> = use_signal(|| None);
 
     // Lazy load: Detailed tab data (entities + abilities) for Damage/Healing/etc tabs
     use_effect(move || {
@@ -853,25 +827,14 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         let tab = match mode {
             ViewMode::Detailed(tab) => tab,
             ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts | ViewMode::Uptime => DataTab::Damage,
-            _ => {
-                // Clear detailed data when not in detailed/rotation/usage/charts mode
-                // Note: selected_source is preserved so it syncs across tabs
-                let _ = entities.try_write().map(|mut w| *w = Vec::new());
-                let _ = abilities.try_write().map(|mut w| *w = Vec::new());
-                return;
-            }
+            // Overview is loaded and shown by its own effect above; the combat log
+            // loads its own rows and reports in through `on_ready`
+            ViewMode::CombatLog | ViewMode::Overview => return,
         };
 
         // Only load when timeline is loaded
         if !matches!(tl_state, LoadState::Loaded) {
             return;
-        }
-
-        // Skip loading spinner during live query to avoid flash
-        if !*live_query_active.read() {
-            let _ = content_state
-                .try_write()
-                .map(|mut w| *w = LoadState::Loading);
         }
 
         spawn(async move {
@@ -887,17 +850,19 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                 entity_dmg_totals.set(dmg_map);
                 result
             } else {
-                match api::query_entity_breakdown(tab, idx, tr_opt.as_ref()).await {
-                    Some(data) => data,
-                    None => {
-                        // No data available - just mark as loaded with empty data
-                        let _ = content_state
-                            .try_write()
-                            .map(|mut w| *w = LoadState::Loaded);
-                        return;
-                    }
-                }
+                // None = no data available: shown as an empty tab
+                api::query_entity_breakdown(tab, idx, tr_opt.as_ref()).await.unwrap_or_default()
             };
+
+            // Superseded while the queries ran: the newer request owns the signals
+            let is_current = move || {
+                *view_mode.peek() == mode
+                    && *selected_encounter.peek() == idx
+                    && *time_range.peek() == tr
+            };
+            if !is_current() {
+                return;
+            }
 
             // Auto-select player: keep held selection if it exists in this encounter,
             // otherwise fall back to local player, then first player
@@ -932,8 +897,6 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                 }
             };
 
-            let _ = entities.try_write().map(|mut w| *w = entity_data);
-
             // Instance id only applies while the held selection survived
             let auto_id = if auto_selected == *selected_source.read() {
                 *selected_source_id.read()
@@ -944,29 +907,53 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
             // Load ability breakdown for selected (or auto-selected) source
             let breakdown = *breakdown_mode.read();
             let duration = timeline.read().as_ref().map(|t| t.duration_secs);
-            if let Some(data) = api::query_breakdown(
-                tab,
-                idx,
-                auto_selected.as_deref(),
-                auto_id,
-                tr_opt.as_ref(),
-                None, // No entity filter when source is selected
-                Some(&breakdown),
-                duration,
+            // The DamageTaken summary sits above the table, so it has to land with
+            // it: arriving later would push the table down.
+            let summary_source = auto_selected
+                .as_deref()
+                .filter(|_| mode == ViewMode::Detailed(DataTab::DamageTaken));
+            // Only the Detailed tabs show the ability table
+            let wants_abilities = matches!(mode, ViewMode::Detailed(_));
+            let (ability_data, summary) = futures_util::future::join(
+                async {
+                    if !wants_abilities {
+                        return None;
+                    }
+                    api::query_breakdown(
+                        tab,
+                        idx,
+                        auto_selected.as_deref(),
+                        auto_id,
+                        tr_opt.as_ref(),
+                        None, // No entity filter when source is selected
+                        Some(&breakdown),
+                        duration,
+                    )
+                    .await
+                },
+                async {
+                    match summary_source {
+                        Some(name) => {
+                            api::query_damage_taken_summary(idx, name, auto_id, tr_opt.as_ref(), None).await
+                        }
+                        None => None,
+                    }
+                },
             )
-            .await
-            {
-                let _ = abilities.try_write().map(|mut w| *w = data);
+            .await;
+            let ability_data = ability_data.unwrap_or_default();
+            if !is_current() {
+                return;
             }
 
-            // Set selected source after abilities loaded
+            // Entities, abilities and the painted view change in one update
+            let _ = entities.try_write().map(|mut w| *w = entity_data);
+            let _ = abilities.try_write().map(|mut w| *w = ability_data);
+            let _ = dt_summary.try_write().map(|mut w| *w = summary);
             if selected_source.read().is_none() && auto_selected.is_some() {
                 let _ = selected_source.try_write().map(|mut w| *w = auto_selected);
             }
-
-            let _ = content_state
-                .try_write()
-                .map(|mut w| *w = LoadState::Loaded);
+            shown_mode.set(Some(mode));
         });
     });
 
@@ -978,7 +965,11 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         let players_only = *show_players_only.read();
         let breakdown = *breakdown_mode.read();
         let idx = *selected_encounter.read();
-        let view = *view_mode.read();
+        // The painted view, not the clicked tab: its abilities must not change
+        // under the old page while the new tab is still loading
+        let Some(view) = *shown_mode.read() else {
+            return;
+        };
         let src = selected_source.read().clone();
         let src_id = *selected_source_id.read();
         let tr = time_range();
@@ -1034,10 +1025,9 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         });
     });
 
-    // DamageTaken summary (fetched when DamageTaken tab + source selected)
-    let mut dt_summary: Signal<Option<DamageTakenSummary>> = use_signal(|| None);
+    // DamageTaken summary: refetched when the source or time range changes on that tab
     use_effect(move || {
-        let view = *view_mode.read();
+        let view = *shown_mode.read();
         let idx = *selected_encounter.read();
         let src = selected_source.read().clone();
         let src_id = *selected_source_id.read();
@@ -1050,7 +1040,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         }
 
         // Only fetch for DamageTaken tab with a selected source
-        if !matches!(view, ViewMode::Detailed(DataTab::DamageTaken)) || src.is_none() || !matches!(tl_state, LoadState::Loaded) {
+        if view != Some(ViewMode::Detailed(DataTab::DamageTaken)) || src.is_none() || !matches!(tl_state, LoadState::Loaded) {
             dt_summary.set(None);
             return;
         }
@@ -1847,26 +1837,40 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                     // Content area — fixed-height flex region below tab bar
                     // Prevents combat log filters from shifting the tab bar position
                     div { class: "tab-content-area",
-                    // Debounced gate: hidden for 200ms on encounter change
-                    // to let data arrive before painting, then gated on timeline loaded.
-                    // Live mode skips both gates since data streams in continuously.
-                    if *content_visible.read() && (matches!(timeline_state(), LoadState::Loaded) || *live_query_active.read()) {
-
-                    // Use view_mode() instead of *view_mode.read() to avoid holding borrow across onclick handlers
-                    if matches!(view_mode(), ViewMode::CombatLog) {
-                        // Combat Log Panel
-                        CombatLog {
-                            key: "{selected_encounter():?}",
-                            encounter_idx: *selected_encounter.read(),
-                            time_range: time_range(),
-                            initial_target: death_target_filter(),
-                            state: combat_log_state,
-                            on_range_change: move |new_range: TimeRange| {
-                                time_range.set(new_range);
-                            },
-                            european: eu,
+                    // Paints `shown_mode`, which only moves once that view's data is in
+                    // Combat log: mounted as soon as its tab is clicked but kept
+                    // invisible until its first page is in, so the previous view
+                    // stays painted and the rows never pop into an empty table.
+                    if shown_mode() == Some(ViewMode::CombatLog)
+                        || (view_mode() == ViewMode::CombatLog && matches!(timeline_state(), LoadState::Loaded))
+                    {
+                        div {
+                            class: if shown_mode() == Some(ViewMode::CombatLog) { "combat-log-host" } else { "combat-log-host pending" },
+                            CombatLog {
+                                key: "{selected_encounter():?}",
+                                encounter_idx: *selected_encounter.read(),
+                                time_range: time_range(),
+                                initial_target: death_target_filter(),
+                                state: combat_log_state,
+                                on_range_change: move |new_range: TimeRange| {
+                                    time_range.set(new_range);
+                                },
+                                on_ready: move |_| {
+                                    if *view_mode.peek() == ViewMode::CombatLog {
+                                        shown_mode.set(Some(ViewMode::CombatLog));
+                                    }
+                                },
+                                european: eu,
+                            }
                         }
-                    } else if matches!(view_mode(), ViewMode::Overview) {
+                    }
+
+                    if let Some(shown) = shown_mode() {
+
+                    // `shown` is a Copy value, so no signal borrow is held across onclick handlers
+                    if matches!(shown, ViewMode::CombatLog) {
+                        // Rendered by the host above
+                    } else if matches!(shown, ViewMode::Overview) {
                         // Raid Overview - Donut Charts + Table
                         // Uses memoized overview_table_data - charts initialized via use_effect above
                         div { class: "overview-section",
@@ -2254,10 +2258,10 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                 }
                             }
                         }
-                    } else if matches!(view_mode(), ViewMode::Detailed(_) | ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts | ViewMode::Uptime) {
+                    } else if matches!(shown, ViewMode::Detailed(_) | ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts | ViewMode::Uptime) {
                         // Two-column layout (Detailed breakdown, Rotation, Usage, or Charts)
                         {
-                        let current_tab = if let ViewMode::Detailed(tab) = view_mode() { Some(tab) } else { None };
+                        let current_tab = if let ViewMode::Detailed(tab) = shown { Some(tab) } else { None };
                         rsx! {
                         div { class: "explorer-content",
                             // Entity breakdown sidebar
@@ -2298,7 +2302,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                             timeline.read().as_ref().map(|t| t.duration_secs).unwrap_or(1.0)
                                         } as f64;
                                         let duration = if duration > 0.0 { duration } else { 1.0 };
-                                        let mode = view_mode();
+                                        let mode = shown;
                                         let show_values = !matches!(mode, ViewMode::Charts | ViewMode::Uptime);
                                         let overview_stats = overview_stats_lookup();
                                         let list = entity_list();
@@ -2476,7 +2480,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                 }
                             }
 
-                            if matches!(view_mode(), ViewMode::Charts) {
+                            if matches!(shown, ViewMode::Charts) {
                                 // Charts view in right column
                                 div { class: "charts-main",
                                     if *entity_collapsed.read() {
@@ -2508,7 +2512,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                         }
                                     }
                                 }
-                            } else if matches!(view_mode(), ViewMode::Rotation) {
+                            } else if matches!(shown, ViewMode::Rotation) {
                                 // Rotation view in right column
                                 div { class: "ability-section",
                                     if *entity_collapsed.read() {
@@ -2531,7 +2535,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                         european: eu,
                                     }
                                 }
-                            } else if matches!(view_mode(), ViewMode::Uptime) {
+                            } else if matches!(shown, ViewMode::Uptime) {
                                 div { class: "ability-section",
                                     if *entity_collapsed.read() {
                                         EntityPicker {
@@ -2551,7 +2555,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                         european: eu,
                                     }
                                 }
-                            } else if matches!(view_mode(), ViewMode::Usage) {
+                            } else if matches!(shown, ViewMode::Usage) {
                                 // Ability Usage view in right column
                                 div { class: "ability-section usage-section",
                                     if *entity_collapsed.read() {
