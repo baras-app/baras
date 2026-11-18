@@ -96,10 +96,8 @@ impl PersonalOverlay {
     pub fn new(
         window_config: OverlayConfig,
         config: PersonalOverlayConfig,
-        background_alpha: u8,
     ) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
-        frame.set_background_alpha(background_alpha);
         frame.set_label("Personal Stats");
 
         Ok(Self {
@@ -116,10 +114,6 @@ impl PersonalOverlay {
         self.config = config;
     }
 
-    /// Update background alpha
-    pub fn set_background_alpha(&mut self, alpha: u8) {
-        self.frame.set_background_alpha(alpha);
-    }
 
     /// Update the stats
     pub fn set_stats(&mut self, stats: PersonalStats) {
@@ -539,9 +533,8 @@ impl Overlay for PersonalOverlay {
     }
 
     fn update_config(&mut self, config: OverlayConfigUpdate) {
-        if let OverlayConfigUpdate::Personal(personal_config, alpha, european) = config {
+        if let OverlayConfigUpdate::Personal(personal_config, european) = config {
             self.set_config(personal_config);
-            self.set_background_alpha(alpha);
             self.european_number_format = european;
         }
     }

@@ -186,7 +186,6 @@ impl MetricOverlay {
         config: OverlayConfig,
         title: &str,
         appearance: OverlayAppearanceConfig,
-        background_alpha: u8,
         show_empty_bars: bool,
         stack_from_bottom: bool,
         scaling_factor: f32,
@@ -197,7 +196,6 @@ impl MetricOverlay {
         gradient_intensity: f32,
     ) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(config, BASE_WIDTH, BASE_HEIGHT)?;
-        frame.set_background_alpha(background_alpha);
         frame.set_label(title);
 
         Ok(Self {
@@ -226,10 +224,6 @@ impl MetricOverlay {
         self.appearance = appearance;
     }
 
-    /// Update background alpha
-    pub fn set_background_alpha(&mut self, alpha: u8) {
-        self.frame.set_background_alpha(alpha);
-    }
 
     /// Update show empty bars setting
     pub fn set_show_empty_bars(&mut self, show: bool) {
@@ -723,7 +717,6 @@ impl Overlay for MetricOverlay {
     fn update_config(&mut self, config: OverlayConfigUpdate) {
         if let OverlayConfigUpdate::Metric(
             appearance,
-            alpha,
             show_empty,
             stack_bottom,
             scale,
@@ -738,7 +731,6 @@ impl Overlay for MetricOverlay {
         {
             self.use_class_color = appearance.use_class_color;
             self.set_appearance(appearance);
-            self.set_background_alpha(alpha);
             self.set_show_empty_bars(show_empty);
             self.set_stack_from_bottom(stack_bottom);
             self.set_scaling_factor(scale);

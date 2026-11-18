@@ -5,7 +5,7 @@ use dioxus::prelude::*;
 use crate::components::Slider;
 
 use super::draft::SettingsDraft;
-use super::widgets::{ColorRow, DynamicBackground, Group, OpacitySlider, ResetRow, Section};
+use super::widgets::{ColorRow, DynamicBackground, Group, ResetRow, Section};
 
 #[component]
 pub fn NotesTab(draft: SettingsDraft, actions: Element) -> Element {
@@ -15,7 +15,6 @@ pub fn NotesTab(draft: SettingsDraft, actions: Element) -> Element {
     rsx! {
         div { class: "settings-section",
             Section { group: Group::Background,
-                OpacitySlider { value: s.notes_opacity, on_change: move |v| draft.edit(|s| s.notes_opacity = v) }
                 DynamicBackground { checked: cfg.dynamic_background, on_change: move |v| draft.edit(|s| s.notes_overlay.dynamic_background = v) }
             }
             Section { group: Group::Text,
@@ -32,7 +31,6 @@ pub fn NotesTab(draft: SettingsDraft, actions: Element) -> Element {
             ResetRow {
                 on_reset: move |_| draft.edit(|s| {
                     s.notes_overlay = Default::default();
-                    s.notes_opacity = 180;
                 }),
                 actions,
             }

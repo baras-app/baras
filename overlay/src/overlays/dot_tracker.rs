@@ -136,7 +136,6 @@ const BASE_BAR_FONT_SIZE: f32 = 17.0;
 pub struct DotTrackerOverlay {
     frame: OverlayFrame,
     config: DotTrackerConfig,
-    background_alpha: u8,
     data: DotTrackerData,
     /// Last rendered state for dirty checking: Vec of (target_id, Vec of (effect_id, time_string, remaining_bits))
     last_rendered: Vec<(i64, Vec<(u64, String, u32)>)>,
@@ -150,16 +149,13 @@ impl DotTrackerOverlay {
     pub fn new(
         window_config: OverlayConfig,
         config: DotTrackerConfig,
-        background_alpha: u8,
     ) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
-        frame.set_background_alpha(background_alpha);
         frame.set_label("DOT Tracker");
 
         Ok(Self {
             frame,
             config,
-            background_alpha,
             data: DotTrackerData::default(),
             last_rendered: Vec::new(),
             last_rendered_bar: Vec::new(),
@@ -175,11 +171,6 @@ impl DotTrackerOverlay {
         self.last_rendered_bar.clear();
     }
 
-    /// Update background alpha
-    pub fn set_background_alpha(&mut self, alpha: u8) {
-        self.background_alpha = alpha;
-        self.frame.set_background_alpha(alpha);
-    }
 
     /// Icon pixel size to cache: the drawn size in bar layout, else the configured icon size
     fn bar_or_icon_size(&self, bar_layout: bool) -> u32 {
@@ -988,9 +979,8 @@ impl Overlay for DotTrackerOverlay {
     }
 
     fn update_config(&mut self, config: OverlayConfigUpdate) {
-        if let OverlayConfigUpdate::DotTracker(cfg, alpha, european) = config {
+        if let OverlayConfigUpdate::DotTracker(cfg, european) = config {
             self.set_config(cfg);
-            self.set_background_alpha(alpha);
             self.european_number_format = european;
         }
     }

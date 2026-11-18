@@ -30,7 +30,7 @@ pub(super) fn TabButton(label: &'static str, active: bool, onclick: EventHandler
 /// this order: Background & Bars, Layout, Content, Text.
 #[derive(Clone, Copy, PartialEq)]
 pub(super) enum Group {
-    /// Background opacity, dynamic background, bar colour/gradient, borders
+    /// Dynamic background, bar colour/gradient, borders
     Background,
     /// Size, count, direction, stacking, spacing, bar or icon mode
     Layout,
@@ -186,23 +186,6 @@ pub(super) fn SelectRow(
 // ─────────────────────────────────────────────────────────────────────────
 // Rows every overlay repeats
 // ─────────────────────────────────────────────────────────────────────────
-
-#[component]
-pub(super) fn OpacitySlider(
-    #[props(default = "Background Opacity")] label: &'static str,
-    value: u8,
-    on_change: EventHandler<u8>,
-) -> Element {
-    rsx! {
-        Slider {
-            label,
-            value: value as f64,
-            min: 0.0,
-            max: 255.0,
-            on_change: move |v: f64| on_change.call(v.round() as u8),
-        }
-    }
-}
 
 #[component]
 pub(super) fn DynamicBackground(checked: bool, on_change: EventHandler<bool>) -> Element {

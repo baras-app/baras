@@ -138,10 +138,8 @@ impl BossHealthOverlay {
     pub fn new(
         window_config: OverlayConfig,
         config: BossHealthConfig,
-        background_alpha: u8,
     ) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
-        frame.set_background_alpha(background_alpha);
         frame.set_label("Boss Health");
 
         Ok(Self {
@@ -159,10 +157,6 @@ impl BossHealthOverlay {
         self.config = config;
     }
 
-    /// Update background alpha
-    pub fn set_background_alpha(&mut self, alpha: u8) {
-        self.frame.set_background_alpha(alpha);
-    }
 
     /// Update the data
     pub fn set_data(&mut self, data: BossHealthData) {
@@ -1113,9 +1107,8 @@ impl Overlay for BossHealthOverlay {
     }
 
     fn update_config(&mut self, config: OverlayConfigUpdate) {
-        if let OverlayConfigUpdate::BossHealth(boss_config, alpha, european) = config {
+        if let OverlayConfigUpdate::BossHealth(boss_config, european) = config {
             self.set_config(boss_config);
-            self.set_background_alpha(alpha);
             self.european_number_format = european;
         }
     }

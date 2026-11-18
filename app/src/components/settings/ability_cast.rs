@@ -5,7 +5,7 @@ use dioxus::prelude::*;
 use crate::components::Slider;
 
 use super::draft::SettingsDraft;
-use super::widgets::{Check, ColorRow, DynamicBackground, FontScale, Group, OpacitySlider, ResetRow, Section};
+use super::widgets::{Check, ColorRow, DynamicBackground, FontScale, Group, ResetRow, Section};
 
 #[component]
 pub fn AbilityCastTab(draft: SettingsDraft, actions: Element) -> Element {
@@ -15,7 +15,6 @@ pub fn AbilityCastTab(draft: SettingsDraft, actions: Element) -> Element {
     rsx! {
         div { class: "settings-section",
             Section { group: Group::Background,
-                OpacitySlider { value: s.ability_cast_opacity, on_change: move |v| draft.edit(|s| s.ability_cast_opacity = v) }
                 DynamicBackground { checked: cfg.dynamic_background, on_change: move |v| draft.edit(|s| s.ability_cast.dynamic_background = v) }
             }
             Section { group: Group::Layout,
@@ -54,7 +53,6 @@ pub fn AbilityCastTab(draft: SettingsDraft, actions: Element) -> Element {
             ResetRow {
                 on_reset: move |_| draft.edit(|s| {
                     s.ability_cast = Default::default();
-                    s.ability_cast_opacity = 180;
                 }),
                 actions,
             }

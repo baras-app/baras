@@ -74,6 +74,10 @@ impl AppConfigExt for AppConfig {
         match confy::load::<Self>("baras", "config") {
             Ok(mut config) => {
                 config.parsely.migrate_legacy();
+                config.overlay_settings.migrate_legacy();
+                for profile in &mut config.profiles {
+                    profile.settings.migrate_legacy();
+                }
                 config
             }
             Err(e) => {

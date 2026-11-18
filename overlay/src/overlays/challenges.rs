@@ -118,7 +118,6 @@ const MAX_PLAYERS: usize = 8;
 pub struct ChallengeOverlay {
     frame: OverlayFrame,
     data: ChallengeData,
-    background_alpha: u8,
     config: ChallengeOverlayConfig,
     european_number_format: bool,
     /// Mirrors the global `class_icon_mode` used by metric overlays.
@@ -129,16 +128,13 @@ impl ChallengeOverlay {
     pub fn new(
         overlay_config: OverlayConfig,
         config: ChallengeOverlayConfig,
-        background_alpha: u8,
     ) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(overlay_config, BASE_WIDTH, BASE_HEIGHT)?;
-        frame.set_background_alpha(background_alpha);
         frame.set_label("Challenges");
 
         Ok(Self {
             frame,
             data: ChallengeData::default(),
-            background_alpha,
             config,
             european_number_format: false,
             icon_mode: ClassIconMode::default(),
@@ -157,10 +153,6 @@ impl ChallengeOverlay {
         self.icon_mode = mode;
     }
 
-    pub fn set_background_alpha(&mut self, alpha: u8) {
-        self.background_alpha = alpha;
-        self.frame.set_background_alpha(alpha);
-    }
 
     /// Number of card slots the window is divided into: the reserved count
     /// when configured (0 = auto), growing only when more challenges than
@@ -939,10 +931,9 @@ impl Overlay for ChallengeOverlay {
     }
 
     fn update_config(&mut self, config: OverlayConfigUpdate) {
-        if let OverlayConfigUpdate::Challenge(challenge_config, alpha, european, icon_mode) = config
+        if let OverlayConfigUpdate::Challenge(challenge_config, european, icon_mode) = config
         {
             self.set_config(challenge_config);
-            self.set_background_alpha(alpha);
             self.european_number_format = european;
             self.set_icon_mode(icon_mode);
         }

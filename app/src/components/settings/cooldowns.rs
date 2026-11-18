@@ -6,7 +6,7 @@ use crate::components::Slider;
 use crate::types::{CooldownTrackerConfig, OverlaySettings};
 
 use super::draft::SettingsDraft;
-use super::widgets::{BorderRows, Check, DynamicBackground, FontScale, Group, NumberRow, OpacitySlider, ResetRow, Section};
+use super::widgets::{BorderRows, Check, DynamicBackground, FontScale, Group, NumberRow, ResetRow, Section};
 
 /// Which of the cooldown overlays this tab edits
 #[derive(Clone, Copy, PartialEq)]
@@ -29,20 +29,6 @@ impl CooldownGroup {
             Self::B => &mut s.cooldown_tracker_b,
         }
     }
-
-    fn opacity(self, s: &OverlaySettings) -> u8 {
-        match self {
-            Self::A => s.cooldown_tracker_opacity,
-            Self::B => s.cooldown_tracker_b_opacity,
-        }
-    }
-
-    fn opacity_mut(self, s: &mut OverlaySettings) -> &mut u8 {
-        match self {
-            Self::A => &mut s.cooldown_tracker_opacity,
-            Self::B => &mut s.cooldown_tracker_b_opacity,
-        }
-    }
 }
 
 #[component]
@@ -54,10 +40,6 @@ pub fn CooldownsTab(draft: SettingsDraft, group: CooldownGroup, actions: Element
     rsx! {
         div { class: "settings-section",
             Section { group: Group::Background,
-                OpacitySlider {
-                    value: group.opacity(&current_settings),
-                    on_change: move |v| draft.edit(|s| *group.opacity_mut(s) = v),
-                }
                 DynamicBackground { checked: cfg.dynamic_background, on_change: set(|c, v| c.dynamic_background = v) }
                 Check {
                     label: "Gradient Bars",
@@ -105,7 +87,6 @@ pub fn CooldownsTab(draft: SettingsDraft, group: CooldownGroup, actions: Element
             ResetRow {
                 on_reset: move |_| draft.edit(|s| {
                     *group.config_mut(s) = CooldownTrackerConfig::default();
-                    *group.opacity_mut(s) = 180;
                 }),
                 actions,
             }

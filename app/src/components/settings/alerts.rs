@@ -6,7 +6,7 @@ use crate::components::Slider;
 use crate::types::AlertsOverlayConfig;
 
 use super::draft::SettingsDraft;
-use super::widgets::{Check, DynamicBackground, Group, OpacitySlider, ResetRow, Row, Section};
+use super::widgets::{Check, DynamicBackground, Group, ResetRow, Row, Section};
 
 #[component]
 pub fn AlertsTab(draft: SettingsDraft, actions: Element) -> Element {
@@ -16,7 +16,6 @@ pub fn AlertsTab(draft: SettingsDraft, actions: Element) -> Element {
     rsx! {
         div { class: "settings-section",
             Section { group: Group::Background,
-                OpacitySlider { value: s.alerts_opacity, on_change: move |v| draft.edit(|s| s.alerts_opacity = v) }
                 DynamicBackground { checked: cfg.dynamic_background, on_change: move |v| draft.edit(|s| s.alerts_overlay.dynamic_background = v) }
             }
             Section { group: Group::Layout,
@@ -69,7 +68,6 @@ pub fn AlertsTab(draft: SettingsDraft, actions: Element) -> Element {
             ResetRow {
                 on_reset: move |_| draft.edit(|s| {
                     s.alerts_overlay = AlertsOverlayConfig::default();
-                    s.alerts_opacity = 180;
                 }),
                 actions,
             }

@@ -3,7 +3,7 @@
 use dioxus::prelude::*;
 
 use super::draft::SettingsDraft;
-use super::widgets::{Check, ColorRow, DynamicBackground, FontScale, Group, OpacitySlider, ResetRow, Section};
+use super::widgets::{Check, ColorRow, DynamicBackground, FontScale, Group, ResetRow, Section};
 
 #[component]
 pub fn CombatTimeTab(draft: SettingsDraft, actions: Element) -> Element {
@@ -13,7 +13,6 @@ pub fn CombatTimeTab(draft: SettingsDraft, actions: Element) -> Element {
     rsx! {
         div { class: "settings-section",
             Section { group: Group::Background,
-                OpacitySlider { value: s.combat_time_opacity, on_change: move |v| draft.edit(|s| s.combat_time_opacity = v) }
                 DynamicBackground { checked: cfg.dynamic_background, on_change: move |v| draft.edit(|s| s.combat_time.dynamic_background = v) }
             }
             Section { group: Group::Content,
@@ -27,7 +26,6 @@ pub fn CombatTimeTab(draft: SettingsDraft, actions: Element) -> Element {
             ResetRow {
                 on_reset: move |_| draft.edit(|s| {
                     s.combat_time = Default::default();
-                    s.combat_time_opacity = 180;
                 }),
                 actions,
             }

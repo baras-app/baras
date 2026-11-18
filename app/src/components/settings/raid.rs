@@ -6,7 +6,7 @@ use crate::components::Slider;
 use crate::types::RaidOverlaySettings;
 
 use super::draft::SettingsDraft;
-use super::widgets::{Check, Group, NumberRow, OpacitySlider, ResetRow, Row, Section};
+use super::widgets::{Check, Group, NumberRow, ResetRow, Row, Section};
 
 /// A px slider over one raid frame field
 fn px_slider(
@@ -38,7 +38,6 @@ pub fn RaidTab(draft: SettingsDraft, actions: Element) -> Element {
     rsx! {
         div { class: "settings-section",
             Section { group: Group::Background,
-                OpacitySlider { value: s.raid_opacity, on_change: move |v| draft.edit(|s| s.raid_opacity = v) }
                 Check { label: "Colored Effect Borders", checked: cfg.effect_colored_borders, on_change: move |v| draft.edit(|s| s.raid_overlay.effect_colored_borders = v) }
                 p { class: "hint", "Outline colored effect squares with the effect's own color" }
             }
@@ -92,7 +91,6 @@ pub fn RaidTab(draft: SettingsDraft, actions: Element) -> Element {
             ResetRow {
                 on_reset: move |_| draft.edit(|s| {
                     s.raid_overlay = RaidOverlaySettings::default();
-                    s.raid_opacity = 180;
                 }),
                 actions,
             }

@@ -1,4 +1,4 @@
-//! Window style (background, border, corners, font): the global values and
+//! Window style (background, opacity, border, corners, font): the global values and
 //! one overlay's overrides of them.
 
 use baras_types::FrameStyleOverride;
@@ -19,6 +19,13 @@ pub fn FrameStyleSection(draft: SettingsDraft) -> Element {
     rsx! {
         div { class: "settings-section",
             h4 { "Window Style" }
+            Slider {
+                label: "Background Opacity",
+                value: style.opacity as f64,
+                min: 0.0,
+                max: 255.0,
+                on_change: move |v: f64| draft.edit(|s| s.frame_style.opacity = v.round() as u8),
+            }
             ColorRow { label: "Background Color", value: style.background_color, on_change: move |v| draft.edit(|s| s.frame_style.background_color = v) }
             Slider {
                 label: "Corner Radius",
@@ -71,11 +78,25 @@ pub fn FrameOverrideSection(draft: SettingsDraft, tab_key: Signal<String>) -> El
 
     rsx! {
         div { class: "settings-section",
-            details { class: "collapsible",
+            details { class: "collapsible", open: true,
                 summary { class: "collapsible-summary",
                     "Window Style"
                     if !o.is_empty() {
                         span { class: "settings-check-note", "(customized)" }
+                    }
+                }
+                Check {
+                    label: "Custom Background Opacity",
+                    checked: o.opacity.is_some(),
+                    on_change: move |on: bool| edit_override(draft, &tab_key(), |o| o.opacity = on.then_some(style.opacity)),
+                }
+                if o.opacity.is_some() {
+                    Slider {
+                        label: "Background Opacity",
+                        value: style.opacity as f64,
+                        min: 0.0,
+                        max: 255.0,
+                        on_change: move |v: f64| edit_override(draft, &tab_key(), |o| o.opacity = Some(v.round() as u8)),
                     }
                 }
                 Check {

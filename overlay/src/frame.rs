@@ -1,7 +1,7 @@
 //! Overlay frame abstraction
 //!
 //! `OverlayFrame` encapsulates the common chrome shared by all overlay types:
-//! - Rounded background with configurable alpha
+//! - Background and border drawn from the overlay's `FrameStyle`
 //! - Interactive border when in move mode
 //! - Resize indicator in the corner
 //! - Scaling calculations based on window dimensions
@@ -18,7 +18,8 @@ use tiny_skia::Color;
 /// A frame wrapper around an overlay window that handles common rendering
 pub struct OverlayFrame {
     window: OverlayWindow,
-    background_alpha: u8,
+    /// Replaces the style's opacity (overlays that draw their own background)
+    alpha_override: Option<u8>,
     style: FrameStyle,
     base_width: f32,
     base_height: f32,
@@ -42,7 +43,7 @@ impl OverlayFrame {
 
         Ok(Self {
             window,
-            background_alpha: 180,
+            alpha_override: None,
             style: FrameStyle::default(),
             base_width,
             base_height,
@@ -50,14 +51,9 @@ impl OverlayFrame {
         })
     }
 
-    /// Set the background alpha (0-255)
+    /// Force the background alpha (0-255), ignoring the style's opacity
     pub fn set_background_alpha(&mut self, alpha: u8) {
-        self.background_alpha = alpha;
-    }
-
-    /// Get the background alpha
-    pub fn background_alpha(&self) -> u8 {
-        self.background_alpha
+        self.alpha_override = Some(alpha);
     }
 
     /// Set the background colour, border and corner radius
@@ -144,10 +140,11 @@ impl OverlayFrame {
 
         // Calculate background alpha
         // In move mode: use 20% of normal alpha, but always at least 20% visible for draggability
+        let alpha = self.alpha_override.unwrap_or(style.opacity);
         let alpha = if in_move_mode {
-            (self.background_alpha as f32 * 0.20).round().max(51.0) as u8
+            (alpha as f32 * 0.20).round().max(51.0) as u8
         } else {
-            self.background_alpha
+            alpha
         };
 
         // Draw background if there's any alpha to show
