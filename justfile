@@ -1,20 +1,19 @@
-alias r:= run-debug
+default:
+  @just --list
 
-alias p50:= parse-50mb
-
-run-debug:
-  ./target/debug/baras
-
-parse-50mb:
-  ./target/debug/baras parse-file --path './test-log-files/50mb/combat_2025-12-10_18_12_15_087604.txt'
-
-# Tauri app commands
+# Run the app with hot-reload (the app finds the parse-worker next to its own exe in target/debug)
 dev:
-  cargo clean -p baras-parse-worker && \
   cargo build -p baras-parse-worker && \
-  mkdir -p app/target/debug && \
-  cp target/debug/baras-parse-worker app/target/debug/ && \
   cd app && DEBUG_LOGGING=1 cargo tauri dev 2>&1 | tee /tmp/baras.log
+
+# Type-check the backend and the WASM frontend
+check:
+  cargo check -p app
+  cd app && cargo check --target wasm32-unknown-unknown
+
+# Same tests the Check workflow runs on pull requests
+test:
+  cargo test --locked -p baras-core -p baras-types
 
 # Build parse-worker and copy to binaries dir with platform-specific name
 build-parse-worker:
@@ -39,15 +38,45 @@ build-app:
 run-app-image:
   {{justfile_directory()}}/target/release/bundle/appimage/*.AppImage
 
-update-version:
-  cd app/src-tauri && \
-  sed -i "s|\"version\": \"[^\"]*\"|\"version\": \"$(date +%Y.%-m.%-d)\"|" tauri.conf.json
+# Replay a log against a boss definition, e.g. `just validate revan test-log-files/operations/hm_tos_revan.txt`
+validate boss log *args:
+  cargo run --bin baras-validate -- --boss {{boss}} --log {{log}} {{args}}
 
-validate-revan:
-  cargo run --bin baras-validate -- --boss revan --log test-log-files/operations/hm_tos_revan.txt
+# ─────────────────────────────────────────────────────────────────────────
+# Releasing
+# ─────────────────────────────────────────────────────────────────────────
 
-validate-xr:
-  cargo run --bin baras-validate -- --boss propagator_core_xr53 --log test-log-files/operations/hm_propagator.txt
+# Start the next version: archive CHANGELOG.md into changelogs/, bump tauri.conf.json to today's date
+new-version:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  CONF=app/src-tauri/tauri.conf.json
+  OLD=$(jq -r '.version' "$CONF")
+  NEW=$(date +%Y.%-m.%-d)
+  [[ "$OLD" != "$NEW" ]] || { echo "Version is already $NEW"; exit 1; }
+  [[ "$(head -n 1 CHANGELOG.md)" == "# v$OLD" ]] || { echo "CHANGELOG.md does not start with '# v$OLD'"; exit 1; }
+  [[ ! -e "changelogs/v$OLD.md" ]] || { echo "changelogs/v$OLD.md already exists"; exit 1; }
+  cp CHANGELOG.md "changelogs/v$OLD.md"
+  printf '# v%s\n\n' "$NEW" > CHANGELOG.md
+  sed -i "s|\"version\": \"$OLD\"|\"version\": \"$NEW\"|" "$CONF"
+  echo "✓ $OLD → $NEW; write the notes in CHANGELOG.md"
+
+# Publish the version in tauri.conf.json from master via the Build workflow
+release:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  VERSION=$(jq -r '.version' app/src-tauri/tauri.conf.json)
+  [[ "$(git branch --show-current)" == master ]] || { echo "Releases are cut from master"; exit 1; }
+  [[ -z "$(git status --porcelain)" ]] || { echo "Working tree is not clean"; exit 1; }
+  git fetch -q origin master
+  [[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/master)" ]] || { echo "master differs from origin/master"; exit 1; }
+  [[ "$(head -n 1 CHANGELOG.md)" == "# v$VERSION" ]] || { echo "CHANGELOG.md does not start with '# v$VERSION'"; exit 1; }
+  gh workflow run build.yml --ref master -f release=true
+  echo "✓ Release v$VERSION started; follow it with: gh run watch"
+
+# Build the current branch in CI without releasing (args pass to gh, e.g. -f build_macos=false)
+ci-build *args:
+  gh workflow run build.yml --ref "$(git branch --show-current)" {{args}}
 
 # Sync encounter definitions to build output (for dev without full rebuild)
 sync-defs:
@@ -55,7 +84,7 @@ sync-defs:
   set -euo pipefail
   DEST="target/debug/definitions/encounters"
   mkdir -p "$DEST"
-  cp core/definitions/encounters/**/*.toml "$DEST/"
+  find core/definitions/encounters -name '*.toml' -exec cp -t "$DEST" {} +
   echo "✓ Synced $(ls "$DEST"/*.toml | wc -l) encounter definitions"
 
 build-validate-windows:
