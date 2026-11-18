@@ -11,7 +11,7 @@ workspace = true
 # so the app/validate get the Data Explorer; the parse-worker opts out via
 # `default-features = false` to keep the sidecar binary DataFusion-free.
 default = ["query"]
-query = ["dep:datafusion", "dep:datafusion-functions-table"]
+query = ["dep:datafusion"]
 
 [dependencies]
 baras-types = { path = "../types" }
@@ -29,22 +29,16 @@ lasso = { version = "0.7.3", features = ["multi-threaded"] }
 chrono = { version = "0.4.42", features = ["serde"] }
 phf = { version = "0.14", features = ["macros"] }
 dirs = "7"
-zstd = "0.14"
+zstd = "0.13"  # Same major as parquet, so only one copy is built
 encoding_rs = "0.8"
 toml = "1"
 arrow = { version = "59", default-features = false, features = ["ipc"] }
-parquet = { version = "59", default-features = false, features = [
-  "arrow",
-  "lz4",
-  "snap",
-  "zstd",
-] }
+parquet = { version = "59", default-features = false, features = ["arrow", "lz4"] }
 datafusion = { version = "55", default-features = false, optional = true, features = [
   "parquet",
   "sql",
   "nested_expressions",
 ] }
-datafusion-functions-table = { version = "55", default-features = false, optional = true }
 tracing = { workspace = true }
 
 [build-dependencies]

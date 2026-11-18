@@ -367,7 +367,7 @@ dependencies = [
  "arrow-select",
  "flatbuffers",
  "lz4_flex",
- "zstd 0.13.5",
+ "zstd",
 ]
 
 [[package]]
@@ -783,7 +783,6 @@ dependencies = [
  "chrono",
  "confy",
  "datafusion",
- "datafusion-functions-table",
  "dirs",
  "encoding_rs",
  "hashbrown 0.17.1",
@@ -801,7 +800,7 @@ dependencies = [
  "tokio",
  "toml 1.2.1+spec-1.1.0",
  "tracing",
- "zstd 0.14.4",
+ "zstd",
 ]
 
 [[package]]
@@ -6230,7 +6229,7 @@ dependencies = [
  "snap",
  "tokio",
  "twox-hash",
- "zstd 0.13.5",
+ "zstd",
 ]
 
 [[package]]
@@ -10678,16 +10677,7 @@ version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "50adf04cf3ec914b0b9905c9dde90c80fe74bfd701e331fc80a39c512c525278"
 dependencies = [
- "zstd-safe 7.4.1",
-]
-
-[[package]]
-name = "zstd"
-version = "0.14.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad5020ab8f27bfc0024ad0a07aed6bf022a16208f479686fbed4fdd0c85eb0b3"
-dependencies = [
- "zstd-safe 8.3.0",
+ "zstd-safe",
 ]
 
 [[package]]
@@ -10695,15 +10685,6 @@ name = "zstd-safe"
 version = "7.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "498d94ad68720c89b4fbe41b9090850651e68cb2dd9210ce7ffbff3a94653819"
-dependencies = [
- "zstd-sys",
-]
-
-[[package]]
-name = "zstd-safe"
-version = "8.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a9ea9cc2576c2fcc104e9cec04f46e3ede564f4fbc206831e4ef7e859a4140d"
 dependencies = [
  "zstd-sys",
 ]
