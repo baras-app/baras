@@ -119,6 +119,10 @@ pub struct TimerManager {
     /// Together with `last_timestamp`, forms a game-time anchor for interpolation.
     last_timestamp_instant: Option<Instant>,
 
+    /// Whether game time is interpolated with the wall clock between events.
+    /// Disabled for historical replay, where game time is the event timestamp.
+    interpolate_game_time: bool,
+
     // ─── Entity Filter State ─────────────────────────────────────────────────
     /// Local player's entity ID (for LocalPlayer filter)
     pub(super) local_player_id: Option<i64>,
@@ -180,6 +184,13 @@ impl Default for TimerManager {
 }
 
 impl TimerManager {
+    /// Drive game time purely from event timestamps (no wall-clock reads per
+    /// signal). For historical replay, where events arrive far faster than real time.
+    pub fn without_game_time_interpolation(mut self) -> Self {
+        self.interpolate_game_time = false;
+        self
+    }
+
     pub fn new() -> Self {
         Self {
             definitions: HashMap::new(),
@@ -202,6 +213,7 @@ impl TimerManager {
             combat_start_time: None,
             last_timestamp: None,
             last_timestamp_instant: None,
+            interpolate_game_time: true,
             local_player_id: None,
             current_target_id: None,
             current_role: None,
@@ -627,6 +639,9 @@ impl TimerManager {
     /// Returns `None` if no game timestamp has been received yet.
     pub fn interpolated_game_time(&self) -> Option<NaiveDateTime> {
         let game_time = self.last_timestamp?;
+        if !self.interpolate_game_time {
+            return Some(game_time);
+        }
         let received_at = self.last_timestamp_instant?;
         let elapsed = received_at.elapsed();
         Some(game_time + chrono::Duration::milliseconds(elapsed.as_millis() as i64))
@@ -639,6 +654,10 @@ impl TimerManager {
     /// interpolated game time from jumping backward when a batch of events
     /// arrives, and naturally absorbs processing latency.
     fn advance_game_time_anchor(&mut self, event_timestamp: NaiveDateTime) {
+        if !self.interpolate_game_time {
+            self.last_timestamp = self.last_timestamp.max(Some(event_timestamp));
+            return;
+        }
         let now = Instant::now();
         let anchor_time = match (self.last_timestamp, self.last_timestamp_instant) {
             (Some(gt), Some(inst)) => {

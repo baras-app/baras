@@ -785,7 +785,7 @@ fn process_and_write_encounters(
 
     let mut cache = SessionCache::new();
     let mut processor = EventProcessor::new();
-    let mut timer_manager = TimerManager::new();
+    let mut timer_manager = TimerManager::new().without_game_time_interpolation();
     let mut writer = FastEncounterWriter::with_capacity(50_000);
     let mut current_encounter_idx: u32 = 0;
     let mut pending_write = false;
