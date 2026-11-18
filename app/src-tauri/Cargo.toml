@@ -39,7 +39,7 @@ toml = "1"
 reqwest = { version = "0.13", features = ["multipart"] }
 flate2 = "1.1"
 encoding_rs = "0.8"
-rodio = { version = "0.19", default-features = false, features = ["wav", "vorbis", "mp3"] }
+rodio = { version = "0.23", default-features = false, features = ["playback", "wav", "vorbis", "mp3"] }
 zip = { version = "9", default-features = false, features = ["deflate"] }
 base64 = "0.23"
 pulldown-cmark = "0.13"
