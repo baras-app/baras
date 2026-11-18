@@ -164,14 +164,11 @@ impl OverlayManager {
         };
 
         super::set_overlay_fps(settings.overlay_fps);
-        // Apply the global font family to the freshly-spawned overlay so it
-        // matches the others (and survives restarts) before any runtime change.
+        // Apply the font and window style to the freshly-spawned overlay.
         // Buffered into the command channel; processed once the loop starts.
-        let _ = handle
-            .tx
-            .try_send(OverlayCommand::SetFontFamily(
-                settings.overlay_font_family.clone(),
-            ));
+        for cmd in Self::frame_commands(kind, settings) {
+            let _ = handle.tx.try_send(cmd);
+        }
 
         Ok(SpawnResult {
             handle,
@@ -385,6 +382,15 @@ impl OverlayManager {
     // ─────────────────────────────────────────────────────────────────────────
     // Config Updates
     // ─────────────────────────────────────────────────────────────────────────
+
+    /// Font and window style for an overlay, with its overrides applied.
+    pub fn frame_commands(kind: OverlayType, settings: &OverlaySettings) -> [OverlayCommand; 2] {
+        let key = kind.config_key();
+        [
+            OverlayCommand::SetFontFamily(settings.font_family_for(key).to_string()),
+            OverlayCommand::SetFrameStyle(settings.frame_style_for(key)),
+        ]
+    }
 
     /// Create a config update for an overlay type.
     pub fn create_config_update(
@@ -1050,16 +1056,17 @@ impl OverlayManager {
     ) -> Result<(), String> {
         // Persist the choice
         let mut config = service.config().await;
-        config.overlay_settings.overlay_font_family = family.clone();
-        service.update_config(config).await?;
+        config.overlay_settings.overlay_font_family = family;
+        service.update_config(config.clone()).await?;
 
-        // Broadcast to every running overlay
-        let txs: Vec<_> = {
+        // Broadcast to every running overlay that doesn't override the font
+        let overlays: Vec<_> = {
             let s = state.lock().map_err(|e| e.to_string())?;
-            s.all_txs().into_iter().cloned().collect()
+            s.all_overlays().into_iter().map(|(k, tx)| (k, tx.clone())).collect()
         };
-        for tx in &txs {
-            let _ = tx.send(OverlayCommand::SetFontFamily(family.clone())).await;
+        for (kind, tx) in overlays {
+            let family = config.overlay_settings.font_family_for(kind.config_key()).to_string();
+            let _ = tx.send(OverlayCommand::SetFontFamily(family)).await;
         }
 
         Ok(())
@@ -1239,6 +1246,9 @@ impl OverlayManager {
             let config_update =
                 Self::create_config_update(kind, settings, config.european_number_format);
             let _ = tx.send(OverlayCommand::UpdateConfig(config_update)).await;
+            for cmd in Self::frame_commands(kind, settings) {
+                let _ = tx.send(cmd).await;
+            }
         }
 
         // Send initial data to newly spawned overlays so they don't appear empty

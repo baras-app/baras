@@ -24,8 +24,10 @@ pub enum OverlayCommand {
     UpdateData(OverlayData),
     /// Update overlay configuration
     UpdateConfig(OverlayConfigUpdate),
-    /// Set the text font family (global, all overlays)
+    /// Set the text font family
     SetFontFamily(String),
+    /// Set the window background colour, border and corner radius
+    SetFrameStyle(baras_types::FrameStyle),
     /// Set overlay position (x, y in screen coordinates)
     SetPosition(i32, i32),
     /// Set overlay size (width, height in pixels)

@@ -373,6 +373,9 @@ pub async fn preview_overlay_settings(
     for (kind, tx) in overlays {
         let config_update = OverlayManager::create_config_update(kind, &settings, european);
         let _ = tx.send(OverlayCommand::UpdateConfig(config_update)).await;
+        for cmd in OverlayManager::frame_commands(kind, &settings) {
+            let _ = tx.send(cmd).await;
+        }
     }
 
     Ok(true)

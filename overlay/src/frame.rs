@@ -12,12 +12,14 @@
 use crate::manager::OverlayWindow;
 use crate::platform::{OverlayConfig, PlatformError};
 use crate::widgets::colors;
+use baras_types::frame_style::{FrameStyle, MAX_BORDER_WIDTH, MAX_CORNER_RADIUS};
 use tiny_skia::Color;
 
 /// A frame wrapper around an overlay window that handles common rendering
 pub struct OverlayFrame {
     window: OverlayWindow,
     background_alpha: u8,
+    style: FrameStyle,
     base_width: f32,
     base_height: f32,
     /// Optional label shown in move mode to identify the overlay
@@ -41,6 +43,7 @@ impl OverlayFrame {
         Ok(Self {
             window,
             background_alpha: 180,
+            style: FrameStyle::default(),
             base_width,
             base_height,
             label: None,
@@ -55,6 +58,11 @@ impl OverlayFrame {
     /// Get the background alpha
     pub fn background_alpha(&self) -> u8 {
         self.background_alpha
+    }
+
+    /// Set the background colour, border and corner radius
+    pub fn set_style(&mut self, style: FrameStyle) {
+        self.style = style;
     }
 
     /// Set the overlay label (shown in move mode)
@@ -127,7 +135,8 @@ impl OverlayFrame {
     pub fn begin_frame_with_content_rect(&mut self, content_y: f32, content_height: f32) {
         let width = self.window.width() as f32;
         let height = self.window.height() as f32;
-        let corner_radius = self.scaled(6.0);
+        let style = self.style;
+        let corner_radius = self.scaled(style.corner_radius.clamp(0.0, MAX_CORNER_RADIUS));
         let in_move_mode = self.window.is_interactive() && self.window.is_drag_enabled();
 
         // Clear with transparent
@@ -144,15 +153,32 @@ impl OverlayFrame {
         // Draw background if there's any alpha to show
         // In move mode: always fill the full window so the user can see the bounds
         // In normal mode: only fill to the content height at the content position
+        let (bg_y, bg_height) = if in_move_mode {
+            (0.0, height)
+        } else {
+            (content_y, content_height.min(height - content_y))
+        };
         if alpha > 0 {
-            let bg_color = Color::from_rgba8(30, 30, 30, alpha);
-            let (bg_y, bg_height) = if in_move_mode {
-                (0.0, height)
-            } else {
-                (content_y, content_height.min(height - content_y))
-            };
+            let [r, g, b, _] = style.background_color;
+            let bg_color = Color::from_rgba8(r, g, b, alpha);
             self.window
                 .fill_rounded_rect(0.0, bg_y, width, bg_height, corner_radius, bg_color);
+        }
+
+        // User border follows the background rect; move mode draws its own below
+        let border = style.border_width.clamp(0.0, MAX_BORDER_WIDTH);
+        if !in_move_mode && border > 0.0 && bg_height > border * 2.0 {
+            let [r, g, b, a] = style.border_color;
+            let inset = border / 2.0;
+            self.window.stroke_rounded_rect(
+                inset,
+                bg_y + inset,
+                width - border,
+                bg_height - border,
+                (corner_radius - inset).max(0.0),
+                border,
+                Color::from_rgba8(r, g, b, a),
+            );
         }
 
         // Draw border only in move mode (interactive AND drag enabled)
@@ -163,7 +189,7 @@ impl OverlayFrame {
                 1.0,
                 width - 2.0,
                 height - 2.0,
-                corner_radius - 1.0,
+                (corner_radius - 1.0).max(0.0),
                 2.0,
                 colors::frame_border(),
             );

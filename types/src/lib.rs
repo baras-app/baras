@@ -5,6 +5,7 @@
 
 pub mod characters;
 pub mod formatting;
+pub mod frame_style;
 pub mod history;
 pub mod preview;
 
@@ -12,6 +13,7 @@ pub mod preview;
 /// unset file, which falls back to speaking the entry's name
 pub const NO_SOUND: &str = "none";
 
+pub use frame_style::{FrameStyle, FrameStyleOverride};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -3272,6 +3274,12 @@ pub struct OverlaySettings {
     /// Global font family for all overlay text. Empty = bundled default (Inter).
     #[serde(default = "default_overlay_font_family")]
     pub overlay_font_family: String,
+    /// Window chrome applied to every overlay unless overridden
+    #[serde(default)]
+    pub frame_style: FrameStyle,
+    /// Per-overlay chrome and font overrides, keyed like `positions`
+    #[serde(default)]
+    pub frame_overrides: HashMap<String, FrameStyleOverride>,
     /// Redraw rate (5–30 FPS) of the countdown overlays (timers, effects,
     /// raid frames, alerts, cooldowns, DoTs) while locked
     #[serde(default = "default_overlay_fps")]
@@ -3418,6 +3426,8 @@ impl Default for OverlaySettings {
             enabled: HashMap::new(),
             overlays_visible: true,
             overlay_font_family: default_overlay_font_family(),
+            frame_style: FrameStyle::default(),
+            frame_overrides: HashMap::new(),
             overlay_fps: default_overlay_fps(),
             personal_overlay: PersonalOverlayConfig::default(),
             metric_opacity: 180,
@@ -3497,6 +3507,20 @@ impl OverlaySettings {
 
     pub fn set_appearance(&mut self, overlay_type: &str, config: OverlayAppearanceConfig) {
         self.appearances.insert(overlay_type.to_string(), config);
+    }
+
+    pub fn frame_style_for(&self, overlay_type: &str) -> FrameStyle {
+        match self.frame_overrides.get(overlay_type) {
+            Some(o) => self.frame_style.with_override(o),
+            None => self.frame_style,
+        }
+    }
+
+    pub fn font_family_for(&self, overlay_type: &str) -> &str {
+        self.frame_overrides
+            .get(overlay_type)
+            .and_then(|o| o.font_family.as_deref())
+            .unwrap_or(&self.overlay_font_family)
     }
 
     pub fn is_enabled(&self, overlay_type: &str) -> bool {
