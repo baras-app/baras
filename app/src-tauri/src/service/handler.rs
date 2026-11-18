@@ -998,8 +998,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         let types_ref: Option<Vec<&str>> = entity_types
@@ -1046,8 +1045,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         let types_ref: Option<Vec<&str>> = entity_types
@@ -1089,8 +1087,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         self.shared
@@ -1179,8 +1176,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         let mut results = self
@@ -1230,8 +1226,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         self.shared
@@ -1294,8 +1289,7 @@ impl ServiceHandle {
             self.shared.query_context.register_parquet(&path).await
         } else {
             let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await
+            self.shared.query_context.register_live(writer).await
         }
     }
 
@@ -1342,8 +1336,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         self.shared
@@ -1378,8 +1371,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         self.shared
@@ -1414,8 +1406,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         self.shared
@@ -1450,8 +1441,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         self.shared
@@ -1486,8 +1476,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         self.shared
@@ -1522,8 +1511,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         self.shared
@@ -1559,8 +1547,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         self.shared
@@ -1602,8 +1589,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         self.shared
@@ -1650,8 +1636,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         self.shared
@@ -1698,8 +1683,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         self.shared
@@ -1745,8 +1729,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         let result = self.shared
@@ -1792,8 +1775,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         self.shared
@@ -1825,8 +1807,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         self.shared
@@ -1875,8 +1856,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         self.shared
@@ -1910,8 +1890,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         self.shared
@@ -1944,8 +1923,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         self.shared
@@ -1980,8 +1958,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         self.shared
@@ -2015,8 +1992,7 @@ impl ServiceHandle {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
-            let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
-            self.shared.query_context.register_batch(batch).await?;
+            self.shared.query_context.register_live(writer).await?;
         }
 
         self.shared

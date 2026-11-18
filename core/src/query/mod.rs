@@ -23,10 +23,12 @@ pub use error::QueryError;
 use std::path::Path;
 use std::sync::Arc;
 
+use datafusion::arrow::compute::concat_batches;
 use datafusion::arrow::record_batch::RecordBatch;
 use datafusion::datasource::MemTable;
 use datafusion::prelude::*;
 
+use crate::storage::EncounterWriter;
 use column_helpers::*;
 
 // Re-export query types from shared types crate
@@ -67,14 +69,26 @@ enum RegisteredSource {
     None,
     /// Parquet file at the given path
     Parquet(std::path::PathBuf),
-    /// Live in-memory batch (changes frequently, always re-register)
+    /// Live in-memory batches, re-registered whenever the buffer has grown
     Live,
 }
+
+/// The part of the live event buffer already converted to Arrow.
+struct LiveSnapshot {
+    buffer_id: u64,
+    rows: usize,
+    batches: Vec<RecordBatch>,
+}
+
+/// Each live registration appends one small batch; past this many they are
+/// merged into one so scans do not degrade over a long fight.
+const MAX_LIVE_BATCHES: usize = 64;
 
 /// Internal state protected by the lock
 struct QueryContextState {
     ctx: SessionContext,
     current_source: RegisteredSource,
+    live: Option<LiveSnapshot>,
 }
 
 /// Shared query context that manages DataFusion SessionContext lifecycle.
@@ -83,7 +97,7 @@ struct QueryContextState {
 /// - Creates a FRESH SessionContext when switching to a different parquet file
 ///   (this clears all internal DataFusion caches and state)
 /// - Reuses context for repeated queries on the same file
-/// - Always re-registers for live data (it changes frequently)
+/// - Converts only the rows added since the last query for live data
 pub struct QueryContext {
     /// Lock protecting the session context and current source tracking
     state: tokio::sync::RwLock<QueryContextState>,
@@ -98,7 +112,7 @@ impl Default for QueryContext {
 /// Create a fresh SessionContext with our optimized config
 fn create_session_context() -> SessionContext {
     let config = SessionConfig::new()
-        .with_target_partitions(2) // Default is num_cpus, way too high for small files
+        .with_target_partitions(1) // Encounters are a few thousand rows; splitting them only adds overhead
         .with_batch_size(4096); // Default is 8192
     SessionContext::new_with_config(config)
 }
@@ -109,6 +123,7 @@ impl QueryContext {
             state: tokio::sync::RwLock::new(QueryContextState {
                 ctx: create_session_context(),
                 current_source: RegisteredSource::None,
+                live: None,
             }),
         }
     }
@@ -140,6 +155,7 @@ impl QueryContext {
         // Create a FRESH SessionContext to clear all internal DataFusion state
         // This prevents memory accumulation from cached query plans, statistics, etc.
         state.ctx = create_session_context();
+        state.live = None;
 
         state
             .ctx
@@ -155,17 +171,48 @@ impl QueryContext {
         Ok(())
     }
 
-    /// Register a RecordBatch for querying (live data).
-    /// Always re-registers since live data changes frequently.
-    pub async fn register_batch(&self, batch: RecordBatch) -> Result<(), String> {
+    /// Point the context at the live event buffer.
+    ///
+    /// A poll fires several queries against a buffer that only ever grows, so
+    /// this converts just the rows added since the previous call and does
+    /// nothing at all when there are none.
+    pub async fn register_live(&self, writer: &EncounterWriter) -> Result<(), String> {
         let mut state = self.state.write().await;
+        let state = &mut *state;
 
-        // For live data, just deregister and re-register (don't create fresh context
-        // since this happens frequently during combat)
+        // A cleared buffer is a new encounter: nothing converted so far applies.
+        if state
+            .live
+            .as_ref()
+            .is_some_and(|live| live.buffer_id != writer.buffer_id() || live.rows > writer.len())
+        {
+            state.live = None;
+        }
+        let live = state.live.get_or_insert_with(|| LiveSnapshot {
+            buffer_id: writer.buffer_id(),
+            rows: 0,
+            batches: Vec::new(),
+        });
+
+        match writer.batch_from(live.rows) {
+            Some(batch) => {
+                live.rows = writer.len();
+                live.batches.push(batch);
+            }
+            None if live.batches.is_empty() => return Err("Live buffer is empty".into()),
+            None if state.current_source == RegisteredSource::Live => return Ok(()),
+            None => {}
+        }
+
+        let schema = live.batches[0].schema();
+        if live.batches.len() > MAX_LIVE_BATCHES {
+            let merged = concat_batches(&schema, &live.batches).map_err(|e| e.to_string())?;
+            live.batches = vec![merged];
+        }
+
         let _ = state.ctx.deregister_table("events");
-
-        let schema = batch.schema();
-        let mem_table = MemTable::try_new(schema, vec![vec![batch]]).map_err(|e| e.to_string())?;
+        let mem_table = MemTable::try_new(schema, vec![live.batches.clone()])
+            .map_err(|e| e.to_string())?;
         state
             .ctx
             .register_table("events", Arc::new(mem_table))
@@ -181,6 +228,7 @@ impl QueryContext {
         let mut state = self.state.write().await;
         state.ctx = create_session_context();
         state.current_source = RegisteredSource::None;
+        state.live = None;
     }
 
     /// Create an EncounterQuery that uses the current context.

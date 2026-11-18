@@ -14,6 +14,7 @@ use parquet::file::properties::WriterProperties;
 use std::fs::File;
 use std::path::Path;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::combat_log::{CombatEvent, Position};
 use crate::context::resolve;
@@ -223,22 +224,34 @@ impl EventMetadata {
     }
 }
 
+static NEXT_BUFFER_ID: AtomicU64 = AtomicU64::new(0);
+
+fn next_buffer_id() -> u64 {
+    NEXT_BUFFER_ID.fetch_add(1, Ordering::Relaxed)
+}
+
 /// Writer for a single encounter's events to parquet.
 pub struct EncounterWriter {
     rows: Vec<EventRow>,
+    /// Changes whenever the buffer starts over, so a reader holding rows it
+    /// converted earlier can tell they belong to a previous encounter.
+    buffer_id: u64,
 }
 
 impl EncounterWriter {
     pub fn new() -> Self {
-        Self {
-            rows: Vec::with_capacity(10_000),
-        }
+        Self::with_capacity(10_000)
     }
 
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             rows: Vec::with_capacity(capacity),
+            buffer_id: next_buffer_id(),
         }
+    }
+
+    pub fn buffer_id(&self) -> u64 {
+        self.buffer_id
     }
 
     /// Add an event row to the buffer.
@@ -263,15 +276,16 @@ impl EncounterWriter {
     /// Clear the buffer.
     pub fn clear(&mut self) {
         self.rows.clear();
+        self.buffer_id = next_buffer_id();
     }
 
-    /// Get a RecordBatch snapshot of buffered rows for querying.
-    /// Returns None if buffer is empty.
-    pub fn to_record_batch(&self) -> Option<RecordBatch> {
-        if self.rows.is_empty() {
-            return None;
-        }
-        self.build_record_batch(&Self::schema()).ok()
+    /// Convert the rows buffered from index `start` onward, for live querying.
+    /// Rows are append-only between clears, so a caller that keeps the batches
+    /// it already has only pays for what arrived since. Returns None when
+    /// there is nothing new.
+    pub fn batch_from(&self, start: usize) -> Option<RecordBatch> {
+        let rows = self.rows.get(start..).filter(|rows| !rows.is_empty())?;
+        Self::build_record_batch(rows, &Self::schema()).ok()
     }
 
     /// Get the schema for encounter event data.
@@ -362,7 +376,7 @@ impl EncounterWriter {
         }
 
         let schema = Self::schema();
-        let batch = self.build_record_batch(&schema)?;
+        let batch = Self::build_record_batch(&self.rows, &schema)?;
 
         let file = File::create(path)?;
         let props = WriterProperties::builder()
@@ -377,10 +391,10 @@ impl EncounterWriter {
     }
 
     fn build_record_batch(
-        &self,
+        rows: &[EventRow],
         schema: &Arc<Schema>,
     ) -> Result<RecordBatch, Box<dyn std::error::Error>> {
-        let len = self.rows.len();
+        let len = rows.len();
 
         // ─── Core Event Identity ─────────────────────────────────────────────
         let mut timestamp = TimestampMillisecondBuilder::with_capacity(len);
@@ -456,7 +470,7 @@ impl EncounterWriter {
         // Track list offsets (null for rows without shields)
         let mut shield_list_offsets: Vec<Option<(usize, usize)>> = Vec::with_capacity(len);
 
-        for row in &self.rows {
+        for row in rows {
             // Core identity
             timestamp.append_value(row.timestamp_ms);
             line_number.append_value(row.line_number);
@@ -701,7 +715,7 @@ mod tests {
         writer.push_event(&test_event(true), &EventMetadata::default());
         writer.push_event(&test_event(false), &EventMetadata::default());
 
-        let batch = writer.to_record_batch().expect("batch should build");
+        let batch = writer.batch_from(0).expect("batch should build");
         assert_eq!(batch.schema(), EncounterWriter::schema());
         assert_eq!(batch.num_rows(), 2);
 
