@@ -24,7 +24,6 @@ use std::path::Path;
 use std::sync::Arc;
 
 use datafusion::arrow::record_batch::RecordBatch;
-use datafusion::config::ConfigOptions;
 use datafusion::datasource::MemTable;
 use datafusion::prelude::*;
 
@@ -98,10 +97,10 @@ impl Default for QueryContext {
 
 /// Create a fresh SessionContext with our optimized config
 fn create_session_context() -> SessionContext {
-    let mut config = ConfigOptions::new();
-    config.execution.target_partitions = 2; // Default is num_cpus, way too high for small files
-    config.execution.batch_size = 4096; // Default is 8192
-    SessionContext::new_with_config(config.into())
+    let config = SessionConfig::new()
+        .with_target_partitions(2) // Default is num_cpus, way too high for small files
+        .with_batch_size(4096); // Default is 8192
+    SessionContext::new_with_config(config)
 }
 
 impl QueryContext {
