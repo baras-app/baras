@@ -12,6 +12,8 @@ use hashbrown::HashMap;
 use baras_types::ChallengeColumns;
 use serde::{Deserialize, Serialize};
 
+use crate::encounter::entity_info::NpcInfo;
+
 use super::ComparisonOp;
 use crate::dsl::entity_filter::{EntityFilter, EntityFilterMatching};
 use crate::dsl::EntityDefinition;
@@ -188,21 +190,22 @@ impl ChallengeDefinition {
 
 /// Context for evaluating challenge conditions
 ///
-/// This is a lightweight snapshot of state needed to determine if an event
-/// counts toward a challenge. Works for both live and historical data.
-#[derive(Debug, Clone, Default)]
-pub struct ChallengeContext {
+/// This is a borrowed view of the state needed to determine if an event
+/// counts toward a challenge (built per event, so it must not allocate).
+/// Works for both live and historical data.
+#[derive(Debug, Clone, Copy)]
+pub struct ChallengeContext<'a> {
     /// Current phase (derived from HP thresholds or events)
-    pub current_phase: Option<String>,
+    pub current_phase: Option<&'a str>,
 
     /// Counter values
-    pub counters: HashMap<String, u32>,
+    pub counters: &'a HashMap<String, u32>,
 
-    /// Boss HP percentages by NPC class ID
-    pub hp_by_npc_id: HashMap<i64, f32>,
+    /// Tracked NPCs, read for their HP percentages
+    pub npcs: &'a HashMap<i64, NpcInfo>,
 
     /// Boss NPC class IDs for this encounter (for AnyBoss/AnyAdd matching)
-    pub boss_npc_ids: Vec<i64>,
+    pub boss_npc_ids: &'a [i64],
 }
 
 /// Information about an entity for source/target matching
@@ -271,7 +274,6 @@ impl ChallengeCondition {
         match self {
             ChallengeCondition::Phase { phase_ids } => ctx
                 .current_phase
-                .as_ref()
                 .is_some_and(|p| phase_ids.iter().any(|id| id == p)),
 
             ChallengeCondition::Source { matcher } => source.is_some_and(|s| {
@@ -282,7 +284,7 @@ impl ChallengeCondition {
                     s.is_current_target,
                     &s.name,
                     s.npc_id,
-                    &ctx.boss_npc_ids,
+                    ctx.boss_npc_ids,
                 )
             }),
 
@@ -294,7 +296,7 @@ impl ChallengeCondition {
                     t.is_current_target,
                     &t.name,
                     t.npc_id,
-                    &ctx.boss_npc_ids,
+                    ctx.boss_npc_ids,
                 )
             }),
 
@@ -321,10 +323,10 @@ impl ChallengeCondition {
                 npc_id,
             } => {
                 let hp = if let Some(id) = npc_id {
-                    ctx.hp_by_npc_id.get(id).copied()
+                    ctx.npcs.get(id).map(NpcInfo::hp_percent)
                 } else {
                     // Use any tracked boss HP (take the first one)
-                    ctx.hp_by_npc_id.values().next().copied()
+                    ctx.npcs.values().next().map(NpcInfo::hp_percent)
                 };
 
                 hp.is_some_and(|h| {
@@ -366,13 +368,35 @@ mod tests {
     use super::*;
     use crate::dsl::entity_filter::EntitySelector;
 
-    fn test_context() -> ChallengeContext {
-        let mut ctx = ChallengeContext::default();
-        ctx.current_phase = Some("burn".to_string());
-        ctx.boss_npc_ids = vec![1001, 1002];
-        ctx.hp_by_npc_id.insert(1001, 25.0);
-        ctx.counters.insert("stacks".to_string(), 5);
-        ctx
+    /// Owned state the borrowed `ChallengeContext` points into
+    #[derive(Default)]
+    struct TestState {
+        current_phase: Option<String>,
+        counters: HashMap<String, u32>,
+        npcs: HashMap<i64, NpcInfo>,
+        boss_npc_ids: Vec<i64>,
+    }
+
+    impl TestState {
+        fn ctx(&self) -> ChallengeContext<'_> {
+            ChallengeContext {
+                current_phase: self.current_phase.as_deref(),
+                counters: &self.counters,
+                npcs: &self.npcs,
+                boss_npc_ids: &self.boss_npc_ids,
+            }
+        }
+    }
+
+    fn test_state() -> TestState {
+        let mut state = TestState {
+            current_phase: Some("burn".to_string()),
+            boss_npc_ids: vec![1001, 1002],
+            ..Default::default()
+        };
+        state.npcs.insert(1001, NpcInfo { current_hp: 25, max_hp: 100, ..Default::default() });
+        state.counters.insert("stacks".to_string(), 5);
+        state
     }
 
     /// Convert a parsed Entity to EntityInfo for challenge matching
@@ -472,7 +496,8 @@ mod tests {
 
     #[test]
     fn test_phase_condition() {
-        let ctx = test_context();
+        let state = test_state();
+        let ctx = state.ctx();
 
         let cond = ChallengeCondition::Phase {
             phase_ids: vec!["burn".to_string()],
@@ -487,7 +512,8 @@ mod tests {
 
     #[test]
     fn test_ability_condition() {
-        let ctx = test_context();
+        let state = test_state();
+        let ctx = state.ctx();
 
         let cond = ChallengeCondition::Ability {
             ability_ids: vec![100, 200],
@@ -500,7 +526,8 @@ mod tests {
 
     #[test]
     fn test_counter_condition() {
-        let ctx = test_context();
+        let state = test_state();
+        let ctx = state.ctx();
 
         let cond_eq = ChallengeCondition::Counter {
             counter_id: "stacks".to_string(),
@@ -526,7 +553,8 @@ mod tests {
 
     #[test]
     fn test_boss_hp_range_condition() {
-        let ctx = test_context();
+        let state = test_state();
+        let ctx = state.ctx();
 
         // HP is 25.0 for npc_id 1001
         let cond_in_range = ChallengeCondition::BossHpRange {
@@ -546,7 +574,8 @@ mod tests {
 
     #[test]
     fn test_challenge_and_logic() {
-        let ctx = test_context();
+        let state = test_state();
+        let ctx = state.ctx();
         let boss = EntityInfo::npc(1, "Boss", 1001);
 
         let challenge = ChallengeDefinition {
@@ -573,8 +602,8 @@ mod tests {
         assert!(challenge.matches(&ctx, &[], None, Some(&boss), None, None));
 
         // Wrong phase
-        let mut wrong_phase_ctx = ctx.clone();
-        wrong_phase_ctx.current_phase = Some("p1".to_string());
+        let mut wrong_phase_ctx = ctx;
+        wrong_phase_ctx.current_phase = Some("p1");
         assert!(!challenge.matches(&wrong_phase_ctx, &[], None, Some(&boss), None, None));
 
         // Wrong target (add instead of boss)
@@ -584,7 +613,8 @@ mod tests {
 
     #[test]
     fn test_empty_conditions() {
-        let ctx = test_context();
+        let state = test_state();
+        let ctx = state.ctx();
 
         let challenge = ChallengeDefinition {
             id: "all_damage".to_string(),
@@ -639,9 +669,11 @@ mod tests {
         const DREAD_MONSTER_NPC_ID: i64 = 3291675820556288;
 
         // Create challenge context
-        let mut ctx = ChallengeContext::default();
-        ctx.current_phase = Some("p1".to_string());
-        ctx.boss_npc_ids = vec![BESTIA_NPC_ID];
+        let state = TestState {
+            current_phase: Some("p1".to_string()),
+            boss_npc_ids: vec![BESTIA_NPC_ID],
+            ..Default::default()
+        };
 
         // Define challenges
         let boss_damage_challenge = ChallengeDefinition {
@@ -709,7 +741,7 @@ mod tests {
 
             // Check boss damage challenge (include 0-damage immune events for tracking)
             if boss_damage_challenge.matches(
-                &ctx,
+                &state.ctx(),
                 &[],
                 Some(&source_info),
                 Some(&target_info),
@@ -727,7 +759,7 @@ mod tests {
             // Check add damage challenge (skip 0-damage)
             if damage > 0
                 && add_damage_challenge.matches(
-                    &ctx,
+                    &state.ctx(),
                     &[],
                     Some(&source_info),
                     Some(&target_info),
@@ -810,9 +842,11 @@ mod tests {
         const DREAD_SCREAM_ABILITY_ID: u64 = 3302391763959808;
 
         // Create challenge context - starts in P1
-        let mut ctx = ChallengeContext::default();
-        ctx.current_phase = Some("p1".to_string());
-        ctx.boss_npc_ids = vec![BESTIA_NPC_ID];
+        let mut state = TestState {
+            current_phase: Some("p1".to_string()),
+            boss_npc_ids: vec![BESTIA_NPC_ID],
+            ..Default::default()
+        };
 
         // Define phase-conditional challenge
         let burn_phase_challenge = ChallengeDefinition {
@@ -861,13 +895,16 @@ mod tests {
                 let current_hp = event.target_entity.health.0 as i64;
                 let max_hp = event.target_entity.health.1 as i64;
                 boss_hp_percent = (current_hp as f32 / max_hp as f32) * 100.0;
-                ctx.hp_by_npc_id.insert(BESTIA_NPC_ID, boss_hp_percent);
+                state.npcs.insert(
+                    BESTIA_NPC_ID,
+                    NpcInfo { current_hp: current_hp as i32, max_hp: max_hp as i32, ..Default::default() },
+                );
 
                 // Check for phase transition
-                if ctx.current_phase.as_deref() == Some("p1")
+                if state.current_phase.as_deref() == Some("p1")
                     && boss_hp_percent < BURN_PHASE_THRESHOLD
                 {
-                    ctx.current_phase = Some("burn".to_string());
+                    state.current_phase = Some("burn".to_string());
                     phase_transition_line = Some(line_num);
                     eprintln!(
                         "Phase transition to BURN at line {} (HP: {:.1}%)",
@@ -892,7 +929,7 @@ mod tests {
 
                     // Only count boss damage
                     if target_info.npc_id == Some(BESTIA_NPC_ID) {
-                        if ctx.current_phase.as_deref() == Some("burn") {
+                        if state.current_phase.as_deref() == Some("burn") {
                             damage_during_burn += damage;
                         } else {
                             damage_before_burn += damage;
@@ -901,7 +938,7 @@ mod tests {
 
                     // Also test the challenge matcher
                     if burn_phase_challenge.matches(
-                        &ctx,
+                        &state.ctx(),
                         &[],
                         Some(&source_info),
                         Some(&target_info),
@@ -910,7 +947,7 @@ mod tests {
                     ) {
                         // This should only match during burn phase
                         assert_eq!(
-                            ctx.current_phase.as_deref(),
+                            state.current_phase.as_deref(),
                             Some("burn"),
                             "Challenge should only match during burn phase"
                         );

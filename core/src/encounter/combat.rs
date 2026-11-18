@@ -28,7 +28,6 @@ use super::pvp_faction::{PvpFaction, PvpFactionTracker, PvpOutcome};
 use super::entity_info::{NpcInfo, PlayerInfo};
 use super::metrics::MetricAccumulator;
 use super::{EncounterState, OverlayHealthEntry};
-use crate::dsl::ChallengeContext;
 
 /// Processing mode for the encounter
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -1080,20 +1079,6 @@ impl CombatEncounter {
         }
 
         Some(duration.num_milliseconds())
-    }
-
-    /// Build a ChallengeContext snapshot
-    pub fn challenge_context(&self, boss_npc_ids: &[i64]) -> ChallengeContext {
-        ChallengeContext {
-            current_phase: self.current_phase.clone(),
-            counters: self.counters.iter().map(|(k, v)| (k.clone(), *v)).collect(),
-            hp_by_npc_id: self
-                .npcs
-                .iter()
-                .map(|(k, v)| (*k, v.hp_percent()))
-                .collect(),
-            boss_npc_ids: boss_npc_ids.to_vec(),
-        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════

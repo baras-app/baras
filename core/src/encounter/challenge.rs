@@ -4,6 +4,7 @@
 //! unlike BossEncounterState which resets on combat end.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::dsl::{
     ChallengeCondition, ChallengeContext, ChallengeDefinition, ChallengeMetric, EntityDefinition,
@@ -86,8 +87,9 @@ pub struct ChallengeTracker {
     /// Entity roster for name → NPC ID resolution
     entities: Vec<EntityDefinition>,
 
-    /// Boss NPC IDs for entity matching
-    boss_npc_ids: Vec<i64>,
+    /// Boss NPC IDs for entity matching (shared so a `ChallengeContext` can
+    /// hold them while the tracker is mutably borrowed)
+    boss_npc_ids: Arc<[i64]>,
 
     /// Whether tracking is active
     active: bool,
@@ -136,7 +138,7 @@ impl ChallengeTracker {
             .collect();
         self.definitions = challenges;
         self.entities = entities;
-        self.boss_npc_ids = boss_npc_ids;
+        self.boss_npc_ids = boss_npc_ids.into();
         self.values.clear();
         self.phase_durations.clear();
         self.current_phase_start = None;
@@ -187,7 +189,7 @@ impl ChallengeTracker {
     pub fn reset(&mut self) {
         self.definitions.clear();
         self.values.clear();
-        self.boss_npc_ids.clear();
+        self.boss_npc_ids = Arc::default();
         self.phase_durations.clear();
         self.current_phase_start = None;
         self.total_duration_secs = 0.0;
@@ -440,8 +442,8 @@ impl ChallengeTracker {
     }
 
     /// Get the boss NPC IDs for context building
-    pub fn boss_npc_ids(&self) -> &[i64] {
-        &self.boss_npc_ids
+    pub fn boss_npc_ids(&self) -> Arc<[i64]> {
+        Arc::clone(&self.boss_npc_ids)
     }
 
     /// Process a damage event
