@@ -102,7 +102,7 @@ impl IconCache {
 for i in 0..archive.len() {
     let Ok(mut file) = archive.by_index(i) else { continue };
 
-    if file.name().to_lowercase() == filename {
+    if file.name().is_ok_and(|name| name.to_lowercase() == filename) {
         // We already have the mutable ZipFile — just read it
         let mut png_data = Vec::new();
         file.read_to_end(&mut png_data).ok()?;
@@ -157,9 +157,9 @@ fn load_icon_csv(path: &Path) -> Result<HashMap<u64, String>, String> {
 
 fn decode_png(data: &[u8]) -> Option<IconData> {
     // (unchanged from original)
-    let decoder = png::Decoder::new(data);
+    let decoder = png::Decoder::new(std::io::Cursor::new(data));
     let mut reader = decoder.read_info().ok()?;
-    let mut buf = vec![0; reader.output_buffer_size()];
+    let mut buf = vec![0; reader.output_buffer_size()?];
     let info = reader.next_frame(&mut buf).ok()?;
     let width = info.width;
     let height = info.height;

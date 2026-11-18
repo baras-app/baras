@@ -208,9 +208,9 @@ mod tests {
         };
         write_gray(&path, &crop);
 
-        let decoder = png::Decoder::new(File::open(&path).unwrap());
+        let decoder = png::Decoder::new(std::io::BufReader::new(File::open(&path).unwrap()));
         let mut reader = decoder.read_info().unwrap();
-        let mut buf = vec![0; reader.output_buffer_size()];
+        let mut buf = vec![0; reader.output_buffer_size().unwrap()];
         let info = reader.next_frame(&mut buf).unwrap();
 
         assert_eq!((info.width, info.height), (4, 2));

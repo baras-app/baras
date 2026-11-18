@@ -813,7 +813,7 @@ pub async fn get_icon_preview(app_handle: AppHandle, ability_id: u64) -> Result<
                 if let Ok(mut archive) = ZipArchive::new(reader) {
                     for i in 0..archive.len() {
                         if let Ok(mut entry) = archive.by_index(i) {
-                            let name = entry.name().to_string();
+                            let Ok(name) = entry.name().map(|n| n.to_string()) else { continue };
                             if name.ends_with(".png") {
                                 let mut data = Vec::new();
                                 if entry.read_to_end(&mut data).is_ok() {
