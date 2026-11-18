@@ -14,6 +14,7 @@ mod draft;
 mod effects;
 mod enemy_frames;
 mod global;
+mod map;
 mod metric;
 mod metrics_global;
 mod notes;
@@ -43,6 +44,7 @@ use draft::use_settings_draft;
 use effects::{EffectsGroup, EffectsTab};
 use enemy_frames::EnemyFramesTab;
 use global::GlobalTab;
+use map::MapTab;
 use metric::MetricTab;
 use metrics_global::MetricsGlobalSection;
 use notes::NotesTab;
@@ -77,6 +79,7 @@ const OVERLAY_GROUPS: &[(&str, &[(&str, &str)])] = &[
         ("Timers B", "timers_b"),
         ("Challenges", "challenges"),
         ("Notes", "notes"),
+        ("Map", "map"),
     ]),
     ("Effects", &[
         ("Effects A", "effects_a"),
@@ -294,6 +297,7 @@ pub fn SettingsPanel(
             "cooldowns_b" => rsx! { CooldownsTab { draft, group: CooldownGroup::B, actions: reset_position } },
             "dot_tracker" => rsx! { DotTrackerTab { draft, actions: reset_position } },
             "notes" => rsx! { NotesTab { draft, actions: reset_position } },
+            "map" => rsx! { MapTab { draft, actions: reset_position } },
             "combat_time" => rsx! { CombatTimeTab { draft, actions: reset_position } },
             "ability_cast" => rsx! { AbilityCastTab { draft, actions: reset_position } },
             "operation_timer" => rsx! { OperationTimerTab { draft, actions: reset_position } },

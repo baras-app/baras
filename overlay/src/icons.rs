@@ -155,6 +155,12 @@ fn load_icon_csv(path: &Path) -> Result<HashMap<u64, String>, String> {
     Ok(map)
 }
 
+/// Decode a PNG into `(width, height, rgba)`. Public so the app layer can resolve
+/// `image` marker elements to bytes the overlay can draw.
+pub fn decode_png_rgba(data: &[u8]) -> Option<(u32, u32, Vec<u8>)> {
+    decode_png(data).map(|d| (d.width, d.height, d.rgba))
+}
+
 fn decode_png(data: &[u8]) -> Option<IconData> {
     // (unchanged from original)
     let decoder = png::Decoder::new(data);

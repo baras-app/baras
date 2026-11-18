@@ -98,6 +98,16 @@ pub use overlays::{
     EnemyFramesOverlay,
     InteractionMode,
     MetricData,
+    // Map overlay
+    MapConfig,
+    MapData,
+    MapLibrary,
+    MapOverlay,
+    MarkerAnchor,
+    MarkerOffset,
+    ResolvedElement,
+    ResolvedMarker,
+    rasterize_svg,
     MetricEntry,
     MetricOverlay,
     // Notes overlay

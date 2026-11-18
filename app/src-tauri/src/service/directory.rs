@@ -10,7 +10,8 @@ pub fn translate_event(event: DirectoryEvent) -> Option<ServiceCommand> {
             Some(ServiceCommand::FileDetected(path))
         }
         DirectoryEvent::FileModified(path) => {
-            debug!(path = %path.display(), "Log file modified");
+            // TODO: uncomment when finished testing
+            // debug!(path = %path.display(), "Log file modified");
             Some(ServiceCommand::FileModified(path))
         }
         DirectoryEvent::FileRemoved(path) => {

@@ -55,6 +55,8 @@ pub struct OverlayStatusResponse {
     pub enemy_frames_enabled: bool,
     pub ability_cast_running: bool,
     pub ability_cast_enabled: bool,
+    pub map_running: bool,
+    pub map_enabled: bool,
     pub overlays_visible: bool,
     pub move_mode: bool,
     pub rearrange_mode: bool,
@@ -224,6 +226,7 @@ pub async fn get_overlay_status(
         ability_queue_running,
         enemy_frames_running,
         ability_cast_running,
+        map_running,
         move_mode,
         rearrange_mode,
     ) = {
@@ -249,6 +252,7 @@ pub async fn get_overlay_status(
             s.is_running(OverlayType::AbilityQueue),
             s.is_running(OverlayType::EnemyFrames),
             s.is_running(OverlayType::AbilityCast),
+            s.is_running(OverlayType::Map),
             s.move_mode,
             s.rearrange_mode,
         )
@@ -281,6 +285,7 @@ pub async fn get_overlay_status(
     let ability_queue_enabled = config.overlay_settings.is_enabled("ability_queue");
     let enemy_frames_enabled = config.overlay_settings.is_enabled("enemy_frames");
     let ability_cast_enabled = config.overlay_settings.is_enabled("ability_cast");
+    let map_enabled = config.overlay_settings.is_enabled("map");
 
     Ok(OverlayStatusResponse {
         running: running_metric_types,
@@ -323,6 +328,8 @@ pub async fn get_overlay_status(
         enemy_frames_enabled,
         ability_cast_running,
         ability_cast_enabled,
+        map_running,
+        map_enabled,
         overlays_visible: config.overlay_settings.overlays_visible,
         move_mode,
         rearrange_mode,

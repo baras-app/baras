@@ -15,7 +15,7 @@ use super::spawn::{
     ability_cast_config, cooldown_config, create_ability_cast_overlay, create_ability_queue_overlay, create_alerts_overlay,
     create_boss_health_overlay, create_challenges_overlay, create_combat_time_overlay,
     create_cooldowns_overlay, create_dot_tracker_overlay, create_effects_overlay,
-    create_enemy_frames_overlay,
+    create_enemy_frames_overlay, create_map_overlay,
     create_metric_overlay, create_notes_overlay, create_operation_timer_overlay,
     create_personal_overlay, create_raid_overlay, create_timers_a_overlay,
     create_timers_b_overlay, effects_ab_config,
@@ -161,6 +161,10 @@ impl OverlayManager {
                     settings.enemy_frames_opacity,
                 )?
             }
+            OverlayType::Map => {
+                let map_config = settings.map.clone();
+                create_map_overlay(position, map_config, settings.map_opacity)?
+            }
         };
 
         super::set_overlay_fps(settings.overlay_fps);
@@ -300,7 +304,8 @@ impl OverlayManager {
             | OverlayType::DotTracker
             | OverlayType::Notes
             | OverlayType::AbilityQueue
-            | OverlayType::AbilityCast => {
+            | OverlayType::AbilityCast
+            | OverlayType::Map => {
                 // These get data via separate update channels (bridge)
             }
         }
@@ -544,6 +549,17 @@ impl OverlayManager {
                 };
                 OverlayConfigUpdate::EnemyFrames(ef_config, settings.enemy_frames_opacity, eu)
             }
+            OverlayType::Map => {
+                use baras_overlay::MapConfig;
+                let cfg = &settings.map;
+                let map_config = MapConfig {
+                    preserve_aspect: cfg.preserve_aspect,
+                    lock_size: cfg.lock_size,
+                    width: cfg.width,
+                    height: cfg.height,
+                };
+                OverlayConfigUpdate::Map(map_config, settings.map_opacity)
+            }
         }
     }
 
@@ -623,6 +639,17 @@ impl OverlayManager {
                     .send(OverlayCommand::UpdateData(OverlayData::Notes(notes_data)))
                     .await;
             }
+        }
+
+        // For the Map overlay, feed the current encounter map (plus the edit-mode
+        // placeholder, if we're currently in edit mode) immediately so it isn't
+        // blank until the next combat update.
+        if matches!(kind, OverlayType::Map) {
+            let _ = tx
+                .send(OverlayCommand::UpdateData(OverlayData::Map(
+                    crate::map_overlay::current_map_data(current_move_mode),
+                )))
+                .await;
         }
 
         // Save position if needed
@@ -754,6 +781,7 @@ impl OverlayManager {
                 "ability_queue" => OverlayType::AbilityQueue,
                 "enemy_frames" => OverlayType::EnemyFrames,
                 "ability_cast" => OverlayType::AbilityCast,
+                "map" => OverlayType::Map,
                 _ => {
                     if let Some(mt) = MetricType::from_config_key(key) {
                         OverlayType::Metric(mt)
@@ -918,6 +946,7 @@ impl OverlayManager {
                 "ability_queue" => OverlayType::AbilityQueue,
                 "enemy_frames" => OverlayType::EnemyFrames,
                 "ability_cast" => OverlayType::AbilityCast,
+                "map" => OverlayType::Map,
                 _ => {
                     if let Some(mt) = MetricType::from_config_key(key) {
                         OverlayType::Metric(mt)
@@ -971,7 +1000,7 @@ impl OverlayManager {
         state: &SharedOverlayState,
         service: &ServiceHandle,
     ) -> Result<bool, String> {
-        let (txs, new_mode, raid_tx, was_rearranging) = {
+        let (txs, new_mode, raid_tx, was_rearranging, map_tx) = {
             let mut s = state.lock().map_err(|e| e.to_string())?;
             if !s.any_running() {
                 return Err("No overlays running".to_string());
@@ -983,7 +1012,8 @@ impl OverlayManager {
             }
             let txs: Vec<_> = s.all_txs().into_iter().cloned().collect();
             let raid_tx = s.get_raid_tx().cloned();
-            (txs, s.move_mode, raid_tx, was_rearranging)
+            let map_tx = s.get_tx(OverlayType::Map).cloned();
+            (txs, s.move_mode, raid_tx, was_rearranging, map_tx)
         };
 
         // Turn off rearrange mode first if entering move mode
@@ -997,6 +1027,17 @@ impl OverlayManager {
         // Broadcast move mode to all overlays
         for tx in &txs {
             let _ = tx.send(OverlayCommand::SetMoveMode(new_mode)).await;
+        }
+
+        // Re-feed the map overlay so the edit-mode placeholder is (re)loaded from
+        // disk when entering edit mode and cleared when leaving. Reading fresh
+        // means edits to _default.svg show up on the next switch into edit mode.
+        if let Some(ref tx) = map_tx {
+            let _ = tx
+                .send(OverlayCommand::UpdateData(OverlayData::Map(
+                    crate::map_overlay::current_map_data(new_mode),
+                )))
+                .await;
         }
 
         // When locking (move_mode = false), persist positions that actually changed

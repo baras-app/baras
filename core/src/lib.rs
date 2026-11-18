@@ -9,6 +9,7 @@ pub mod game_data;
 pub mod history;
 pub mod library;
 pub mod icons;
+pub mod markers;
 #[cfg(feature = "query")]
 pub mod query;
 pub mod raid_detect;

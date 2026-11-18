@@ -538,6 +538,53 @@ preceded_by = "revan_p4"
 trigger = { type = "npc_appears", selector = [3447583133401088] }
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Map Markers
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Unstable Aberration adds spawn in waves on Floor 3 / Core (shared resonance map).
+# One numbered marker per add, at its spawn position; removed when it detonates.
+# remove_on: verified in Step 4 against real logs.
+[[boss.map_marker]]
+id        = "aberrations"
+name      = "Unstable Aberration"
+phases    = ["revan_p4", "revan_core"]
+trigger   = { type = "npc_appears", selector = [3449584588161024] }
+# game coords -> overlay(map) space, per axis: out = scale*game + offset (calibrated to revan_resonance.svg)
+calibration.x = { scale = 2.3509, offset = -922.39 }
+calibration.y = { scale = 2.9394, offset = -2982.79 }
+position  = "entity"
+remove_on = { type = "damage_dealt", abilities = [3449069192085504] }
+remove_after_secs = 30.0
+# One green number per add (the sequence label).
+elements  = [ { type = "text", color = [46, 204, 113, 255], size = 18.0 } ]
+
+# Floor 3 arena map. Shared by the resonance transition, Floor 3, and the Machine
+# Core burn (same room) — replaces the hardcoded phase→map alias in the app.
+# `frames` add timed overlay SVGs drawn on top of the base while their window is
+# active (clock = "phase" measures from phase start). Add a second SVG under
+# map-overlays/revan/ and uncomment to use.
+[[boss.map]]
+phases = ["revan_resonance", "revan_p4", "revan_core"]
+svg    = "revan_resonance"
+# clock  = "phase"
+# frames = [
+#   { at_secs = 25.0, duration_secs = 4.0, svg = "revan_detonation" },
+# ]
+
+# Aberration detonation countdown. Revan casts "Unstable Aberration" to summon a
+# wave; the four adds then detonate at cast +25/+28/+31/+34s (fixed across every
+# wave in the logs). Timer counts down to the first blast — the rest follow 3s
+# apart. Only fires when the local player logs the summon cast; the map markers
+# above (npc_appears) are the reliable per-add signal.
+[[boss.timer]]
+id = "revan_aberration_detonation"
+name = "Aberration Detonation"
+trigger = { type = "ability_cast", abilities = [3449073487052800] }
+duration_secs = 25.0
+color = [46, 204, 113, 255]
+icon_ability_id = 3449073487052800
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Timers - Phase 1 (Floor 1 - Revan)
 # ═══════════════════════════════════════════════════════════════════════════════
 

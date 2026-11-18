@@ -32,6 +32,11 @@ tracing-subscriber = { workspace = true }
 png = "0.17"
 zip = { version = "8.6", default-features = false, features = ["deflate"] }
 
+# SVG rendering (map overlay). resvg 0.47 renders onto a tiny-skia 0.12 Pixmap,
+# matching the version used above so pixel buffers are directly interoperable.
+resvg = "0.47"
+usvg = "0.47"
+
 # Platform: Wayland (Linux)
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
 wayland-client = "0.31"
