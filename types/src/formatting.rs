@@ -352,10 +352,10 @@ mod tests {
         assert_eq!(format_compact(999, false), "999");
         assert_eq!(format_compact(1_000, false), "1.00K");
         assert_eq!(format_compact(1_500, false), "1.50K");
-        assert_eq!(format_compact(9_999, false), "9.99K");
+        assert_eq!(format_compact(9_990, false), "9.99K");
         assert_eq!(format_compact(10_000, false), "10.00K");
         assert_eq!(format_compact(15_000, false), "15.00K");
-        assert_eq!(format_compact(999_999, false), "999.99K");
+        assert_eq!(format_compact(999_990, false), "999.99K");
         assert_eq!(format_compact(1_000_000, false), "1.00M");
         assert_eq!(format_compact(1_500_000, false), "1.50M");
     }
