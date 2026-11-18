@@ -5,13 +5,6 @@ members = ["types", "core", "overlay", "app", "app/src-tauri", "validate", "pars
 [workspace.lints.clippy]
 too_many_arguments = "allow"
 
-# DataFusion 54's join cardinality estimator multiplies row-count estimates
-# with unchecked usize math (joins/utils.rs:653); large encounters overflow and
-# panic in debug builds. Fixed upstream (widened to u128) but unreleased —
-# wrap like release does until we can upgrade past 54.x.
-[profile.dev.package.datafusion-physical-plan]
-overflow-checks = false
-
 [profile.release]
 lto = "thin"           # Link-time optimization across crates
 codegen-units = 1      # Better optimization (slower compile)

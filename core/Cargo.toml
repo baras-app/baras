@@ -32,19 +32,19 @@ dirs = "7"
 zstd = "0.14"
 encoding_rs = "0.8"
 toml = "1"
-arrow = { version = "58", default-features = false, features = ["ipc"] }
-parquet = { version = "58", default-features = false, features = [
+arrow = { version = "59", default-features = false, features = ["ipc"] }
+parquet = { version = "59", default-features = false, features = [
   "arrow",
   "lz4",
   "snap",
   "zstd",
 ] }
-datafusion = { version = "54", default-features = false, optional = true, features = [
+datafusion = { version = "55", default-features = false, optional = true, features = [
   "parquet",
   "sql",
   "nested_expressions",
 ] }
-datafusion-functions-table = { version = "54.0", default-features = false, optional = true }
+datafusion-functions-table = { version = "55", default-features = false, optional = true }
 tracing = { workspace = true }
 
 [build-dependencies]
