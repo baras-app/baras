@@ -90,11 +90,21 @@ pub fn CharactersPanel() -> Element {
     let sort_desc = use_signal(|| true);
     let mut editing: Signal<Option<EditTarget>> = use_signal(|| None);
 
-    // A pull just landed: lockouts may have changed
+    // A pull just landed: lockouts may have changed. The listener outlives
+    // this component, so it only bumps a counter (`try_write` is a no-op once
+    // unmounted) and the effect does the reload.
+    let mut pulls = use_signal(|| 0u32);
     use_future(move || async move {
-        let closure = Closure::new(move |_: JsValue| roster.restart());
+        let closure = Closure::new(move |_: JsValue| {
+            let _ = pulls.try_write().map(|mut w| *w += 1);
+        });
         api::tauri_listen("history-updated", &closure).await;
         closure.forget();
+    });
+    use_effect(move || {
+        if *pulls.read() > 0 {
+            roster.restart();
+        }
     });
 
     let data = roster.read().clone().unwrap_or_default();
