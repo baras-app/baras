@@ -172,6 +172,7 @@ pub fn SettingsPanel(
                 config.overlay_settings.metric_stack_from_bottom =
                     new_settings.metric_stack_from_bottom;
                 config.overlay_settings.metric_scaling_factor = new_settings.metric_scaling_factor;
+                config.overlay_settings.metric_bar_spacing = new_settings.metric_bar_spacing;
                 config.overlay_settings.metric_font_scale = new_settings.metric_font_scale;
                 config.overlay_settings.metric_gradient_intensity =
                     new_settings.metric_gradient_intensity;

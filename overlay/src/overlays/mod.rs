@@ -21,6 +21,7 @@ mod effects;
 mod enemy_frames;
 mod effects_ab;
 mod metric;
+mod metric_values;
 mod notes;
 mod operation_timer;
 mod personal;

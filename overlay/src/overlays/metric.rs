@@ -2,10 +2,15 @@
 //!
 //! Displays a ranked list of players with their damage/healing output.
 
+use std::sync::Arc;
+
+use baras_core::PlayerMetrics;
 use baras_core::context::OverlayAppearanceConfig;
-use baras_types::{ClassColorConfig, ClassIconMode, formatting};
+use baras_types::metric_template::{self, MetricTemplate};
+use baras_types::{ClassColorConfig, ClassIconMode};
 use tiny_skia::Color;
 
+use super::metric_values::{entry_value, footer_value};
 use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
@@ -46,6 +51,8 @@ pub struct MetricEntry {
     pub display_value: Option<String>,
     /// Pre-formatted total string (overrides format_compact when set)
     pub display_total: Option<String>,
+    /// The player's full stats, for template placeholders beyond rate/total
+    pub player: Option<Arc<PlayerMetrics>>,
 }
 
 /// Payload for a metric overlay data update
@@ -76,6 +83,7 @@ impl MetricEntry {
             is_enemy: false,
             display_value: None,
             display_total: None,
+            player: None,
         }
     }
 
@@ -154,6 +162,8 @@ pub struct MetricOverlay {
     entries: Vec<MetricEntry>,
     title: String,
     appearance: OverlayAppearanceConfig,
+    /// `appearance.template`, parsed
+    template: MetricTemplate,
     show_empty_bars: bool,
     stack_from_bottom: bool,
     scaling_factor: f32,
@@ -202,6 +212,7 @@ impl MetricOverlay {
             frame,
             entries: Vec::new(),
             title: title.to_string(),
+            template: MetricTemplate::parse(&appearance.template),
             appearance,
             show_empty_bars,
             stack_from_bottom,
@@ -221,6 +232,7 @@ impl MetricOverlay {
 
     /// Update appearance config
     pub fn set_appearance(&mut self, appearance: OverlayAppearanceConfig) {
+        self.template = MetricTemplate::parse(&appearance.template);
         self.appearance = appearance;
     }
 
@@ -297,7 +309,7 @@ impl MetricOverlay {
         // Inter-bar gap is proportional to bar height so it stays consistent
         // across scales/resolutions. 0.0 = connected (no gap). Default 0.2
         // reproduces the legacy fixed 4px gap at the default 20px bar height.
-        let spacing_ratio = self.appearance.bar_spacing_ratio.clamp(0.0, 0.6);
+        let spacing_ratio = self.appearance.bar_spacing.unwrap_or(0.2).clamp(0.0, 0.6);
         let bar_spacing = ideal_bar_height * spacing_ratio;
         // Header/footer separators keep a stable gap regardless of bar density.
         let header_spacing = self.frame.scaled(BASE_BAR_SPACING);
@@ -308,9 +320,14 @@ impl MetricOverlay {
         let font_color = color_from_rgba(self.appearance.font_color);
         let bar_color = color_from_rgba(self.appearance.bar_color);
 
-        // Get display options (totals suppressed during warzones)
-        let show_total = self.appearance.show_total && !self.hide_totals;
-        let show_per_second = self.appearance.show_per_second;
+        // Columns showing totals are suppressed during warzones
+        let without_totals;
+        let template = if self.hide_totals {
+            without_totals = self.template.clone().without_totals();
+            &without_totals
+        } else {
+            &self.template
+        };
 
         // Limit to the max_entries highest values overall, then display in the
         // original friendly-first order: entries are sorted friendly then enemy,
@@ -477,11 +494,6 @@ impl MetricOverlay {
             .filter(|e| !e.is_enemy)
             .map(|e| e.value)
             .sum();
-        let total_sum: i64 = visible_entries
-            .iter()
-            .filter(|e| !e.is_enemy)
-            .map(|e| e.total_value)
-            .sum();
 
         // Icon rendering setup
         // Discipline icons are opaque squares, so they get a dedicated
@@ -582,24 +594,14 @@ impl MetricOverlay {
                 }
             }
 
-            // Add text based on show_total and show_per_second settings
-            // Per-second is always rightmost when enabled, total goes center or right
             let eu = self.european_number_format;
-            let rate_text = entry.display_value.clone().unwrap_or_else(|| {
-                formatting::format_compact(entry.value, eu)
-            });
-            let total_text = entry.display_total.clone().unwrap_or_else(|| {
-                formatting::format_compact(entry.total_value, eu)
-            });
-
-            if show_per_second && show_total {
-                bar = bar.with_center_text(total_text).with_right_text(rate_text);
-            } else if show_per_second {
-                bar = bar.with_right_text(rate_text);
-            } else if show_total {
-                bar = bar.with_right_text(total_text);
+            let value = |var| entry_value(var, entry, rate_sum, eu);
+            if !template.center.is_empty() {
+                bar = bar.with_center_text(metric_template::render(&template.center, value));
             }
-            // If neither, just show name (no values)
+            if !template.right.is_empty() {
+                bar = bar.with_right_text(metric_template::render(&template.right, value));
+            }
 
             bar.render(
                 &mut self.frame,
@@ -655,21 +657,13 @@ impl MetricOverlay {
         // Draw footer using Footer widget
         if self.appearance.show_footer {
             let eu = self.european_number_format;
-            let footer = if show_per_second && show_total {
-                // Both enabled: show total sum in center, rate sum on right
-                Footer::new(formatting::format_compact(rate_sum, eu))
-                    .with_secondary(formatting::format_compact(total_sum, eu))
-                    .with_color(font_color)
-            } else if show_per_second {
-                // Rate only: show rate sum on right
-                Footer::new(formatting::format_compact(rate_sum, eu)).with_color(font_color)
-            } else if show_total {
-                // Total only: show total sum on right
-                Footer::new(formatting::format_compact(total_sum, eu)).with_color(font_color)
-            } else {
-                // Neither: empty footer (just separator)
-                Footer::new("").with_color(font_color)
-            };
+            let friendly = || visible_entries.iter().copied().filter(|e| !e.is_enemy);
+            let value = |var| footer_value(var, friendly(), eu);
+            let mut footer =
+                Footer::new(metric_template::render(&template.right, value)).with_color(font_color);
+            if !template.center.is_empty() {
+                footer = footer.with_secondary(metric_template::render(&template.center, value));
+            }
 
             footer.render(
                 &mut self.frame,

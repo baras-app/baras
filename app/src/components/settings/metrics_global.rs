@@ -73,6 +73,16 @@ pub fn MetricsGlobalSection(draft: SettingsDraft, mut open: Signal<bool>) -> Ele
                             suffix: "%",
                             on_change: move |v: f64| draft.edit(|s| s.metric_scaling_factor = (v as f32 / 100.0).clamp(0.3, 2.0)),
                         }
+                        Slider {
+                            label: "Bar Spacing",
+                            value: (s.metric_bar_spacing * 100.0).round() as f64,
+                            min: 0.0,
+                            max: 60.0,
+                            step: 5.0,
+                            suffix: "%",
+                            tooltip: "Gap between bars. Each metric overlay can set its own under Custom Bar Spacing.",
+                            on_change: move |v: f64| draft.edit(|s| s.metric_bar_spacing = (v as f32 / 100.0).clamp(0.0, 0.6)),
+                        }
                         Check { label: "Stack from Bottom", checked: s.metric_stack_from_bottom, on_change: move |v| draft.edit(|s| s.metric_stack_from_bottom = v) }
                     }
                     Section { group: Group::Content,
