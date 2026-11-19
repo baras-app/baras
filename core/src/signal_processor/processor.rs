@@ -725,30 +725,24 @@ impl EventProcessor {
     /// Entity-based detection runs first; trigger-based detection is a fallback.
     fn handle_boss_detection(&self, event: &CombatEvent, cache: &mut SessionCache, out: &mut Vec<GameSignal>) {
         // Gather state from immutable borrow first
-        let (has_active_boss, in_combat, has_definitions, registered_npcs) = {
+        let entities_to_check = [&event.source_entity, &event.target_entity];
+        // Only NPCs registered in the encounter (engaged in combat) count
+        let registered = {
             let Some(enc) = cache.current_encounter() else {
                 return;
             };
-            (
-                enc.active_boss_idx().is_some(),
-                enc.state == EncounterState::InCombat,
-                !enc.boss_definitions().is_empty(),
-                enc.npcs.keys().copied().collect::<Vec<_>>(),
-            )
+            if enc.active_boss_idx().is_some()
+                || enc.state != EncounterState::InCombat
+                || enc.boss_definitions().is_empty()
+            {
+                return;
+            }
+            entities_to_check.map(|e| enc.npcs.contains_key(&e.log_id))
         };
 
-        if has_active_boss || !in_combat || !has_definitions {
-            return;
-        }
-
         // ─── Entity-based detection ───────────────────────────────────────────
-        // Only consider NPCs registered in the encounter (engaged in combat).
-        let entities_to_check = [&event.source_entity, &event.target_entity];
-        for entity in entities_to_check {
-            if entity.entity_type != EntityType::Npc || entity.class_id == 0 {
-                continue;
-            }
-            if !registered_npcs.contains(&entity.log_id) {
+        for (entity, is_registered) in entities_to_check.into_iter().zip(registered) {
+            if entity.entity_type != EntityType::Npc || entity.class_id == 0 || !is_registered {
                 continue;
             }
             if let Some(idx) = cache.detect_boss_encounter(entity.class_id) {

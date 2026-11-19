@@ -5,6 +5,7 @@
 //! that can be fed to overlay renderers.
 
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use chrono::NaiveDateTime;
@@ -53,16 +54,9 @@ fn get_entities(encounter: Option<&CombatEncounter>) -> &[EntityDefinition] {
         .unwrap_or(EMPTY)
 }
 
-/// Get the set of boss entity IDs from the current encounter.
-fn get_boss_ids(encounter: Option<&CombatEncounter>) -> HashSet<i64> {
-    encounter
-        .map(|e| {
-            e.npcs
-                .values()
-                .filter_map(|npc| npc.is_boss.then_some(npc.log_id))
-                .collect()
-        })
-        .unwrap_or_default()
+/// Boss entity IDs of the current encounter (the per-event cache, not a rebuild).
+fn get_boss_ids(encounter: Option<&CombatEncounter>) -> Arc<HashSet<i64>> {
+    encounter.map(|e| e.boss_entity_ids()).unwrap_or_default()
 }
 
 /// Combined set of effect definitions with indexes for fast lookup
@@ -229,6 +223,7 @@ impl DefinitionSet {
         }
 
         if let Some(name) = effect_name
+            && !self.effect_name_index.is_empty()
             && let Some(def_ids) = self.effect_name_index.get(&name.to_lowercase())
         {
             for def_id in def_ids {
@@ -264,6 +259,7 @@ impl DefinitionSet {
         }
 
         if let Some(name) = ability_name
+            && !self.ability_name_index.is_empty()
             && let Some(def_ids) = self.ability_name_index.get(&name.to_lowercase())
         {
             for def_id in def_ids {
@@ -299,6 +295,7 @@ impl DefinitionSet {
         }
 
         if let Some(name) = ability_name
+            && !self.refresh_ability_name_index.is_empty()
             && let Some(def_ids) = self.refresh_ability_name_index.get(&name.to_lowercase())
         {
             for def_id in def_ids {
@@ -1393,6 +1390,12 @@ impl EffectTracker {
 
         // Single-target case: refresh effect on specific target
         let action_name_str = crate::context::resolve(action_name);
+        let candidates = self
+            .definitions
+            .find_refreshable_by(action_id as u64, Some(action_name_str));
+        if candidates.is_empty() {
+            return;
+        }
 
         // Prepare source filter context
         let local_player_id = self.local_player_id;
@@ -1437,17 +1440,13 @@ impl EffectTracker {
         // Ids of single-instance defs refreshable by this ability (both the
         // local and `_others` variants) — the source-agnostic lookup group used
         // below. Collected before filtering: source filters keep only one.
-        let single_instance_ids: Vec<String> = self
-            .definitions
-            .find_refreshable_by(action_id as u64, Some(action_name_str))
-            .into_iter()
+        let single_instance_ids: Vec<String> = candidates
+            .iter()
             .filter(|d| d.single_instance_per_target)
             .map(|d| d.id.clone())
             .collect();
 
-        let refreshable_defs: Vec<_> = self
-            .definitions
-            .find_refreshable_by(action_id as u64, Some(action_name_str))
+        let refreshable_defs: Vec<_> = candidates
             .into_iter()
             .filter(|def| def.matches_discipline(local_discipline.as_ref()))
             .filter(|def| {
@@ -1909,9 +1908,7 @@ impl EffectTracker {
         // Find definitions with AbilityCast triggers that match this ability
         let matching_defs: Vec<_> = self
             .definitions
-            .find_ability_cast_matching(ability_id as u64, Some(ability_name_str))
-            .into_iter()
-            .collect();
+            .find_ability_cast_matching(ability_id as u64, Some(ability_name_str));
 
         if matching_defs.is_empty() {
             return;
@@ -2106,9 +2103,7 @@ impl EffectTracker {
 
         let matching_defs: Vec<_> = self
             .definitions
-            .find_ability_cast_matching(ability_id as u64, Some(ability_name_str))
-            .into_iter()
-            .collect();
+            .find_ability_cast_matching(ability_id as u64, Some(ability_name_str));
 
         if matching_defs.is_empty() {
             return;

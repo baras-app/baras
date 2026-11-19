@@ -14,28 +14,22 @@ use std::time::Duration;
 
 use chrono::NaiveDateTime;
 
+use crate::context::IStr;
 use crate::dsl::AudioConfig;
 
 /// Context from the triggering event, used for `{source}` / `{target}` template substitution.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct TriggerContext {
-    pub source_name: Option<String>,
-    pub target_name: Option<String>,
+    pub source_name: IStr,
+    pub target_name: IStr,
 }
 
 impl TriggerContext {
-    pub fn new(source_name: Option<String>, target_name: Option<String>) -> Self {
-        Self {
-            source_name,
-            target_name,
-        }
-    }
-
     pub fn format(&self, text: &str) -> String {
         crate::dsl::format_placeholders(
             text,
-            self.source_name.as_deref().unwrap_or(""),
-            self.target_name.as_deref().unwrap_or(""),
+            crate::context::resolve(self.source_name),
+            crate::context::resolve(self.target_name),
             None,
         )
     }
