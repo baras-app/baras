@@ -493,7 +493,7 @@ async fn detect_raid_names_hotkey(overlay_state: SharedOverlayState) {
             return;
         }
 
-        state.get_raid_tx().cloned()
+        state.get_tx(OverlayType::Raid).cloned()
     };
 
     if let Some(tx) = raid_tx {
@@ -515,7 +515,7 @@ async fn toggle_rearrange_mode_hotkey(overlay_state: SharedOverlayState, service
 
         let new_mode = !state.rearrange_mode;
         state.set_rearrange_mode(new_mode);
-        let tx = state.get_raid_tx().cloned();
+        let tx = state.get_tx(OverlayType::Raid).cloned();
         (tx, new_mode)
     };
 

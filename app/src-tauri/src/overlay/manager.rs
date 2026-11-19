@@ -588,10 +588,7 @@ impl OverlayManager {
     /// Forget an overlay's saved position so it returns to its default spot.
     /// Defaults apply at spawn, so a running overlay is torn down and respawned.
     pub async fn reset_position(key: &str, state: &SharedOverlayState, service: &ServiceHandle) -> Result<(), String> {
-        let kind = Self::all_overlay_types()
-            .into_iter()
-            .find(|t| t.config_key() == key)
-            .ok_or_else(|| format!("Unknown overlay: {key}"))?;
+        let kind = OverlayType::from_config_key(key).ok_or_else(|| format!("Unknown overlay: {key}"))?;
 
         let mut config = service.config().await;
         config.overlay_settings.positions.remove(key);
@@ -669,34 +666,8 @@ impl OverlayManager {
         let mut needs_monitor_save = Vec::new();
 
         for key in &enabled_keys {
-            let kind = match key.as_str() {
-                "personal" => OverlayType::Personal,
-                "raid" => OverlayType::Raid,
-                "boss_health" => OverlayType::BossHealth,
-                // Support both old "timers" and new "timers_a" keys
-                "timers" | "timers_a" => OverlayType::TimersA,
-                "timers_b" => OverlayType::TimersB,
-                "challenges" => OverlayType::Challenges,
-                "alerts" => OverlayType::Alerts,
-                "effects_a" => OverlayType::EffectsA,
-                "effects_b" => OverlayType::EffectsB,
-                "effects_c" => OverlayType::EffectsC,
-                "cooldowns" => OverlayType::Cooldowns,
-                "cooldowns_b" => OverlayType::CooldownsB,
-                "dot_tracker" => OverlayType::DotTracker,
-                "notes" => OverlayType::Notes,
-                "combat_time" => OverlayType::CombatTime,
-                "operation_timer" => OverlayType::OperationTimer,
-                "ability_queue" => OverlayType::AbilityQueue,
-                "enemy_frames" => OverlayType::EnemyFrames,
-                "ability_cast" => OverlayType::AbilityCast,
-                _ => {
-                    if let Some(mt) = MetricType::from_config_key(key) {
-                        OverlayType::Metric(mt)
-                    } else {
-                        continue;
-                    }
-                }
+            let Some(kind) = OverlayType::from_config_key(key) else {
+                continue;
             };
 
             // Check if running, spawn, and insert - all under lock to prevent race conditions
@@ -825,34 +796,8 @@ impl OverlayManager {
         let combat_data = service.current_combat_data().await;
 
         for key in &enabled_keys {
-            let kind = match key.as_str() {
-                "personal" => OverlayType::Personal,
-                "raid" => OverlayType::Raid,
-                "boss_health" => OverlayType::BossHealth,
-                // Support both old "timers" and new "timers_a" keys
-                "timers" | "timers_a" => OverlayType::TimersA,
-                "timers_b" => OverlayType::TimersB,
-                "challenges" => OverlayType::Challenges,
-                "alerts" => OverlayType::Alerts,
-                "effects_a" => OverlayType::EffectsA,
-                "effects_b" => OverlayType::EffectsB,
-                "effects_c" => OverlayType::EffectsC,
-                "cooldowns" => OverlayType::Cooldowns,
-                "cooldowns_b" => OverlayType::CooldownsB,
-                "dot_tracker" => OverlayType::DotTracker,
-                "notes" => OverlayType::Notes,
-                "combat_time" => OverlayType::CombatTime,
-                "operation_timer" => OverlayType::OperationTimer,
-                "ability_queue" => OverlayType::AbilityQueue,
-                "enemy_frames" => OverlayType::EnemyFrames,
-                "ability_cast" => OverlayType::AbilityCast,
-                _ => {
-                    if let Some(mt) = MetricType::from_config_key(key) {
-                        OverlayType::Metric(mt)
-                    } else {
-                        continue;
-                    }
-                }
+            let Some(kind) = OverlayType::from_config_key(key) else {
+                continue;
             };
 
             // Check if running, spawn, and insert
@@ -907,7 +852,7 @@ impl OverlayManager {
                 s.rearrange_mode = false;
             }
             let txs: Vec<_> = s.all_txs().into_iter().cloned().collect();
-            let raid_tx = s.get_raid_tx().cloned();
+            let raid_tx = s.get_tx(OverlayType::Raid).cloned();
             (txs, s.move_mode, raid_tx, was_rearranging)
         };
 
@@ -995,11 +940,11 @@ impl OverlayManager {
     pub async fn toggle_rearrange(state: &SharedOverlayState, service: &ServiceHandle) -> Result<bool, String> {
         let (raid_tx, new_mode) = {
             let mut s = state.lock().map_err(|e| e.to_string())?;
-            if !s.is_raid_running() {
+            if !s.is_running(OverlayType::Raid) {
                 return Ok(false);
             }
             s.rearrange_mode = !s.rearrange_mode;
-            (s.get_raid_tx().cloned(), s.rearrange_mode)
+            (s.get_tx(OverlayType::Raid).cloned(), s.rearrange_mode)
         };
 
         // Update shared state flag for rendering loop
@@ -1043,7 +988,7 @@ impl OverlayManager {
         // Handle each overlay type, collecting newly spawned overlays for initial data
         let mut newly_spawned: Vec<(OverlayType, tokio::sync::mpsc::Sender<OverlayCommand>)> = Vec::new();
 
-        for overlay_type in Self::all_overlay_types() {
+        for overlay_type in OverlayType::all() {
             // Raid is handled separately below (always full teardown+respawn to pick up
             // grid size changes). Skip it here to avoid a redundant spawn that the
             // special-case block would immediately tear down.
@@ -1188,34 +1133,5 @@ impl OverlayManager {
         service.set_overlay_active("cooldowns_b", false);
         service.set_overlay_active("dot_tracker", false);
         service.set_overlay_active("ability_cast", false);
-    }
-
-    /// Get all overlay types for iteration.
-    fn all_overlay_types() -> Vec<OverlayType> {
-        let mut types = vec![
-            OverlayType::Personal,
-            OverlayType::Raid,
-            OverlayType::BossHealth,
-            OverlayType::TimersA,
-            OverlayType::TimersB,
-            OverlayType::Challenges,
-            OverlayType::Alerts,
-            OverlayType::EffectsA,
-            OverlayType::EffectsB,
-            OverlayType::EffectsC,
-            OverlayType::Cooldowns,
-            OverlayType::CooldownsB,
-            OverlayType::DotTracker,
-            OverlayType::Notes,
-            OverlayType::CombatTime,
-            OverlayType::OperationTimer,
-            OverlayType::EnemyFrames,
-            OverlayType::AbilityCast,
-            OverlayType::AbilityQueue,
-        ];
-        for mt in MetricType::all() {
-            types.push(OverlayType::Metric(*mt));
-        }
-        types
     }
 }

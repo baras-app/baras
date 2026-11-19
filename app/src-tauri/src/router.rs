@@ -143,7 +143,10 @@ async fn request_capture_permission(service_handle: &ServiceHandle, overlay_stat
     use baras_overlay::capture;
 
     if capture::portal_required() && capture::has_portal_restore_token() && capture::enable_portal().await.is_ok() {
-        let raid_tx = overlay_state.lock().ok().and_then(|state| state.get_raid_tx().cloned());
+        let raid_tx = overlay_state
+            .lock()
+            .ok()
+            .and_then(|state| state.get_tx(OverlayType::Raid).cloned());
         if let Some(tx) = raid_tx {
             let _ = tx.send(OverlayCommand::DetectRaidNames).await;
         }
@@ -437,7 +440,7 @@ async fn process_overlay_update(
                     })
                     .collect();
 
-                let personal_tx = state.get_personal_tx().cloned();
+                let personal_tx = state.get_tx(OverlayType::Personal).cloned();
 
                 (metric_txs, personal_tx)
             };
@@ -472,7 +475,7 @@ async fn process_overlay_update(
                     Err(_) => return,
                 };
                 (
-                    state.get_challenges_tx().cloned(),
+                    state.get_tx(OverlayType::Challenges).cloned(),
                     state.get_tx(OverlayType::EnemyFrames).cloned(),
                 )
             };
@@ -501,7 +504,7 @@ async fn process_overlay_update(
                     Ok(s) => s,
                     Err(_) => return,
                 };
-                state.get_combat_time_tx().cloned()
+                state.get_tx(OverlayType::CombatTime).cloned()
             };
 
             // Only send combat time while in combat; the CombatEnded handler
@@ -526,7 +529,7 @@ async fn process_overlay_update(
                     Ok(s) => s,
                     Err(_) => return,
                 };
-                state.get_raid_tx().cloned()
+                state.get_tx(OverlayType::Raid).cloned()
             };
 
             if let Some(tx) = raid_tx {
@@ -545,7 +548,7 @@ async fn process_overlay_update(
                     Ok(s) => s,
                     Err(_) => return,
                 };
-                state.get_boss_health_tx().cloned()
+                state.get_tx(OverlayType::BossHealth).cloned()
             };
 
             if let Some(tx) = boss_tx {
@@ -564,7 +567,7 @@ async fn process_overlay_update(
                     Ok(s) => s,
                     Err(_) => return,
                 };
-                state.get_timers_a_tx().cloned()
+                state.get_tx(OverlayType::TimersA).cloned()
             };
 
             if let Some(tx) = timer_tx {
@@ -583,7 +586,7 @@ async fn process_overlay_update(
                     Ok(s) => s,
                     Err(_) => return,
                 };
-                state.get_timers_b_tx().cloned()
+                state.get_tx(OverlayType::TimersB).cloned()
             };
 
             if let Some(tx) = timer_tx {
@@ -681,7 +684,7 @@ async fn process_overlay_update(
                     Ok(s) => s,
                     Err(_) => return,
                 };
-                state.get_effects_a_tx().cloned()
+                state.get_tx(OverlayType::EffectsA).cloned()
             };
 
             if let Some(tx) = tx {
@@ -699,7 +702,7 @@ async fn process_overlay_update(
                     Ok(s) => s,
                     Err(_) => return,
                 };
-                state.get_effects_b_tx().cloned()
+                state.get_tx(OverlayType::EffectsB).cloned()
             };
 
             if let Some(tx) = tx {
@@ -735,7 +738,7 @@ async fn process_overlay_update(
                     Ok(s) => s,
                     Err(_) => return,
                 };
-                state.get_cooldowns_tx().cloned()
+                state.get_tx(OverlayType::Cooldowns).cloned()
             };
 
             if let Some(tx) = tx {
@@ -771,7 +774,7 @@ async fn process_overlay_update(
                     Ok(s) => s,
                     Err(_) => return,
                 };
-                state.get_dot_tracker_tx().cloned()
+                state.get_tx(OverlayType::DotTracker).cloned()
             };
 
             if let Some(tx) = tx {
@@ -789,7 +792,7 @@ async fn process_overlay_update(
                     Ok(s) => s,
                     Err(_) => return,
                 };
-                state.get_notes_tx().cloned()
+                state.get_tx(OverlayType::Notes).cloned()
             };
 
             if let Some(tx) = tx {
@@ -806,8 +809,8 @@ async fn process_overlay_update(
                     Err(_) => return,
                 };
                 (
-                    state.get_operation_timer_tx().cloned(),
-                    state.get_personal_tx().cloned(),
+                    state.get_tx(OverlayType::OperationTimer).cloned(),
+                    state.get_tx(OverlayType::Personal).cloned(),
                 )
             };
 
@@ -858,7 +861,7 @@ async fn process_overlay_update(
                     Ok(state) => state,
                     Err(_) => return,
                 };
-                state.get_raid_tx().cloned()
+                state.get_tx(OverlayType::Raid).cloned()
             };
             if let Some(tx) = raid_tx {
                 let _ = tx.send(OverlayCommand::DetectRaidNames).await;
@@ -875,7 +878,7 @@ async fn process_overlay_update(
                 let mut channels = Vec::new();
 
                 // Boss health overlay
-                if let Some(tx) = state.get_boss_health_tx() {
+                if let Some(tx) = state.get_tx(OverlayType::BossHealth) {
                     channels.push((tx.clone(), OverlayData::BossHealth(Default::default())));
                 }
 
@@ -884,12 +887,12 @@ async fn process_overlay_update(
                 }
 
                 // Timers A overlay
-                if let Some(tx) = state.get_timers_a_tx() {
+                if let Some(tx) = state.get_tx(OverlayType::TimersA) {
                     channels.push((tx.clone(), OverlayData::TimersA(Default::default())));
                 }
 
                 // Timers B overlay
-                if let Some(tx) = state.get_timers_b_tx() {
+                if let Some(tx) = state.get_tx(OverlayType::TimersB) {
                     channels.push((tx.clone(), OverlayData::TimersB(Default::default())));
                 }
 
@@ -902,7 +905,7 @@ async fn process_overlay_update(
                 }
 
                 // Combat time overlay
-                if let Some(tx) = state.get_combat_time_tx() {
+                if let Some(tx) = state.get_tx(OverlayType::CombatTime) {
                     channels.push((tx.clone(), OverlayData::CombatTime(Default::default())));
                 }
 
@@ -934,17 +937,17 @@ async fn process_overlay_update(
                 }
 
                 // Personal overlay
-                if let Some(tx) = state.get_personal_tx() {
+                if let Some(tx) = state.get_tx(OverlayType::Personal) {
                     channels.push((tx.clone(), OverlayData::Personal(Default::default())));
                 }
 
                 // Raid overlay
-                if let Some(tx) = state.get_raid_tx() {
+                if let Some(tx) = state.get_tx(OverlayType::Raid) {
                     channels.push((tx.clone(), OverlayData::Raid(RaidFrameData { frames: vec![] })));
                 }
 
                 // Boss health overlay
-                if let Some(tx) = state.get_boss_health_tx() {
+                if let Some(tx) = state.get_tx(OverlayType::BossHealth) {
                     channels.push((tx.clone(), OverlayData::BossHealth(Default::default())));
                 }
 
@@ -953,27 +956,27 @@ async fn process_overlay_update(
                 }
 
                 // Timers A overlay
-                if let Some(tx) = state.get_timers_a_tx() {
+                if let Some(tx) = state.get_tx(OverlayType::TimersA) {
                     channels.push((tx.clone(), OverlayData::TimersA(Default::default())));
                 }
 
                 // Timers B overlay
-                if let Some(tx) = state.get_timers_b_tx() {
+                if let Some(tx) = state.get_tx(OverlayType::TimersB) {
                     channels.push((tx.clone(), OverlayData::TimersB(Default::default())));
                 }
 
                 // Challenges overlay
-                if let Some(tx) = state.get_challenges_tx() {
+                if let Some(tx) = state.get_tx(OverlayType::Challenges) {
                     channels.push((tx.clone(), OverlayData::Challenges(Default::default())));
                 }
 
                 // Effects A overlay
-                if let Some(tx) = state.get_effects_a_tx() {
+                if let Some(tx) = state.get_tx(OverlayType::EffectsA) {
                     channels.push((tx.clone(), OverlayData::EffectsA(Default::default())));
                 }
 
                 // Effects B overlay
-                if let Some(tx) = state.get_effects_b_tx() {
+                if let Some(tx) = state.get_tx(OverlayType::EffectsB) {
                     channels.push((tx.clone(), OverlayData::EffectsB(Default::default())));
                 }
 
@@ -983,7 +986,7 @@ async fn process_overlay_update(
                 }
 
                 // Cooldowns overlay
-                if let Some(tx) = state.get_cooldowns_tx() {
+                if let Some(tx) = state.get_tx(OverlayType::Cooldowns) {
                     channels.push((tx.clone(), OverlayData::Cooldowns(Default::default())));
                 }
 
@@ -993,17 +996,17 @@ async fn process_overlay_update(
                 }
 
                 // DOT tracker overlay
-                if let Some(tx) = state.get_dot_tracker_tx() {
+                if let Some(tx) = state.get_tx(OverlayType::DotTracker) {
                     channels.push((tx.clone(), OverlayData::DotTracker(Default::default())));
                 }
 
                 // Notes overlay
-                if let Some(tx) = state.get_notes_tx() {
+                if let Some(tx) = state.get_tx(OverlayType::Notes) {
                     channels.push((tx.clone(), OverlayData::Notes(Default::default())));
                 }
 
                 // Combat time overlay
-                if let Some(tx) = state.get_combat_time_tx() {
+                if let Some(tx) = state.get_tx(OverlayType::CombatTime) {
                     channels.push((tx.clone(), OverlayData::CombatTime(Default::default())));
                 }
 
@@ -1013,7 +1016,7 @@ async fn process_overlay_update(
                 }
 
                 // Operation timer overlay (clear display, timer state lives in service)
-                if let Some(tx) = state.get_operation_timer_tx() {
+                if let Some(tx) = state.get_tx(OverlayType::OperationTimer) {
                     channels.push((tx.clone(), OverlayData::OperationTimer(Default::default())));
                 }
 

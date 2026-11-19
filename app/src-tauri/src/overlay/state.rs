@@ -104,16 +104,6 @@ impl OverlayState {
         self.overlays.contains_key(&kind)
     }
 
-    /// Check if a metric overlay type is running (convenience method)
-    pub fn is_metric_running(&self, overlay_type: MetricType) -> bool {
-        self.overlays.contains_key(&OverlayType::Metric(overlay_type))
-    }
-
-    /// Check if personal overlay is running
-    pub fn is_personal_running(&self) -> bool {
-        self.overlays.contains_key(&OverlayType::Personal)
-    }
-
     /// Check if any overlay is running
     pub fn any_running(&self) -> bool {
         !self.overlays.is_empty()
@@ -122,46 +112,6 @@ impl OverlayState {
     /// Get the channel for a specific overlay
     pub fn get_tx(&self, kind: OverlayType) -> Option<&Sender<OverlayCommand>> {
         self.overlays.get(&kind).map(|h| &h.tx)
-    }
-
-    /// Get the channel for a metric overlay type (convenience)
-    pub fn get_metric_tx(&self, overlay_type: MetricType) -> Option<&Sender<OverlayCommand>> {
-        self.get_tx(OverlayType::Metric(overlay_type))
-    }
-
-    /// Get the channel for personal overlay (convenience)
-    pub fn get_personal_tx(&self) -> Option<&Sender<OverlayCommand>> {
-        self.get_tx(OverlayType::Personal)
-    }
-
-    /// Get the channel for raid overlay (convenience)
-    pub fn get_raid_tx(&self) -> Option<&Sender<OverlayCommand>> {
-        self.get_tx(OverlayType::Raid)
-    }
-
-    /// Check if raid overlay is running
-    pub fn is_raid_running(&self) -> bool {
-        self.overlays.contains_key(&OverlayType::Raid)
-    }
-
-    /// Get the channel for boss health overlay (convenience)
-    pub fn get_boss_health_tx(&self) -> Option<&Sender<OverlayCommand>> {
-        self.get_tx(OverlayType::BossHealth)
-    }
-
-    /// Get the channel for Timers A overlay (convenience)
-    pub fn get_timers_a_tx(&self) -> Option<&Sender<OverlayCommand>> {
-        self.get_tx(OverlayType::TimersA)
-    }
-
-    /// Get the channel for Timers B overlay (convenience)
-    pub fn get_timers_b_tx(&self) -> Option<&Sender<OverlayCommand>> {
-        self.get_tx(OverlayType::TimersB)
-    }
-
-    /// Check if boss health overlay is running
-    pub fn is_boss_health_running(&self) -> bool {
-        self.overlays.contains_key(&OverlayType::BossHealth)
     }
 
     /// Get all channels
@@ -178,61 +128,6 @@ impl OverlayState {
                 _ => None,
             })
             .collect()
-    }
-
-    /// Get the channel for challenges overlay (convenience)
-    pub fn get_challenges_tx(&self) -> Option<&Sender<OverlayCommand>> {
-        self.get_tx(OverlayType::Challenges)
-    }
-
-    /// Check if challenges overlay is running
-    pub fn is_challenges_running(&self) -> bool {
-        self.overlays.contains_key(&OverlayType::Challenges)
-    }
-
-    /// Get the channel for effects A overlay (convenience)
-    pub fn get_effects_a_tx(&self) -> Option<&Sender<OverlayCommand>> {
-        self.get_tx(OverlayType::EffectsA)
-    }
-
-    /// Get the channel for effects B overlay (convenience)
-    pub fn get_effects_b_tx(&self) -> Option<&Sender<OverlayCommand>> {
-        self.get_tx(OverlayType::EffectsB)
-    }
-
-    /// Get the channel for cooldowns overlay (convenience)
-    pub fn get_cooldowns_tx(&self) -> Option<&Sender<OverlayCommand>> {
-        self.get_tx(OverlayType::Cooldowns)
-    }
-
-    /// Get the channel for DOT tracker overlay (convenience)
-    pub fn get_dot_tracker_tx(&self) -> Option<&Sender<OverlayCommand>> {
-        self.get_tx(OverlayType::DotTracker)
-    }
-
-    /// Get the channel for notes overlay (convenience)
-    pub fn get_notes_tx(&self) -> Option<&Sender<OverlayCommand>> {
-        self.get_tx(OverlayType::Notes)
-    }
-
-    /// Get the channel for combat time overlay (convenience)
-    pub fn get_combat_time_tx(&self) -> Option<&Sender<OverlayCommand>> {
-        self.get_tx(OverlayType::CombatTime)
-    }
-
-    /// Check if combat time overlay is running
-    pub fn is_combat_time_running(&self) -> bool {
-        self.overlays.contains_key(&OverlayType::CombatTime)
-    }
-
-    /// Get the channel for operation timer overlay (convenience)
-    pub fn get_operation_timer_tx(&self) -> Option<&Sender<OverlayCommand>> {
-        self.get_tx(OverlayType::OperationTimer)
-    }
-
-    /// Check if operation timer overlay is running
-    pub fn is_operation_timer_running(&self) -> bool {
-        self.overlays.contains_key(&OverlayType::OperationTimer)
     }
 
     /// Insert an overlay handle
