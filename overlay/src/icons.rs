@@ -43,10 +43,6 @@ impl IconCache {
         })
     }
 
-    pub fn get_icon_name(&self, ability_id: u64) -> Option<&str> {
-        self.ability_to_icon.get(&ability_id).map(|s| s.as_str())
-    }
-
     pub fn get_icon(&self, ability_id: u64) -> Option<IconData> {
         let icon_name = self.ability_to_icon.get(&ability_id)?;
         self.get_icon_by_name(icon_name)
@@ -109,12 +105,6 @@ impl IconCache {
 
     pub fn has_icon(&self, ability_id: u64) -> bool {
         self.ability_to_icon.contains_key(&ability_id)
-    }
-
-    pub fn clear_cache(&self) {
-        if let Ok(mut cache) = self.cache.lock() {
-            cache.clear();
-        }
     }
 }
 

@@ -346,15 +346,6 @@ impl RaidGridLayout {
         }
     }
 
-    /// Create a layout for the given player count
-    pub fn for_player_count(count: u8) -> Self {
-        match count {
-            0..=4 => Self { columns: 1, rows: 4 },
-            5..=8 => Self { columns: 2, rows: 4 },
-            _ => Self { columns: 4, rows: 4 },
-        }
-    }
-
     /// Total number of slots
     pub fn capacity(&self) -> u8 {
         self.columns * self.rows

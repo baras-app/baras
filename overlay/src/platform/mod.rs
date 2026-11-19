@@ -77,11 +77,6 @@ impl MonitorInfo {
         x < mon_right && rect_right > self.x && y < mon_bottom && rect_bottom > self.y
     }
 
-    /// Convert absolute screen coordinates to relative monitor coordinates
-    pub fn to_relative(&self, abs_x: i32, abs_y: i32) -> (i32, i32) {
-        (abs_x - self.x, abs_y - self.y)
-    }
-
     /// Convert relative monitor coordinates to absolute screen coordinates
     pub fn to_absolute(&self, rel_x: i32, rel_y: i32) -> (i32, i32) {
         (rel_x + self.x, rel_y + self.y)

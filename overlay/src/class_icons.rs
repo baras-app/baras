@@ -290,28 +290,6 @@ pub fn shadow_of(icon: &'static ClassIcon) -> &'static ClassIcon {
     })
 }
 
-/// Get a class icon with role-based tinting applied
-pub fn get_tinted_class_icon(name: &str, role: Role) -> Option<ClassIcon> {
-    let base = get_class_icon(name)?;
-    let (tr, tg, tb) = role.tint_color();
-
-    // Apply tint by multiplying each pixel's color with the tint
-    let mut tinted = base.rgba.clone();
-    for chunk in tinted.chunks_exact_mut(4) {
-        // Multiply blend: result = (original * tint) / 255
-        chunk[0] = ((chunk[0] as u16 * tr as u16) / 255) as u8;
-        chunk[1] = ((chunk[1] as u16 * tg as u16) / 255) as u8;
-        chunk[2] = ((chunk[2] as u16 * tb as u16) / 255) as u8;
-        // Keep alpha unchanged
-    }
-
-    Some(ClassIcon {
-        rgba: tinted,
-        width: base.width,
-        height: base.height,
-    })
-}
-
 /// Get a class icon as a role-colored silhouette (preserves alpha, all visible pixels
 /// set to the role's light tint color). Useful for overlays where icons sit on colored bars.
 pub fn get_role_colored_class_icon(name: &str, role: Role) -> Option<&'static ClassIcon> {
@@ -321,63 +299,6 @@ pub fn get_role_colored_class_icon(name: &str, role: Role) -> Option<&'static Cl
 /// Get a class icon as a white silhouette (preserves alpha, all visible pixels white)
 pub fn get_white_class_icon(name: &str) -> Option<&'static ClassIcon> {
     Some(silhouette(get_class_icon(name)?, (255, 255, 255)))
-}
-
-/// Get a class icon with role-based tinting and white outline
-pub fn get_outlined_tinted_icon(name: &str, role: Role) -> Option<ClassIcon> {
-    let tinted = get_tinted_class_icon(name, role)?;
-    let width = tinted.width as usize;
-    let height = tinted.height as usize;
-    let mut result = tinted.rgba.clone();
-
-    // Find pixels within N pixels of transparent edge and make them white
-    let outline_thickness = 2;
-
-    for y in 0..height {
-        for x in 0..width {
-            let idx = (y * width + x) * 4;
-            let alpha = tinted.rgba[idx + 3];
-
-            // Skip transparent pixels
-            if alpha < 128 {
-                continue;
-            }
-
-            // Check if any pixel within outline_thickness is transparent
-            let mut is_near_edge = false;
-            'outer: for dy in -outline_thickness..=outline_thickness {
-                for dx in -outline_thickness..=outline_thickness {
-                    let nx = x as i32 + dx;
-                    let ny = y as i32 + dy;
-
-                    // Out of bounds counts as edge
-                    if nx < 0 || ny < 0 || nx >= width as i32 || ny >= height as i32 {
-                        is_near_edge = true;
-                        break 'outer;
-                    }
-
-                    let nidx = (ny as usize * width + nx as usize) * 4;
-                    if tinted.rgba[nidx + 3] < 128 {
-                        is_near_edge = true;
-                        break 'outer;
-                    }
-                }
-            }
-
-            if is_near_edge {
-                // Make edge pixel white
-                result[idx] = 255;
-                result[idx + 1] = 255;
-                result[idx + 2] = 255;
-            }
-        }
-    }
-
-    Some(ClassIcon {
-        rgba: result,
-        width: tinted.width,
-        height: tinted.height,
-    })
 }
 
 /// Decode PNG data to RGBA

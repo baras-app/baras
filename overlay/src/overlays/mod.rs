@@ -17,7 +17,6 @@ mod challenges;
 mod combat_time;
 mod cooldowns;
 mod dot_tracker;
-mod effects;
 mod effects_ab;
 mod enemy_frames;
 mod metric;
@@ -36,7 +35,6 @@ pub use challenges::{ChallengeData, ChallengeEntry, ChallengeOverlay, PlayerCont
 pub use combat_time::{CombatTimeConfig, CombatTimeData, CombatTimeOverlay};
 pub use cooldowns::{CooldownConfig, CooldownData, CooldownEntry, CooldownOverlay};
 pub use dot_tracker::{DotEntry, DotTarget, DotTrackerConfig, DotTrackerData, DotTrackerOverlay};
-pub use effects::{EffectEntry, EffectsData, EffectsOverlay};
 pub use effects_ab::{EffectABEntry, EffectsABConfig, EffectsABData, EffectsABOverlay, EffectsLayout};
 pub use enemy_frames::{EnemyFrame, EnemyFramesConfig, EnemyFramesData, EnemyFramesOverlay};
 pub use metric::{MetricData, MetricEntry, MetricOverlay};
@@ -115,8 +113,6 @@ pub enum OverlayData {
     TimersA(TimerData),
     /// Timer B countdown bars
     TimersB(TimerData),
-    /// Effects countdown bars (legacy)
-    Effects(EffectsData),
     /// Challenge metrics during boss encounters
     Challenges(ChallengeData),
     /// Alert text notifications
@@ -177,8 +173,6 @@ pub enum OverlayConfigUpdate {
     TimersA(TimerOverlayConfig, bool),
     /// Config for timer B overlay (+ european)
     TimersB(TimerOverlayConfig, bool),
-    /// Config for effects overlay (+ european) - legacy
-    Effects(TimerOverlayConfig, bool),
     /// Config for challenge overlay (+ european, class icon mode)
     Challenge(ChallengeOverlayConfig, bool, ClassIconMode),
     /// Config for alerts overlay (+ european)

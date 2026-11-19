@@ -311,11 +311,6 @@ struct HeldHealth {
 }
 
 impl Reading {
-    /// Rows we could still read health for.
-    pub fn rows_with_health(&self) -> Vec<usize> {
-        self.held.iter().map(|h| h.row).collect()
-    }
-
     /// Read health for `rows`. Crops read here are dropped, so asking twice is
     /// free.
     pub fn read_health(&mut self, rows: &[usize], mut dump: Option<&mut DebugDump>) -> usize {

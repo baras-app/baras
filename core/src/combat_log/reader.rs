@@ -4,7 +4,6 @@ use crate::{CombatEvent, LogParser};
 use encoding_rs::WINDOWS_1252;
 use memchr::memchr_iter;
 use memmap2::Mmap;
-use rayon::prelude::*;
 use std::fs;
 use std::io::Result;
 use std::io::SeekFrom;
@@ -35,40 +34,6 @@ pub struct Reader {
 impl Reader {
     pub fn from(file_path: PathBuf, state: Arc<RwLock<ParsingSession>>) -> Self {
         Reader { path: file_path, state }
-    }
-
-    /// Parallel-parse log file, returning all events.
-    /// Fast but allocates Vec<CombatEvent>. Call mi_collect after processing.
-    pub fn read_log_file_parallel(&self, session_date: chrono::NaiveDateTime) -> Result<(Vec<CombatEvent>, u64)> {
-        let file = fs::File::open(&self.path)?;
-        let mmap = unsafe { Mmap::map(&file)? };
-        let bytes = mmap.as_ref();
-        let end_pos = bytes.len() as u64;
-
-        // Find all line boundaries
-        let mut line_ranges: Vec<(usize, usize)> = Vec::new();
-        let mut start = 0;
-        for end in memchr_iter(b'\n', bytes) {
-            if end > start {
-                line_ranges.push((start, end));
-            }
-            start = end + 1;
-        }
-        if start < bytes.len() {
-            line_ranges.push((start, bytes.len()));
-        }
-
-        let parser = LogParser::new(session_date);
-        let events: Vec<CombatEvent> = line_ranges
-            .par_iter()
-            .enumerate()
-            .filter_map(|(idx, &(start, end))| {
-                let (line, _, _) = WINDOWS_1252.decode(&bytes[start..end]);
-                parser.parse_line(idx as u64 + 1, &line)
-            })
-            .collect();
-
-        Ok((events, end_pos))
     }
 
     /// Stream-parse log file, calling `on_event` for each parsed event.

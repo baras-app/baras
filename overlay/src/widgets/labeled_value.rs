@@ -45,11 +45,6 @@ impl LabeledValue {
         self
     }
 
-    pub fn with_value_bold(mut self, bold: bool) -> Self {
-        self.value_bold = bold;
-        self
-    }
-
     /// Render the row with `y` as the text baseline and `width` as the total row width.
     /// The value keeps priority; the label is truncated to the space left beside it.
     pub fn render(&self, frame: &mut OverlayFrame, x: f32, y: f32, width: f32, font_size: f32) {

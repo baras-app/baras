@@ -313,17 +313,6 @@ impl DefinitionSet {
         results
     }
 
-    /// Check if any definitions can be refreshed by an ability (O(1) indexed lookup)
-    pub fn has_refreshable_by(&self, ability_id: u64) -> bool {
-        self.refresh_ability_id_index
-            .get(&ability_id)
-            .map(|ids| {
-                ids.iter()
-                    .any(|id| self.effects.get(id).map(|def| def.enabled).unwrap_or(false))
-            })
-            .unwrap_or(false)
-    }
-
     /// Check if an ability ID uses AoE damage correlation for refresh detection
     pub fn is_aoe_refresh(&self, ability_id: u64) -> bool {
         self.aoe_refresh_ability_ids.contains(&ability_id)
