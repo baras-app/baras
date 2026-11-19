@@ -59,6 +59,17 @@ fn copy_to_clipboard(text: &str) {
 }
 
 /// History missing or out of date: the next scan rewrites it
+/// Totals for the stat cards over the listed rows
+#[derive(Default)]
+struct CardStats {
+    bytes: u64,
+    pulls: u32,
+    pending: u32,
+    archived: u32,
+    archived_bytes: u64,
+    archived_saved: u64,
+}
+
 fn needs_scan(status: LogStatus) -> bool {
     matches!(status, LogStatus::Stale | LogStatus::NoHistory | LogStatus::ArchivedStale)
 }
@@ -170,23 +181,10 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
     let loading = rows_read.is_none();
     use_restore_scroll(&[LIB_TABLE], !loading);
 
-    let total_bytes: u64 = all.iter().map(|r| r.size).sum();
-    // Archived: count, compressed bytes, and what compression saved (where the frame says)
-    let (archived, archived_bytes, archived_saved) = all
-        .iter()
-        .filter(|r| r.status.is_archived())
-        .fold((0u32, 0u64, 0u64), |(n, b, saved), r| {
-            (n + 1, b + r.size, saved + r.original_size.map_or(0, |o| o.saturating_sub(r.size)))
-        });
-
     // Every tag in use, for the tag inputs' completion list
     let mut known_tags: Vec<&str> = all.iter().flat_map(|r| r.tags.iter().chain(r.run_tags.iter())).map(String::as_str).collect();
     known_tags.sort_unstable();
     known_tags.dedup();
-
-    let status_read = status.read();
-    let hs = status_read.as_ref().cloned().unwrap_or_default();
-    let pending = hs.stale + hs.unscanned;
 
     let q = search.read().to_lowercase();
     let picked_days = day_range.read().clone();
@@ -203,6 +201,19 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
         .into_iter()
         .filter(|r| picked_days.as_ref().is_none_or(|d| super::heatmap::in_range(&r.date, d)))
         .collect();
+    // The cards total what the table lists, day pick included
+    let mut stats = CardStats::default();
+    for r in &visible {
+        stats.bytes += r.size;
+        stats.pulls += r.pulls;
+        stats.pending += u32::from(needs_scan(r.status));
+        if r.status.is_archived() {
+            stats.archived += 1;
+            stats.archived_bytes += r.size;
+            // What compression saved, where the frame says
+            stats.archived_saved += r.original_size.map_or(0, |o| o.saturating_sub(r.size));
+        }
+    }
     // Rows render a page at a time; a filter change starts over
     let page_key = format!(
         "{q}|{:?}|{}|{:?}|{:?}|{}",
@@ -239,22 +250,22 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                 div { class: "history-cards library-stats",
                     div { class: "history-card",
                         div { class: "k", "Log files" }
-                        div { class: "v", "{all.len()}" }
-                        if pending > 0 {
-                            div { class: "sub warn", title: "Logs with no history yet, or history from an older version", "{pending} need a scan" }
+                        div { class: "v", "{total}" }
+                        if stats.pending > 0 {
+                            div { class: "sub warn", title: "Logs with no history yet, or history from an older version", "{stats.pending} need a scan" }
                         }
                     }
                     div { class: "history-card", div { class: "k", "Storage used" }
-                        div { class: "v", {fmt_bytes(total_bytes)} }
+                        div { class: "v", {fmt_bytes(stats.bytes)} }
                     }
                     div { class: "history-card", div { class: "k", "Archived" }
-                        div { class: "v", "{archived}" }
+                        div { class: "v", "{stats.archived}" }
                         div { class: "sub",
-                            {fmt_bytes(archived_bytes)}
-                            if archived_saved > 0 { " · saved {fmt_bytes(archived_saved)}" }
+                            {fmt_bytes(stats.archived_bytes)}
+                            if stats.archived_saved > 0 { " · saved {fmt_bytes(stats.archived_saved)}" }
                         }
                     }
-                    div { class: "history-card", div { class: "k", "Pulls recorded" } div { class: "v", "{hs.pulls}" } }
+                    div { class: "history-card", div { class: "k", "Pulls recorded" } div { class: "v", "{stats.pulls}" } }
                 }
             }
 
