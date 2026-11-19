@@ -243,6 +243,13 @@ pub async fn update_config(config: &AppConfig) -> Result<(), String> {
     Ok(())
 }
 
+/// Load the configuration, apply one change and save it
+pub async fn patch_config(change: impl FnOnce(&mut AppConfig)) -> Result<(), String> {
+    let mut config = get_config().await.ok_or("could not load the current settings")?;
+    change(&mut config);
+    update_config(&config).await
+}
+
 /// Start or stop the loopback web overlay and persist the setting.
 pub async fn set_web_overlay_enabled(enabled: bool) -> Result<(), String> {
     try_invoke("set_web_overlay_enabled", build_args("enabled", &enabled)).await?;

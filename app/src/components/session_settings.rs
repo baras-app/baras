@@ -59,13 +59,14 @@ pub fn AlacrityPill(
         let (a, l, p) = (alacrity(), latency(), presets());
         let mut toast = use_toast();
         spawn(async move {
-            if let Some(mut cfg) = api::get_config().await {
+            if let Err(err) = api::patch_config(|cfg| {
                 cfg.alacrity_percent = a;
                 cfg.latency_ms = l;
                 cfg.alacrity_presets = p;
-                if let Err(err) = api::update_config(&cfg).await {
-                    toast.show(format!("Failed to save settings: {err}"), ToastSeverity::Normal);
-                }
+            })
+            .await
+            {
+                toast.show(format!("Failed to save settings: {err}"), ToastSeverity::Normal);
             }
         });
     };

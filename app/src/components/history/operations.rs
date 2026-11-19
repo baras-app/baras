@@ -308,11 +308,10 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
                                 filter.write().flashpoints = checked;
                                 // Remembered across restarts, like "Bosses Only"
                                 spawn(async move {
-                                    if let Some(mut cfg) = api::get_config().await {
+                                    if let Err(err) = api::patch_config(|cfg| {
                                         cfg.raid_summaries_include_flashpoints = checked;
-                                        if let Err(err) = api::update_config(&cfg).await {
-                                            toast.show(format!("Failed to save settings: {err}"), ToastSeverity::Normal);
-                                        }
+                                    }).await {
+                                        toast.show(format!("Failed to save settings: {err}"), ToastSeverity::Normal);
                                     }
                                 });
                             },

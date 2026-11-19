@@ -1511,11 +1511,10 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                         state.data_explorer.show_only_bosses = checked;
                                     }
                                     spawn(async move {
-                                        if let Some(mut cfg) = api::get_config().await {
+                                        if let Err(err) = api::patch_config(|cfg| {
                                             cfg.show_only_bosses = checked;
-                                            if let Err(err) = api::update_config(&cfg).await {
-                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                            }
+                                        }).await {
+                                            toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                                         }
                                     });
                                 },
@@ -1578,11 +1577,10 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                         state.data_explorer.auto_live = checked;
                                     }
                                     spawn(async move {
-                                        if let Some(mut cfg) = api::get_config().await {
+                                        if let Err(err) = api::patch_config(|cfg| {
                                             cfg.data_explorer_auto_live = checked;
-                                            if let Err(err) = api::update_config(&cfg).await {
-                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                            }
+                                        }).await {
+                                            toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                                         }
                                     });
                                 },

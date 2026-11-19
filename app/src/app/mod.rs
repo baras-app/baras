@@ -1324,11 +1324,10 @@ pub fn App() -> Element {
                                         minimize_to_tray.set(checked);
                                         let mut toast = use_toast();
                                         spawn(async move {
-                                            if let Some(mut cfg) = api::get_config().await {
+                                            if let Err(err) = api::patch_config(|cfg| {
                                                 cfg.minimize_to_tray = checked;
-                                                if let Err(err) = api::update_config(&cfg).await {
-                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                }
+                                            }).await {
+                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                                             }
                                         });
                                     }
@@ -1508,11 +1507,10 @@ pub fn App() -> Element {
                                         audio_enabled.set(checked);
                                         let mut toast = use_toast();
                                         spawn(async move {
-                                            if let Some(mut cfg) = api::get_config().await {
+                                            if let Err(err) = api::patch_config(|cfg| {
                                                 cfg.audio.enabled = checked;
-                                                if let Err(err) = api::update_config(&cfg).await {
-                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                }
+                                            }).await {
+                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                                             }
                                         });
                                     }
@@ -1532,11 +1530,10 @@ pub fn App() -> Element {
                                     audio_volume.set(val);
                                     let mut toast = use_toast();
                                     spawn(async move {
-                                        if let Some(mut cfg) = api::get_config().await {
+                                        if let Err(err) = api::patch_config(|cfg| {
                                             cfg.audio.volume = val;
-                                            if let Err(err) = api::update_config(&cfg).await {
-                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                            }
+                                        }).await {
+                                            toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                                         }
                                     });
                                 },
@@ -1552,11 +1549,10 @@ pub fn App() -> Element {
                                         audio_tts_enabled.set(checked);
                                         let mut toast = use_toast();
                                         spawn(async move {
-                                            if let Some(mut cfg) = api::get_config().await {
+                                            if let Err(err) = api::patch_config(|cfg| {
                                                 cfg.audio.tts_enabled = checked;
-                                                if let Err(err) = api::update_config(&cfg).await {
-                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                }
+                                            }).await {
+                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                                             }
                                         });
                                     }
@@ -1750,11 +1746,10 @@ pub fn App() -> Element {
                                         ocr_debug_dump.set(checked);
                                         let mut toast = use_toast();
                                         spawn(async move {
-                                            if let Some(mut cfg) = api::get_config().await {
+                                            if let Err(err) = api::patch_config(|cfg| {
                                                 cfg.ocr_debug_dump = checked;
-                                                if let Err(err) = api::update_config(&cfg).await {
-                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                }
+                                            }).await {
+                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                                             }
                                         });
                                     }
@@ -1773,11 +1768,10 @@ pub fn App() -> Element {
                                         ocr_debug_max_dumps.set(count);
                                         let mut toast = use_toast();
                                         spawn(async move {
-                                            if let Some(mut cfg) = api::get_config().await {
+                                            if let Err(err) = api::patch_config(|cfg| {
                                                 cfg.ocr_debug_max_dumps = count;
-                                                if let Err(err) = api::update_config(&cfg).await {
-                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                }
+                                            }).await {
+                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                                             }
                                         });
                                     }
@@ -1874,11 +1868,10 @@ pub fn App() -> Element {
                                     hide_small_log_files.set(checked);
                                     let mut toast = use_toast();
                                     spawn(async move {
-                                        if let Some(mut cfg) = api::get_config().await {
+                                        if let Err(err) = api::patch_config(|cfg| {
                                             cfg.hide_small_log_files = checked;
-                                            if let Err(err) = api::update_config(&cfg).await {
-                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                            }
+                                        }).await {
+                                            toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                                         }
                                     });
                                 },

@@ -105,11 +105,10 @@ pub fn GlobalTab(draft: SettingsDraft) -> Element {
                         let enabled = e.checked();
                         hide_during_conversations.set(enabled);
                         spawn(async move {
-                            if let Some(mut cfg) = api::get_config().await {
+                            if let Err(err) = api::patch_config(|cfg| {
                                 cfg.overlay_settings.hide_during_conversations = enabled;
-                                if let Err(err) = api::update_config(&cfg).await {
-                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                }
+                            }).await {
+                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                             }
                         });
                     },

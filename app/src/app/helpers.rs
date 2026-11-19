@@ -30,11 +30,12 @@ pub(super) fn set_light_theme(mut light_theme: Signal<bool>, on: bool) {
     crate::utils::apply_theme(on);
     let mut toast = use_toast();
     spawn(async move {
-        if let Some(mut cfg) = api::get_config().await {
+        if let Err(err) = api::patch_config(|cfg| {
             cfg.light_theme = on;
-            if let Err(err) = api::update_config(&cfg).await {
-                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-            }
+        })
+        .await
+        {
+            toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
         }
     });
 }
