@@ -1028,23 +1028,7 @@ impl ServiceHandle {
         breakdown_mode: Option<BreakdownMode>,
         duration_secs: Option<f32>,
     ) -> Result<Vec<AbilityBreakdown>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            // Query historical parquet
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            // Query live buffer
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         let types_ref: Option<Vec<&str>> = entity_types.as_ref().map(|v| v.iter().map(|s| s.as_str()).collect());
         self.shared
@@ -1073,21 +1057,7 @@ impl ServiceHandle {
         time_range: Option<TimeRange>,
         entity_types: Option<Vec<String>>,
     ) -> Result<DamageTakenSummary, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         let types_ref: Option<Vec<&str>> = entity_types.as_ref().map(|v| v.iter().map(|s| s.as_str()).collect());
         self.shared
@@ -1106,21 +1076,7 @@ impl ServiceHandle {
         encounter_idx: Option<u32>,
         time_range: Option<TimeRange>,
     ) -> Result<Vec<EntityBreakdown>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1234,21 +1190,7 @@ impl ServiceHandle {
         source_name: Option<String>,
         time_range: Option<TimeRange>,
     ) -> Result<Vec<TimeSeriesPoint>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1339,21 +1281,7 @@ impl ServiceHandle {
 
     /// Query encounter timeline with phase segments.
     pub async fn query_encounter_timeline(&self, encounter_idx: Option<u32>) -> Result<EncounterTimeline, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1372,21 +1300,7 @@ impl ServiceHandle {
         source_name: Option<String>,
         time_range: Option<TimeRange>,
     ) -> Result<Vec<TimeSeriesPoint>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1405,21 +1319,7 @@ impl ServiceHandle {
         source_name: Option<String>,
         time_range: Option<TimeRange>,
     ) -> Result<Vec<TimeSeriesPoint>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1438,21 +1338,7 @@ impl ServiceHandle {
         target_name: Option<String>,
         time_range: Option<TimeRange>,
     ) -> Result<Vec<TimeSeriesPoint>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1471,21 +1357,7 @@ impl ServiceHandle {
         target_name: Option<String>,
         time_range: Option<TimeRange>,
     ) -> Result<Vec<TimeSeriesPoint>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1504,21 +1376,7 @@ impl ServiceHandle {
         target_name: Option<String>,
         time_range: Option<TimeRange>,
     ) -> Result<Vec<HpPoint>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1538,21 +1396,7 @@ impl ServiceHandle {
         duration_secs: f32,
         source_filter: Option<String>,
     ) -> Result<Vec<EffectChartData>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1578,21 +1422,7 @@ impl ServiceHandle {
         duration_secs: f32,
         source_filter: Option<String>,
     ) -> Result<Vec<EffectWindow>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1623,21 +1453,7 @@ impl ServiceHandle {
         sort_column: CombatLogSortColumn,
         sort_direction: SortDirection,
     ) -> Result<Vec<CombatLogRow>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1668,21 +1484,7 @@ impl ServiceHandle {
         time_range: Option<TimeRange>,
         event_filters: Option<CombatLogFilters>,
     ) -> Result<u64, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1712,21 +1514,7 @@ impl ServiceHandle {
         sort_column: CombatLogSortColumn,
         sort_direction: SortDirection,
     ) -> Result<Vec<CombatLogFindMatch>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         let result = self
             .shared
@@ -1757,21 +1545,7 @@ impl ServiceHandle {
         &self,
         encounter_idx: Option<u32>,
     ) -> Result<baras_types::GroupedEntityNames, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1787,21 +1561,7 @@ impl ServiceHandle {
         &self,
         encounter_idx: Option<u32>,
     ) -> Result<baras_types::GroupedEntityNames, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1863,21 +1623,7 @@ impl ServiceHandle {
         player_name: String,
         death_time_secs: f32,
     ) -> Result<baras_types::DeathRecap, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1894,21 +1640,7 @@ impl ServiceHandle {
         encounter_idx: Option<u32>,
         time_range: Option<TimeRange>,
     ) -> Result<Vec<NpcHealthRow>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1927,21 +1659,7 @@ impl ServiceHandle {
         anchor_ability_id: i64,
         time_range: Option<TimeRange>,
     ) -> Result<baras_core::query::RotationAnalysis, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1959,21 +1677,7 @@ impl ServiceHandle {
         encounter_idx: Option<u32>,
         time_range: Option<TimeRange>,
     ) -> Result<Vec<baras_core::query::AbilityUsageRow>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
