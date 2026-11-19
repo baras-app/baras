@@ -165,12 +165,21 @@ jobs:
 
       - name: Install cargo-binstall
         uses: cargo-bins/cargo-binstall@v1.27.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # The token keeps binstall's release lookups off the anonymous GitHub
+      # API rate limit, which the runners' shared IPs exhaust. A failed
+      # download fails the step: compiling both CLIs takes longer than a
+      # rerun. Without --force, CLIs restored by the Rust cache at the pinned
+      # versions are left alone.
       - name: Install Dioxus and Tauri CLIs
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cargo binstall "dioxus-cli@$DIOXUS_CLI_VERSION" "tauri-cli@$TAURI_CLI_VERSION" \
-            --no-confirm --force --locked
+            --no-confirm --locked --disable-strategies compile
 
       - name: Setup linuxdeploy
         if: matrix.platform == 'linux'
