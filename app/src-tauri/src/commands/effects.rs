@@ -336,14 +336,14 @@ fn load_all_effects(app_handle: &AppHandle) -> Vec<(EffectDefinition, bool, bool
         if version == EFFECTS_DSL_VERSION {
             effects.into_iter().map(|e| (e.id.clone(), e)).collect()
         } else {
-            // Version mismatch - delete user file
+            // Version mismatch - back the file up, as the service loader does
             if let Some(path) = get_user_effects_path() {
                 warn!(
                     file_version = version,
                     expected_version = EFFECTS_DSL_VERSION,
-                    "User effects version mismatch, deleting file"
+                    "User effects version mismatch, backing up file"
                 );
-                let _ = std::fs::remove_file(path);
+                let _ = std::fs::rename(&path, path.with_extension("toml.bak"));
             }
             HashMap::new()
         }

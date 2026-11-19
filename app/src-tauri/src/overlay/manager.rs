@@ -1211,6 +1211,7 @@ impl OverlayManager {
             OverlayType::OperationTimer,
             OverlayType::EnemyFrames,
             OverlayType::AbilityCast,
+            OverlayType::AbilityQueue,
         ];
         for mt in MetricType::all() {
             types.push(OverlayType::Metric(*mt));
