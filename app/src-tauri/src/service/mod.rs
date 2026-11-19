@@ -53,11 +53,7 @@ use tracing::{debug, info, warn};
 
 /// Messages sent to the service from Tauri commands
 pub enum ServiceCommand {
-    StartTailing(PathBuf),
-    StopTailing,
     RefreshIndex,
-    StartWatcher,
-    Shutdown,
     FileDetected(PathBuf),
     /// File was modified - re-check character data for files missing it
     FileModified(PathBuf),
@@ -313,21 +309,8 @@ impl CombatService {
                     let Some(cmd) = cmd else { break; };
 
                     match cmd {
-                        ServiceCommand::StartTailing(path) => {
-                            self.start_tailing(path).await;
-                        }
-                        ServiceCommand::StopTailing => {
-                            self.stop_tailing().await;
-                        }
                         ServiceCommand::RefreshIndex => {
                             self.refresh_index().await;
-                        }
-                        ServiceCommand::Shutdown => {
-                            self.stop_tailing().await;
-                            break;
-                        }
-                        ServiceCommand::StartWatcher => {
-                            self.start_watcher().await;
                         }
                         ServiceCommand::FileDetected(path) => {
                             self.file_detected(path).await;

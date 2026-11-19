@@ -262,24 +262,18 @@ pub fn run() {
             commands::preview_overlay_entry,
             commands::set_web_overlay_enabled,
             commands::clear_raid_registry,
-            commands::swap_raid_slots,
-            commands::remove_raid_slot,
             commands::start_operation_timer,
             commands::stop_operation_timer,
             commands::reset_operation_timer,
             commands::enable_screen_capture,
             // Service commands
             commands::get_log_files,
-            commands::start_tailing,
-            commands::stop_tailing,
             commands::refresh_log_index,
             commands::restart_watcher,
             commands::get_log_directory_size,
             commands::get_log_file_count,
             commands::refresh_file_sizes,
-            commands::get_tailing_status,
             commands::get_watching_status,
-            commands::get_current_metrics,
             commands::get_config,
             commands::update_config,
             commands::is_wayland_session,
@@ -400,10 +394,8 @@ pub fn run() {
             commands::query_ability_usage,
             commands::query_damage_taken_summary,
             commands::query_encounter_timeline,
-            commands::list_encounter_files,
             // Updater
             #[cfg(desktop)]
-            updater::check_update,
             #[cfg(desktop)]
             updater::install_update,
             // Changelog

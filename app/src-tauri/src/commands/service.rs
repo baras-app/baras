@@ -6,7 +6,6 @@ use std::path::PathBuf;
 use tauri::{AppHandle, State};
 
 use baras_core::EncounterSummary;
-use baras_core::PlayerMetrics;
 use baras_core::context::{AppConfig, AppConfigExt, OverlayAppearanceConfig};
 use baras_types::SoundCategory;
 
@@ -52,21 +51,6 @@ pub async fn refresh_file_sizes(handle: State<'_, ServiceHandle>) -> Result<(), 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tailing Commands
 // ─────────────────────────────────────────────────────────────────────────────
-
-#[tauri::command]
-pub async fn start_tailing(path: PathBuf, handle: State<'_, ServiceHandle>) -> Result<(), String> {
-    handle.start_tailing(path).await
-}
-
-#[tauri::command]
-pub async fn stop_tailing(handle: State<'_, ServiceHandle>) -> Result<(), String> {
-    handle.stop_tailing().await
-}
-
-#[tauri::command]
-pub async fn get_tailing_status(handle: State<'_, ServiceHandle>) -> Result<bool, String> {
-    Ok(handle.is_tailing().await)
-}
 
 #[tauri::command]
 pub async fn get_watching_status(handle: State<'_, ServiceHandle>) -> Result<bool, String> {
@@ -257,11 +241,6 @@ pub fn is_wayland_session() -> bool {
 // ─────────────────────────────────────────────────────────────────────────────
 // Session Commands
 // ─────────────────────────────────────────────────────────────────────────────
-
-#[tauri::command]
-pub async fn get_current_metrics(handle: State<'_, ServiceHandle>) -> Result<Option<Vec<PlayerMetrics>>, String> {
-    Ok(handle.current_combat_data().await.map(|d| d.metrics))
-}
 
 #[tauri::command]
 pub async fn get_session_info(handle: State<'_, ServiceHandle>) -> Result<Option<SessionInfo>, String> {

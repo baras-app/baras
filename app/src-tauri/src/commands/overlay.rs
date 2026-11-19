@@ -273,17 +273,3 @@ pub async fn clear_raid_registry(service: State<'_, ServiceHandle>) -> Result<()
     service.clear_raid_registry().await;
     Ok(())
 }
-
-/// Swap two slots in the raid frame registry
-#[tauri::command]
-pub async fn swap_raid_slots(slot_a: u8, slot_b: u8, service: State<'_, ServiceHandle>) -> Result<(), String> {
-    service.swap_raid_slots(slot_a, slot_b).await;
-    Ok(())
-}
-
-/// Remove a player from a specific slot
-#[tauri::command]
-pub async fn remove_raid_slot(slot: u8, service: State<'_, ServiceHandle>) -> Result<(), String> {
-    service.remove_raid_slot(slot).await;
-    Ok(())
-}

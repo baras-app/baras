@@ -40,27 +40,6 @@ impl ServiceHandle {
     // Tailing Operations
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// Send command to start tailing a log file
-    pub async fn start_tailing(&self, path: PathBuf) -> Result<(), String> {
-        self.cmd_tx
-            .send(ServiceCommand::StartTailing(path))
-            .await
-            .map_err(|e| e.to_string())
-    }
-
-    /// Send command to stop tailing
-    pub async fn stop_tailing(&self) -> Result<(), String> {
-        self.cmd_tx
-            .send(ServiceCommand::StopTailing)
-            .await
-            .map_err(|e| e.to_string())
-    }
-
-    /// Check if currently tailing a file
-    pub async fn is_tailing(&self) -> bool {
-        self.shared.session.read().await.is_some()
-    }
-
     /// Check if directory watcher is active
     pub fn is_watching(&self) -> bool {
         self.shared.watching.load(Ordering::SeqCst)
@@ -1254,29 +1233,6 @@ impl ServiceHandle {
             let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
             self.shared.query_context.register_live(writer).await
         }
-    }
-
-    /// Get list of available encounter parquet files.
-    pub async fn list_encounter_files(&self) -> Result<Vec<u32>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        let dir = session.encounters_dir().ok_or("No encounters directory")?;
-
-        let mut indices = Vec::new();
-        if let Ok(entries) = std::fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                if let Some(name) = entry.file_name().to_str()
-                    && name.ends_with(".parquet")
-                    && let Ok(idx) = name.trim_end_matches(".parquet").parse::<u32>()
-                {
-                    indices.push(idx);
-                }
-            }
-        }
-        indices.sort();
-        Ok(indices)
     }
 
     /// Query encounter timeline with phase segments.

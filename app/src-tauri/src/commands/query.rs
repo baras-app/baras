@@ -106,12 +106,6 @@ pub async fn query_effect_uptime_by_target(
         .await
 }
 
-/// List available encounter parquet files.
-#[tauri::command]
-pub async fn list_encounter_files(handle: State<'_, ServiceHandle>) -> Result<Vec<u32>, String> {
-    handle.list_encounter_files().await
-}
-
 /// Get encounter timeline with phase segments.
 #[tauri::command]
 pub async fn query_encounter_timeline(
