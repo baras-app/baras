@@ -97,6 +97,13 @@ fn build_args<T: Serialize + ?Sized>(key: &str, value: &T) -> JsValue {
     obj.into()
 }
 
+/// Serialize an invoke argument; `None` becomes null.
+fn to_js<T: Serialize + ?Sized>(value: &T) -> JsValue {
+    value
+        .serialize(&serde_wasm_bindgen::Serializer::new().serialize_missing_as_null(true))
+        .unwrap_or(JsValue::NULL)
+}
+
 /// Set an optional entity instance id. Log ids are ~15 digits, well inside f64's exact range,
 /// same as the ability/effect ids sent elsewhere in this file.
 fn js_set_entity_id(obj: &JsValue, entity_id: Option<i64>) {
@@ -898,11 +905,7 @@ pub async fn update_encounter_item(
     js_set(&obj, "filePath", &JsValue::from_str(file_path));
     let item_js = serde_wasm_bindgen::to_value(item).unwrap_or(JsValue::NULL);
     js_set(&obj, "item", &item_js);
-    if let Some(orig) = original_id {
-        js_set(&obj, "originalId", &JsValue::from_str(orig));
-    } else {
-        js_set(&obj, "originalId", &JsValue::NULL);
-    }
+    js_set(&obj, "originalId", &to_js(&original_id));
 
     let result = try_invoke("update_encounter_item", obj.into()).await?;
     from_js(result).ok_or_else(|| "Failed to deserialize updated item".to_string())
@@ -1220,17 +1223,9 @@ pub async fn upload_to_parsely(
     let obj = js_sys::Object::new();
     js_set(&obj, "path", &JsValue::from_str(path));
     js_set(&obj, "visibility", &JsValue::from_f64(visibility as f64));
-    if let Some(note) = notes {
-        js_set(&obj, "notes", &JsValue::from_str(&note));
-    } else {
-        js_set(&obj, "notes", &JsValue::NULL);
-    }
+    js_set(&obj, "notes", &to_js(&notes));
     js_set(&obj, "guildLog", &JsValue::from_bool(guild_log));
-    if let Some(g) = guild {
-        js_set(&obj, "guild", &JsValue::from_str(&g));
-    } else {
-        js_set(&obj, "guild", &JsValue::NULL);
-    }
+    js_set(&obj, "guild", &to_js(&guild));
     js_set(&obj, "noGuild", &JsValue::from_bool(no_guild));
     let result = try_invoke("upload_to_parsely", obj.into()).await?;
     from_js(result).ok_or_else(|| "Failed to parse upload response".to_string())
@@ -1252,23 +1247,11 @@ pub async fn upload_encounter_to_parsely(
     js_set(&obj, "path", &JsValue::from_str(path));
     js_set(&obj, "startLine", &JsValue::from_f64(start_line as f64));
     js_set(&obj, "endLine", &JsValue::from_f64(end_line as f64));
-    if let Some(line) = area_entered_line {
-        js_set(&obj, "areaEnteredLine", &JsValue::from_f64(line as f64));
-    } else {
-        js_set(&obj, "areaEnteredLine", &JsValue::NULL);
-    }
+    js_set(&obj, "areaEnteredLine", &to_js(&area_entered_line));
     js_set(&obj, "visibility", &JsValue::from_f64(visibility as f64));
-    if let Some(note) = notes {
-        js_set(&obj, "notes", &JsValue::from_str(&note));
-    } else {
-        js_set(&obj, "notes", &JsValue::NULL);
-    }
+    js_set(&obj, "notes", &to_js(&notes));
     js_set(&obj, "guildLog", &JsValue::from_bool(guild_log));
-    if let Some(g) = guild {
-        js_set(&obj, "guild", &JsValue::from_str(&g));
-    } else {
-        js_set(&obj, "guild", &JsValue::NULL);
-    }
+    js_set(&obj, "guild", &to_js(&guild));
     js_set(&obj, "noGuild", &JsValue::from_bool(no_guild));
     let result = try_invoke("upload_encounter_to_parsely", obj.into()).await?;
     from_js(result).ok_or_else(|| "Failed to parse upload response".to_string())
@@ -1366,40 +1349,13 @@ pub async fn query_breakdown(
     let obj = js_sys::Object::new();
     let tab_js = serde_wasm_bindgen::to_value(&tab).unwrap_or(JsValue::NULL);
     js_set(&obj, "tab", &tab_js);
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
-    if let Some(name) = entity_name {
-        js_set(&obj, "entityName", &JsValue::from_str(name));
-    } else {
-        js_set(&obj, "entityName", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
+    js_set(&obj, "entityName", &to_js(&entity_name));
     js_set_entity_id(&obj, entity_id);
-    if let Some(tr) = time_range {
-        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
-        js_set(&obj, "timeRange", &tr_js);
-    } else {
-        js_set(&obj, "timeRange", &JsValue::NULL);
-    }
-    if let Some(types) = entity_types {
-        let types_js = serde_wasm_bindgen::to_value(types).unwrap_or(JsValue::NULL);
-        js_set(&obj, "entityTypes", &types_js);
-    } else {
-        js_set(&obj, "entityTypes", &JsValue::NULL);
-    }
-    if let Some(mode) = breakdown_mode {
-        let mode_js = serde_wasm_bindgen::to_value(mode).unwrap_or(JsValue::NULL);
-        js_set(&obj, "breakdownMode", &mode_js);
-    } else {
-        js_set(&obj, "breakdownMode", &JsValue::NULL);
-    }
-    if let Some(dur) = duration_secs {
-        js_set(&obj, "durationSecs", &JsValue::from_f64(dur as f64));
-    } else {
-        js_set(&obj, "durationSecs", &JsValue::NULL);
-    }
+    js_set(&obj, "timeRange", &to_js(&time_range));
+    js_set(&obj, "entityTypes", &to_js(&entity_types));
+    js_set(&obj, "breakdownMode", &to_js(&breakdown_mode));
+    js_set(&obj, "durationSecs", &to_js(&duration_secs));
     let result = invoke_query("query_breakdown", obj.into()).await;
     from_js(result)
 }
@@ -1413,17 +1369,8 @@ pub async fn query_entity_breakdown(
     let obj = js_sys::Object::new();
     let tab_js = serde_wasm_bindgen::to_value(&tab).unwrap_or(JsValue::NULL);
     js_set(&obj, "tab", &tab_js);
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
-    if let Some(tr) = time_range {
-        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
-        js_set(&obj, "timeRange", &tr_js);
-    } else {
-        js_set(&obj, "timeRange", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
+    js_set(&obj, "timeRange", &to_js(&time_range));
     let result = invoke_query("query_entity_breakdown", obj.into()).await;
     from_js(result)
 }
@@ -1435,22 +1382,9 @@ pub async fn query_raid_overview(
     duration_secs: Option<f32>,
 ) -> Option<Vec<RaidOverviewRow>> {
     let obj = js_sys::Object::new();
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
-    if let Some(tr) = time_range {
-        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
-        js_set(&obj, "timeRange", &tr_js);
-    } else {
-        js_set(&obj, "timeRange", &JsValue::NULL);
-    }
-    if let Some(dur) = duration_secs {
-        js_set(&obj, "durationSecs", &JsValue::from_f64(dur as f64));
-    } else {
-        js_set(&obj, "durationSecs", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
+    js_set(&obj, "timeRange", &to_js(&time_range));
+    js_set(&obj, "durationSecs", &to_js(&duration_secs));
     let result = invoke_query("query_raid_overview", obj.into()).await;
     from_js(result)
 }
@@ -1458,17 +1392,8 @@ pub async fn query_raid_overview(
 /// Query final health state of all NPCs in an encounter.
 pub async fn query_npc_health(encounter_idx: Option<u32>, time_range: Option<&TimeRange>) -> Option<Vec<NpcHealthRow>> {
     let obj = js_sys::Object::new();
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
-    if let Some(tr) = time_range {
-        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
-        js_set(&obj, "timeRange", &tr_js);
-    } else {
-        js_set(&obj, "timeRange", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
+    js_set(&obj, "timeRange", &to_js(&time_range));
     let result = invoke_query("query_npc_health", obj.into()).await;
     from_js(result)
 }
@@ -1481,23 +1406,10 @@ pub async fn query_dps_over_time(
     time_range: Option<&TimeRange>,
 ) -> Option<Vec<TimeSeriesPoint>> {
     let obj = js_sys::Object::new();
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
     js_set(&obj, "bucketMs", &JsValue::from_f64(bucket_ms as f64));
-    if let Some(name) = source_name {
-        js_set(&obj, "sourceName", &JsValue::from_str(name));
-    } else {
-        js_set(&obj, "sourceName", &JsValue::NULL);
-    }
-    if let Some(tr) = time_range {
-        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
-        js_set(&obj, "timeRange", &tr_js);
-    } else {
-        js_set(&obj, "timeRange", &JsValue::NULL);
-    }
+    js_set(&obj, "sourceName", &to_js(&source_name));
+    js_set(&obj, "timeRange", &to_js(&time_range));
     let result = invoke_query("query_dps_over_time", obj.into()).await;
     from_js(result)
 }
@@ -1549,11 +1461,7 @@ pub async fn query_group_over_time(
 
 pub async fn query_encounter_timeline(encounter_idx: Option<u32>) -> Option<EncounterTimeline> {
     let obj = js_sys::Object::new();
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
     let result = invoke_query("query_encounter_timeline", obj.into()).await;
     from_js(result)
 }
@@ -1566,23 +1474,10 @@ pub async fn query_hps_over_time(
     time_range: Option<&TimeRange>,
 ) -> Option<Vec<TimeSeriesPoint>> {
     let obj = js_sys::Object::new();
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
     js_set(&obj, "bucketMs", &JsValue::from_f64(bucket_ms as f64));
-    if let Some(name) = source_name {
-        js_set(&obj, "sourceName", &JsValue::from_str(name));
-    } else {
-        js_set(&obj, "sourceName", &JsValue::NULL);
-    }
-    if let Some(tr) = time_range {
-        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
-        js_set(&obj, "timeRange", &tr_js);
-    } else {
-        js_set(&obj, "timeRange", &JsValue::NULL);
-    }
+    js_set(&obj, "sourceName", &to_js(&source_name));
+    js_set(&obj, "timeRange", &to_js(&time_range));
     let result = invoke_query("query_hps_over_time", obj.into()).await;
     from_js(result)
 }
@@ -1595,23 +1490,10 @@ pub async fn query_ehps_over_time(
     time_range: Option<&TimeRange>,
 ) -> Option<Vec<TimeSeriesPoint>> {
     let obj = js_sys::Object::new();
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
     js_set(&obj, "bucketMs", &JsValue::from_f64(bucket_ms as f64));
-    if let Some(name) = source_name {
-        js_set(&obj, "sourceName", &JsValue::from_str(name));
-    } else {
-        js_set(&obj, "sourceName", &JsValue::NULL);
-    }
-    if let Some(tr) = time_range {
-        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
-        js_set(&obj, "timeRange", &tr_js);
-    } else {
-        js_set(&obj, "timeRange", &JsValue::NULL);
-    }
+    js_set(&obj, "sourceName", &to_js(&source_name));
+    js_set(&obj, "timeRange", &to_js(&time_range));
     let result = invoke_query("query_ehps_over_time", obj.into()).await;
     from_js(result)
 }
@@ -1624,23 +1506,10 @@ pub async fn query_eht_over_time(
     time_range: Option<&TimeRange>,
 ) -> Option<Vec<TimeSeriesPoint>> {
     let obj = js_sys::Object::new();
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
     js_set(&obj, "bucketMs", &JsValue::from_f64(bucket_ms as f64));
-    if let Some(name) = target_name {
-        js_set(&obj, "targetName", &JsValue::from_str(name));
-    } else {
-        js_set(&obj, "targetName", &JsValue::NULL);
-    }
-    if let Some(tr) = time_range {
-        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
-        js_set(&obj, "timeRange", &tr_js);
-    } else {
-        js_set(&obj, "timeRange", &JsValue::NULL);
-    }
+    js_set(&obj, "targetName", &to_js(&target_name));
+    js_set(&obj, "timeRange", &to_js(&time_range));
     let result = invoke_query("query_eht_over_time", obj.into()).await;
     from_js(result)
 }
@@ -1653,23 +1522,10 @@ pub async fn query_dtps_over_time(
     time_range: Option<&TimeRange>,
 ) -> Option<Vec<TimeSeriesPoint>> {
     let obj = js_sys::Object::new();
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
     js_set(&obj, "bucketMs", &JsValue::from_f64(bucket_ms as f64));
-    if let Some(name) = target_name {
-        js_set(&obj, "targetName", &JsValue::from_str(name));
-    } else {
-        js_set(&obj, "targetName", &JsValue::NULL);
-    }
-    if let Some(tr) = time_range {
-        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
-        js_set(&obj, "timeRange", &tr_js);
-    } else {
-        js_set(&obj, "timeRange", &JsValue::NULL);
-    }
+    js_set(&obj, "targetName", &to_js(&target_name));
+    js_set(&obj, "timeRange", &to_js(&time_range));
     let result = invoke_query("query_dtps_over_time", obj.into()).await;
     from_js(result)
 }
@@ -1682,23 +1538,10 @@ pub async fn query_hp_over_time(
     time_range: Option<&TimeRange>,
 ) -> Option<Vec<HpPoint>> {
     let obj = js_sys::Object::new();
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
     js_set(&obj, "bucketMs", &JsValue::from_f64(bucket_ms as f64));
-    if let Some(name) = target_name {
-        js_set(&obj, "targetName", &JsValue::from_str(name));
-    } else {
-        js_set(&obj, "targetName", &JsValue::NULL);
-    }
-    if let Some(tr) = time_range {
-        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
-        js_set(&obj, "timeRange", &tr_js);
-    } else {
-        js_set(&obj, "timeRange", &JsValue::NULL);
-    }
+    js_set(&obj, "targetName", &to_js(&target_name));
+    js_set(&obj, "timeRange", &to_js(&time_range));
     let result = invoke_query("query_hp_over_time", obj.into()).await;
     from_js(result)
 }
@@ -1712,28 +1555,11 @@ pub async fn query_effect_uptime(
     source_filter: Option<&str>,
 ) -> Option<Vec<EffectChartData>> {
     let obj = js_sys::Object::new();
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
-    if let Some(name) = target_name {
-        js_set(&obj, "targetName", &JsValue::from_str(name));
-    } else {
-        js_set(&obj, "targetName", &JsValue::NULL);
-    }
-    if let Some(tr) = time_range {
-        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
-        js_set(&obj, "timeRange", &tr_js);
-    } else {
-        js_set(&obj, "timeRange", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
+    js_set(&obj, "targetName", &to_js(&target_name));
+    js_set(&obj, "timeRange", &to_js(&time_range));
     js_set(&obj, "durationSecs", &JsValue::from_f64(duration_secs as f64));
-    if let Some(sf) = source_filter {
-        js_set(&obj, "sourceFilter", &JsValue::from_str(sf));
-    } else {
-        js_set(&obj, "sourceFilter", &JsValue::NULL);
-    }
+    js_set(&obj, "sourceFilter", &to_js(&source_filter));
     let result = invoke_query("query_effect_uptime", obj.into()).await;
     from_js(result)
 }
@@ -1748,29 +1574,12 @@ pub async fn query_effect_windows(
     source_filter: Option<&str>,
 ) -> Option<Vec<EffectWindow>> {
     let obj = js_sys::Object::new();
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
     js_set(&obj, "effectId", &JsValue::from_f64(effect_id as f64));
-    if let Some(name) = target_name {
-        js_set(&obj, "targetName", &JsValue::from_str(name));
-    } else {
-        js_set(&obj, "targetName", &JsValue::NULL);
-    }
-    if let Some(tr) = time_range {
-        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
-        js_set(&obj, "timeRange", &tr_js);
-    } else {
-        js_set(&obj, "timeRange", &JsValue::NULL);
-    }
+    js_set(&obj, "targetName", &to_js(&target_name));
+    js_set(&obj, "timeRange", &to_js(&time_range));
     js_set(&obj, "durationSecs", &JsValue::from_f64(duration_secs as f64));
-    if let Some(sf) = source_filter {
-        js_set(&obj, "sourceFilter", &JsValue::from_str(sf));
-    } else {
-        js_set(&obj, "sourceFilter", &JsValue::NULL);
-    }
+    js_set(&obj, "sourceFilter", &to_js(&source_filter));
     let result = invoke_query("query_effect_windows", obj.into()).await;
     from_js(result)
 }
@@ -1789,40 +1598,14 @@ pub async fn query_combat_log(
     sort_direction: SortDirection,
 ) -> Option<Vec<CombatLogRow>> {
     let obj = js_sys::Object::new();
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
     js_set(&obj, "offset", &JsValue::from_f64(offset as f64));
     js_set(&obj, "limit", &JsValue::from_f64(limit as f64));
-    if let Some(s) = source_filter {
-        js_set(&obj, "sourceFilter", &JsValue::from_str(s));
-    } else {
-        js_set(&obj, "sourceFilter", &JsValue::NULL);
-    }
-    if let Some(t) = target_filter {
-        js_set(&obj, "targetFilter", &JsValue::from_str(t));
-    } else {
-        js_set(&obj, "targetFilter", &JsValue::NULL);
-    }
-    if let Some(s) = search_filter {
-        js_set(&obj, "searchFilter", &JsValue::from_str(s));
-    } else {
-        js_set(&obj, "searchFilter", &JsValue::NULL);
-    }
-    if let Some(tr) = time_range {
-        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
-        js_set(&obj, "timeRange", &tr_js);
-    } else {
-        js_set(&obj, "timeRange", &JsValue::NULL);
-    }
-    if let Some(ef) = event_filters {
-        let ef_js = serde_wasm_bindgen::to_value(ef).unwrap_or(JsValue::NULL);
-        js_set(&obj, "eventFilters", &ef_js);
-    } else {
-        js_set(&obj, "eventFilters", &JsValue::NULL);
-    }
+    js_set(&obj, "sourceFilter", &to_js(&source_filter));
+    js_set(&obj, "targetFilter", &to_js(&target_filter));
+    js_set(&obj, "searchFilter", &to_js(&search_filter));
+    js_set(&obj, "timeRange", &to_js(&time_range));
+    js_set(&obj, "eventFilters", &to_js(&event_filters));
     let sc_js = serde_wasm_bindgen::to_value(&sort_column).unwrap_or(JsValue::NULL);
     js_set(&obj, "sortColumn", &sc_js);
     let sd_js = serde_wasm_bindgen::to_value(&sort_direction).unwrap_or(JsValue::NULL);
@@ -1841,38 +1624,12 @@ pub async fn query_combat_log_count(
     event_filters: Option<&CombatLogFilters>,
 ) -> Option<u64> {
     let obj = js_sys::Object::new();
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
-    if let Some(s) = source_filter {
-        js_set(&obj, "sourceFilter", &JsValue::from_str(s));
-    } else {
-        js_set(&obj, "sourceFilter", &JsValue::NULL);
-    }
-    if let Some(t) = target_filter {
-        js_set(&obj, "targetFilter", &JsValue::from_str(t));
-    } else {
-        js_set(&obj, "targetFilter", &JsValue::NULL);
-    }
-    if let Some(s) = search_filter {
-        js_set(&obj, "searchFilter", &JsValue::from_str(s));
-    } else {
-        js_set(&obj, "searchFilter", &JsValue::NULL);
-    }
-    if let Some(tr) = time_range {
-        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
-        js_set(&obj, "timeRange", &tr_js);
-    } else {
-        js_set(&obj, "timeRange", &JsValue::NULL);
-    }
-    if let Some(ef) = event_filters {
-        let ef_js = serde_wasm_bindgen::to_value(ef).unwrap_or(JsValue::NULL);
-        js_set(&obj, "eventFilters", &ef_js);
-    } else {
-        js_set(&obj, "eventFilters", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
+    js_set(&obj, "sourceFilter", &to_js(&source_filter));
+    js_set(&obj, "targetFilter", &to_js(&target_filter));
+    js_set(&obj, "searchFilter", &to_js(&search_filter));
+    js_set(&obj, "timeRange", &to_js(&time_range));
+    js_set(&obj, "eventFilters", &to_js(&event_filters));
     let result = invoke("query_combat_log_count", obj.into()).await;
     from_js(result)
 }
@@ -1890,39 +1647,13 @@ pub async fn query_combat_log_find(
     sort_direction: SortDirection,
 ) -> Option<Vec<CombatLogFindMatch>> {
     let obj = js_sys::Object::new();
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
     js_set(&obj, "findText", &JsValue::from_str(find_text));
-    if let Some(s) = source_filter {
-        js_set(&obj, "sourceFilter", &JsValue::from_str(s));
-    } else {
-        js_set(&obj, "sourceFilter", &JsValue::NULL);
-    }
-    if let Some(t) = target_filter {
-        js_set(&obj, "targetFilter", &JsValue::from_str(t));
-    } else {
-        js_set(&obj, "targetFilter", &JsValue::NULL);
-    }
-    if let Some(sf) = search_filter {
-        js_set(&obj, "searchFilter", &JsValue::from_str(sf));
-    } else {
-        js_set(&obj, "searchFilter", &JsValue::NULL);
-    }
-    if let Some(tr) = time_range {
-        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
-        js_set(&obj, "timeRange", &tr_js);
-    } else {
-        js_set(&obj, "timeRange", &JsValue::NULL);
-    }
-    if let Some(ef) = event_filters {
-        let ef_js = serde_wasm_bindgen::to_value(ef).unwrap_or(JsValue::NULL);
-        js_set(&obj, "eventFilters", &ef_js);
-    } else {
-        js_set(&obj, "eventFilters", &JsValue::NULL);
-    }
+    js_set(&obj, "sourceFilter", &to_js(&source_filter));
+    js_set(&obj, "targetFilter", &to_js(&target_filter));
+    js_set(&obj, "searchFilter", &to_js(&search_filter));
+    js_set(&obj, "timeRange", &to_js(&time_range));
+    js_set(&obj, "eventFilters", &to_js(&event_filters));
     let sc_js = serde_wasm_bindgen::to_value(&sort_column).unwrap_or(JsValue::NULL);
     js_set(&obj, "sortColumn", &sc_js);
     let sd_js = serde_wasm_bindgen::to_value(&sort_direction).unwrap_or(JsValue::NULL);
@@ -1934,11 +1665,7 @@ pub async fn query_combat_log_find(
 /// Get distinct source names for combat log filter dropdown, grouped by entity type.
 pub async fn query_source_names(encounter_idx: Option<u32>) -> Option<GroupedEntityNames> {
     let obj = js_sys::Object::new();
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
     let result = invoke_query("query_source_names", obj.into()).await;
     from_js(result)
 }
@@ -1946,11 +1673,7 @@ pub async fn query_source_names(encounter_idx: Option<u32>) -> Option<GroupedEnt
 /// Get distinct target names for combat log filter dropdown, grouped by entity type.
 pub async fn query_target_names(encounter_idx: Option<u32>) -> Option<GroupedEntityNames> {
     let obj = js_sys::Object::new();
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
     let result = invoke_query("query_target_names", obj.into()).await;
     from_js(result)
 }
@@ -1958,11 +1681,7 @@ pub async fn query_target_names(encounter_idx: Option<u32>) -> Option<GroupedEnt
 /// Query player deaths in an encounter.
 pub async fn query_player_deaths(encounter_idx: Option<u32>) -> Option<Vec<PlayerDeath>> {
     let obj = js_sys::Object::new();
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
     let result = invoke_query("query_player_deaths", obj.into()).await;
     from_js(result)
 }
@@ -1974,11 +1693,7 @@ pub async fn query_death_recap(
     death_time_secs: f32,
 ) -> Option<DeathRecap> {
     let obj = js_sys::Object::new();
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
     js_set(&obj, "playerName", &JsValue::from_str(player_name));
     js_set(&obj, "deathTimeSecs", &JsValue::from_f64(death_time_secs as f64));
     let result = invoke_query("query_death_recap", obj.into()).await;
@@ -1994,25 +1709,11 @@ pub async fn query_damage_taken_summary(
     entity_types: Option<&[&str]>,
 ) -> Option<DamageTakenSummary> {
     let obj = js_sys::Object::new();
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
     js_set(&obj, "entityName", &JsValue::from_str(entity_name));
     js_set_entity_id(&obj, entity_id);
-    if let Some(tr) = time_range {
-        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
-        js_set(&obj, "timeRange", &tr_js);
-    } else {
-        js_set(&obj, "timeRange", &JsValue::NULL);
-    }
-    if let Some(types) = entity_types {
-        let types_js = serde_wasm_bindgen::to_value(types).unwrap_or(JsValue::NULL);
-        js_set(&obj, "entityTypes", &types_js);
-    } else {
-        js_set(&obj, "entityTypes", &JsValue::NULL);
-    }
+    js_set(&obj, "timeRange", &to_js(&time_range));
+    js_set(&obj, "entityTypes", &to_js(&entity_types));
     let result = invoke_query("query_damage_taken_summary", obj.into()).await;
     from_js(result)
 }
@@ -2025,19 +1726,10 @@ pub async fn query_rotation(
     time_range: Option<&TimeRange>,
 ) -> Option<RotationAnalysis> {
     let obj = js_sys::Object::new();
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
     js_set(&obj, "sourceName", &JsValue::from_str(source_name));
     js_set(&obj, "anchorAbilityId", &JsValue::from_f64(anchor_ability_id as f64));
-    if let Some(tr) = time_range {
-        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
-        js_set(&obj, "timeRange", &tr_js);
-    } else {
-        js_set(&obj, "timeRange", &JsValue::NULL);
-    }
+    js_set(&obj, "timeRange", &to_js(&time_range));
     let result = invoke_query("query_rotation", obj.into()).await;
     from_js(result)
 }
@@ -2050,17 +1742,8 @@ pub async fn query_ability_usage(
 ) -> Option<Vec<AbilityUsageRow>> {
     let obj = js_sys::Object::new();
     js_set(&obj, "sourceName", &JsValue::from_str(source_name));
-    if let Some(idx) = encounter_idx {
-        js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
-    } else {
-        js_set(&obj, "encounterIdx", &JsValue::NULL);
-    }
-    if let Some(tr) = time_range {
-        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
-        js_set(&obj, "timeRange", &tr_js);
-    } else {
-        js_set(&obj, "timeRange", &JsValue::NULL);
-    }
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
+    js_set(&obj, "timeRange", &to_js(&time_range));
     let result = invoke_query("query_ability_usage", obj.into()).await;
     from_js(result)
 }
