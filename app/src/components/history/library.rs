@@ -150,26 +150,28 @@ pub fn LibraryTab(
     // backend announces every log added or removed (cleanup, watcher). Both
     // callbacks run outside the Dioxus runtime, so they only bump a signal.
     let mut changes = use_signal(|| 0u32);
-    use_future(move || async move {
-        let closure = Closure::<dyn FnMut()>::new(move || {
-            let _ = changes.try_write().map(|mut w| *w += 1);
-        });
-        if let Some(w) = web_sys::window() {
-            let _ = w.add_event_listener_with_callback("parsely-upload-complete", closure.as_ref().unchecked_ref());
-        }
-        closure.forget();
-        let closure = Closure::new(move |_: JsValue| {
-            let _ = changes.try_write().map(|mut w| *w += 1);
-        });
-        api::tauri_listen("log-files-changed", &closure).await;
-        closure.forget();
-        // Opening a historical log or resuming live tailing moves the pin
-        let closure = Closure::new(move |_: JsValue| {
-            let _ = changes.try_write().map(|mut w| *w += 1);
-        });
-        api::tauri_listen("session-updated", &closure).await;
-        closure.forget();
+    let mut bump = move || {
+        let _ = changes.try_write().map(|mut w| *w += 1);
+    };
+    let parsely_listener = use_hook(|| {
+        let callback = Closure::<dyn FnMut()>::new(bump)
+            .into_js_value()
+            .unchecked_into::<js_sys::Function>();
+        web_sys::window()?
+            .add_event_listener_with_callback("parsely-upload-complete", &callback)
+            .ok()?;
+        Some(callback)
     });
+    use_drop(move || {
+        if let Some(callback) = &parsely_listener
+            && let Some(window) = web_sys::window()
+        {
+            let _ = window.remove_event_listener_with_callback("parsely-upload-complete", callback);
+        }
+    });
+    api::use_tauri_event("log-files-changed", move |_| bump());
+    // Opening a historical log or resuming live tailing moves the pin
+    api::use_tauri_event("session-updated", move |_| bump());
     use_effect(move || {
         if *changes.read() > 0 {
             rows.restart();

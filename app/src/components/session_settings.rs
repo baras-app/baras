@@ -8,7 +8,6 @@
 
 use baras_types::AlacrityPreset;
 use dioxus::prelude::*;
-use wasm_bindgen::prelude::*;
 
 use crate::api::{self, BossNotesInfo};
 use crate::components::discipline_selector::ALL_DISCIPLINES;
@@ -47,15 +46,9 @@ pub fn AlacrityPill(
             presets.set(cfg.alacrity_presets.clone());
         }
     });
-    // The listener outlives this component, so it only bumps a counter
-    // (`try_write` is a no-op once unmounted) and the effect does the reload.
     let mut auto_sets = use_signal(|| 0u32);
-    use_future(move || async move {
-        let closure = Closure::new(move |_: JsValue| {
-            let _ = auto_sets.try_write().map(|mut w| *w += 1);
-        });
-        api::tauri_listen("alacrity-auto-set", &closure).await;
-        closure.forget();
+    api::use_tauri_event("alacrity-auto-set", move |_| {
+        let _ = auto_sets.try_write().map(|mut w| *w += 1);
     });
     use_effect(move || {
         if *auto_sets.read() > 0 {

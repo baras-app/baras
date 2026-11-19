@@ -21,7 +21,6 @@ mod scroll;
 mod toolbar;
 
 use dioxus::prelude::*;
-use wasm_bindgen::prelude::*;
 
 use baras_types::history::{BackfillEvent, CleanupEvent, HistoryStatus, HistorySubTab, PullFilter};
 
@@ -115,26 +114,13 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
         history: use_signal(|| 0u32),
         toast,
     };
-    use_future(move || async move {
-        let mut version = backfill.history;
-        let closure = Closure::new(move |_: JsValue| {
-            let _ = version.try_write().map(|mut w| *w += 1);
-        });
-        api::tauri_listen("history-updated", &closure).await;
-        closure.forget();
+    let mut version = backfill.history;
+    api::use_tauri_event("history-updated", move |_| {
+        let _ = version.try_write().map(|mut w| *w += 1);
     });
-    use_future(move || async move {
-        let mut event = backfill.event;
-        let closure = Closure::new(move |ev: JsValue| {
-            let Ok(payload) = js_sys::Reflect::get(&ev, &JsValue::from_str("payload")) else {
-                return;
-            };
-            if let Ok(parsed) = serde_wasm_bindgen::from_value::<BackfillEvent>(payload) {
-                let _ = event.try_write().map(|mut w| *w = Some(parsed));
-            }
-        });
-        api::tauri_listen("history-backfill", &closure).await;
-        closure.forget();
+    let mut event = backfill.event;
+    api::use_tauri_payload("history-backfill", move |parsed: BackfillEvent| {
+        let _ = event.try_write().map(|mut w| *w = Some(parsed));
     });
     use_effect(move || {
         if let Some(BackfillEvent::Done {
@@ -158,19 +144,9 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
     });
 
     // Cleanup progress (startup or on demand) for Log Management, same shape
-    let cleanup: Signal<Option<CleanupEvent>> = use_signal(|| None);
-    use_future(move || async move {
-        let mut cleanup = cleanup;
-        let closure = Closure::new(move |ev: JsValue| {
-            let Ok(payload) = js_sys::Reflect::get(&ev, &JsValue::from_str("payload")) else {
-                return;
-            };
-            if let Ok(parsed) = serde_wasm_bindgen::from_value::<CleanupEvent>(payload) {
-                let _ = cleanup.try_write().map(|mut w| *w = Some(parsed));
-            }
-        });
-        api::tauri_listen("log-cleanup", &closure).await;
-        closure.forget();
+    let mut cleanup: Signal<Option<CleanupEvent>> = use_signal(|| None);
+    api::use_tauri_payload("log-cleanup", move |parsed: CleanupEvent| {
+        let _ = cleanup.try_write().map(|mut w| *w = Some(parsed));
     });
     use_effect(move || {
         if let Some(CleanupEvent::Done { report: r }) = &*cleanup.read() {

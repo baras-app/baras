@@ -30,6 +30,62 @@ extern "C" {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Event Listeners
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[derive(Default)]
+struct Listener {
+    unlisten: std::cell::RefCell<Option<js_sys::Function>>,
+    unmounted: std::cell::Cell<bool>,
+}
+
+/// Listen to a backend event for as long as the calling component is mounted.
+///
+/// The handler runs outside the Dioxus runtime: write signals with `try_write`
+/// and leave `spawn`, toasts and `Resource::restart` to an effect.
+pub fn use_tauri_event(event: &'static str, handler: impl FnMut(JsValue) + 'static) {
+    use dioxus::prelude::{use_drop, use_hook};
+    let listener = use_hook(|| {
+        let listener = std::rc::Rc::new(Listener::default());
+        let registered = listener.clone();
+        let closure = Closure::<dyn FnMut(JsValue)>::new(handler);
+        wasm_bindgen_futures::spawn_local(async move {
+            let unlisten = tauri_listen(event, &closure).await.dyn_into::<js_sys::Function>().ok();
+            // JS owns the closure from here and frees it once unlistened
+            let _ = closure.into_js_value();
+            if registered.unmounted.get() {
+                if let Some(f) = unlisten {
+                    let _ = f.call0(&JsValue::NULL);
+                }
+            } else {
+                *registered.unlisten.borrow_mut() = unlisten;
+            }
+        });
+        listener
+    });
+    use_drop(move || {
+        listener.unmounted.set(true);
+        if let Some(f) = listener.unlisten.borrow_mut().take() {
+            let _ = f.call0(&JsValue::NULL);
+        }
+    });
+}
+
+/// `use_tauri_event` with the event's payload deserialized; other payloads are ignored.
+pub fn use_tauri_payload<T: serde::de::DeserializeOwned + 'static>(
+    event: &'static str,
+    mut handler: impl FnMut(T) + 'static,
+) {
+    use_tauri_event(event, move |ev| {
+        if let Ok(payload) = js_sys::Reflect::get(&ev, &JsValue::from_str("payload"))
+            && let Ok(parsed) = serde_wasm_bindgen::from_value(payload)
+        {
+            handler(parsed);
+        }
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Helper Functions
 // ─────────────────────────────────────────────────────────────────────────────
 

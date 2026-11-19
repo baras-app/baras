@@ -13,7 +13,6 @@ use crate::components::multi_select::{Entry, MultiSelect, class_entries, plain_e
 use crate::components::toggle_switch::ToggleSwitch;
 use baras_types::history::keeps;
 use dioxus::prelude::*;
-use wasm_bindgen::prelude::*;
 
 use baras_types::characters::{CharacterRecord, CharacterRow};
 
@@ -90,16 +89,10 @@ pub fn CharactersPanel() -> Element {
     let sort_desc = use_signal(|| true);
     let mut editing: Signal<Option<EditTarget>> = use_signal(|| None);
 
-    // A pull just landed: lockouts may have changed. The listener outlives
-    // this component, so it only bumps a counter (`try_write` is a no-op once
-    // unmounted) and the effect does the reload.
+    // A pull just landed: lockouts may have changed
     let mut pulls = use_signal(|| 0u32);
-    use_future(move || async move {
-        let closure = Closure::new(move |_: JsValue| {
-            let _ = pulls.try_write().map(|mut w| *w += 1);
-        });
-        api::tauri_listen("history-updated", &closure).await;
-        closure.forget();
+    api::use_tauri_event("history-updated", move |_| {
+        let _ = pulls.try_write().map(|mut w| *w += 1);
     });
     use_effect(move || {
         if *pulls.read() > 0 {

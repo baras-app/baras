@@ -382,12 +382,9 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
             }
         });
     });
-    // Store unlisten handle for cleanup (Tauri returns an unlisten function)
-    let mut unlisten_handle = use_signal(|| None::<js_sys::Function>);
-
     // Listen for session updates (refresh on combat end, file load, combat start for live query)
-    use_future(move || async move {
-        let closure = Closure::new(move |event: JsValue| {
+    {
+        api::use_tauri_event("session-updated", move |event: JsValue| {
             // Extract payload from event object (Tauri events have { payload: "..." } structure)
             if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
                 && let Some(event_type) = payload.as_string()
@@ -441,13 +438,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                 }
             }
         });
-        let handle = api::tauri_listen("session-updated", &closure).await;
-        // Store the unlisten function for cleanup
-        if let Ok(func) = handle.dyn_into::<js_sys::Function>() {
-            let _ = unlisten_handle.try_write().map(|mut w| *w = Some(func));
-        }
-        closure.forget();
-    });
+    }
 
     // Listen for parsely upload success (DOM CustomEvent from ParselyUploadModal).
     // Registered once per mount and removed on unmount; handing the closure to JS
@@ -473,10 +464,6 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
 
     // Cleanup on component unmount
     use_drop(move || {
-        // Call unlisten to clean up the event listener
-        if let Some(func) = unlisten_handle.peek().as_ref() {
-            let _ = func.call0(&JsValue::NULL);
-        }
         if let Some(callback) = &parsely_listener
             && let Some(window) = web_sys::window()
         {
