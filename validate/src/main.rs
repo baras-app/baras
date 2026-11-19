@@ -3,7 +3,6 @@
 //! Replays combat logs through boss definitions and validates timer behavior:
 //! - Realtime mode (1x): Debug timer display issues
 //! - Accelerated mode: Fast CI validation with checkpoints
-//! - Visual mode: Display actual overlay window (requires --features visual)
 
 mod output;
 mod replay;

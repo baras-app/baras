@@ -9,11 +9,25 @@ type_complexity = "allow"
 large_enum_variant = "allow"
 upper_case_acronyms = "allow" # DPS, HPS, APM are the domain's own names
 
+# Line tables keep backtraces readable; full debuginfo for ~900 dependencies
+# mostly costs link time and disk.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
+
 [profile.release]
 lto = "thin"           # Link-time optimization across crates
 codegen-units = 1      # Better optimization (slower compile)
 panic = "abort"        # No unwinding overhead
 strip = "symbols"      # Strip symbols from release binaries (smaller, no runtime cost)
+
+# The Tauri backend is glue around core/overlay, and by far the largest crate:
+# parallel codegen there shortens release builds, and thin LTO still inlines
+# across it. The parser and renderer keep a single unit.
+[profile.release.package.app]
+codegen-units = 16
 
 # dx builds the frontend with this profile. wasm-bindgen reads custom sections
 # that `strip` removes under LLVM 23 (rustc 1.99+); wasm-opt shrinks the
