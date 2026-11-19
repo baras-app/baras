@@ -806,6 +806,11 @@ impl Overlay for CooldownOverlay {
         }
     }
 
+    fn invalidate(&mut self) {
+        self.last_rendered.clear();
+        self.last_rendered_bar.clear();
+    }
+
     fn update_config(&mut self, config: OverlayConfigUpdate) {
         if let OverlayConfigUpdate::Cooldowns(cfg, european) | OverlayConfigUpdate::CooldownsB(cfg, european) = config {
             self.set_config(cfg);

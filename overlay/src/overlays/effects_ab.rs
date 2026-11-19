@@ -1303,6 +1303,11 @@ impl Overlay for EffectsABOverlay {
         }
     }
 
+    fn invalidate(&mut self) {
+        self.last_rendered.clear();
+        self.last_rendered_bar.clear();
+    }
+
     fn update_config(&mut self, config: OverlayConfigUpdate) {
         match config {
             OverlayConfigUpdate::EffectsA(cfg, european)

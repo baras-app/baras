@@ -170,10 +170,12 @@ where
                     }
                     OverlayCommand::SetFontFamily(family) => {
                         overlay.frame_mut().set_font_family(&family);
+                        overlay.invalidate();
                         needs_render = true;
                     }
                     OverlayCommand::SetFrameStyle(style) => {
                         overlay.frame_mut().set_style(style);
+                        overlay.invalidate();
                         needs_render = true;
                     }
                     OverlayCommand::SetPosition(x, y) => {
@@ -182,6 +184,7 @@ where
                     }
                     OverlayCommand::SetSize(w, h) => {
                         overlay.frame_mut().window_mut().set_size(w, h);
+                        overlay.invalidate();
                         needs_render = true;
                     }
                     OverlayCommand::GetPosition(response_tx) => {
@@ -361,6 +364,7 @@ where
                         dispatch::Queue::main().exec_sync(move || {
                             let overlay = unsafe { &mut *overlay_ptr.get() };
                             overlay.frame_mut().set_font_family(&family);
+                            overlay.invalidate();
                         });
                         needs_render = true;
                     }
@@ -368,6 +372,7 @@ where
                         dispatch::Queue::main().exec_sync(move || {
                             let overlay = unsafe { &mut *overlay_ptr.get() };
                             overlay.frame_mut().set_style(style);
+                            overlay.invalidate();
                         });
                         needs_render = true;
                     }
@@ -382,6 +387,7 @@ where
                         dispatch::Queue::main().exec_sync(move || {
                             let overlay = unsafe { &mut *overlay_ptr.get() };
                             overlay.frame_mut().window_mut().set_size(w, h);
+                            overlay.invalidate();
                         });
                         needs_render = true;
                     }

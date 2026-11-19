@@ -1832,6 +1832,10 @@ impl Overlay for RaidOverlay {
     fn needs_render(&self) -> bool {
         self.needs_render
     }
+
+    fn invalidate(&mut self) {
+        self.needs_render = true;
+    }
 }
 
 /// Split a message after each comma, keeping the comma.

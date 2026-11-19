@@ -324,6 +324,10 @@ pub trait Overlay: 'static {
     fn needs_render(&self) -> bool {
         false
     }
+
+    /// Called when the frame's style, font or size changed outside `update_config`,
+    /// so an overlay that skips unchanged frames repaints anyway.
+    fn invalidate(&mut self) {}
 }
 
 /// Source/target annotation for personal overlays (Effects A/B/C, Cooldowns).
