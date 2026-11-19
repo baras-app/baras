@@ -2252,13 +2252,58 @@ details[open] .collapsible-summary::before {
 }
 
 /* Dropdowns in settings rows share one look (no per-tab class needed) */
-.setting-row select {
+.setting-row select,
+.setting-row input.template-input {
   padding: var(--space-xs) 0.5em;
   background: var(--bg-input);
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-size: 0.9em;
+}
+
+.setting-row input.template-input {
+  min-width: 0;
+  flex: 1;
+  font-family: var(--font-mono, monospace);
+}
+
+/* Placeholder reference: one row per placeholder, name then meaning */
+.placeholder-group {
+  margin: 0.75em 0 0.25em;
+  font-size: 0.72em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-heading);
+}
+
+.placeholder-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.2em 0.75em;
+  align-items: baseline;
+  font-size: 0.8em;
+}
+
+.placeholder-name {
+  justify-self: start;
+  padding: 0.05em 0.4em;
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono, monospace);
+  font-size: 1em;
+  cursor: pointer;
+}
+
+.placeholder-name:hover {
+  border-color: var(--text-muted);
+}
+
+.placeholder-description {
+  color: var(--text-muted);
 }
 
 /* Unit column: fixed width on every value row, empty or not, so number

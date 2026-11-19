@@ -314,7 +314,18 @@ impl ProgressBar {
         let (name_width, _center_start, right_start) = if is_three_col {
             let name_w = width * 0.42;
             let center_w = width * 0.29;
-            (name_w, x + name_w, x + name_w + center_w)
+            // Text wider than its column pushes the columns to its left over
+            // instead of drawing on top of them
+            let mut measure = |text: &Option<String>| {
+                let text = text.as_deref().unwrap_or_default();
+                frame.measure_text_styled(text, effective_font_size, bold, false).0
+            };
+            let right_start = (x + name_w + center_w)
+                .min(x + width - measure(&self.right_text) - text_padding * 3.0);
+            let name_w = name_w
+                .min(right_start - x - measure(&self.center_text) - text_padding)
+                .max(0.0);
+            (name_w, x + name_w, right_start)
         } else if let Some(ref right) = self.right_text {
             // Measure actual right text width and give the rest to name
             let (right_width, _) =

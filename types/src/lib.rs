@@ -7,6 +7,7 @@ pub mod characters;
 pub mod formatting;
 pub mod frame_style;
 pub mod history;
+pub mod metric_template;
 pub mod preview;
 
 /// Audio `file` value meaning "play nothing" (countdown voice only), as opposed to an
@@ -1915,10 +1916,14 @@ pub struct OverlayAppearanceConfig {
     pub bar_color: Color,
     #[serde(default = "default_max_entries")]
     pub max_entries: u8,
-    #[serde(default)]
-    pub show_total: bool,
-    #[serde(default = "default_true")]
-    pub show_per_second: bool,
+    /// Text beside each player's name; see `metric_template`
+    #[serde(default = "default_metric_template")]
+    pub template: String,
+    /// Pre-`template` column toggles; read once by `migrate_legacy`
+    #[serde(default, skip_serializing, rename = "show_total")]
+    pub legacy_show_total: Option<bool>,
+    #[serde(default, skip_serializing, rename = "show_per_second")]
+    pub legacy_show_per_second: Option<bool>,
     #[serde(default = "default_true")]
     pub show_percent: bool,
     #[serde(default = "default_true")]
@@ -1932,10 +1937,17 @@ pub struct OverlayAppearanceConfig {
     /// Enabled by default for metric overlays.
     #[serde(default = "default_true")]
     pub bar_gradient: bool,
-    /// Vertical gap between bars as a fraction of bar height. 0.0 = connected
-    /// (no gap), ~0.2 = default. Keeps spacing consistent across resolutions.
-    #[serde(default = "default_bar_spacing_ratio")]
-    pub bar_spacing_ratio: f32,
+    /// Vertical gap between bars as a fraction of bar height (0.0 = connected).
+    /// `None` follows `OverlaySettings::metric_bar_spacing`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bar_spacing: Option<f32>,
+    /// Pre-`bar_spacing` per-overlay value; read once by `migrate_legacy`
+    #[serde(default, skip_serializing, rename = "bar_spacing_ratio")]
+    pub legacy_bar_spacing: Option<f32>,
+}
+
+fn default_metric_template() -> String {
+    "{rate}".to_string()
 }
 
 fn default_bar_spacing_ratio() -> f32 {
@@ -1961,13 +1973,15 @@ impl Default for OverlayAppearanceConfig {
             font_color: overlay_colors::WHITE,
             bar_color: overlay_colors::DPS,
             max_entries: 16,
-            show_total: false,
-            show_per_second: true,
+            template: default_metric_template(),
+            legacy_show_total: None,
+            legacy_show_per_second: None,
             show_percent: true,
             show_duration: true,
             use_class_color: false,
             bar_gradient: true,
-            bar_spacing_ratio: 0.2,
+            bar_spacing: None,
+            legacy_bar_spacing: None,
         }
     }
 }
@@ -3289,6 +3303,10 @@ pub struct OverlaySettings {
     pub metric_stack_from_bottom: bool,
     #[serde(default = "default_scaling_factor")]
     pub metric_scaling_factor: f32,
+    /// Gap between metric bars as a fraction of bar height; overlays may
+    /// override it with `OverlayAppearanceConfig::bar_spacing`
+    #[serde(default = "default_bar_spacing_ratio")]
+    pub metric_bar_spacing: f32,
     /// Font scale multiplier for metric overlays (0.3 - 3.0, default 1.0)
     #[serde(default = "default_scaling_factor")]
     pub metric_font_scale: f32,
@@ -3431,6 +3449,7 @@ impl Default for OverlaySettings {
             metric_show_empty_bars: true,
             metric_stack_from_bottom: false,
             metric_scaling_factor: 1.0,
+            metric_bar_spacing: default_bar_spacing_ratio(),
             metric_font_scale: 1.0,
             metric_gradient_intensity: 0.32,
             metric_dynamic_background: false,
@@ -3507,9 +3526,30 @@ impl OverlaySettings {
         self.appearances.insert(overlay_type.to_string(), config);
     }
 
-    /// Move the old per-overlay `*_opacity` fields into `frame_overrides`.
+    /// Move the old per-overlay `*_opacity` fields into `frame_overrides`, old
+    /// per-overlay bar spacing into overrides of `metric_bar_spacing`, and the
+    /// old metric column toggles into templates.
     /// Idempotent: the legacy fields are consumed and never written back.
     pub fn migrate_legacy(&mut self) {
+        let spacing = self.metric_bar_spacing;
+        for a in self.appearances.values_mut().chain(self.default_appearances.values_mut()) {
+            if let Some(legacy) = a.legacy_bar_spacing.take()
+                && legacy != spacing
+            {
+                a.bar_spacing = Some(legacy);
+            }
+            let (per_second, total) = (a.legacy_show_per_second.take(), a.legacy_show_total.take());
+            if per_second.is_some() || total.is_some() {
+                a.template = match (per_second.unwrap_or(true), total.unwrap_or(false)) {
+                    (true, true) => "{total} | {rate}",
+                    (true, false) => "{rate}",
+                    (false, true) => "{total}",
+                    (false, false) => "",
+                }
+                .to_string();
+            }
+        }
+
         /// Metric overlays that shared `metric_opacity`
         const METRIC_KEYS: [&str; 11] = [
             "dps", "edps", "bossdps", "hps", "ehps", "abs", "dtps", "tps", "apm", "interrupts",

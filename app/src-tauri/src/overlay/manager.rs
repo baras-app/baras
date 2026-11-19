@@ -227,7 +227,11 @@ impl OverlayManager {
                         &data.metrics,
                     )
                 } else {
-                    create_entries_for_type(metric_type, &data.metrics, data.player_entity_id)
+                    create_entries_for_type(
+                        metric_type,
+                        &super::metrics::shared_metrics(&data.metrics),
+                        data.player_entity_id,
+                    )
                 };
                 let _ = tx
                     .send(OverlayCommand::UpdateData(OverlayData::Metrics(

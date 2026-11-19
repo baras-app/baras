@@ -3,6 +3,7 @@
 //! Functions for converting player metrics into overlay entries.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use baras_core::game_data::Role as GameRole;
 use baras_core::PlayerMetrics;
@@ -140,7 +141,7 @@ fn extract_values(m: &PlayerMetrics, overlay_type: MetricType) -> MetricValues {
 /// This allows users to customize bar colors via the config panel.
 pub fn create_entries_for_type(
     overlay_type: MetricType,
-    metrics: &[PlayerMetrics],
+    metrics: &[Arc<PlayerMetrics>],
     local_player_id: i64,
 ) -> Vec<MetricEntry> {
     let mut values: Vec<_> = metrics
@@ -157,19 +158,20 @@ pub fn create_entries_for_type(
             });
             let is_local = m.entity_id == local_player_id;
             let is_enemy = m.pvp_faction == Some(baras_core::encounter::PvpFaction::Enemy);
-            (m.name.clone(), v, class_icon, discipline_icon, class_name, role, is_local, is_enemy)
+            (m.name.clone(), v, class_icon, discipline_icon, class_name, role, is_local, is_enemy, m)
         })
         .collect();
 
     // Friendly group first, then enemies (PvP); rate descending within each group
     values.sort_by(|a, b| a.7.cmp(&b.7).then(b.1.rate.cmp(&a.1.rate)));
 
-    let max_value = values.iter().map(|(_, v, _, _, _, _, _, _)| v.rate).max().unwrap_or(1);
+    let max_value = values.iter().map(|v| v.1.rate).max().unwrap_or(1);
 
     values
         .into_iter()
-        .map(|(name, v, class_icon, discipline_icon, class_name, role, is_local, is_enemy)| {
+        .map(|(name, v, class_icon, discipline_icon, class_name, role, is_local, is_enemy, player)| {
             let mut entry = MetricEntry::new(&name, v.rate, max_value).with_total(v.total);
+            entry.player = Some(Arc::clone(player));
             if let (Some(dv), Some(dt)) = (v.display_value, v.display_total) {
                 entry = entry.with_display(dv, dt);
             }
@@ -234,11 +236,17 @@ pub fn create_incoming_damage_entries(
         .collect()
 }
 
+/// Players' stats, shared by every overlay's entries (template placeholders)
+pub fn shared_metrics(metrics: &[PlayerMetrics]) -> Vec<Arc<PlayerMetrics>> {
+    metrics.iter().cloned().map(Arc::new).collect()
+}
+
 /// Create entries for all overlay types from metrics
 pub fn create_all_entries(
     metrics: &[PlayerMetrics],
     local_player_id: i64,
 ) -> HashMap<MetricType, Vec<MetricEntry>> {
+    let metrics = &shared_metrics(metrics);
     let mut result = HashMap::new();
     for overlay_type in MetricType::all() {
         // Incoming Damage is built from CombatData::incoming_damage by the router

@@ -62,10 +62,12 @@ pub fn get_appearance_for_type(
     overlay_type: MetricType,
 ) -> OverlayAppearanceConfig {
     let key = overlay_type.config_key();
-    if let Some(saved) = settings.appearances.get(key) {
-        saved.clone()
-    } else {
+    let mut appearance = match settings.appearances.get(key) {
+        Some(saved) => saved.clone(),
         // No saved appearance - use type-specific default
-        overlay_type.default_appearance()
-    }
+        None => overlay_type.default_appearance(),
+    };
+    // The overlay only ever sees the resolved spacing
+    appearance.bar_spacing.get_or_insert(settings.metric_bar_spacing);
+    appearance
 }
