@@ -1472,7 +1472,9 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         result
     });
 
-    let eu = props.state.read().european_number_format;
+    // A memo, so this component's own filter and sort writes to the shared state don't re-render it
+    let shared = props.state;
+    let eu = *use_memo(move || shared.read().european_number_format).read();
     let format_number = |n: f64| formatting::format_compact_f64(n, eu);
     let format_pct = |n: f64| formatting::format_pct(n, eu);
 

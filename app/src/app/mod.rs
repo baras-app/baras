@@ -103,6 +103,8 @@ pub fn App() -> Element {
     // UI Session State - unified state that persists across tab switches
     let mut ui_state = use_signal(UiSessionState::default);
     crate::shortcuts::use_app_shortcuts(ui_state);
+    // Render reads only this, so explorer filter and sort writes to `ui_state` don't re-render App
+    let active_tab = use_memo(move || ui_state.read().active_tab);
 
     // Other UI state (not part of session persistence)
     let mut overlay_settings = use_signal(OverlaySettings::default);
@@ -776,14 +778,14 @@ pub fn App() -> Element {
                     div { class: "header-nav",
                         div { class: "header-tabs",
                             button {
-                                class: if ui_state.read().active_tab == MainTab::DataExplorer { "tab-btn active" } else { "tab-btn" },
+                                class: if active_tab() == MainTab::DataExplorer { "tab-btn active" } else { "tab-btn" },
                                 title: "Pull breakdowns for currently selected file",
                                 onclick: move |_| ui_state.write().active_tab = MainTab::DataExplorer,
                                 i { class: "fa-solid fa-magnifying-glass-chart" }
                                 span { class: "tab-label", " Analysis" }
                             }
                             button {
-                                class: if ui_state.read().active_tab == MainTab::Overlays { "tab-btn active" } else { "tab-btn" },
+                                class: if active_tab() == MainTab::Overlays { "tab-btn active" } else { "tab-btn" },
                                 title: "Enable, arrange and customize overlays",
                                 onclick: move |_| ui_state.write().active_tab = MainTab::Overlays,
                                 i { class: "fa-solid fa-layer-group" }
@@ -794,7 +796,7 @@ pub fn App() -> Element {
                                 (MainTab::Effects, "fa-solid fa-heart-pulse", "Effects", "HoTs, DoTs, DCDs and other effects that are tracked across all encounters"),
                             ] {
                                 button {
-                                    class: if ui_state.read().active_tab == tab { "tab-btn active" } else { "tab-btn" },
+                                    class: if active_tab() == tab { "tab-btn active" } else { "tab-btn" },
                                     title: tip,
                                     onclick: move |_| ui_state.write().active_tab = tab,
                                     i { class: icon }
@@ -817,7 +819,7 @@ pub fn App() -> Element {
                                 (MainTab::Settings, "fa-solid fa-gear", "Settings", "Log directory, hotkeys, audio and application options"),
                             ] {
                                 button {
-                                    class: if ui_state.read().active_tab == tab { "tab-btn active" } else { "tab-btn" },
+                                    class: if active_tab() == tab { "tab-btn active" } else { "tab-btn" },
                                     title: tip,
                                     onclick: move |_| ui_state.write().active_tab = tab,
                                     i { class: icon }
@@ -1219,7 +1221,7 @@ pub fn App() -> Element {
                 // ─────────────────────────────────────────────────────────────
                 // Overlays Tab
                 // ─────────────────────────────────────────────────────────────
-                if ui_state.read().active_tab == MainTab::Overlays {
+                if active_tab() == MainTab::Overlays {
                     section { class: "overlay-controls",
                         // Global controls as the header of the overlay card
                         div { class: "overlay-toolbar",
@@ -1672,7 +1674,7 @@ pub fn App() -> Element {
                 // ─────────────────────────────────────────────────────────────
                 // Encounter Editor Tab
                 // ─────────────────────────────────────────────────────────────
-                if ui_state.read().active_tab == MainTab::EncounterBuilder {
+                if active_tab() == MainTab::EncounterBuilder {
                     EncounterEditorPanel {
                         state: ui_state,
                     }
@@ -1681,7 +1683,7 @@ pub fn App() -> Element {
                 // ─────────────────────────────────────────────────────────────
                 // Effects Tab
                 // ─────────────────────────────────────────────────────────────
-                if ui_state.read().active_tab == MainTab::Effects {
+                if active_tab() == MainTab::Effects {
                     EffectEditorPanel {
                         state: ui_state,
                     }
@@ -1690,7 +1692,7 @@ pub fn App() -> Element {
                 // ─────────────────────────────────────────────────────────────
                 // Settings Tab
                 // ─────────────────────────────────────────────────────────────
-                if ui_state.read().active_tab == MainTab::Settings {
+                if active_tab() == MainTab::Settings {
                     section { class: "settings-page",
                         div { class: "settings-header",
                             h3 { "Settings" }
@@ -2231,7 +2233,7 @@ pub fn App() -> Element {
                 // ─────────────────────────────────────────────────────────────
                 // History Tab
                 // ─────────────────────────────────────────────────────────────
-                if let Some(view) = ui_state.read().active_tab.history_view() {
+                if let Some(view) = active_tab().history_view() {
                     HistoryPanel {
                         european: *european_number_format.read(),
                         state: ui_state,
@@ -2242,14 +2244,14 @@ pub fn App() -> Element {
                 // ─────────────────────────────────────────────────────────────
                 // Characters Tab
                 // ─────────────────────────────────────────────────────────────
-                if ui_state.read().active_tab == MainTab::Characters {
+                if active_tab() == MainTab::Characters {
                     CharactersPanel {}
                 }
 
                 // ─────────────────────────────────────────────────────────────
                 // Data Explorer Tab
                 // ─────────────────────────────────────────────────────────────
-                if ui_state.read().active_tab == MainTab::DataExplorer {
+                if active_tab() == MainTab::DataExplorer {
                     ErrorBoundary {
                         handle_error: |_errors: ErrorContext| {
                             rsx! {
@@ -2278,7 +2280,7 @@ pub fn App() -> Element {
             }
 
             // Overlay settings: docked beside the Overlays page whenever it is open
-            if ui_state.read().active_tab == MainTab::Overlays {
+            if active_tab() == MainTab::Overlays {
                 SettingsPanel {
                     settings: overlay_settings,
                     selected_tab: selected_overlay_tab,
