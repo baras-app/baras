@@ -9,7 +9,7 @@
 use chrono::NaiveDateTime;
 
 use crate::combat_log::CombatEvent;
-use crate::dsl::{CounterDefinition, Trigger};
+use crate::dsl::{CounterDefinition, Trigger, TriggerExt};
 use crate::state::SessionCache;
 
 use super::GameSignal;

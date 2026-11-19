@@ -21,7 +21,7 @@ use super::matching::{is_definition_active, is_definition_active_with_snapshot, 
 use super::signal_handlers;
 use super::{ActiveTimer, TimerDefinition, TimerKey, TimerPreferences, TimerTrigger, TriggerContext};
 
-use crate::dsl::TriggerKind;
+use crate::dsl::{TriggerExt, TriggerKind};
 
 // EncounterContext removed: context now read directly from CombatEncounter
 

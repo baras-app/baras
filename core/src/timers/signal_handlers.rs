@@ -8,7 +8,7 @@ use chrono::NaiveDateTime;
 use crate::combat_log::EntityType;
 use crate::context::IStr;
 use crate::dsl::EntityDefinition;
-use crate::dsl::TriggerKind;
+use crate::dsl::{TriggerExt, TriggerKind};
 use crate::encounter::CombatEncounter;
 
 use super::{TimerManager, TriggerContext};

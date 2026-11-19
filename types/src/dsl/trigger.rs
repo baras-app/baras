@@ -1,4 +1,4 @@
-//! Trigger mirror shared across timers, phases and counters
+//! The trigger type shared by timers, phases, counters and effect modifiers
 
 use crate::serde_defaults::is_zero_f32_ref;
 use crate::{

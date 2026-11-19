@@ -1820,6 +1820,7 @@ fn shield_signal_matches(
         Trigger::ChargesChanged { .. }
         | Trigger::SelfChargesChanged { .. }
         | Trigger::ResourceSpent { .. }
+        | Trigger::HealingDealt { .. }
         | Trigger::KillingBlow => false,
     }
 }

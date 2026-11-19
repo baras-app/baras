@@ -10,6 +10,7 @@ use crate::dsl::Condition;
 use crate::dsl::CounterCondition;
 use crate::dsl::EntityDefinition;
 use crate::dsl::Trigger;
+use crate::dsl::TriggerExt;
 use crate::game_data::Difficulty;
 use baras_types::AlertTrigger;
 

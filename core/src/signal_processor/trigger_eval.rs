@@ -13,7 +13,7 @@ use std::collections::HashSet;
 
 use crate::combat_log::CombatEvent;
 use crate::dsl::EntityDefinition;
-use crate::dsl::Trigger;
+use crate::dsl::{Trigger, TriggerExt};
 use crate::game_data::effect_type_id;
 use crate::timers::matches_source_target_filters;
 
@@ -378,6 +378,7 @@ pub fn check_signal_trigger(trigger: &Trigger, signals: &[GameSignal], filter_ct
         Trigger::ChargesChanged { .. }
         | Trigger::SelfChargesChanged { .. }
         | Trigger::ResourceSpent { .. }
+        | Trigger::HealingDealt { .. }
         | Trigger::KillingBlow => false,
 
         // ─── Not signal-based ──────────────────────────────────────────────
