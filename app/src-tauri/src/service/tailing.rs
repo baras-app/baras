@@ -13,7 +13,6 @@ use baras_core::context::ParsingSession;
 use baras_core::encounter::PhaseType;
 use baras_core::game_data::{Difficulty, Discipline};
 use baras_core::{DisplayTarget, Reader};
-use baras_overlay::{CooldownData, DotTrackerData, EffectsABData};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -769,140 +768,76 @@ impl CombatService {
                         last_raid_effect_count = 0;
                     }
                 }
-                // Effects A: only send if there are effects or effects just cleared
                 if effects_a_active {
-                    if let Some(data) =
-                        build_effects_ab_data(&shared, icon_cache.as_ref(), DisplayTarget::EffectsA).await
-                    {
-                        let count = data.effects.len();
-                        if (count > 0 || last_effects_a_count > 0)
-                            && overlay_tx.try_send(OverlayUpdate::EffectsAUpdated(data)).is_err()
-                        {
-                            warn!("Overlay channel full, dropped effects A update");
-                        }
-                        last_effects_a_count = count;
-                    } else if last_effects_a_count > 0 {
-                        if overlay_tx
-                            .try_send(OverlayUpdate::EffectsAUpdated(EffectsABData { effects: vec![] }))
-                            .is_err()
-                        {
-                            warn!("Overlay channel full, dropped effects A clear");
-                        }
-                        last_effects_a_count = 0;
-                    }
+                    let data = build_effects_ab_data(&shared, icon_cache.as_ref(), DisplayTarget::EffectsA).await;
+                    send_if_shown(
+                        &overlay_tx,
+                        &mut last_effects_a_count,
+                        data,
+                        |d| d.effects.len(),
+                        OverlayUpdate::EffectsAUpdated,
+                        "effects A",
+                    );
                 }
 
-                // Effects B: only send if there are effects or effects just cleared
                 if effects_b_active {
-                    if let Some(data) =
-                        build_effects_ab_data(&shared, icon_cache.as_ref(), DisplayTarget::EffectsB).await
-                    {
-                        let count = data.effects.len();
-                        if (count > 0 || last_effects_b_count > 0)
-                            && overlay_tx.try_send(OverlayUpdate::EffectsBUpdated(data)).is_err()
-                        {
-                            warn!("Overlay channel full, dropped effects B update");
-                        }
-                        last_effects_b_count = count;
-                    } else if last_effects_b_count > 0 {
-                        if overlay_tx
-                            .try_send(OverlayUpdate::EffectsBUpdated(EffectsABData { effects: vec![] }))
-                            .is_err()
-                        {
-                            warn!("Overlay channel full, dropped effects B clear");
-                        }
-                        last_effects_b_count = 0;
-                    }
+                    let data = build_effects_ab_data(&shared, icon_cache.as_ref(), DisplayTarget::EffectsB).await;
+                    send_if_shown(
+                        &overlay_tx,
+                        &mut last_effects_b_count,
+                        data,
+                        |d| d.effects.len(),
+                        OverlayUpdate::EffectsBUpdated,
+                        "effects B",
+                    );
                 }
 
-                // Effects C: only send if there are effects or effects just cleared
                 if effects_c_active {
-                    if let Some(data) =
-                        build_effects_ab_data(&shared, icon_cache.as_ref(), DisplayTarget::EffectsC).await
-                    {
-                        let count = data.effects.len();
-                        if (count > 0 || last_effects_c_count > 0)
-                            && overlay_tx.try_send(OverlayUpdate::EffectsCUpdated(data)).is_err()
-                        {
-                            warn!("Overlay channel full, dropped effects C update");
-                        }
-                        last_effects_c_count = count;
-                    } else if last_effects_c_count > 0 {
-                        if overlay_tx
-                            .try_send(OverlayUpdate::EffectsCUpdated(EffectsABData { effects: vec![] }))
-                            .is_err()
-                        {
-                            warn!("Overlay channel full, dropped effects C clear");
-                        }
-                        last_effects_c_count = 0;
-                    }
+                    let data = build_effects_ab_data(&shared, icon_cache.as_ref(), DisplayTarget::EffectsC).await;
+                    send_if_shown(
+                        &overlay_tx,
+                        &mut last_effects_c_count,
+                        data,
+                        |d| d.effects.len(),
+                        OverlayUpdate::EffectsCUpdated,
+                        "effects C",
+                    );
                 }
 
-                // Cooldowns: only send if there are cooldowns or cooldowns just cleared
                 if cooldowns_active {
-                    if let Some(data) =
-                        build_cooldowns_data(&shared, icon_cache.as_ref(), DisplayTarget::Cooldowns).await
-                    {
-                        let count = data.entries.len();
-                        if (count > 0 || last_cooldowns_count > 0)
-                            && overlay_tx.try_send(OverlayUpdate::CooldownsUpdated(data)).is_err()
-                        {
-                            warn!("Overlay channel full, dropped cooldowns update");
-                        }
-                        last_cooldowns_count = count;
-                    } else if last_cooldowns_count > 0 {
-                        if overlay_tx
-                            .try_send(OverlayUpdate::CooldownsUpdated(CooldownData { entries: vec![] }))
-                            .is_err()
-                        {
-                            warn!("Overlay channel full, dropped cooldowns clear");
-                        }
-                        last_cooldowns_count = 0;
-                    }
+                    let data = build_cooldowns_data(&shared, icon_cache.as_ref(), DisplayTarget::Cooldowns).await;
+                    send_if_shown(
+                        &overlay_tx,
+                        &mut last_cooldowns_count,
+                        data,
+                        |d| d.entries.len(),
+                        OverlayUpdate::CooldownsUpdated,
+                        "cooldowns",
+                    );
                 }
 
-                // Cooldowns B: only send if there are cooldowns or cooldowns just cleared
                 if cooldowns_b_active {
-                    if let Some(data) =
-                        build_cooldowns_data(&shared, icon_cache.as_ref(), DisplayTarget::CooldownsB).await
-                    {
-                        let count = data.entries.len();
-                        if (count > 0 || last_cooldowns_b_count > 0)
-                            && overlay_tx.try_send(OverlayUpdate::CooldownsBUpdated(data)).is_err()
-                        {
-                            warn!("Overlay channel full, dropped cooldowns B update");
-                        }
-                        last_cooldowns_b_count = count;
-                    } else if last_cooldowns_b_count > 0 {
-                        if overlay_tx
-                            .try_send(OverlayUpdate::CooldownsBUpdated(CooldownData { entries: vec![] }))
-                            .is_err()
-                        {
-                            warn!("Overlay channel full, dropped cooldowns B clear");
-                        }
-                        last_cooldowns_b_count = 0;
-                    }
+                    let data = build_cooldowns_data(&shared, icon_cache.as_ref(), DisplayTarget::CooldownsB).await;
+                    send_if_shown(
+                        &overlay_tx,
+                        &mut last_cooldowns_b_count,
+                        data,
+                        |d| d.entries.len(),
+                        OverlayUpdate::CooldownsBUpdated,
+                        "cooldowns B",
+                    );
                 }
 
-                // DOT tracker: only send if there are targets or targets just cleared
                 if dot_tracker_active {
-                    if let Some(data) = build_dot_tracker_data(&shared, icon_cache.as_ref()).await {
-                        let count = data.targets.len();
-                        if (count > 0 || last_dot_tracker_count > 0)
-                            && overlay_tx.try_send(OverlayUpdate::DotTrackerUpdated(data)).is_err()
-                        {
-                            warn!("Overlay channel full, dropped DOT tracker update");
-                        }
-                        last_dot_tracker_count = count;
-                    } else if last_dot_tracker_count > 0 {
-                        if overlay_tx
-                            .try_send(OverlayUpdate::DotTrackerUpdated(DotTrackerData { targets: vec![] }))
-                            .is_err()
-                        {
-                            warn!("Overlay channel full, dropped DOT tracker clear");
-                        }
-                        last_dot_tracker_count = 0;
-                    }
+                    let data = build_dot_tracker_data(&shared, icon_cache.as_ref()).await;
+                    send_if_shown(
+                        &overlay_tx,
+                        &mut last_dot_tracker_count,
+                        data,
+                        |d| d.targets.len(),
+                        OverlayUpdate::DotTrackerUpdated,
+                        "DOT tracker",
+                    );
                 }
 
                 // Effect audio: process in live mode
@@ -1003,4 +938,22 @@ impl CombatService {
         self.metrics_handle = Some(metrics_handle);
         self.effects_handle = Some(effects_handle);
     }
+}
+
+/// Send built overlay data, but only while there is something to show: one
+/// empty update goes out after the last non-empty one, then nothing.
+fn send_if_shown<D: Default>(
+    overlay_tx: &mpsc::Sender<OverlayUpdate>,
+    last_count: &mut usize,
+    data: Option<D>,
+    count: fn(&D) -> usize,
+    update: fn(D) -> OverlayUpdate,
+    what: &str,
+) {
+    let data = data.unwrap_or_default();
+    let shown = count(&data);
+    if (shown > 0 || *last_count > 0) && overlay_tx.try_send(update(data)).is_err() {
+        warn!(overlay = what, "Overlay channel full, dropped update");
+    }
+    *last_count = shown;
 }
