@@ -2,16 +2,11 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use zip::ZipArchive;
 
-/// Decoded RGBA icon data
-#[derive(Clone)]
-pub struct IconData {
-    pub rgba: Vec<u8>,
-    pub width: u32,
-    pub height: u32,
-}
+/// Decoded icon shared with the overlays: (width, height, RGBA)
+pub type IconData = Arc<(u32, u32, Vec<u8>)>;
 
 pub struct IconCache {
     /// ability_id → lowercase icon name
@@ -57,17 +52,17 @@ impl IconCache {
         self.get_icon_by_name(icon_name)
     }
 
-    pub fn get_icon_by_name(&self, icon_name: &str) -> Option<IconData> {
-        let icon_name_lower = icon_name.to_lowercase();
-
+    /// `icon_name` must be lowercase, as the names loaded from the CSV are
+    fn get_icon_by_name(&self, icon_name: &str) -> Option<IconData> {
         // Fast path: check cache
         {
             let cache = self.cache.lock().ok()?;
-            if let Some(data) = cache.get(&icon_name_lower) {
+            if let Some(data) = cache.get(icon_name) {
                 return Some(data.clone());
             }
         }
 
+        let icon_name_lower = icon_name.to_string();
         let data = self.load_from_zip(&icon_name_lower)?;
 
         {
@@ -192,5 +187,5 @@ fn decode_png(data: &[u8]) -> Option<IconData> {
         png::ColorType::Indexed => return None,
     };
 
-    Some(IconData { rgba, width, height })
+    Some(Arc::new((width, height, rgba)))
 }

@@ -598,7 +598,6 @@ async fn process_overlay_update(
         OverlayUpdate::AlertsFired(fired_alerts) => {
             // Convert FiredAlert to AlertEntry and send to alerts overlay
             use baras_overlay::AlertEntry;
-            use std::sync::Arc;
             use std::time::Instant;
 
             let alerts_tx = {
@@ -625,7 +624,7 @@ async fn process_overlay_update(
                             duration_secs: 5.0, // Default duration, could come from config
                             remaining_secs: a.remaining_secs,
                             icon_ability_id: a.icon_ability_id,
-                            icon: icon.map(|d| Arc::new((d.width, d.height, d.rgba))),
+                            icon,
                         }
                     })
                     .collect();
@@ -648,9 +647,7 @@ async fn process_overlay_update(
                 state.get_tx(OverlayType::AbilityCast).cloned()
             };
             if let Some(tx) = tx {
-                let icon = icon_cache
-                    .and_then(|cache| cache.get_icon(ability_id))
-                    .map(|d| std::sync::Arc::new((d.width, d.height, d.rgba)));
+                let icon = icon_cache.and_then(|cache| cache.get_icon(ability_id));
                 let entry = baras_overlay::AbilityCastEntry {
                     ability_id,
                     name,

@@ -45,11 +45,7 @@ pub(super) async fn build_boss_health_data(
                         }
                         let remaining_secs = calculate_base_remaining_secs(effect, interp_time)?;
                         let total_secs = base_total_secs(effect)?;
-                        let icon = icon_cache.and_then(|cache| {
-                            cache
-                                .get_icon(effect.icon_ability_id)
-                                .map(|data| StdArc::new((data.width, data.height, data.rgba)))
-                        });
+                        let icon = icon_cache.and_then(|cache| cache.get_icon(effect.icon_ability_id));
                         Some(BossEffectIcon {
                             effect_id: effect.game_effect_id,
                             icon_ability_id: effect.icon_ability_id,
@@ -84,7 +80,7 @@ pub(super) async fn build_boss_health_data(
             if !shield_icons.contains_key(&id)
                 && let Some(data) = cache.get_icon(id)
             {
-                shield_icons.insert(id, StdArc::new((data.width, data.height, data.rgba)));
+                shield_icons.insert(id, data);
             }
         }
     }

@@ -238,12 +238,7 @@ struct CachedIcons {
 
 impl CachedIcons {
     fn load(cache: Option<&Arc<IconCache>>) -> Self {
-        let load = |id: u64| -> IconData {
-            cache.and_then(|c| {
-                c.get_icon(id)
-                    .map(|data| Arc::new((data.width, data.height, data.rgba)))
-            })
-        };
+        let load = |id: u64| -> IconData { cache.and_then(|c| c.get_icon(id)) };
 
         Self {
             power_surge: load(3244358165856256),

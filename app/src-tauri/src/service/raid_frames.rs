@@ -278,7 +278,7 @@ fn convert_to_raid_effect(
     if let Some(cache) = icon_cache
         && let Some(data) = cache.get_icon(effect.icon_ability_id)
     {
-        raid_effect = raid_effect.with_icon(std::sync::Arc::new((data.width, data.height, data.rgba)));
+        raid_effect = raid_effect.with_icon(data);
     }
 
     raid_effect

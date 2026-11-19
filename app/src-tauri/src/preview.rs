@@ -309,10 +309,7 @@ pub async fn start(
         .collect();
     let txs: Vec<_> = txs.into_iter().filter_map(|(t, tx)| Some((t, tx?))).collect();
     let icon_ability_id = req.icon_ability_id.unwrap_or(0);
-    let icon = icon_cache
-        .as_ref()
-        .and_then(|cache| cache.get_icon(icon_ability_id))
-        .map(|d| Arc::new((d.width, d.height, d.rgba)));
+    let icon = icon_cache.as_ref().and_then(|cache| cache.get_icon(icon_ability_id));
     let stacks = req.stacks.unwrap_or(0);
     let resolve = |text: &str| format_placeholders(text, SOURCE_NAME, TARGET_NAME, req.stacks);
 

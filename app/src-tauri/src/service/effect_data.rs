@@ -118,11 +118,7 @@ fn load_ab_icon(
     icon_cache: Option<&Arc<baras_overlay::icons::IconCache>>,
     ability_id: u64,
 ) -> Option<Arc<(u32, u32, Vec<u8>)>> {
-    icon_cache.and_then(|cache| {
-        cache
-            .get_icon(ability_id)
-            .map(|data| Arc::new((data.width, data.height, data.rgba)))
-    })
+    icon_cache.and_then(|cache| cache.get_icon(ability_id))
 }
 
 /// Convert an active effect to an Effects A/B display entry.
@@ -295,8 +291,6 @@ pub(super) async fn build_cooldowns_data(
     icon_cache: Option<&Arc<baras_overlay::icons::IconCache>>,
     target: DisplayTarget,
 ) -> Option<CooldownData> {
-    use std::sync::Arc as StdArc;
-
     let session_guard = shared.session.read().await;
     let session = session_guard.as_ref()?;
     let session = session.read().await;
@@ -354,11 +348,7 @@ pub(super) async fn build_cooldowns_data(
             let is_in_ready_state = remaining_secs <= 0.0;
 
             // Load icon from cache
-            let icon = icon_cache.and_then(|cache| {
-                cache
-                    .get_icon(effect.icon_ability_id)
-                    .map(|data| StdArc::new((data.width, data.height, data.rgba)))
-            });
+            let icon = icon_cache.and_then(|cache| cache.get_icon(effect.icon_ability_id));
 
             Some(CooldownEntry {
                 ability_id: effect.game_effect_id,
@@ -388,8 +378,6 @@ pub(super) async fn build_dot_tracker_data(
     shared: &Arc<SharedState>,
     icon_cache: Option<&Arc<baras_overlay::icons::IconCache>>,
 ) -> Option<DotTrackerData> {
-    use std::sync::Arc as StdArc;
-
     let session_guard = shared.session.read().await;
     let session = session_guard.as_ref()?;
     let session = session.read().await;
@@ -426,11 +414,7 @@ pub(super) async fn build_dot_tracker_data(
                     let remaining_secs = calculate_base_remaining_secs(effect, interp_time)?;
 
                     // Load icon from cache
-                    let icon = icon_cache.and_then(|cache| {
-                        cache
-                            .get_icon(effect.icon_ability_id)
-                            .map(|data| StdArc::new((data.width, data.height, data.rgba)))
-                    });
+                    let icon = icon_cache.and_then(|cache| cache.get_icon(effect.icon_ability_id));
 
                     Some(DotEntry {
                         effect_id: effect.game_effect_id,

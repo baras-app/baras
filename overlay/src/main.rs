@@ -1922,11 +1922,7 @@ mod examples {
         )
         .ok();
 
-        let load = |id: u64| -> Option<IconArc> {
-            icon_cache
-                .as_ref()
-                .and_then(|c| c.get_icon(id).map(|d| std::sync::Arc::new((d.width, d.height, d.rgba))))
-        };
+        let load = |id: u64| -> Option<IconArc> { icon_cache.as_ref().and_then(|c| c.get_icon(id)) };
 
         DemoIcons {
             shock: (3362023089897472, load(3362023089897472)),

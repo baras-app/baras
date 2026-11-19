@@ -132,13 +132,9 @@ pub(super) async fn build_timer_data_with_audio(
         let remaining = interp_time.map(|t| timer.remaining_secs(t)).unwrap_or(0.0);
 
         // Load icon from cache if ability ID is set
-        let icon = timer.icon_ability_id.and_then(|ability_id| {
-            icon_cache.and_then(|cache| {
-                cache
-                    .get_icon(ability_id)
-                    .map(|data| std::sync::Arc::new((data.width, data.height, data.rgba)))
-            })
-        });
+        let icon = timer
+            .icon_ability_id
+            .and_then(|ability_id| icon_cache.and_then(|cache| cache.get_icon(ability_id)));
 
         let total_secs = if timer.show_at_secs > 0.0 {
             timer.show_at_secs
