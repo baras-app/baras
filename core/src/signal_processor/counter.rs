@@ -15,8 +15,8 @@ use std::collections::HashSet;
 use baras_types::StackAggregation;
 
 use crate::combat_log::CombatEvent;
-use crate::dsl::EntityFilterMatching;
 use crate::dsl::CounterDefinition;
+use crate::dsl::EntityFilterMatching;
 use crate::state::SessionCache;
 
 use super::GameSignal;
@@ -41,9 +41,16 @@ pub fn check_counter_increments(
         };
         let boss_ids = enc.boss_entity_ids();
         let local_player_id = Some(cache.player.id).filter(|&id| id != 0);
-        let current_target_id =
-            local_player_id.and_then(|pid| enc.local_player_target_id(pid));
-        (enc.boss_definitions_arc(), idx, boss_ids, local_player_id, current_target_id, enc.entity_positions(), enc.pvp_faction_share())
+        let current_target_id = local_player_id.and_then(|pid| enc.local_player_target_id(pid));
+        (
+            enc.boss_definitions_arc(),
+            idx,
+            boss_ids,
+            local_player_id,
+            current_target_id,
+            enc.entity_positions(),
+            enc.pvp_faction_share(),
+        )
     };
     let def = &definitions[def_idx];
 
@@ -69,16 +76,10 @@ pub fn check_counter_increments(
         // Check increment_on trigger (event + signals)
         if check_counter_trigger(&counter.increment_on, event, current_signals, &filter_ctx) {
             let Some(enc) = cache.current_encounter_mut() else {
-                tracing::error!(
-                    "BUG: encounter missing in check_counter_increments (increment_on)"
-                );
+                tracing::error!("BUG: encounter missing in check_counter_increments (increment_on)");
                 continue;
             };
-            let (old_value, new_value) = enc.modify_counter(
-                &counter.id,
-                counter.decrement,
-                counter.set_value,
-            );
+            let (old_value, new_value) = enc.modify_counter(&counter.id, counter.decrement, counter.set_value);
 
             signals.push(GameSignal::CounterChanged {
                 counter_id: counter.id.clone(),
@@ -93,16 +94,10 @@ pub fn check_counter_increments(
             && check_counter_trigger(decrement_trigger, event, current_signals, &filter_ctx)
         {
             let Some(enc) = cache.current_encounter_mut() else {
-                tracing::error!(
-                    "BUG: encounter missing in check_counter_increments (decrement_on)"
-                );
+                tracing::error!("BUG: encounter missing in check_counter_increments (decrement_on)");
                 continue;
             };
-            let (old_value, new_value) = enc.modify_counter(
-                &counter.id,
-                true,
-                None,
-            );
+            let (old_value, new_value) = enc.modify_counter(&counter.id, true, None);
 
             signals.push(GameSignal::CounterChanged {
                 counter_id: counter.id.clone(),
@@ -159,9 +154,16 @@ pub fn check_counter_signal_triggers(
         };
         let boss_ids = enc.boss_entity_ids();
         let local_player_id = Some(cache.player.id).filter(|&id| id != 0);
-        let current_target_id =
-            local_player_id.and_then(|pid| enc.local_player_target_id(pid));
-        (enc.boss_definitions_arc(), idx, boss_ids, local_player_id, current_target_id, enc.entity_positions(), enc.pvp_faction_share())
+        let current_target_id = local_player_id.and_then(|pid| enc.local_player_target_id(pid));
+        (
+            enc.boss_definitions_arc(),
+            idx,
+            boss_ids,
+            local_player_id,
+            current_target_id,
+            enc.entity_positions(),
+            enc.pvp_faction_share(),
+        )
     };
     let def = &definitions[def_idx];
 
@@ -187,16 +189,10 @@ pub fn check_counter_signal_triggers(
         // Check increment_on trigger (signals only)
         if trigger_eval::check_signal_trigger(&counter.increment_on, new_signals, &filter_ctx) {
             let Some(enc) = cache.current_encounter_mut() else {
-                tracing::error!(
-                    "BUG: encounter missing in check_counter_signal_triggers (increment_on)"
-                );
+                tracing::error!("BUG: encounter missing in check_counter_signal_triggers (increment_on)");
                 continue;
             };
-            let (old_value, new_value) = enc.modify_counter(
-                &counter.id,
-                counter.decrement,
-                counter.set_value,
-            );
+            let (old_value, new_value) = enc.modify_counter(&counter.id, counter.decrement, counter.set_value);
 
             signals.push(GameSignal::CounterChanged {
                 counter_id: counter.id.clone(),
@@ -211,16 +207,10 @@ pub fn check_counter_signal_triggers(
             && trigger_eval::check_signal_trigger(decrement_trigger, new_signals, &filter_ctx)
         {
             let Some(enc) = cache.current_encounter_mut() else {
-                tracing::error!(
-                    "BUG: encounter missing in check_counter_signal_triggers (decrement_on)"
-                );
+                tracing::error!("BUG: encounter missing in check_counter_signal_triggers (decrement_on)");
                 continue;
             };
-            let (old_value, new_value) = enc.modify_counter(
-                &counter.id,
-                true,
-                None,
-            );
+            let (old_value, new_value) = enc.modify_counter(&counter.id, true, None);
 
             signals.push(GameSignal::CounterChanged {
                 counter_id: counter.id.clone(),
@@ -233,9 +223,7 @@ pub fn check_counter_signal_triggers(
         // Check reset_on trigger (signals only)
         if trigger_eval::check_signal_trigger(&counter.reset_on, new_signals, &filter_ctx) {
             let Some(enc) = cache.current_encounter_mut() else {
-                tracing::error!(
-                    "BUG: encounter missing in check_counter_signal_triggers (reset_on)"
-                );
+                tracing::error!("BUG: encounter missing in check_counter_signal_triggers (reset_on)");
                 continue;
             };
             let old_value = enc.get_counter(&counter.id);
@@ -298,13 +286,10 @@ pub fn check_counter_timer_triggers(
             canceled_timer_ids,
         ) {
             let Some(enc) = cache.current_encounter_mut() else {
-                tracing::error!(
-                    "BUG: encounter missing in check_counter_timer_triggers (increment_on)"
-                );
+                tracing::error!("BUG: encounter missing in check_counter_timer_triggers (increment_on)");
                 continue;
             };
-            let (old_value, new_value) =
-                enc.modify_counter(&counter.id, counter.decrement, counter.set_value);
+            let (old_value, new_value) = enc.modify_counter(&counter.id, counter.decrement, counter.set_value);
             signals.push(GameSignal::CounterChanged {
                 counter_id: counter.id.clone(),
                 old_value,
@@ -315,25 +300,20 @@ pub fn check_counter_timer_triggers(
 
         // Check decrement_on for timer triggers
         if let Some(ref trigger) = counter.decrement_on
-            && trigger_eval::check_timer_trigger(trigger, expired_timer_ids, started_timer_ids, canceled_timer_ids) {
-                let Some(enc) = cache.current_encounter_mut() else {
-                    tracing::error!(
-                        "BUG: encounter missing in check_counter_timer_triggers (decrement_on)"
-                    );
-                    continue;
-                };
-                let (old_value, new_value) = enc.modify_counter(
-                    &counter.id,
-                    true,
-                    None,
-                );
-                signals.push(GameSignal::CounterChanged {
-                    counter_id: counter.id.clone(),
-                    old_value,
-                    new_value,
-                    timestamp,
-                });
-            }
+            && trigger_eval::check_timer_trigger(trigger, expired_timer_ids, started_timer_ids, canceled_timer_ids)
+        {
+            let Some(enc) = cache.current_encounter_mut() else {
+                tracing::error!("BUG: encounter missing in check_counter_timer_triggers (decrement_on)");
+                continue;
+            };
+            let (old_value, new_value) = enc.modify_counter(&counter.id, true, None);
+            signals.push(GameSignal::CounterChanged {
+                counter_id: counter.id.clone(),
+                old_value,
+                new_value,
+                timestamp,
+            });
+        }
 
         // Check reset_on for timer triggers
         if trigger_eval::check_timer_trigger(
@@ -343,9 +323,7 @@ pub fn check_counter_timer_triggers(
             canceled_timer_ids,
         ) {
             let Some(enc) = cache.current_encounter_mut() else {
-                tracing::error!(
-                    "BUG: encounter missing in check_counter_timer_triggers (reset_on)"
-                );
+                tracing::error!("BUG: encounter missing in check_counter_timer_triggers (reset_on)");
                 continue;
             };
             let old_value = enc.get_counter(&counter.id);
@@ -404,8 +382,7 @@ pub fn check_effect_stack_counters(
         };
         let boss_ids = enc.boss_entity_ids();
         let local_player_id = Some(cache.player.id).filter(|&id| id != 0);
-        let current_target_id =
-            local_player_id.and_then(|pid| enc.local_player_target_id(pid));
+        let current_target_id = local_player_id.and_then(|pid| enc.local_player_target_id(pid));
         (
             enc.boss_definitions_arc(),
             idx,
@@ -468,10 +445,11 @@ pub fn check_effect_stack_counters(
                         .effects
                         .iter()
                         .any(|s| s.matches(*effect_id as u64, Some(eff_name)))
-                        && let Some(enc) = cache.current_encounter_mut() {
-                            enc.update_effect_stacks(*effect_id, *target_id, *charges);
-                            state_changed = true;
-                        }
+                        && let Some(enc) = cache.current_encounter_mut()
+                    {
+                        enc.update_effect_stacks(*effect_id, *target_id, *charges);
+                        state_changed = true;
+                    }
                 }
             }
             GameSignal::EffectRemoved {
@@ -487,10 +465,11 @@ pub fn check_effect_stack_counters(
                         .effects
                         .iter()
                         .any(|s| s.matches(*effect_id as u64, Some(eff_name)))
-                        && let Some(enc) = cache.current_encounter_mut() {
-                            enc.remove_effect_stacks(*effect_id, *target_id);
-                            state_changed = true;
-                        }
+                        && let Some(enc) = cache.current_encounter_mut()
+                    {
+                        enc.remove_effect_stacks(*effect_id, *target_id);
+                        state_changed = true;
+                    }
                 }
             }
             _ => {}
@@ -553,10 +532,7 @@ fn aggregate_effect_stacks(
         // Check if this effect_id matches any selector in the config
         // We don't have the effect name here, so match by ID only.
         // Name-based matching was already handled during state updates.
-        let matches_effect = config
-            .effects
-            .iter()
-            .any(|s| s.matches(*effect_id as u64, None));
+        let matches_effect = config.effects.iter().any(|s| s.matches(*effect_id as u64, None));
 
         if !matches_effect {
             continue;
@@ -569,11 +545,7 @@ fn aggregate_effect_stacks(
             } else {
                 crate::combat_log::EntityType::Npc
             };
-            let npc_id = enc
-                .npcs
-                .get(&entity_id)
-                .map(|n| n.class_id)
-                .unwrap_or(0);
+            let npc_id = enc.npcs.get(&entity_id).map(|n| n.class_id).unwrap_or(0);
             // For entity name, we use an empty IStr since we don't have it stored.
             // The filter matching for LocalPlayer/AnyPlayer/Boss uses entity_type and IDs,
             // not names, so this is fine for the common cases.

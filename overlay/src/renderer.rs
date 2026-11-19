@@ -7,12 +7,11 @@ use std::collections::HashMap;
 use std::sync::OnceLock;
 
 use cosmic_text::{
-    Attrs, Buffer, Color as CosmicColor, Family, FontSystem, LayoutGlyph, Metrics, Shaping, Style,
-    SwashCache, Weight,
+    Attrs, Buffer, Color as CosmicColor, Family, FontSystem, LayoutGlyph, Metrics, Shaping, Style, SwashCache, Weight,
 };
 use tiny_skia::{
-    Color, FillRule, GradientStop, LineCap, LineJoin, LinearGradient, Paint, PathBuilder, PixmapMut,
-    Point, Rect, SpreadMode, Stroke, StrokeDash, Transform,
+    Color, FillRule, GradientStop, LineCap, LineJoin, LinearGradient, Paint, PathBuilder, PixmapMut, Point, Rect,
+    SpreadMode, Stroke, StrokeDash, Transform,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -60,11 +59,9 @@ const LATIN_PROBE: [char; 6] = ['A', 'a', 'g', 'R', 'z', 'e'];
 
 /// Whether a face has cmap glyphs for the Latin probe characters.
 fn face_supports_latin(db: &fontdb::Database, id: fontdb::ID) -> bool {
-    db.with_face_data(id, |data, index| {
-        match ttf_parser::Face::parse(data, index) {
-            Ok(face) => LATIN_PROBE.iter().all(|&c| face.glyph_index(c).is_some()),
-            Err(_) => false,
-        }
+    db.with_face_data(id, |data, index| match ttf_parser::Face::parse(data, index) {
+        Ok(face) => LATIN_PROBE.iter().all(|&c| face.glyph_index(c).is_some()),
+        Err(_) => false,
     })
     .unwrap_or(false)
 }
@@ -167,15 +164,10 @@ impl Renderer {
     /// Set the font family used for all text. A blank name resets to the
     /// bundled default. Clears the shaped-text cache so the change takes effect.
     pub fn set_font_family(&mut self, family: &str) {
-        let family = if family.is_empty() {
-            DEFAULT_FONT_FAMILY
-        } else {
-            family
-        };
+        let family = if family.is_empty() { DEFAULT_FONT_FAMILY } else { family };
         if self.font_family != family {
             self.font_family = family.to_string();
-            let (has_bold, has_italic) =
-                family_face_support(self.font_system.db(), &self.font_family);
+            let (has_bold, has_italic) = family_face_support(self.font_system.db(), &self.font_family);
             self.font_has_bold = has_bold;
             self.font_has_italic = has_italic;
             self.text_cache.clear();
@@ -190,18 +182,11 @@ impl Renderer {
 
         // Find the oldest entries to remove (remove ~25% of cache)
         let target_size = TEXT_CACHE_MAX_ENTRIES * 3 / 4;
-        let mut entries: Vec<_> = self
-            .text_cache
-            .iter()
-            .map(|(k, v)| (k.clone(), v.last_used))
-            .collect();
+        let mut entries: Vec<_> = self.text_cache.iter().map(|(k, v)| (k.clone(), v.last_used)).collect();
         entries.sort_by_key(|(_, last_used)| *last_used);
 
         // Remove oldest entries
-        for (key, _) in entries
-            .into_iter()
-            .take(self.text_cache.len() - target_size)
-        {
+        for (key, _) in entries.into_iter().take(self.text_cache.len() - target_size) {
             self.text_cache.remove(&key);
         }
     }
@@ -228,13 +213,7 @@ impl Renderer {
     }
 
     /// Ensure text is cached with styling options. Returns (width, height).
-    fn ensure_cached_styled(
-        &mut self,
-        text: &str,
-        font_size: f32,
-        bold: bool,
-        italic: bool,
-    ) -> (f32, f32) {
+    fn ensure_cached_styled(&mut self, text: &str, font_size: f32, bold: bool, italic: bool) -> (f32, f32) {
         let font_size_key = (font_size * 10.0).round() as u32;
 
         self.cache_access_counter += 1;
@@ -296,13 +275,7 @@ impl Renderer {
     }
 
     /// Get cached glyphs for drawing. Must call ensure_cached first.
-    fn get_cached_glyphs_styled(
-        &mut self,
-        text: &str,
-        font_size: f32,
-        bold: bool,
-        italic: bool,
-    ) -> Vec<LayoutGlyph> {
+    fn get_cached_glyphs_styled(&mut self, text: &str, font_size: f32, bold: bool, italic: bool) -> Vec<LayoutGlyph> {
         let font_size_key = (font_size * 10.0).round() as u32;
         self.find_cached_styled(text, font_size_key, bold, italic)
             .map(|c| c.glyphs.clone())
@@ -322,17 +295,7 @@ impl Renderer {
     }
 
     /// Draw a filled rectangle
-    pub fn fill_rect(
-        &self,
-        buffer: &mut [u8],
-        width: u32,
-        height: u32,
-        x: f32,
-        y: f32,
-        w: f32,
-        h: f32,
-        color: Color,
-    ) {
+    pub fn fill_rect(&self, buffer: &mut [u8], width: u32, height: u32, x: f32, y: f32, w: f32, h: f32, color: Color) {
         // Validate dimensions to avoid tiny-skia panics
         if w <= 0.0 || h <= 0.0 || x < 0.0 || y < 0.0 {
             return;
@@ -386,13 +349,7 @@ impl Renderer {
         paint.set_color(color);
         paint.anti_alias = true;
 
-        pixmap.fill_path(
-            &path,
-            &paint,
-            FillRule::Winding,
-            Transform::identity(),
-            None,
-        );
+        pixmap.fill_path(&path, &paint, FillRule::Winding, Transform::identity(), None);
     }
 
     /// Draw a rounded rectangle (filled)
@@ -424,13 +381,7 @@ impl Renderer {
         paint.set_color(color);
         paint.anti_alias = true;
 
-        pixmap.fill_path(
-            &path,
-            &paint,
-            FillRule::Winding,
-            Transform::identity(),
-            None,
-        );
+        pixmap.fill_path(&path, &paint, FillRule::Winding, Transform::identity(), None);
     }
 
     /// Draw a filled rectangle with independent top/bottom corner radii.
@@ -458,8 +409,7 @@ impl Renderer {
             return;
         };
 
-        let Some(path) = create_corner_rounded_rect_path(x, y, w, h, top_radius, bottom_radius)
-        else {
+        let Some(path) = create_corner_rounded_rect_path(x, y, w, h, top_radius, bottom_radius) else {
             return;
         };
 
@@ -467,13 +417,7 @@ impl Renderer {
         paint.set_color(color);
         paint.anti_alias = true;
 
-        pixmap.fill_path(
-            &path,
-            &paint,
-            FillRule::Winding,
-            Transform::identity(),
-            None,
-        );
+        pixmap.fill_path(&path, &paint, FillRule::Winding, Transform::identity(), None);
     }
 
     /// Draw a rounded rectangle filled with a horizontal linear gradient.
@@ -510,14 +454,14 @@ impl Renderer {
             return;
         };
 
-        let mut paint = Paint { anti_alias: true, ..Default::default() };
+        let mut paint = Paint {
+            anti_alias: true,
+            ..Default::default()
+        };
         match LinearGradient::new(
             Point::from_xy(grad_x0, y),
             Point::from_xy(grad_x1, y),
-            vec![
-                GradientStop::new(0.0, start_color),
-                GradientStop::new(1.0, end_color),
-            ],
+            vec![GradientStop::new(0.0, start_color), GradientStop::new(1.0, end_color)],
             SpreadMode::Pad,
             Transform::identity(),
         ) {
@@ -525,13 +469,7 @@ impl Renderer {
             None => paint.set_color(start_color),
         }
 
-        pixmap.fill_path(
-            &path,
-            &paint,
-            FillRule::Winding,
-            Transform::identity(),
-            None,
-        );
+        pixmap.fill_path(&path, &paint, FillRule::Winding, Transform::identity(), None);
     }
 
     /// Draw a rounded rectangle outline
@@ -743,13 +681,7 @@ impl Renderer {
     }
 
     /// Measure text dimensions with style options (bold text is wider)
-    pub fn measure_text_styled(
-        &mut self,
-        text: &str,
-        font_size: f32,
-        bold: bool,
-        italic: bool,
-    ) -> (f32, f32) {
+    pub fn measure_text_styled(&mut self, text: &str, font_size: f32, bold: bool, italic: bool) -> (f32, f32) {
         self.ensure_cached_styled(text, font_size, bold, italic)
     }
 
@@ -816,12 +748,9 @@ impl Renderer {
                 let alpha = src_a as f32 / 255.0;
                 let inv_alpha = 1.0 - alpha;
 
-                buffer[dest_idx] =
-                    (src_r as f32 * alpha + buffer[dest_idx] as f32 * inv_alpha) as u8;
-                buffer[dest_idx + 1] =
-                    (src_g as f32 * alpha + buffer[dest_idx + 1] as f32 * inv_alpha) as u8;
-                buffer[dest_idx + 2] =
-                    (src_b as f32 * alpha + buffer[dest_idx + 2] as f32 * inv_alpha) as u8;
+                buffer[dest_idx] = (src_r as f32 * alpha + buffer[dest_idx] as f32 * inv_alpha) as u8;
+                buffer[dest_idx + 1] = (src_g as f32 * alpha + buffer[dest_idx + 1] as f32 * inv_alpha) as u8;
+                buffer[dest_idx + 2] = (src_b as f32 * alpha + buffer[dest_idx + 2] as f32 * inv_alpha) as u8;
                 buffer[dest_idx + 3] = src_a.max(buffer[dest_idx + 3]);
             }
         }
@@ -930,12 +859,9 @@ fn draw_glyph_to_pixmap(
             let src_a = (alpha as u32 * color.a() as u32) / 255;
             let inv_a = 255 - src_a;
 
-            data[pixel_idx] =
-                ((color.r() as u32 * src_a + data[pixel_idx] as u32 * inv_a) / 255) as u8;
-            data[pixel_idx + 1] =
-                ((color.g() as u32 * src_a + data[pixel_idx + 1] as u32 * inv_a) / 255) as u8;
-            data[pixel_idx + 2] =
-                ((color.b() as u32 * src_a + data[pixel_idx + 2] as u32 * inv_a) / 255) as u8;
+            data[pixel_idx] = ((color.r() as u32 * src_a + data[pixel_idx] as u32 * inv_a) / 255) as u8;
+            data[pixel_idx + 1] = ((color.g() as u32 * src_a + data[pixel_idx + 1] as u32 * inv_a) / 255) as u8;
+            data[pixel_idx + 2] = ((color.b() as u32 * src_a + data[pixel_idx + 2] as u32 * inv_a) / 255) as u8;
             data[pixel_idx + 3] = (src_a + (data[pixel_idx + 3] as u32 * inv_a) / 255) as u8;
         }
     }

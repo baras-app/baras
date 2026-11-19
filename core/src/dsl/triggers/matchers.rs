@@ -20,12 +20,7 @@ pub trait EntitySelectorExt {
     /// For `Name` selectors, resolution priority is:
     /// 1. Roster alias match (if entities provided and name matches a roster entry)
     /// 2. Direct name match (case-insensitive)
-    fn matches_with_roster(
-        &self,
-        entities: &[EntityDefinition],
-        npc_id: i64,
-        entity_name: Option<&str>,
-    ) -> bool;
+    fn matches_with_roster(&self, entities: &[EntityDefinition], npc_id: i64, entity_name: Option<&str>) -> bool;
 
     /// Check if this selector matches by NPC ID only (ignores roster and name).
     fn matches_npc_id(&self, npc_id: i64) -> bool;
@@ -38,25 +33,16 @@ pub trait EntitySelectorExt {
 }
 
 impl EntitySelectorExt for EntitySelector {
-    fn matches_with_roster(
-        &self,
-        entities: &[EntityDefinition],
-        npc_id: i64,
-        entity_name: Option<&str>,
-    ) -> bool {
+    fn matches_with_roster(&self, entities: &[EntityDefinition], npc_id: i64, entity_name: Option<&str>) -> bool {
         match self {
             Self::Id(expected_id) => *expected_id == npc_id,
             Self::Name(name) => {
                 // Priority 1: Try roster alias lookup
-                if let Some(entity_def) =
-                    entities.iter().find(|e| e.name.eq_ignore_ascii_case(name))
-                {
+                if let Some(entity_def) = entities.iter().find(|e| e.name.eq_ignore_ascii_case(name)) {
                     return entity_def.ids.contains(&npc_id);
                 }
                 // Priority 2: Fall back to name matching
-                entity_name
-                    .map(|n| n.eq_ignore_ascii_case(name))
-                    .unwrap_or(false)
+                entity_name.map(|n| n.eq_ignore_ascii_case(name)).unwrap_or(false)
             }
         }
     }
@@ -86,12 +72,7 @@ impl EntitySelectorExt for EntitySelector {
 /// Extension trait for slices of EntitySelector.
 /// Provides OR-matching: any selector matching means success.
 impl EntitySelectorExt for [EntitySelector] {
-    fn matches_with_roster(
-        &self,
-        entities: &[EntityDefinition],
-        npc_id: i64,
-        entity_name: Option<&str>,
-    ) -> bool {
+    fn matches_with_roster(&self, entities: &[EntityDefinition], npc_id: i64, entity_name: Option<&str>) -> bool {
         self.iter()
             .any(|s| s.matches_with_roster(entities, npc_id, entity_name))
     }
@@ -174,10 +155,7 @@ mod tests {
 
     #[test]
     fn entity_selector_slice_or_matching() {
-        let selectors = vec![
-            EntitySelector::Id(1001),
-            EntitySelector::Name("Boss".to_string()),
-        ];
+        let selectors = vec![EntitySelector::Id(1001), EntitySelector::Name("Boss".to_string())];
         // Matches by ID
         assert!(selectors.as_slice().matches_npc_id(1001));
         assert!(!selectors.as_slice().matches_npc_id(9999));
@@ -188,10 +166,7 @@ mod tests {
 
     #[test]
     fn effect_selector_from_input() {
-        assert_eq!(
-            EffectSelector::from_input("12345"),
-            EffectSelector::Id(12345)
-        );
+        assert_eq!(EffectSelector::from_input("12345"), EffectSelector::Id(12345));
         assert_eq!(
             EffectSelector::from_input("Burn"),
             EffectSelector::Name("Burn".to_string())
@@ -200,10 +175,7 @@ mod tests {
 
     #[test]
     fn ability_selector_from_input() {
-        assert_eq!(
-            AbilitySelector::from_input("12345"),
-            AbilitySelector::Id(12345)
-        );
+        assert_eq!(AbilitySelector::from_input("12345"), AbilitySelector::Id(12345));
         assert_eq!(
             AbilitySelector::from_input("Force Lightning"),
             AbilitySelector::Name("Force Lightning".to_string())

@@ -71,11 +71,9 @@ async fn try_invoke(cmd: &str, args: JsValue) -> Result<JsValue, String> {
 
     // Get the invoke function from Tauri
     let window = web_sys::window().ok_or("No window")?;
-    let tauri = js_sys::Reflect::get(&window, &JsValue::from_str("__TAURI__"))
-        .map_err(|_| "No __TAURI__")?;
+    let tauri = js_sys::Reflect::get(&window, &JsValue::from_str("__TAURI__")).map_err(|_| "No __TAURI__")?;
     let core = js_sys::Reflect::get(&tauri, &JsValue::from_str("core")).map_err(|_| "No core")?;
-    let invoke_fn =
-        js_sys::Reflect::get(&core, &JsValue::from_str("invoke")).map_err(|_| "No invoke")?;
+    let invoke_fn = js_sys::Reflect::get(&core, &JsValue::from_str("invoke")).map_err(|_| "No invoke")?;
     let invoke_fn: js_sys::Function = invoke_fn.dyn_into().map_err(|_| "invoke not a function")?;
 
     // Call invoke and get the promise
@@ -564,8 +562,7 @@ pub async fn open_url(url: &str) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Get encounter history summaries
-pub async fn get_encounter_history()
--> Option<Vec<crate::components::encounter_types::EncounterSummary>> {
+pub async fn get_encounter_history() -> Option<Vec<crate::components::encounter_types::EncounterSummary>> {
     let result = invoke("get_encounter_history", JsValue::NULL).await;
     from_js(result)
 }
@@ -614,8 +611,16 @@ pub async fn save_character(
     previous_key: Option<&str>,
 ) -> Result<String, String> {
     let obj = js_sys::Object::new();
-    js_set(&obj, "record", &serde_wasm_bindgen::to_value(record).map_err(|e| e.to_string())?);
-    js_set(&obj, "previousKey", &previous_key.map_or(JsValue::NULL, JsValue::from_str));
+    js_set(
+        &obj,
+        "record",
+        &serde_wasm_bindgen::to_value(record).map_err(|e| e.to_string())?,
+    );
+    js_set(
+        &obj,
+        "previousKey",
+        &previous_key.map_or(JsValue::NULL, JsValue::from_str),
+    );
     let result = try_invoke("save_character", obj.into()).await?;
     from_js(result).ok_or_else(|| "Failed to parse response".to_string())
 }
@@ -642,7 +647,11 @@ pub async fn set_lockout_reset_hour(hour: u8) -> Result<bool, String> {
 pub async fn add_manual_lock(key: &str, lock: &baras_types::characters::ManualLock) -> Result<bool, String> {
     let obj = js_sys::Object::new();
     js_set(&obj, "key", &JsValue::from_str(key));
-    js_set(&obj, "lock", &serde_wasm_bindgen::to_value(lock).map_err(|e| e.to_string())?);
+    js_set(
+        &obj,
+        "lock",
+        &serde_wasm_bindgen::to_value(lock).map_err(|e| e.to_string())?,
+    );
     let result = try_invoke("add_manual_lock", obj.into()).await?;
     from_js(result).ok_or_else(|| "Failed to parse response".to_string())
 }
@@ -668,7 +677,11 @@ pub async fn set_log_favorite(filename: &str, favorite: bool) -> Result<bool, St
 pub async fn set_log_meta(filename: &str, tags: &[String], note: &str) -> Result<bool, String> {
     let obj = js_sys::Object::new();
     js_set(&obj, "filename", &JsValue::from_str(filename));
-    js_set(&obj, "tags", &serde_wasm_bindgen::to_value(tags).map_err(|e| e.to_string())?);
+    js_set(
+        &obj,
+        "tags",
+        &serde_wasm_bindgen::to_value(tags).map_err(|e| e.to_string())?,
+    );
     js_set(&obj, "note", &JsValue::from_str(note));
     let result = try_invoke("set_log_meta", obj.into()).await?;
     from_js(result).ok_or_else(|| "Failed to parse response".to_string())
@@ -758,7 +771,11 @@ pub async fn set_run_meta(filename: &str, start_ms: i64, meta: &baras_types::his
     let obj = js_sys::Object::new();
     js_set(&obj, "filename", &JsValue::from_str(filename));
     js_set(&obj, "startMs", &JsValue::from_f64(start_ms as f64));
-    js_set(&obj, "meta", &serde_wasm_bindgen::to_value(meta).unwrap_or(JsValue::NULL));
+    js_set(
+        &obj,
+        "meta",
+        &serde_wasm_bindgen::to_value(meta).unwrap_or(JsValue::NULL),
+    );
     let result = try_invoke("set_run_meta", obj.into()).await?;
     from_js(result).ok_or_else(|| "Failed to parse response".to_string())
 }
@@ -776,7 +793,11 @@ pub async fn get_boss_pulls(
     let obj = js_sys::Object::new();
     js_set(&obj, "operation", &JsValue::from_str(operation));
     js_set(&obj, "boss", &JsValue::from_str(boss));
-    js_set(&obj, "filter", &serde_wasm_bindgen::to_value(filter).unwrap_or(JsValue::NULL));
+    js_set(
+        &obj,
+        "filter",
+        &serde_wasm_bindgen::to_value(filter).unwrap_or(JsValue::NULL),
+    );
     from_js(invoke("get_boss_pulls", obj.into()).await)
 }
 
@@ -832,11 +853,7 @@ pub async fn update_encounter_item(
 }
 
 /// Bulk-set roles (visibility) for all timers of a boss
-pub async fn set_all_timer_roles(
-    boss_id: &str,
-    file_path: &str,
-    roles: &[String],
-) -> Result<(), String> {
+pub async fn set_all_timer_roles(boss_id: &str, file_path: &str, roles: &[String]) -> Result<(), String> {
     let obj = js_sys::Object::new();
     js_set(&obj, "bossId", &JsValue::from_str(boss_id));
     js_set(&obj, "filePath", &JsValue::from_str(file_path));
@@ -912,10 +929,7 @@ pub async fn create_area(area: &NewAreaRequest) -> Result<String, String> {
 use crate::types::{ExportResult, ImportPreview};
 
 /// Export encounter definition(s) — returns TOML content and whether source is bundled
-pub async fn export_encounter_toml(
-    boss_id: Option<&str>,
-    file_path: &str,
-) -> Result<ExportResult, String> {
+pub async fn export_encounter_toml(boss_id: Option<&str>, file_path: &str) -> Result<ExportResult, String> {
     let obj = js_sys::Object::new();
     match boss_id {
         Some(id) => js_set(&obj, "bossId", &JsValue::from_str(id)),
@@ -951,10 +965,7 @@ pub async fn preview_import_encounter(
 }
 
 /// Execute an import (merge into target area)
-pub async fn import_encounter_toml(
-    toml_content: &str,
-    target_file_path: Option<&str>,
-) -> Result<(), String> {
+pub async fn import_encounter_toml(toml_content: &str, target_file_path: Option<&str>) -> Result<(), String> {
     let obj = js_sys::Object::new();
     js_set(&obj, "tomlContent", &JsValue::from_str(toml_content));
     match target_file_path {
@@ -1008,11 +1019,7 @@ pub async fn read_import_file(path: &str) -> Result<String, String> {
 }
 
 /// Update boss notes
-pub async fn update_boss_notes(
-    boss_id: &str,
-    file_path: &str,
-    notes: Option<String>,
-) -> Result<(), String> {
+pub async fn update_boss_notes(boss_id: &str, file_path: &str, notes: Option<String>) -> Result<(), String> {
     let obj = js_sys::Object::new();
     js_set(&obj, "bossId", &JsValue::from_str(boss_id));
     js_set(&obj, "filePath", &JsValue::from_str(file_path));
@@ -1025,11 +1032,7 @@ pub async fn update_boss_notes(
 }
 
 /// Update a boss definition's enabled state
-pub async fn update_boss_enabled(
-    boss_id: &str,
-    file_path: &str,
-    enabled: bool,
-) -> Result<(), String> {
+pub async fn update_boss_enabled(boss_id: &str, file_path: &str, enabled: bool) -> Result<(), String> {
     let obj = js_sys::Object::new();
     js_set(&obj, "bossId", &JsValue::from_str(boss_id));
     js_set(&obj, "filePath", &JsValue::from_str(file_path));
@@ -1039,11 +1042,7 @@ pub async fn update_boss_enabled(
 }
 
 /// Update a boss definition's is_final_boss flag
-pub async fn update_boss_is_final_boss(
-    boss_id: &str,
-    file_path: &str,
-    is_final_boss: bool,
-) -> Result<(), String> {
+pub async fn update_boss_is_final_boss(boss_id: &str, file_path: &str, is_final_boss: bool) -> Result<(), String> {
     let obj = js_sys::Object::new();
     js_set(&obj, "bossId", &JsValue::from_str(boss_id));
     js_set(&obj, "filePath", &JsValue::from_str(file_path));
@@ -1117,21 +1116,13 @@ pub async fn export_effects_toml(effect_id: Option<&str>) -> Result<String, Stri
 
 /// Preview effects import — parse TOML and diff against existing
 pub async fn preview_import_effects(toml_content: &str) -> Result<EffectImportPreview, String> {
-    let result = try_invoke(
-        "preview_import_effects",
-        build_args("tomlContent", &toml_content),
-    )
-    .await?;
+    let result = try_invoke("preview_import_effects", build_args("tomlContent", &toml_content)).await?;
     from_js(result).ok_or_else(|| "Failed to parse import preview".to_string())
 }
 
 /// Import effects from TOML content, merging into user file
 pub async fn import_effects_toml(toml_content: &str) -> Result<(), String> {
-    try_invoke(
-        "import_effects_toml",
-        build_args("tomlContent", &toml_content),
-    )
-    .await?;
+    try_invoke("import_effects_toml", build_args("tomlContent", &toml_content)).await?;
     Ok(())
 }
 
@@ -1294,13 +1285,11 @@ pub async fn install_update() -> Result<(), String> {
 
 // Re-export query types from shared types crate
 pub use baras_types::{
-    AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch,
-    CombatLogRow, CombatLogSortColumn, DamageTakenSummary, DataTab, DeathRecap,
-    DeathRecapEventKind, EffectChartData, EffectWindow,
-    EffectUptimeCell, EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries, GroupedEntityNames, HpPoint,
-    NpcHealthRow, NpcSpawn,
-    PhaseSegment, PlayerDeath, PvpFaction, RaidOverviewRow, RotationAnalysis,
-    SortDirection, TimeRange, TimeSeriesPoint,
+    AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow,
+    CombatLogSortColumn, DamageTakenSummary, DataTab, DeathRecap, DeathRecapEventKind, EffectChartData,
+    EffectUptimeCell, EffectWindow, EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries,
+    GroupedEntityNames, HpPoint, NpcHealthRow, NpcSpawn, PhaseSegment, PlayerDeath, PvpFaction, RaidOverviewRow,
+    RotationAnalysis, SortDirection, TimeRange, TimeSeriesPoint,
 };
 
 /// Query ability breakdown for an encounter and data tab.
@@ -1411,10 +1400,7 @@ pub async fn query_raid_overview(
 }
 
 /// Query final health state of all NPCs in an encounter.
-pub async fn query_npc_health(
-    encounter_idx: Option<u32>,
-    time_range: Option<&TimeRange>,
-) -> Option<Vec<NpcHealthRow>> {
+pub async fn query_npc_health(encounter_idx: Option<u32>, time_range: Option<&TimeRange>) -> Option<Vec<NpcHealthRow>> {
     let obj = js_sys::Object::new();
     if let Some(idx) = encounter_idx {
         js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
@@ -1469,7 +1455,11 @@ pub async fn query_effect_uptime_by_target(
     duration_secs: f32,
 ) -> Option<Vec<EffectUptimeCell>> {
     let obj = js_sys::Object::new();
-    js_set(&obj, "encounterIdx", &encounter_idx.map_or(JsValue::NULL, |i| JsValue::from_f64(i as f64)));
+    js_set(
+        &obj,
+        "encounterIdx",
+        &encounter_idx.map_or(JsValue::NULL, |i| JsValue::from_f64(i as f64)),
+    );
     js_set(&obj, "source", &JsValue::from_str(source));
     let tr = time_range.and_then(|tr| serde_wasm_bindgen::to_value(tr).ok());
     js_set(&obj, "timeRange", &tr.unwrap_or(JsValue::NULL));
@@ -1485,9 +1475,17 @@ pub async fn query_group_over_time(
     time_range: Option<&TimeRange>,
 ) -> Option<GroupTimeSeries> {
     let obj = js_sys::Object::new();
-    js_set(&obj, "encounterIdx", &encounter_idx.map_or(JsValue::NULL, |i| JsValue::from_f64(i as f64)));
+    js_set(
+        &obj,
+        "encounterIdx",
+        &encounter_idx.map_or(JsValue::NULL, |i| JsValue::from_f64(i as f64)),
+    );
     js_set(&obj, "bucketMs", &JsValue::from_f64(bucket_ms as f64));
-    js_set(&obj, "metric", &serde_wasm_bindgen::to_value(&metric).unwrap_or(JsValue::NULL));
+    js_set(
+        &obj,
+        "metric",
+        &serde_wasm_bindgen::to_value(&metric).unwrap_or(JsValue::NULL),
+    );
     let tr = time_range.and_then(|tr| serde_wasm_bindgen::to_value(tr).ok());
     js_set(&obj, "timeRange", &tr.unwrap_or(JsValue::NULL));
     from_js(invoke_query("query_group_over_time", obj.into()).await)
@@ -1674,11 +1672,7 @@ pub async fn query_effect_uptime(
     } else {
         js_set(&obj, "timeRange", &JsValue::NULL);
     }
-    js_set(
-        &obj,
-        "durationSecs",
-        &JsValue::from_f64(duration_secs as f64),
-    );
+    js_set(&obj, "durationSecs", &JsValue::from_f64(duration_secs as f64));
     if let Some(sf) = source_filter {
         js_set(&obj, "sourceFilter", &JsValue::from_str(sf));
     } else {
@@ -1715,11 +1709,7 @@ pub async fn query_effect_windows(
     } else {
         js_set(&obj, "timeRange", &JsValue::NULL);
     }
-    js_set(
-        &obj,
-        "durationSecs",
-        &JsValue::from_f64(duration_secs as f64),
-    );
+    js_set(&obj, "durationSecs", &JsValue::from_f64(duration_secs as f64));
     if let Some(sf) = source_filter {
         js_set(&obj, "sourceFilter", &JsValue::from_str(sf));
     } else {
@@ -1985,11 +1975,7 @@ pub async fn query_rotation(
         js_set(&obj, "encounterIdx", &JsValue::NULL);
     }
     js_set(&obj, "sourceName", &JsValue::from_str(source_name));
-    js_set(
-        &obj,
-        "anchorAbilityId",
-        &JsValue::from_f64(anchor_ability_id as f64),
-    );
+    js_set(&obj, "anchorAbilityId", &JsValue::from_f64(anchor_ability_id as f64));
     if let Some(tr) = time_range {
         let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
         js_set(&obj, "timeRange", &tr_js);

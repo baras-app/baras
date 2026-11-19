@@ -3,10 +3,10 @@
 //! Provides SQL-based queries over encounter data using DataFusion.
 
 use baras_core::query::{
-    AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch,
-    CombatLogRow, CombatLogSortColumn, DamageTakenSummary, DataTab, EffectChartData, EffectWindow,
-    EffectUptimeCell, EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath, RaidOverviewRow,
-    RotationAnalysis, SortDirection, TimeRange, TimeSeriesPoint,
+    AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow,
+    CombatLogSortColumn, DamageTakenSummary, DataTab, EffectChartData, EffectUptimeCell, EffectWindow,
+    EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath,
+    RaidOverviewRow, RotationAnalysis, SortDirection, TimeRange, TimeSeriesPoint,
 };
 use tauri::State;
 
@@ -48,9 +48,7 @@ pub async fn query_entity_breakdown(
     encounter_idx: Option<u32>,
     time_range: Option<TimeRange>,
 ) -> Result<Vec<EntityBreakdown>, String> {
-    handle
-        .query_entity_breakdown(tab, encounter_idx, time_range)
-        .await
+    handle.query_entity_breakdown(tab, encounter_idx, time_range).await
 }
 
 /// Query raid overview - aggregated stats per player.
@@ -401,7 +399,5 @@ pub async fn query_ability_usage(
     encounter_idx: Option<u32>,
     time_range: Option<TimeRange>,
 ) -> Result<Vec<AbilityUsageRow>, String> {
-    handle
-        .query_ability_usage(source_name, encounter_idx, time_range)
-        .await
+    handle.query_ability_usage(source_name, encounter_idx, time_range).await
 }

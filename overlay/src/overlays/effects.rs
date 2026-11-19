@@ -9,7 +9,7 @@ use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
 use crate::utils::color_from_rgba;
-use crate::widgets::{colors, ProgressBar};
+use crate::widgets::{ProgressBar, colors};
 
 /// A single effect entry for display
 #[derive(Debug, Clone)]
@@ -77,10 +77,7 @@ pub struct EffectsOverlay {
 
 impl EffectsOverlay {
     /// Create a new effects overlay
-    pub fn new(
-        window_config: OverlayConfig,
-        config: TimerOverlayConfig,
-    ) -> Result<Self, PlatformError> {
+    pub fn new(window_config: OverlayConfig, config: TimerOverlayConfig) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
         frame.set_label("Effects Countdown");
 
@@ -96,7 +93,6 @@ impl EffectsOverlay {
     pub fn set_config(&mut self, config: TimerOverlayConfig) {
         self.config = config;
     }
-
 
     /// Update the data
     pub fn set_data(&mut self, data: EffectsData) {
@@ -126,9 +122,7 @@ impl EffectsOverlay {
         let max_display = self.config.max_display as usize;
         let num_entries = self.data.entries.iter().take(max_display).count();
         let content_height = if num_entries > 0 {
-            padding * 2.0
-                + num_entries as f32 * bar_height
-                + (num_entries - 1) as f32 * entry_spacing
+            padding * 2.0 + num_entries as f32 * bar_height + (num_entries - 1) as f32 * entry_spacing
         } else {
             0.0
         };

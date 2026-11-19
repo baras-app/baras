@@ -29,7 +29,11 @@ impl AlacrityBuffTracker {
         if let Some(buff) = ALACRITY_BUFFS.get(&effect_id) {
             self.active.insert(
                 effect_id,
-                ActiveAlacrityBuff { buff, stacks: charges.unwrap_or(1), last_update: timestamp },
+                ActiveAlacrityBuff {
+                    buff,
+                    stacks: charges.unwrap_or(1),
+                    last_update: timestamp,
+                },
             );
         }
     }
@@ -40,8 +44,14 @@ impl AlacrityBuffTracker {
             entry.last_update = timestamp;
         } else if let Some(buff) = ALACRITY_BUFFS.get(&effect_id) {
             // ModifyCharges without a prior apply (e.g. started tailing mid-buff)
-            self.active
-                .insert(effect_id, ActiveAlacrityBuff { buff, stacks: charges, last_update: timestamp });
+            self.active.insert(
+                effect_id,
+                ActiveAlacrityBuff {
+                    buff,
+                    stacks: charges,
+                    last_update: timestamp,
+                },
+            );
         }
     }
 
@@ -55,8 +65,7 @@ impl AlacrityBuffTracker {
 
     /// Drop buffs that outlived their base duration (missed remove event).
     pub fn prune_expired(&mut self, now: NaiveDateTime) {
-        self.active
-            .retain(|_, e| !Self::is_expired(e, now));
+        self.active.retain(|_, e| !Self::is_expired(e, now));
     }
 
     /// Total bonus alacrity in percent (e.g. 20.0 for +20%) from active buffs at `now`.
@@ -73,8 +82,7 @@ impl AlacrityBuffTracker {
     }
 
     fn is_expired(entry: &ActiveAlacrityBuff, now: NaiveDateTime) -> bool {
-        let elapsed_secs =
-            now.signed_duration_since(entry.last_update).num_milliseconds() as f32 / 1000.0;
+        let elapsed_secs = now.signed_duration_since(entry.last_update).num_milliseconds() as f32 / 1000.0;
         elapsed_secs > entry.buff.duration_secs
     }
 }
@@ -88,7 +96,10 @@ mod tests {
     const FOCAL_POINT: i64 = 3428431874228224; // 0.01/stack, 15s
 
     fn ts() -> NaiveDateTime {
-        chrono::NaiveDate::from_ymd_opt(2026, 1, 1).unwrap().and_hms_opt(12, 0, 0).unwrap()
+        chrono::NaiveDate::from_ymd_opt(2026, 1, 1)
+            .unwrap()
+            .and_hms_opt(12, 0, 0)
+            .unwrap()
     }
 
     fn assert_close(actual: f32, expected: f32) {

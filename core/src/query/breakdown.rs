@@ -15,11 +15,7 @@ const MISS_IDS: &[i64] = &[
 ];
 
 fn miss_ids_csv() -> String {
-    MISS_IDS
-        .iter()
-        .map(|id| id.to_string())
-        .collect::<Vec<_>>()
-        .join(",")
+    MISS_IDS.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(",")
 }
 
 impl EncounterQuery<'_> {
@@ -39,41 +35,33 @@ impl EncounterQuery<'_> {
         breakdown_mode: Option<&BreakdownMode>,
         duration_secs: Option<f32>,
     ) -> Result<Vec<AbilityBreakdown>, String> {
-        let mode = breakdown_mode
-            .copied()
-            .unwrap_or(BreakdownMode::ability_only());
+        let mode = breakdown_mode.copied().unwrap_or(BreakdownMode::ability_only());
         let value_col = tab.value_column();
         let is_outgoing = tab.is_outgoing();
         let is_damage_tab = tab == DataTab::Damage || tab == DataTab::DamageTaken;
 
         // For outgoing (Damage/Healing): filter/group by source, breakdown by target
         // For incoming (DamageTaken/HealingTaken): filter/group by target, breakdown by source
-        let (
-            entity_col,
-            entity_id_col,
-            entity_type_col,
-            breakdown_name_col,
-            breakdown_class_col,
-            breakdown_id_col,
-        ) = if is_outgoing {
-            (
-                "source_name",
-                "source_id",
-                "source_entity_type",
-                "target_name",
-                "target_class_id",
-                "target_id",
-            )
-        } else {
-            (
-                "target_name",
-                "target_id",
-                "target_entity_type",
-                "source_name",
-                "source_class_id",
-                "source_id",
-            )
-        };
+        let (entity_col, entity_id_col, entity_type_col, breakdown_name_col, breakdown_class_col, breakdown_id_col) =
+            if is_outgoing {
+                (
+                    "source_name",
+                    "source_id",
+                    "source_entity_type",
+                    "target_name",
+                    "target_class_id",
+                    "target_id",
+                )
+            } else {
+                (
+                    "target_name",
+                    "target_id",
+                    "target_entity_type",
+                    "source_name",
+                    "source_class_id",
+                    "source_id",
+                )
+            };
 
         // Instance id wins over name: it pins the query to one spawn.
         let entity_filter = match (entity_id, entity_name) {
@@ -85,10 +73,7 @@ impl EncounterQuery<'_> {
         // Build WHERE conditions
         // Damage tabs include miss events (defense_type_id matches avoidance types)
         let mut conditions = if is_damage_tab {
-            vec![format!(
-                "({value_col} > 0 OR defense_type_id IN ({}))",
-                miss_ids_csv()
-            )]
+            vec![format!("({value_col} > 0 OR defense_type_id IN ({}))", miss_ids_csv())]
         } else {
             vec![format!("{value_col} > 0")]
         };
@@ -163,17 +148,12 @@ impl EncounterQuery<'_> {
 
         // Per-target activation resolution via TargetSet events (Rust-side binary search).
         // Used when target breakdown is active for outgoing tabs with a specific entity.
-        let resolve_act_targets = mode.by_ability
-            && (mode.by_target_type || mode.by_target_instance)
-            && is_outgoing
-            && entity_name.is_some();
+        let resolve_act_targets =
+            mode.by_ability && (mode.by_target_type || mode.by_target_instance) && is_outgoing && entity_name.is_some();
 
         // Build activation count CTE (skip when resolving per-target in Rust)
         let (act_cte, act_join, act_select) = if mode.by_ability && !resolve_act_targets {
-            let mut act_conditions = vec![format!(
-                "effect_id = {}",
-                effect_id::ABILITYACTIVATE
-            )];
+            let mut act_conditions = vec![format!("effect_id = {}", effect_id::ABILITYACTIVATE)];
             if let Some(f) = &entity_filter {
                 act_conditions.push(f.clone());
             }
@@ -234,9 +214,7 @@ impl EncounterQuery<'_> {
 
         // For damage tabs, hit_count should only count actual hits (not misses)
         let hit_count_expr = if is_damage_tab {
-            format!(
-                "SUM(CASE WHEN {value_col} > 0 THEN 1 ELSE 0 END) as hit_count"
-            )
+            format!("SUM(CASE WHEN {value_col} > 0 THEN 1 ELSE 0 END) as hit_count")
         } else {
             "COUNT(*) as hit_count".to_string()
         };
@@ -379,11 +357,7 @@ impl EncounterQuery<'_> {
                     total_value: totals[i],
                     hit_count: hits[i],
                     crit_count: crits[i],
-                    crit_rate: if h > 0.0 {
-                        crits[i] as f64 / h * 100.0
-                    } else {
-                        0.0
-                    },
+                    crit_rate: if h > 0.0 { crits[i] as f64 / h * 100.0 } else { 0.0 },
                     max_hit: maxes[i],
                     avg_hit: if h > 0.0 { totals[i] / h } else { 0.0 },
                     miss_count: miss_counts[i],
@@ -404,39 +378,34 @@ impl EncounterQuery<'_> {
         // Resolve per-target activation counts from TargetSet timeline
         if resolve_act_targets
             && let Ok(act_map) = self
-                .resolve_activation_targets(
-                    entity_name.unwrap(),
-                    entity_col,
-                    time_range,
-                    tab.is_healing(),
-                )
+                .resolve_activation_targets(entity_name.unwrap(), entity_col, time_range, tab.is_healing())
                 .await
-            {
-                if mode.by_target_instance {
-                    // Instance mode: exact match on (ability_id, target_name, target_id)
-                    for result in &mut results {
-                        let target = result.target_name.as_deref().unwrap_or("");
-                        let tid = result.target_log_id.unwrap_or(0);
-                        result.activation_count = act_map
-                            .get(&(result.ability_id, target.to_string(), tid))
-                            .copied()
-                            .unwrap_or(0);
-                    }
-                } else {
-                    // Type mode: aggregate across all instances of the same target name
-                    let mut by_type: HashMap<(i64, String), i64> = HashMap::new();
-                    for ((aid, name, _tid), count) in &act_map {
-                        *by_type.entry((*aid, name.clone())).or_default() += count;
-                    }
-                    for result in &mut results {
-                        let target = result.target_name.as_deref().unwrap_or("");
-                        result.activation_count = by_type
-                            .get(&(result.ability_id, target.to_string()))
-                            .copied()
-                            .unwrap_or(0);
-                    }
+        {
+            if mode.by_target_instance {
+                // Instance mode: exact match on (ability_id, target_name, target_id)
+                for result in &mut results {
+                    let target = result.target_name.as_deref().unwrap_or("");
+                    let tid = result.target_log_id.unwrap_or(0);
+                    result.activation_count = act_map
+                        .get(&(result.ability_id, target.to_string(), tid))
+                        .copied()
+                        .unwrap_or(0);
+                }
+            } else {
+                // Type mode: aggregate across all instances of the same target name
+                let mut by_type: HashMap<(i64, String), i64> = HashMap::new();
+                for ((aid, name, _tid), count) in &act_map {
+                    *by_type.entry((*aid, name.clone())).or_default() += count;
+                }
+                for result in &mut results {
+                    let target = result.target_name.as_deref().unwrap_or("");
+                    result.activation_count = by_type
+                        .get(&(result.ability_id, target.to_string()))
+                        .copied()
+                        .unwrap_or(0);
                 }
             }
+        }
 
         // Append shield breakdown rows for healing tabs, then recalculate
         // percent_of_total so the denominator includes shield absorption.
@@ -445,24 +414,19 @@ impl EncounterQuery<'_> {
         {
             let is_incoming = tab == DataTab::HealingTaken;
             if let Ok(shields) = self
-                .query_shield_breakdown(
-                    entity_name,
-                    time_range,
-                    duration,
-                    is_incoming,
-                    mode,
-                )
+                .query_shield_breakdown(entity_name, time_range, duration, is_incoming, mode)
                 .await
-                && !shields.is_empty() {
-                    results.extend(shields);
-                    // Recalculate percent_of_total across all rows (heals + shields)
-                    let grand_total: f64 = results.iter().map(|r| r.total_value).sum();
-                    if grand_total > 0.0 {
-                        for r in &mut results {
-                            r.percent_of_total = r.total_value / grand_total * 100.0;
-                        }
+                && !shields.is_empty()
+            {
+                results.extend(shields);
+                // Recalculate percent_of_total across all rows (heals + shields)
+                let grand_total: f64 = results.iter().map(|r| r.total_value).sum();
+                if grand_total > 0.0 {
+                    for r in &mut results {
+                        r.percent_of_total = r.total_value / grand_total * 100.0;
                     }
                 }
+            }
         }
 
         Ok(results)
@@ -566,8 +530,7 @@ impl EncounterQuery<'_> {
                 let names = col_strings(batch, 1)?;
                 let class_ids = col_i64(batch, 2)?;
                 for i in 0..batch.num_rows() {
-                    map.entry(ids[i])
-                        .or_insert_with(|| (names[i].clone(), class_ids[i]));
+                    map.entry(ids[i]).or_insert_with(|| (names[i].clone(), class_ids[i]));
                 }
             }
             map
@@ -731,9 +694,7 @@ impl EncounterQuery<'_> {
                     }
                 };
 
-                *counts
-                    .entry((ability_id, target_name, target_id))
-                    .or_default() += 1;
+                *counts.entry((ability_id, target_name, target_id)).or_default() += 1;
             }
         }
 
@@ -882,10 +843,7 @@ impl EncounterQuery<'_> {
 
     /// Every source entity that acted during the range (ability activation or
     /// effect application), with damage + healing as the sort value.
-    async fn actor_roster(
-        &self,
-        time_range: Option<&TimeRange>,
-    ) -> Result<Vec<EntityBreakdown>, String> {
+    async fn actor_roster(&self, time_range: Option<&TimeRange>) -> Result<Vec<EntityBreakdown>, String> {
         let time_filter = time_range
             .map(|tr| format!("AND {}", tr.sql_filter()))
             .unwrap_or_default();
@@ -1015,7 +973,13 @@ impl EncounterQuery<'_> {
                 ))
                 .await?
                 .first()
-                .and_then(|b| if b.num_rows() > 0 { Some(col_i64(b, 0).ok()?[0]) } else { None })
+                .and_then(|b| {
+                    if b.num_rows() > 0 {
+                        Some(col_i64(b, 0).ok()?[0])
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or(0),
         };
 
@@ -1079,19 +1043,51 @@ impl EncounterQuery<'_> {
         let total_absorbed = absorbed_self + absorbed_given;
         Ok(DamageTakenSummary {
             internal_elemental_total: ie_total,
-            internal_elemental_pct: if total_damage > 0.0 { ie_total / total_damage * 100.0 } else { 0.0 },
+            internal_elemental_pct: if total_damage > 0.0 {
+                ie_total / total_damage * 100.0
+            } else {
+                0.0
+            },
             kinetic_energy_total: ke_total,
-            kinetic_energy_pct: if total_damage > 0.0 { ke_total / total_damage * 100.0 } else { 0.0 },
+            kinetic_energy_pct: if total_damage > 0.0 {
+                ke_total / total_damage * 100.0
+            } else {
+                0.0
+            },
             force_tech_total: ft_total,
-            force_tech_pct: if total_damage > 0.0 { ft_total / total_damage * 100.0 } else { 0.0 },
+            force_tech_pct: if total_damage > 0.0 {
+                ft_total / total_damage * 100.0
+            } else {
+                0.0
+            },
             melee_ranged_total: mr_total,
-            melee_ranged_pct: if total_damage > 0.0 { mr_total / total_damage * 100.0 } else { 0.0 },
-            avoided_pct: if total_attempts > 0.0 { avoided_count / total_attempts * 100.0 } else { 0.0 },
-            shielded_pct: if hit_count > 0.0 { shielded_count / hit_count * 100.0 } else { 0.0 },
+            melee_ranged_pct: if total_damage > 0.0 {
+                mr_total / total_damage * 100.0
+            } else {
+                0.0
+            },
+            avoided_pct: if total_attempts > 0.0 {
+                avoided_count / total_attempts * 100.0
+            } else {
+                0.0
+            },
+            shielded_pct: if hit_count > 0.0 {
+                shielded_count / hit_count * 100.0
+            } else {
+                0.0
+            },
             absorbed_self_total: absorbed_self,
-            absorbed_self_pct: if total_damage + total_absorbed > 0.0 { absorbed_self / (total_damage + total_absorbed) * 100.0 } else { 0.0 },
+            absorbed_self_pct: if total_damage + total_absorbed > 0.0 {
+                absorbed_self / (total_damage + total_absorbed) * 100.0
+            } else {
+                0.0
+            },
             absorbed_given_total: absorbed_given,
-            absorbed_given_pct: if total_damage + total_absorbed > 0.0 { absorbed_given / (total_damage + total_absorbed) * 100.0 } else { 0.0 },
+            absorbed_given_pct: if total_damage + total_absorbed > 0.0 {
+                absorbed_given / (total_damage + total_absorbed) * 100.0
+            } else {
+                0.0
+            },
         })
     }
 }

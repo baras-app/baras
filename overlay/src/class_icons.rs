@@ -34,28 +34,13 @@ impl Role {
 // Embed all class icons at compile time
 static ICON_DATA: &[(&str, &[u8])] = &[
     ("assassin", include_bytes!("../assets/class/assassin.png")),
-    (
-        "bountyhunter",
-        include_bytes!("../assets/class/bountyhunter.png"),
-    ),
+    ("bountyhunter", include_bytes!("../assets/class/bountyhunter.png")),
     ("commando", include_bytes!("../assets/class/commando.png")),
     ("guardian", include_bytes!("../assets/class/guardian.png")),
-    (
-        "gunslinger",
-        include_bytes!("../assets/class/gunslinger.png"),
-    ),
-    (
-        "jediconsular",
-        include_bytes!("../assets/class/jediconsular.png"),
-    ),
-    (
-        "jediknight",
-        include_bytes!("../assets/class/jediknight.png"),
-    ),
-    (
-        "juggernaut",
-        include_bytes!("../assets/class/juggernaut.png"),
-    ),
+    ("gunslinger", include_bytes!("../assets/class/gunslinger.png")),
+    ("jediconsular", include_bytes!("../assets/class/jediconsular.png")),
+    ("jediknight", include_bytes!("../assets/class/jediknight.png")),
+    ("juggernaut", include_bytes!("../assets/class/juggernaut.png")),
     ("marauder", include_bytes!("../assets/class/marauder.png")),
     ("mercenary", include_bytes!("../assets/class/mercenary.png")),
     ("operative", include_bytes!("../assets/class/operative.png")),
@@ -64,14 +49,8 @@ static ICON_DATA: &[(&str, &[u8])] = &[
     ("scoundrel", include_bytes!("../assets/class/scoundrel.png")),
     ("sentinel", include_bytes!("../assets/class/sentinel.png")),
     ("shadow", include_bytes!("../assets/class/shadow.png")),
-    (
-        "sithsorcerer",
-        include_bytes!("../assets/class/sithsorcerer.png"),
-    ),
-    (
-        "sithwarrior",
-        include_bytes!("../assets/class/sithwarrior.png"),
-    ),
+    ("sithsorcerer", include_bytes!("../assets/class/sithsorcerer.png")),
+    ("sithwarrior", include_bytes!("../assets/class/sithwarrior.png")),
     ("smuggler", include_bytes!("../assets/class/smuggler.png")),
     ("sniper", include_bytes!("../assets/class/sniper.png")),
     ("sorcerer", include_bytes!("../assets/class/sorcerer.png")),
@@ -84,22 +63,34 @@ static DECODED_ICONS: OnceLock<HashMap<String, ClassIcon>> = OnceLock::new();
 
 // Embed discipline icons at compile time
 static DISCIPLINE_ICON_DATA: &[(&str, &[u8])] = &[
-    ("advanced-prototype", include_bytes!("../assets/discipline/advanced-prototype.png")),
+    (
+        "advanced-prototype",
+        include_bytes!("../assets/discipline/advanced-prototype.png"),
+    ),
     ("annihilation", include_bytes!("../assets/discipline/annihilation.png")),
     ("arsenal", include_bytes!("../assets/discipline/arsenal.png")),
-    ("assault-specialist", include_bytes!("../assets/discipline/assault-specialist.png")),
+    (
+        "assault-specialist",
+        include_bytes!("../assets/discipline/assault-specialist.png"),
+    ),
     ("balance", include_bytes!("../assets/discipline/balance.png")),
     ("bodyguard", include_bytes!("../assets/discipline/bodyguard.png")),
     ("carnage", include_bytes!("../assets/discipline/carnage.png")),
     ("combat", include_bytes!("../assets/discipline/combat.png")),
     ("combat-medic", include_bytes!("../assets/discipline/combat-medic.png")),
     ("concealment", include_bytes!("../assets/discipline/concealment.png")),
-    ("concentration", include_bytes!("../assets/discipline/concentration.png")),
+    (
+        "concentration",
+        include_bytes!("../assets/discipline/concentration.png"),
+    ),
     ("corruption", include_bytes!("../assets/discipline/corruption.png")),
     ("darkness", include_bytes!("../assets/discipline/darkness.png")),
     ("deception", include_bytes!("../assets/discipline/deception.png")),
     ("defense", include_bytes!("../assets/discipline/defense.png")),
-    ("dirty-fighting", include_bytes!("../assets/discipline/dirty-fighting.png")),
+    (
+        "dirty-fighting",
+        include_bytes!("../assets/discipline/dirty-fighting.png"),
+    ),
     ("engineering", include_bytes!("../assets/discipline/engineering.png")),
     ("focus", include_bytes!("../assets/discipline/focus.png")),
     ("fury", include_bytes!("../assets/discipline/fury.png")),
@@ -107,8 +98,14 @@ static DISCIPLINE_ICON_DATA: &[(&str, &[u8])] = &[
     ("hatred", include_bytes!("../assets/discipline/hatred.png")),
     ("immortal", include_bytes!("../assets/discipline/immortal.png")),
     ("infiltration", include_bytes!("../assets/discipline/infiltration.png")),
-    ("innovative-ordnance", include_bytes!("../assets/discipline/innovative-ordnance.png")),
-    ("kinetic-combat", include_bytes!("../assets/discipline/kinetic-combat.png")),
+    (
+        "innovative-ordnance",
+        include_bytes!("../assets/discipline/innovative-ordnance.png"),
+    ),
+    (
+        "kinetic-combat",
+        include_bytes!("../assets/discipline/kinetic-combat.png"),
+    ),
     ("lethality", include_bytes!("../assets/discipline/lethality.png")),
     ("lightning", include_bytes!("../assets/discipline/lightning.png")),
     ("madness", include_bytes!("../assets/discipline/madness.png")),
@@ -124,7 +121,10 @@ static DISCIPLINE_ICON_DATA: &[(&str, &[u8])] = &[
     ("seer", include_bytes!("../assets/discipline/seer.png")),
     ("serenity", include_bytes!("../assets/discipline/serenity.png")),
     ("sharpshooter", include_bytes!("../assets/discipline/sharpshooter.png")),
-    ("shield-specialist", include_bytes!("../assets/discipline/shield-specialist.png")),
+    (
+        "shield-specialist",
+        include_bytes!("../assets/discipline/shield-specialist.png"),
+    ),
     ("shield-tech", include_bytes!("../assets/discipline/shield-tech.png")),
     ("tactics", include_bytes!("../assets/discipline/tactics.png")),
     ("telekinetics", include_bytes!("../assets/discipline/telekinetics.png")),
@@ -249,7 +249,11 @@ fn get_discipline_icons() -> &'static HashMap<String, ClassIcon> {
 pub fn get_discipline_icon(name: &str) -> Option<ClassIcon> {
     let key = name.strip_suffix(".png").unwrap_or(name);
     let base = get_discipline_icons().get(key)?;
-    Some(ClassIcon { rgba: base.rgba.clone(), width: base.width, height: base.height })
+    Some(ClassIcon {
+        rgba: base.rgba.clone(),
+        width: base.width,
+        height: base.height,
+    })
 }
 
 /// Get a class icon with role-based tinting applied
@@ -417,9 +421,5 @@ fn decode_png(data: &[u8]) -> Option<ClassIcon> {
         png::ColorType::Indexed => return None,
     };
 
-    Some(ClassIcon {
-        rgba,
-        width,
-        height,
-    })
+    Some(ClassIcon { rgba, width, height })
 }

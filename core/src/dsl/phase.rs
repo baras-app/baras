@@ -4,9 +4,9 @@
 
 use serde::{Deserialize, Serialize};
 
+use super::CounterCondition;
 use super::condition::Condition;
 use super::triggers::Trigger;
-use super::CounterCondition;
 use crate::game_data::Difficulty;
 
 // Re-export Trigger as PhaseTrigger for backward compatibility during migration
@@ -70,9 +70,7 @@ impl PhaseDefinition {
     pub fn is_active_for(&self, difficulty: Option<Difficulty>) -> bool {
         self.enabled
             && (self.difficulties.is_empty()
-                || difficulty.is_some_and(|d| {
-                    self.difficulties.iter().any(|key| d.matches_config_key(key))
-                }))
+                || difficulty.is_some_and(|d| self.difficulties.iter().any(|key| d.matches_config_key(key))))
     }
 }
 

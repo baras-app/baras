@@ -344,7 +344,9 @@ impl EncounterQuery<'_> {
             GroupMetric::DamageTaken => ("target", "dmg_amount", ""),
             GroupMetric::Threat => ("source", "threat", ""), // see floored_threat
         };
-        let tr_filter = time_range.map(|tr| format!("AND {}", tr.sql_filter())).unwrap_or_default();
+        let tr_filter = time_range
+            .map(|tr| format!("AND {}", tr.sql_filter()))
+            .unwrap_or_default();
 
         let bounds = self
             .sql(&format!(
@@ -395,7 +397,11 @@ impl EncounterQuery<'_> {
             };
             series[idx].1[slot] += value;
         }
-        Ok(GroupTimeSeries { start_secs: min_bucket as f64 * bucket_secs, bucket_secs, series })
+        Ok(GroupTimeSeries {
+            start_secs: min_bucket as f64 * bucket_secs,
+            bucket_secs,
+            series,
+        })
     }
 
     /// Threat with each player's running total floored at 0, so a drop only
@@ -404,7 +410,11 @@ impl EncounterQuery<'_> {
     /// totals undercount and clip the full drop of a cloak-out or threat wipe
     /// to a small dip. Returns
     /// (player, bucket, threat actually gained or lost) per event, in log order.
-    pub(super) async fn floored_threat(&self, bucket_secs: f64, tr_filter: &str) -> Result<Vec<(String, i64, f64)>, String> {
+    pub(super) async fn floored_threat(
+        &self,
+        bucket_secs: f64,
+        tr_filter: &str,
+    ) -> Result<Vec<(String, i64, f64)>, String> {
         let batches = self
             .sql(&format!(
                 "SELECT source_name,

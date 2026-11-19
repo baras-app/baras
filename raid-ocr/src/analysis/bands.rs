@@ -93,9 +93,7 @@ fn luma(r: u8, g: u8, b: u8) -> u8 {
 /// green sits near half of red where the bar's is far below, so capping green
 /// separates them.
 fn is_bar_red(r: u8, g: u8, b: u8) -> bool {
-    (r as i32 - g as i32) > RED_DOMINANCE
-        && (r as i32 - b as i32) > RED_DOMINANCE
-        && (g as u32) * 2 < r as u32
+    (r as i32 - g as i32) > RED_DOMINANCE && (r as i32 - b as i32) > RED_DOMINANCE && (g as u32) * 2 < r as u32
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -256,8 +254,7 @@ fn ink_threshold(slot: &CapturedImage) -> u8 {
 /// Red pixels never count: a raid marker painted over the name area is not text.
 fn ink_rows(slot: &CapturedImage, bottom: u32) -> Vec<f32> {
     let ink_luma = ink_threshold(slot);
-    let name_width =
-        ((slot.width as f32 * NAME_SCAN_FRACTION).round() as u32).clamp(1, slot.width.max(1));
+    let name_width = ((slot.width as f32 * NAME_SCAN_FRACTION).round() as u32).clamp(1, slot.width.max(1));
 
     (0..bottom.min(slot.height))
         .map(|y| {
@@ -295,8 +292,7 @@ fn ink_rows(slot: &CapturedImage, bottom: u32) -> Vec<f32> {
 /// A band with no qualifying text keeps the full scan area, so recognition
 /// still gets its chance on anything these measures cannot see.
 pub(super) fn name_text_span(slot: &CapturedImage, band: &Band) -> (u32, u32) {
-    let scan_width =
-        ((slot.width as f32 * NAME_SCAN_FRACTION).round() as u32).clamp(1, slot.width.max(1));
+    let scan_width = ((slot.width as f32 * NAME_SCAN_FRACTION).round() as u32).clamp(1, slot.width.max(1));
     let top = band.top.min(slot.height);
     let bottom = (band.top + band.height).min(slot.height);
     let ink_floor = ink_threshold(slot);
@@ -395,8 +391,7 @@ pub(super) fn name_text_span(slot: &CapturedImage, band: &Band) -> (u32, u32) {
 fn anchor_ink_rows(slot: &CapturedImage, bottom: u32) -> Vec<f32> {
     let ink_luma = ink_threshold(slot);
     let bottom = bottom.min(slot.height);
-    let width =
-        ((slot.width as f32 * NAME_ANCHOR_FRACTION).round() as u32).clamp(1, slot.width.max(1));
+    let width = ((slot.width as f32 * NAME_ANCHOR_FRACTION).round() as u32).clamp(1, slot.width.max(1));
 
     let lit = |x: u32, y: u32| {
         slot.pixel(x, y)
@@ -435,8 +430,7 @@ fn last_ink_run(rows: &[f32]) -> Option<(u32, u32)> {
             }
         }
     }
-    let (mut top, mut height) =
-        found.or_else(|| end.and_then(|end| (end >= MIN_NAME_HEIGHT).then_some((0, end))))?;
+    let (mut top, mut height) = found.or_else(|| end.and_then(|end| (end >= MIN_NAME_HEIGHT).then_some((0, end))))?;
 
     // Glyph caps over a selection highlight can push a row past
     // MAX_INK_FRACTION and clip the band's top. Absorb a few such adjacent
@@ -460,8 +454,8 @@ fn last_ink_run(rows: &[f32]) -> Option<(u32, u32)> {
 /// band; the full-width profile remains as fallback for a name whose leftmost
 /// characters were unreadable.
 fn name_band(slot: &CapturedImage, bar_top: u32) -> Option<Band> {
-    let (top, height) = last_ink_run(&anchor_ink_rows(slot, bar_top))
-        .or_else(|| last_ink_run(&ink_rows(slot, bar_top)))?;
+    let (top, height) =
+        last_ink_run(&anchor_ink_rows(slot, bar_top)).or_else(|| last_ink_run(&ink_rows(slot, bar_top)))?;
 
     Some(Band {
         top,
@@ -505,11 +499,7 @@ pub fn slot_bands(slot: &CapturedImage, bar: Option<BarPosition>, inferred: bool
 ///
 /// Bottoms, not tops: icons above the text stretch a band upward, never down,
 /// so the bottom is the edge the slots agree on.
-fn name_consensus(
-    per_slot: &[Vec<Band>],
-    bars: &[Option<BarPosition>],
-    inferred: &[bool],
-) -> Option<(u32, u32)> {
+fn name_consensus(per_slot: &[Vec<Band>], bars: &[Option<BarPosition>], inferred: &[bool]) -> Option<(u32, u32)> {
     let found: Vec<(u32, u32)> = per_slot
         .iter()
         .zip(bars)
@@ -544,11 +534,7 @@ fn name_consensus(
 /// consensus. A borrowed bar is a hint, not an anchor: the gap to it means
 /// nothing, so an inferred slot's own ink always wins, and such a slot only
 /// inherits a position when it found no name at all.
-pub fn harmonize_names(
-    per_slot: &mut [Vec<Band>],
-    bars: &[Option<BarPosition>],
-    inferred: &[bool],
-) {
+pub fn harmonize_names(per_slot: &mut [Vec<Band>], bars: &[Option<BarPosition>], inferred: &[bool]) {
     const KIND: BandKind = BandKind::Name;
 
     let Some((consensus_height, consensus_gap)) = name_consensus(per_slot, bars, inferred) else {
@@ -562,8 +548,7 @@ pub fn harmonize_names(
         if let Some(band) = bands.iter_mut().find(|b| b.kind == KIND) {
             let bottom = band.top + band.height;
             let too_tall = band.height.abs_diff(consensus_height) > tolerance;
-            let displaced =
-                !inferred && bar_top.saturating_sub(bottom).abs_diff(consensus_gap) > tolerance;
+            let displaced = !inferred && bar_top.saturating_sub(bottom).abs_diff(consensus_gap) > tolerance;
 
             // Small variation is row-profile noise and the padding absorbs it. A
             // band that only grew upward keeps its own bottom edge.
@@ -615,19 +600,10 @@ mod tests {
         for _ in 0..(width * height) {
             rgba.extend_from_slice(&[30, 40, 60, 255]);
         }
-        CapturedImage {
-            width,
-            height,
-            rgba,
-        }
+        CapturedImage { width, height, rgba }
     }
 
-    fn paint(
-        image: &mut CapturedImage,
-        x: std::ops::Range<u32>,
-        y: std::ops::Range<u32>,
-        rgb: (u8, u8, u8),
-    ) {
+    fn paint(image: &mut CapturedImage, x: std::ops::Range<u32>, y: std::ops::Range<u32>, rgb: (u8, u8, u8)) {
         for y in y {
             for x in x.clone() {
                 let i = ((y * image.width + x) * 4) as usize;
@@ -803,16 +779,10 @@ mod tests {
         let bar = detect_health_bar(&slot).expect("health bar should be found");
         let bands = slot_bands(&slot, Some(bar), false);
 
-        let health = bands
-            .iter()
-            .find(|b| b.kind == BandKind::Health)
-            .expect("health band");
+        let health = bands.iter().find(|b| b.kind == BandKind::Health).expect("health band");
         assert_eq!((health.top, health.height), (22, 10));
 
-        let name = bands
-            .iter()
-            .find(|b| b.kind == BandKind::Name)
-            .expect("name band");
+        let name = bands.iter().find(|b| b.kind == BandKind::Name).expect("name band");
         assert_eq!((name.top, name.height), (10, 6));
     }
 
@@ -880,9 +850,11 @@ mod tests {
             height: 30,
             rgba: vec![20u8; 50 * 30 * 4],
         };
-        assert!(slot_bands(&flat, Some((20, 10)), false)
-            .iter()
-            .all(|b| b.kind == BandKind::Health));
+        assert!(
+            slot_bands(&flat, Some((20, 10)), false)
+                .iter()
+                .all(|b| b.kind == BandKind::Health)
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -936,19 +908,13 @@ mod tests {
             (12, 11),
             (4, 19),
         ];
-        let mut slots: Vec<Vec<Band>> = observed
-            .iter()
-            .map(|&(top, height)| name(top, height))
-            .collect();
+        let mut slots: Vec<Vec<Band>> = observed.iter().map(|&(top, height)| name(top, height)).collect();
 
         harmonize(&mut slots);
 
         for (slot, band) in slots.iter().enumerate() {
             let band = band[0];
-            assert!(
-                band.height <= 13,
-                "slot {slot} kept an over-tall band: {band:?}"
-            );
+            assert!(band.height <= 13, "slot {slot} kept an over-tall band: {band:?}");
             assert_eq!(
                 band.top + band.height,
                 observed[slot].0 + observed[slot].1,
@@ -981,13 +947,7 @@ mod tests {
         let mut with_both = name(10, 13);
         with_both.push(health()[0]);
 
-        let mut slots = vec![
-            with_both.clone(),
-            with_both.clone(),
-            with_both,
-            health(),
-            Vec::new(),
-        ];
+        let mut slots = vec![with_both.clone(), with_both.clone(), with_both, health(), Vec::new()];
         harmonize(&mut slots);
 
         let filled = slots[3]
@@ -1041,5 +1001,4 @@ mod tests {
             slots[3]
         );
     }
-
 }

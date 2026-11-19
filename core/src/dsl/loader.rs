@@ -37,11 +37,10 @@ pub type AreaIndex = HashMap<i64, AreaIndexEntry>;
 /// Load boss definitions from a single TOML file
 /// Handles both legacy format (area_name on each boss) and new consolidated format
 pub fn load_bosses_from_file(path: &Path) -> Result<Vec<BossEncounterDefinition>, String> {
-    let content = fs::read_to_string(path)
-        .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
+    let content = fs::read_to_string(path).map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
 
-    let config: BossConfig = toml::from_str(&content)
-        .map_err(|e| format!("Failed to parse {}: {}", path.display(), e))?;
+    let config: BossConfig =
+        toml::from_str(&content).map_err(|e| format!("Failed to parse {}: {}", path.display(), e))?;
 
     // If file has [area] header, populate area fields on bosses that don't have them
     let mut bosses = config.bosses;
@@ -68,11 +67,10 @@ pub fn load_bosses_from_file(path: &Path) -> Result<Vec<BossEncounterDefinition>
 
 /// Load just the area config from a file (lightweight, for indexing)
 pub fn load_area_config(path: &Path) -> Result<Option<AreaConfig>, String> {
-    let content = fs::read_to_string(path)
-        .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
+    let content = fs::read_to_string(path).map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
 
-    let config: BossConfig = toml::from_str(&content)
-        .map_err(|e| format!("Failed to parse {}: {}", path.display(), e))?;
+    let config: BossConfig =
+        toml::from_str(&content).map_err(|e| format!("Failed to parse {}: {}", path.display(), e))?;
 
     Ok(config.area)
 }
@@ -91,8 +89,7 @@ pub fn build_area_index(dir: &Path) -> Result<AreaIndex, String> {
 }
 
 fn build_area_index_recursive(dir: &Path, index: &mut AreaIndex) -> Result<(), String> {
-    let entries = fs::read_dir(dir)
-        .map_err(|e| format!("Failed to read directory {}: {}", dir.display(), e))?;
+    let entries = fs::read_dir(dir).map_err(|e| format!("Failed to read directory {}: {}", dir.display(), e))?;
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -160,12 +157,9 @@ pub fn load_bosses_with_paths(dir: &Path) -> Result<Vec<BossWithPath>, String> {
     Ok(results)
 }
 
-fn load_bosses_with_paths_recursive(
-    current_dir: &Path,
-    results: &mut Vec<BossWithPath>,
-) -> Result<(), String> {
-    let entries = fs::read_dir(current_dir)
-        .map_err(|e| format!("Failed to read directory {}: {}", current_dir.display(), e))?;
+fn load_bosses_with_paths_recursive(current_dir: &Path, results: &mut Vec<BossWithPath>) -> Result<(), String> {
+    let entries =
+        fs::read_dir(current_dir).map_err(|e| format!("Failed to read directory {}: {}", current_dir.display(), e))?;
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -201,12 +195,8 @@ fn load_bosses_with_paths_recursive(
     Ok(())
 }
 
-fn load_bosses_recursive(
-    dir: &Path,
-    bosses: &mut Vec<BossEncounterDefinition>,
-) -> Result<(), String> {
-    let entries = fs::read_dir(dir)
-        .map_err(|e| format!("Failed to read directory {}: {}", dir.display(), e))?;
+fn load_bosses_recursive(dir: &Path, bosses: &mut Vec<BossEncounterDefinition>) -> Result<(), String> {
+    let entries = fs::read_dir(dir).map_err(|e| format!("Failed to read directory {}: {}", dir.display(), e))?;
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -271,13 +261,11 @@ pub fn save_bosses_to_file_with_area(
         bosses: bosses.to_vec(),
     };
 
-    let content = toml::to_string(&config)
-        .map_err(|e| format!("Failed to serialize boss config: {}", e))?;
+    let content = toml::to_string(&config).map_err(|e| format!("Failed to serialize boss config: {}", e))?;
 
     // Ensure parent directory exists
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create directory {}: {}", parent.display(), e))?;
+        fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory {}: {}", parent.display(), e))?;
     }
 
     fs::write(path, content).map_err(|e| format!("Failed to write {}: {}", path.display(), e))?;
@@ -682,10 +670,7 @@ conditions = [
                 if abilities.len() == 1 && matches!(&abilities[0], crate::dsl::AbilitySelector::Id(3294098182111232))
         ));
 
-        eprintln!(
-            "Successfully loaded Bestia fixture with {} timers",
-            bestia.timers.len()
-        );
+        eprintln!("Successfully loaded Bestia fixture with {} timers", bestia.timers.len());
     }
 
     #[test]

@@ -29,10 +29,7 @@ impl IconCache {
         for icon in ability_to_icon.values_mut() {
             *icon = icon.to_lowercase();
         }
-        tracing::debug!(
-            count = ability_to_icon.len(),
-            "Loaded ability→icon mappings from CSV"
-        );
+        tracing::debug!(count = ability_to_icon.len(), "Loaded ability→icon mappings from CSV");
 
         let mut zip_paths = vec![zip_path.to_string_lossy().to_string()];
         if let Some(parent) = zip_path.parent() {
@@ -76,9 +73,10 @@ impl IconCache {
         {
             let mut cache = self.cache.lock().ok()?;
             if cache.len() >= self.max_cache_size
-                && let Some(key) = cache.keys().next().cloned() {
-                    cache.remove(&key);
-                }
+                && let Some(key) = cache.keys().next().cloned()
+            {
+                cache.remove(&key);
+            }
             cache.insert(icon_name_lower, data.clone());
         }
 
@@ -98,16 +96,16 @@ impl IconCache {
                     }
 
                     // Fall back to case-insensitive search (slow path)
-for i in 0..archive.len() {
-    let Ok(mut file) = archive.by_index(i) else { continue };
+                    for i in 0..archive.len() {
+                        let Ok(mut file) = archive.by_index(i) else { continue };
 
-    if file.name().is_ok_and(|name| name.to_lowercase() == filename) {
-        // We already have the mutable ZipFile — just read it
-        let mut png_data = Vec::new();
-        file.read_to_end(&mut png_data).ok()?;
-        return decode_png(&png_data);
-    }
-}
+                        if file.name().is_ok_and(|name| name.to_lowercase() == filename) {
+                            // We already have the mutable ZipFile — just read it
+                            let mut png_data = Vec::new();
+                            file.read_to_end(&mut png_data).ok()?;
+                            return decode_png(&png_data);
+                        }
+                    }
                 }
             }
         }
@@ -132,8 +130,7 @@ fn read_and_decode<R: Read>(zip_file: &mut zip::read::ZipFile<'_, R>) -> Option<
 }
 
 fn load_icon_csv(path: &Path) -> Result<HashMap<u64, String>, String> {
-    let content = std::fs::read_to_string(path)
-        .map_err(|e| format!("Failed to read icons.csv: {}", e))?;
+    let content = std::fs::read_to_string(path).map_err(|e| format!("Failed to read icons.csv: {}", e))?;
 
     let mut map = HashMap::new();
     for line in content.lines().skip(1) {
@@ -143,12 +140,13 @@ fn load_icon_csv(path: &Path) -> Result<HashMap<u64, String>, String> {
         }
         let parts: Vec<&str> = line.splitn(3, ',').collect();
         if parts.len() >= 3
-            && let Ok(ability_id) = parts[0].parse::<u64>() {
-                let icon_name = parts[2].trim().to_lowercase();
-                if !icon_name.is_empty() {
-                    map.insert(ability_id, icon_name);
-                }
+            && let Ok(ability_id) = parts[0].parse::<u64>()
+        {
+            let icon_name = parts[2].trim().to_lowercase();
+            if !icon_name.is_empty() {
+                map.insert(ability_id, icon_name);
             }
+        }
     }
     Ok(map)
 }

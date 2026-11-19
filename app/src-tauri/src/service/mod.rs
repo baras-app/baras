@@ -9,8 +9,8 @@ mod cleanup;
 mod directory;
 mod handler;
 mod history;
-mod raid_detection;
 pub(crate) mod process_monitor;
+mod raid_detection;
 
 use crate::state::SharedState;
 pub use crate::state::{RaidSlotRegistry, RegisteredPlayer};
@@ -22,22 +22,21 @@ use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::{RwLock, mpsc};
 
+pub use baras_core::IncomingDamageRow;
 use baras_core::context::{AppConfig, AppConfigExt, ChallengeColumns, DirectoryIndex, ParsingSession, resolve};
 use baras_core::directory_watcher::DirectoryWatcher;
-use baras_core::encounter::{EncounterState, PhaseType};
 use baras_core::encounter::summary::classify_encounter;
+use baras_core::encounter::{EncounterState, PhaseType};
 use baras_core::game_data::{Difficulty, Discipline, Role};
 use baras_core::timers::FiredAlert;
 use baras_core::{
-    ActiveEffect, BossEncounterDefinition, DefinitionConfig, DefinitionSet, DisplayTarget,
-    EFFECTS_DSL_VERSION, EntityType, GameSignal, PlayerMetrics, Reader, SignalHandler,
+    ActiveEffect, BossEncounterDefinition, DefinitionConfig, DefinitionSet, DisplayTarget, EFFECTS_DSL_VERSION,
+    EntityType, GameSignal, PlayerMetrics, Reader, SignalHandler,
 };
-pub use baras_core::IncomingDamageRow;
 use baras_overlay::{
-    BossEffectIcon, BossHealthData, ChallengeData, ChallengeEntry, Color, CooldownData,
-    CooldownEntry, DotEntry, DotTarget, DotTrackerData, EffectABEntry, EffectsABData, NotesData,
-    PersonalStats, PlayerContribution, PlayerRole, RaidEffect, RaidFrame, RaidFrameData, TimerData,
-    TimerEntry,
+    BossEffectIcon, BossHealthData, ChallengeData, ChallengeEntry, Color, CooldownData, CooldownEntry, DotEntry,
+    DotTarget, DotTrackerData, EffectABEntry, EffectsABData, NotesData, PersonalStats, PlayerContribution, PlayerRole,
+    RaidEffect, RaidFrame, RaidFrameData, TimerData, TimerEntry,
 };
 
 use crate::audio::{AudioEvent, AudioSender, AudioService};
@@ -100,7 +99,7 @@ async fn fallback_streaming_parse(
             in_combat,
             "Fallback streaming parse completed"
         );
-        
+
         in_combat
     } else {
         false
@@ -151,9 +150,13 @@ pub enum ServiceCommand {
     /// Reset the operation timer (clears all state)
     ResetOperationTimer,
     /// Update the operation name context (from area entered signal)
-    SetOperationTimerContext { operation_name: Option<String> },
+    SetOperationTimerContext {
+        operation_name: Option<String>,
+    },
     /// Auto-switch profile based on role change (triggered by DisciplineChanged)
-    AutoSwitchProfile { role_name: String },
+    AutoSwitchProfile {
+        role_name: String,
+    },
     /// The local player's discipline changed: use its saved alacrity, if any
     ApplyAlacrityPreset,
     /// Emit the current operation timer state to the frontend and overlay
@@ -204,7 +207,11 @@ impl AreaKind {
 
 /// Whole seconds from a game-log (local) timestamp to now.
 fn secs_since(at: chrono::NaiveDateTime) -> u64 {
-    chrono::Local::now().naive_local().signed_duration_since(at).num_seconds().max(0) as u64
+    chrono::Local::now()
+        .naive_local()
+        .signed_duration_since(at)
+        .num_seconds()
+        .max(0) as u64
 }
 
 /// Stop the operation timer if the player stays outside the instance this long.
@@ -212,8 +219,7 @@ const OP_EXIT_TIMEOUT_SECS: u64 = 600;
 
 /// Persistent timer state that tracks an entire operation run.
 /// Lives in the service layer, independent of overlay visibility.
-#[derive(Debug)]
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct OperationTimerState {
     /// When the timer was last started (None = stopped/not started)
     started_at: Option<std::time::Instant>,
@@ -236,15 +242,10 @@ pub struct OperationTimerState {
     exited_at: Option<(std::time::Instant, u64)>,
 }
 
-
 impl OperationTimerState {
     /// Get total elapsed seconds including current running segment
     pub fn elapsed_secs(&self) -> u64 {
-        self.accumulated_secs
-            + self
-                .started_at
-                .map(|s| s.elapsed().as_secs())
-                .unwrap_or(0)
+        self.accumulated_secs + self.started_at.map(|s| s.elapsed().as_secs()).unwrap_or(0)
     }
 
     /// Whether the timer is currently running
@@ -399,7 +400,10 @@ pub enum OverlayUpdate {
     /// Ability queue snapshot (GCD + queued + active countdown entries)
     AbilityQueueUpdated(baras_overlay::AbilityQueueData),
     /// Local player activated an ability (ability cast overlay)
-    AbilityCast { ability_id: u64, name: String },
+    AbilityCast {
+        ability_id: u64,
+        name: String,
+    },
     /// Drop the ability cast list (player identity changed)
     AbilityCastCleared,
     /// Clear all overlay data (sent when switching files)
@@ -411,7 +415,9 @@ pub enum OverlayUpdate {
     /// Local player exited conversation - restore overlays if we hid them
     ConversationEnded,
     /// Session liveness changed (historical mode entered/exited, player logged out/in)
-    NotLiveStateChanged { is_live: bool },
+    NotLiveStateChanged {
+        is_live: bool,
+    },
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -511,11 +517,7 @@ impl CombatSignalHandler {
 }
 
 impl SignalHandler for CombatSignalHandler {
-    fn handle_signal(
-        &mut self,
-        signal: &GameSignal,
-        _encounter: Option<&baras_core::encounter::CombatEncounter>,
-    ) {
+    fn handle_signal(&mut self, signal: &GameSignal, _encounter: Option<&baras_core::encounter::CombatEncounter>) {
         // On first event processed, start monitoring the game process.
         // Always monitor so game_running state is accurate for stale detection.
         if !self.monitor_requested {
@@ -533,8 +535,7 @@ impl SignalHandler for CombatSignalHandler {
             if id != 0 {
                 self.local_player_id = Some(id);
                 if self.current_role.is_none() {
-                    self.current_role =
-                        Role::from_u8(self.shared.last_player_role.load(Ordering::SeqCst));
+                    self.current_role = Role::from_u8(self.shared.last_player_role.load(Ordering::SeqCst));
                 }
             }
         }
@@ -980,12 +981,7 @@ impl CombatService {
             .map(|p| p.join("sounds"))
             .unwrap_or_else(|| PathBuf::from("."));
         let bundled_definitions_dir = crate::audio::resolve_bundled_definitions_dir(&app_handle);
-        let audio_service = AudioService::new(
-            audio_rx,
-            shared.clone(),
-            user_sounds_dir,
-            bundled_definitions_dir,
-        );
+        let audio_service = AudioService::new(audio_rx, shared.clone(), user_sounds_dir, bundled_definitions_dir);
         tauri::async_runtime::spawn(audio_service.run());
 
         // Initialize icon cache for ability icons
@@ -1014,7 +1010,11 @@ impl CombatService {
             process_monitor_handle: None,
         };
 
-        let handle = ServiceHandle { cmd_tx, shared: shared.clone(), app_handle: app_handle.clone() };
+        let handle = ServiceHandle {
+            cmd_tx,
+            shared: shared.clone(),
+            app_handle: app_handle.clone(),
+        };
 
         // Spawn background area indexer to populate file area cache
         Self::spawn_area_indexer(shared, area_index_for_scanner, app_handle);
@@ -1032,15 +1032,11 @@ impl CombatService {
         // Bundled definitions: shipped with the app in resources
         let bundled_dir = app_handle
             .path()
-            .resolve(
-                "definitions/encounters",
-                tauri::path::BaseDirectory::Resource,
-            )
+            .resolve("definitions/encounters", tauri::path::BaseDirectory::Resource)
             .ok();
 
         // Custom definitions: user's config directory
-        let custom_dir =
-            baras_core::paths::config_dir().map(|p| p.join("definitions").join("encounters"));
+        let custom_dir = baras_core::paths::config_dir().map(|p| p.join("definitions").join("encounters"));
 
         let mut index = baras_core::boss::AreaIndex::new();
 
@@ -1095,10 +1091,7 @@ impl CombatService {
             };
 
             let mut cache = LogAreaCache::load_from_disk(&cache_path);
-            debug!(
-                cached_files = cache.len(),
-                "Loaded area cache from disk"
-            );
+            debug!(cached_files = cache.len(), "Loaded area cache from disk");
 
             // Update shared state with loaded cache (brief write lock)
             // Don't prune here - stale entries are harmless and pruning is slow
@@ -1156,10 +1149,7 @@ impl CombatService {
                 return;
             }
 
-            debug!(
-                files_to_scan = files_to_scan.len(),
-                "Starting background area indexing"
-            );
+            debug!(files_to_scan = files_to_scan.len(), "Starting background area indexing");
 
             // Scan files without holding any locks
             let mut scanned = 0;
@@ -1353,9 +1343,7 @@ impl CombatService {
 
     /// Clean up old user effects directory structure (pre-delta architecture)
     fn cleanup_old_effects_dir() {
-        let Some(old_dir) =
-            baras_core::paths::config_dir().map(|p| p.join("definitions").join("effects"))
-        else {
+        let Some(old_dir) = baras_core::paths::config_dir().map(|p| p.join("definitions").join("effects")) else {
             return;
         };
 
@@ -1414,8 +1402,7 @@ impl CombatService {
             .flatten()
             .map(|e| e.path())
             .filter(|p| {
-                p.extension().is_some_and(|ext| ext == "toml")
-                    && p.file_name().is_none_or(|n| n != "custom.toml") // Skip template
+                p.extension().is_some_and(|ext| ext == "toml") && p.file_name().is_none_or(|n| n != "custom.toml") // Skip template
             })
             .collect();
 
@@ -1729,26 +1716,27 @@ impl CombatService {
         if current_area == 0 {
             return;
         }
-        
+
         let Some(bosses) = self.load_area_definitions(current_area) else {
             return;
         };
-        
+
         // Send notes from boss definitions to overlay (first boss with notes)
         self.send_notes_from_bosses(&bosses);
-        
+
         let session_guard = self.shared.session.read().await;
         let Some(session) = session_guard.as_ref() else {
             return;
         };
-        
+
         let mut session = session.write().await;
         // Invalidate timer cache to ensure definitions actually reload
         // (bypasses fingerprint optimization for user-triggered reloads)
         if let Some(timer_mgr) = session.timer_manager()
-            && let Ok(mut mgr) = timer_mgr.lock() {
-                mgr.invalidate_definitions_cache();
-            }
+            && let Ok(mut mgr) = timer_mgr.lock()
+        {
+            mgr.invalidate_definitions_cache();
+        }
         session.load_boss_definitions(bosses, true);
     }
 
@@ -1758,23 +1746,26 @@ impl CombatService {
         if !self.shared.is_live_tailing.load(Ordering::SeqCst) {
             return;
         }
-        
+
         // Find the first boss with notes (or aggregate all notes)
         // For now, send notes from first boss that has them
         for boss in bosses {
             if let Some(notes) = &boss.notes
-                && !notes.is_empty() {
-                    let notes_data = NotesData {
-                        text: notes.clone(),
-                        boss_name: boss.name.clone(),
-                    };
-                    let _ = self.overlay_tx.try_send(OverlayUpdate::NotesUpdated(notes_data));
-                    return;
-                }
+                && !notes.is_empty()
+            {
+                let notes_data = NotesData {
+                    text: notes.clone(),
+                    boss_name: boss.name.clone(),
+                };
+                let _ = self.overlay_tx.try_send(OverlayUpdate::NotesUpdated(notes_data));
+                return;
+            }
         }
-        
+
         // No notes found - send empty to clear the overlay
-        let _ = self.overlay_tx.try_send(OverlayUpdate::NotesUpdated(NotesData::default()));
+        let _ = self
+            .overlay_tx
+            .try_send(OverlayUpdate::NotesUpdated(NotesData::default()));
     }
 
     /// Emit the current operation timer state to the frontend via Tauri event
@@ -1785,11 +1776,14 @@ impl CombatService {
         drop(timer);
 
         // Send to frontend (session box UI)
-        let _ = self.app_handle.emit("operation-timer-tick", serde_json::json!({
-            "elapsed_secs": data.elapsed_secs,
-            "is_running": data.is_running,
-            "operation_name": data.operation_name,
-        }));
+        let _ = self.app_handle.emit(
+            "operation-timer-tick",
+            serde_json::json!({
+                "elapsed_secs": data.elapsed_secs,
+                "is_running": data.is_running,
+                "operation_name": data.operation_name,
+            }),
+        );
 
         // Send to overlay
         let _ = self.overlay_tx.try_send(OverlayUpdate::OperationTimerUpdated(data));
@@ -1824,11 +1818,7 @@ impl CombatService {
 
         // Trigger area indexer to scan any files that aren't indexed yet
         // (the previous "newest" file is now complete and should be indexed)
-        Self::spawn_area_indexer(
-            self.shared.clone(),
-            self.area_index.clone(),
-            self.app_handle.clone(),
-        );
+        Self::spawn_area_indexer(self.shared.clone(), self.area_index.clone(), self.app_handle.clone());
 
         // Notify frontend that file list changed
         let _ = self.app_handle.emit("log-files-changed", ());
@@ -1855,10 +1845,7 @@ impl CombatService {
             let session_guard = self.shared.session.read().await;
             if let Some(session) = session_guard.as_ref() {
                 let s = session.read().await;
-                s.session_cache
-                    .as_ref()
-                    .map(|c| c.player_initialized)
-                    .unwrap_or(false)
+                s.session_cache.as_ref().map(|c| c.player_initialized).unwrap_or(false)
             } else {
                 false
             }
@@ -2040,8 +2027,8 @@ impl CombatService {
         let backfill_shared = self.shared.clone();
         let backfill_app_handle = self.app_handle.clone();
         tokio::task::spawn_blocking(move || {
-            let cache_path = DirectoryIndex::default_cache_path()
-                .unwrap_or_else(|| PathBuf::from("directory_cache.json"));
+            let cache_path =
+                DirectoryIndex::default_cache_path().unwrap_or_else(|| PathBuf::from("directory_cache.json"));
             match directory_watcher::build_index_cached(&backfill_dir, &cache_path) {
                 Ok((full_index, _)) => {
                     let shared = backfill_shared;
@@ -2108,10 +2095,18 @@ impl CombatService {
         let _ = self.overlay_tx.try_send(OverlayUpdate::ClearAllData);
 
         // Clear raid registry when switching files (new session = fresh state)
-        self.shared.raid_registry.lock().unwrap_or_else(|p| p.into_inner()).clear();
+        self.shared
+            .raid_registry
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .clear();
         // Entity ids do not survive a session change, so neither can the
         // ability-cast roster (a user frame clear deliberately keeps it).
-        self.shared.ability_roster.lock().unwrap_or_else(|p| p.into_inner()).clear();
+        self.shared
+            .ability_roster
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .clear();
         *self
             .shared
             .pvp_ocr_roster_started_at
@@ -2136,21 +2131,20 @@ impl CombatService {
         // Load timer preferences into the session's timer manager (Live mode only)
         if let Some(prefs_path) = Self::timer_preferences_path()
             && let Some(timer_mgr) = session.timer_manager()
-                && let Ok(mut mgr) = timer_mgr.lock()
-                    && let Err(e) = mgr.load_preferences(&prefs_path)
-                {
-                    warn!(error = %e, "Failed to load timer preferences");
-                }
+            && let Ok(mut mgr) = timer_mgr.lock()
+            && let Err(e) = mgr.load_preferences(&prefs_path)
+        {
+            warn!(error = %e, "Failed to load timer preferences");
+        }
 
         // Set up sync definition loader for AreaEntered events (fixes race condition)
         let area_index = self.area_index.clone();
-        let user_encounters_dir =
-            baras_core::paths::config_dir().map(|p| p.join("definitions").join("encounters"));
+        let user_encounters_dir = baras_core::paths::config_dir().map(|p| p.join("definitions").join("encounters"));
         let loader: baras_core::context::DefinitionLoader = Box::new(move |area_id: i64| {
             use baras_core::boss::load_bosses_with_custom;
-            area_index.get(&area_id).and_then(|entry| {
-                load_bosses_with_custom(&entry.file_path, user_encounters_dir.as_deref()).ok()
-            })
+            area_index
+                .get(&area_id)
+                .and_then(|entry| load_bosses_with_custom(&entry.file_path, user_encounters_dir.as_deref()).ok())
         });
         session.set_definition_loader(std::sync::Arc::new(loader));
 
@@ -2213,17 +2207,14 @@ impl CombatService {
             .to_string();
 
         // Get encounters output directory
-        let encounters_dir = baras_core::storage::encounters_dir(&session_id)
-            .unwrap_or_else(|_| PathBuf::from("/tmp/baras-encounters"));
+        let encounters_dir =
+            baras_core::storage::encounters_dir(&session_id).unwrap_or_else(|_| PathBuf::from("/tmp/baras-encounters"));
 
         // Get boss definitions directory for phase detection
         let definitions_dir = self
             .app_handle
             .path()
-            .resolve(
-                "definitions/encounters",
-                tauri::path::BaseDirectory::Resource,
-            )
+            .resolve("definitions/encounters", tauri::path::BaseDirectory::Resource)
             .ok();
 
         // Spawn parse worker subprocess
@@ -2261,18 +2252,14 @@ impl CombatService {
                     .map_err(|e| format!("Invalid UTF-8: {}", e))
                     .and_then(|result| {
                         serde_json::from_str::<ParseWorkerOutput>(&result).map_err(|e| {
-                            format!(
-                                "JSON parse error: {} (input: {})",
-                                e,
-                                &result[..result.len().min(500)]
-                            )
+                            format!("JSON parse error: {} (input: {})", e, &result[..result.len().min(500)])
                         })
                     });
 
                 match json_result {
                     Ok(parse_result) => {
                         let mut session_guard = session.write().await;
-                        
+
                         // CRITICAL: Restore byte/line positions for live-tailing to work
                         session_guard.current_byte = Some(parse_result.end_pos);
                         session_guard.current_line = Some(parse_result.line_count);
@@ -2282,7 +2269,7 @@ impl CombatService {
                         if let Some(cache) = &mut session_guard.session_cache {
                             // Restore player, area, disciplines, and encounter history
                             let generation_count = cache.restore_from_worker_output(&parse_result);
-                            
+
                             debug!(
                                 area_id = parse_result.area.area_id,
                                 area_name = %parse_result.area.area_name,
@@ -2290,17 +2277,20 @@ impl CombatService {
                                 generation = generation_count,
                                 "Imported state from subprocess"
                             );
-                            
+
                             // Sync current_area_id from subprocess so timer definition reloads work
                             if parse_result.area.area_id != 0 {
-                                self.shared.current_area_id.store(parse_result.area.area_id, Ordering::SeqCst);
+                                self.shared
+                                    .current_area_id
+                                    .store(parse_result.area.area_id, Ordering::SeqCst);
                             }
 
                             // Capture player context before releasing cache borrow.
                             // discipline_id comes from player_disciplines (not cache.player,
                             // which doesn't have it after worker restore)
                             if cache.player_initialized {
-                                let disc_id = cache.player_disciplines
+                                let disc_id = cache
+                                    .player_disciplines
                                     .get(&cache.player.id)
                                     .map(|p| p.discipline_id)
                                     .unwrap_or(0);
@@ -2310,18 +2300,18 @@ impl CombatService {
                             // Check if there's an incomplete encounter (parquet file exists but no summary)
                             // If so, we'll continue with that encounter ID instead of creating a new one
                             let incomplete_encounter_exists = {
-                                let incomplete_parquet = encounters_dir.join(
-                                    baras_core::storage::encounter_filename(parse_result.encounter_count as u32)
-                                );
+                                let incomplete_parquet = encounters_dir.join(baras_core::storage::encounter_filename(
+                                    parse_result.encounter_count as u32,
+                                ));
                                 incomplete_parquet.exists()
                             };
-                            
+
                             if incomplete_encounter_exists {
                                 // There's an incomplete encounter written to parquet
                                 // Continue with the same encounter ID but increment next_encounter_id
                                 // so the next encounter after this one has the correct ID
                                 cache.set_next_encounter_id(parse_result.encounter_count as u64 + 1);
-                                
+
                                 // Don't call push_new_encounter() - we'll continue accumulating
                                 // to the existing encounter (ID 0) and it will be written with the correct ID
                                 // Update the current encounter's area context
@@ -2337,7 +2327,7 @@ impl CombatService {
                                     Some(cache.current_area.area_name.clone())
                                 };
                                 let area_entered_line = cache.current_area.entered_at_line;
-                                
+
                                 if let Some(enc) = cache.current_encounter_mut() {
                                     enc.id = parse_result.encounter_count as u64;
                                     enc.set_difficulty(difficulty);
@@ -2347,7 +2337,7 @@ impl CombatService {
                                 // All encounters were finalized
                                 // Set next ID to continue from where subprocess left off
                                 cache.set_next_encounter_id(parse_result.encounter_count as u64);
-                                
+
                                 // Create fresh encounter with correct area context
                                 cache.push_new_encounter();
                             }
@@ -2358,9 +2348,10 @@ impl CombatService {
                         // immediately (handler missed historical signals from subprocess)
                         if let Some((player_id, discipline_id)) = player_context {
                             if let Some(tracker) = session_guard.effect_tracker()
-                                && let Ok(mut tracker) = tracker.lock() {
-                                    tracker.set_player_context(player_id, discipline_id);
-                                }
+                                && let Ok(mut tracker) = tracker.lock()
+                            {
+                                tracker.set_player_context(player_id, discipline_id);
+                            }
                             self.shared.last_player_id.store(player_id, Ordering::SeqCst);
                             if let Some(discipline) = Discipline::from_guid(discipline_id) {
                                 let role = discipline.role();
@@ -2378,18 +2369,16 @@ impl CombatService {
                         }
 
                         // Enable live parquet writing (continues from where subprocess left off)
-                        session_guard.enable_live_parquet(
-                            encounters_dir.clone(),
-                            parse_result.encounter_count as u32,
-                        );
+                        session_guard.enable_live_parquet(encounters_dir.clone(), parse_result.encounter_count as u32);
 
                         // Load boss definitions for initial area (before releasing lock)
                         if parse_result.area.area_id != 0
-                            && let Some(bosses) = self.load_area_definitions(parse_result.area.area_id) {
-                                // Send notes to overlay
-                                self.send_notes_from_bosses(&bosses);
-                                session_guard.load_boss_definitions(bosses, false);
-                            }
+                            && let Some(bosses) = self.load_area_definitions(parse_result.area.area_id)
+                        {
+                            // Send notes to overlay
+                            self.send_notes_from_bosses(&bosses);
+                            session_guard.load_boss_definitions(bosses, false);
+                        }
 
                         session_guard.finalize_session();
                         session_guard.sync_timer_context();
@@ -2401,8 +2390,7 @@ impl CombatService {
                         // combat, so consume the tail here and close the
                         // encounter at its last event.
                         if !self.shared.is_live_tailing.load(Ordering::SeqCst) {
-                            let session_date =
-                                session_guard.game_session_date.unwrap_or_default();
+                            let session_date = session_guard.game_session_date.unwrap_or_default();
                             match reader.read_log_file_streaming_from(
                                 session_date,
                                 parse_result.end_pos,
@@ -2413,10 +2401,7 @@ impl CombatService {
                                     session_guard.current_byte = Some(eof_pos);
                                     session_guard.current_line = Some(next_line);
                                     if event_count > 0 {
-                                        info!(
-                                            event_count,
-                                            "Consumed handoff tail for historical open"
-                                        );
+                                        info!(event_count, "Consumed handoff tail for historical open");
                                     }
                                 }
                                 Err(e) => {
@@ -2453,7 +2438,7 @@ impl CombatService {
                         } else {
                             false
                         };
-                        
+
                         drop(session_guard);
 
                         info!(
@@ -2476,8 +2461,7 @@ impl CombatService {
                         if self.shared.is_live_tailing.load(Ordering::SeqCst) {
                             let area_id = parse_result.area.area_id;
                             let area_kind = AreaKind::from_area_id(area_id);
-                            let timer_already_running = self.shared.operation_timer
-                                .lock().unwrap().is_running();
+                            let timer_already_running = self.shared.operation_timer.lock().unwrap().is_running();
 
                             if !timer_already_running {
                                 const MAX_BACKFILL_SECS: u64 = 4 * 3600; // 4-hour cap
@@ -2488,8 +2472,7 @@ impl CombatService {
                                         if let Some(entered_at) = parse_result.area.entered_at {
                                             let now = chrono::Local::now().naive_local();
                                             let elapsed = now.signed_duration_since(entered_at);
-                                            let elapsed_secs = elapsed.num_seconds()
-                                                .max(0) as u64;
+                                            let elapsed_secs = elapsed.num_seconds().max(0) as u64;
                                             let capped = elapsed_secs.min(MAX_BACKFILL_SECS);
                                             let mut timer = self.shared.operation_timer.lock().unwrap();
                                             if !timer.manually_stopped {
@@ -2508,28 +2491,36 @@ impl CombatService {
                                         // The clock of the instance being played (a
                                         // reset earlier in the log starts another): its
                                         // start line crossing, else its first boss pull
-                                        let entered = parse_result.encounters.last()
+                                        let entered = parse_result
+                                            .encounters
+                                            .last()
                                             .and_then(|s| s.instance_entered.as_deref());
-                                        let earliest_start = parse_result.timer_starts.iter()
-                                            .filter(|t| t.area_id == area_id
-                                                && entered.is_some_and(|e| t.time.as_str() >= e))
+                                        let earliest_start = parse_result
+                                            .timer_starts
+                                            .iter()
+                                            .filter(|t| {
+                                                t.area_id == area_id && entered.is_some_and(|e| t.time.as_str() >= e)
+                                            })
                                             .map(|t| &t.time)
-                                            .chain(parse_result.encounters.iter()
-                                                .filter(|s| s.encounter_type == PhaseType::Raid
-                                                    && s.instance_entered.as_deref() == entered)
-                                                .filter_map(|s| s.start_time.as_ref()))
+                                            .chain(
+                                                parse_result
+                                                    .encounters
+                                                    .iter()
+                                                    .filter(|s| {
+                                                        s.encounter_type == PhaseType::Raid
+                                                            && s.instance_entered.as_deref() == entered
+                                                    })
+                                                    .filter_map(|s| s.start_time.as_ref()),
+                                            )
                                             .filter_map(|t| {
-                                                chrono::NaiveDateTime::parse_from_str(
-                                                    t, "%Y-%m-%dT%H:%M:%S"
-                                                ).ok()
+                                                chrono::NaiveDateTime::parse_from_str(t, "%Y-%m-%dT%H:%M:%S").ok()
                                             })
                                             .min();
 
                                         if let Some(first_pull) = earliest_start {
                                             let now = chrono::Local::now().naive_local();
                                             let elapsed = now.signed_duration_since(first_pull);
-                                            let elapsed_secs = elapsed.num_seconds()
-                                                .max(0) as u64;
+                                            let elapsed_secs = elapsed.num_seconds().max(0) as u64;
                                             let capped = elapsed_secs.min(MAX_BACKFILL_SECS);
                                             let mut timer = self.shared.operation_timer.lock().unwrap();
                                             if !timer.manually_stopped {
@@ -2613,10 +2604,7 @@ impl CombatService {
             }
         }
 
-        info!(
-            elapsed_ms = timer.elapsed().as_millis() as u64,
-            "Parse completed"
-        );
+        info!(elapsed_ms = timer.elapsed().as_millis() as u64, "Parse completed");
 
         // Re-parsed fights get their recorded Parsely links back, then the
         // frontend refreshes session info (in_combat is already set above)
@@ -2684,9 +2672,7 @@ impl CombatService {
         let metrics_handle = tokio::spawn(async move {
             loop {
                 // Check for triggers with timeout to allow task cancellation
-                let trigger =
-                    tokio::time::timeout(std::time::Duration::from_millis(100), trigger_rx.recv())
-                        .await;
+                let trigger = tokio::time::timeout(std::time::Duration::from_millis(100), trigger_rx.recv()).await;
 
                 let trigger = match trigger {
                     Ok(Some(t)) => t,
@@ -2770,11 +2756,7 @@ impl CombatService {
 
                 // Adaptive sleep: fast when active, slow when idle
                 // 30ms matches tail polling for consistent ~60ms max latency
-                let sleep_ms = if any_overlay_active || needs_audio {
-                    30
-                } else {
-                    500
-                };
+                let sleep_ms = if any_overlay_active || needs_audio { 30 } else { 500 };
                 tokio::time::sleep(std::time::Duration::from_millis(sleep_ms)).await;
 
                 // Periodic stale-recovery: if the session was flagged not-live (e.g. game
@@ -2785,8 +2767,7 @@ impl CombatService {
                 {
                     last_stale_check = tokio::time::Instant::now();
                     if !shared.is_session_not_live().await {
-                        let _ = overlay_tx
-                            .try_send(OverlayUpdate::NotLiveStateChanged { is_live: true });
+                        let _ = overlay_tx.try_send(OverlayUpdate::NotLiveStateChanged { is_live: true });
                     }
                 }
 
@@ -2807,15 +2788,19 @@ impl CombatService {
                         let effect_count: usize = data.frames.iter().map(|f| f.effects.len()).sum();
                         // Always send in rearrange mode, otherwise only when effects exist/changed
                         if (rearranging || effect_count > 0 || last_raid_effect_count > 0)
-                            && overlay_tx.try_send(OverlayUpdate::EffectsUpdated(data)).is_err() {
-                                warn!("Overlay channel full, dropped raid effects update");
-                            }
+                            && overlay_tx.try_send(OverlayUpdate::EffectsUpdated(data)).is_err()
+                        {
+                            warn!("Overlay channel full, dropped raid effects update");
+                        }
                         last_raid_effect_count = effect_count;
                     } else if rearranging {
                         // In rearrange mode, send empty data to keep overlay rendering
-                        if overlay_tx.try_send(OverlayUpdate::EffectsUpdated(
-                            baras_overlay::RaidFrameData { frames: vec![] },
-                        )).is_err() {
+                        if overlay_tx
+                            .try_send(OverlayUpdate::EffectsUpdated(baras_overlay::RaidFrameData {
+                                frames: vec![],
+                            }))
+                            .is_err()
+                        {
                             warn!("Overlay channel full, dropped raid effects clear");
                         }
                         last_raid_effect_count = 0;
@@ -2825,17 +2810,21 @@ impl CombatService {
                 }
                 // Effects A: only send if there are effects or effects just cleared
                 if effects_a_active {
-                    if let Some(data) = build_effects_ab_data(&shared, icon_cache.as_ref(), DisplayTarget::EffectsA).await {
+                    if let Some(data) =
+                        build_effects_ab_data(&shared, icon_cache.as_ref(), DisplayTarget::EffectsA).await
+                    {
                         let count = data.effects.len();
                         if (count > 0 || last_effects_a_count > 0)
-                            && overlay_tx.try_send(OverlayUpdate::EffectsAUpdated(data)).is_err() {
-                                warn!("Overlay channel full, dropped effects A update");
-                            }
+                            && overlay_tx.try_send(OverlayUpdate::EffectsAUpdated(data)).is_err()
+                        {
+                            warn!("Overlay channel full, dropped effects A update");
+                        }
                         last_effects_a_count = count;
                     } else if last_effects_a_count > 0 {
-                        if overlay_tx.try_send(OverlayUpdate::EffectsAUpdated(EffectsABData {
-                            effects: vec![],
-                        })).is_err() {
+                        if overlay_tx
+                            .try_send(OverlayUpdate::EffectsAUpdated(EffectsABData { effects: vec![] }))
+                            .is_err()
+                        {
                             warn!("Overlay channel full, dropped effects A clear");
                         }
                         last_effects_a_count = 0;
@@ -2844,17 +2833,21 @@ impl CombatService {
 
                 // Effects B: only send if there are effects or effects just cleared
                 if effects_b_active {
-                    if let Some(data) = build_effects_ab_data(&shared, icon_cache.as_ref(), DisplayTarget::EffectsB).await {
+                    if let Some(data) =
+                        build_effects_ab_data(&shared, icon_cache.as_ref(), DisplayTarget::EffectsB).await
+                    {
                         let count = data.effects.len();
                         if (count > 0 || last_effects_b_count > 0)
-                            && overlay_tx.try_send(OverlayUpdate::EffectsBUpdated(data)).is_err() {
-                                warn!("Overlay channel full, dropped effects B update");
-                            }
+                            && overlay_tx.try_send(OverlayUpdate::EffectsBUpdated(data)).is_err()
+                        {
+                            warn!("Overlay channel full, dropped effects B update");
+                        }
                         last_effects_b_count = count;
                     } else if last_effects_b_count > 0 {
-                        if overlay_tx.try_send(OverlayUpdate::EffectsBUpdated(EffectsABData {
-                            effects: vec![],
-                        })).is_err() {
+                        if overlay_tx
+                            .try_send(OverlayUpdate::EffectsBUpdated(EffectsABData { effects: vec![] }))
+                            .is_err()
+                        {
                             warn!("Overlay channel full, dropped effects B clear");
                         }
                         last_effects_b_count = 0;
@@ -2863,17 +2856,21 @@ impl CombatService {
 
                 // Effects C: only send if there are effects or effects just cleared
                 if effects_c_active {
-                    if let Some(data) = build_effects_ab_data(&shared, icon_cache.as_ref(), DisplayTarget::EffectsC).await {
+                    if let Some(data) =
+                        build_effects_ab_data(&shared, icon_cache.as_ref(), DisplayTarget::EffectsC).await
+                    {
                         let count = data.effects.len();
                         if (count > 0 || last_effects_c_count > 0)
-                            && overlay_tx.try_send(OverlayUpdate::EffectsCUpdated(data)).is_err() {
-                                warn!("Overlay channel full, dropped effects C update");
-                            }
+                            && overlay_tx.try_send(OverlayUpdate::EffectsCUpdated(data)).is_err()
+                        {
+                            warn!("Overlay channel full, dropped effects C update");
+                        }
                         last_effects_c_count = count;
                     } else if last_effects_c_count > 0 {
-                        if overlay_tx.try_send(OverlayUpdate::EffectsCUpdated(EffectsABData {
-                            effects: vec![],
-                        })).is_err() {
+                        if overlay_tx
+                            .try_send(OverlayUpdate::EffectsCUpdated(EffectsABData { effects: vec![] }))
+                            .is_err()
+                        {
                             warn!("Overlay channel full, dropped effects C clear");
                         }
                         last_effects_c_count = 0;
@@ -2882,17 +2879,21 @@ impl CombatService {
 
                 // Cooldowns: only send if there are cooldowns or cooldowns just cleared
                 if cooldowns_active {
-                    if let Some(data) = build_cooldowns_data(&shared, icon_cache.as_ref(), DisplayTarget::Cooldowns).await {
+                    if let Some(data) =
+                        build_cooldowns_data(&shared, icon_cache.as_ref(), DisplayTarget::Cooldowns).await
+                    {
                         let count = data.entries.len();
                         if (count > 0 || last_cooldowns_count > 0)
-                            && overlay_tx.try_send(OverlayUpdate::CooldownsUpdated(data)).is_err() {
-                                warn!("Overlay channel full, dropped cooldowns update");
-                            }
+                            && overlay_tx.try_send(OverlayUpdate::CooldownsUpdated(data)).is_err()
+                        {
+                            warn!("Overlay channel full, dropped cooldowns update");
+                        }
                         last_cooldowns_count = count;
                     } else if last_cooldowns_count > 0 {
-                        if overlay_tx.try_send(OverlayUpdate::CooldownsUpdated(CooldownData {
-                            entries: vec![],
-                        })).is_err() {
+                        if overlay_tx
+                            .try_send(OverlayUpdate::CooldownsUpdated(CooldownData { entries: vec![] }))
+                            .is_err()
+                        {
                             warn!("Overlay channel full, dropped cooldowns clear");
                         }
                         last_cooldowns_count = 0;
@@ -2901,17 +2902,21 @@ impl CombatService {
 
                 // Cooldowns B: only send if there are cooldowns or cooldowns just cleared
                 if cooldowns_b_active {
-                    if let Some(data) = build_cooldowns_data(&shared, icon_cache.as_ref(), DisplayTarget::CooldownsB).await {
+                    if let Some(data) =
+                        build_cooldowns_data(&shared, icon_cache.as_ref(), DisplayTarget::CooldownsB).await
+                    {
                         let count = data.entries.len();
                         if (count > 0 || last_cooldowns_b_count > 0)
-                            && overlay_tx.try_send(OverlayUpdate::CooldownsBUpdated(data)).is_err() {
-                                warn!("Overlay channel full, dropped cooldowns B update");
-                            }
+                            && overlay_tx.try_send(OverlayUpdate::CooldownsBUpdated(data)).is_err()
+                        {
+                            warn!("Overlay channel full, dropped cooldowns B update");
+                        }
                         last_cooldowns_b_count = count;
                     } else if last_cooldowns_b_count > 0 {
-                        if overlay_tx.try_send(OverlayUpdate::CooldownsBUpdated(CooldownData {
-                            entries: vec![],
-                        })).is_err() {
+                        if overlay_tx
+                            .try_send(OverlayUpdate::CooldownsBUpdated(CooldownData { entries: vec![] }))
+                            .is_err()
+                        {
                             warn!("Overlay channel full, dropped cooldowns B clear");
                         }
                         last_cooldowns_b_count = 0;
@@ -2923,14 +2928,16 @@ impl CombatService {
                     if let Some(data) = build_dot_tracker_data(&shared, icon_cache.as_ref()).await {
                         let count = data.targets.len();
                         if (count > 0 || last_dot_tracker_count > 0)
-                            && overlay_tx.try_send(OverlayUpdate::DotTrackerUpdated(data)).is_err() {
-                                warn!("Overlay channel full, dropped DOT tracker update");
-                            }
+                            && overlay_tx.try_send(OverlayUpdate::DotTrackerUpdated(data)).is_err()
+                        {
+                            warn!("Overlay channel full, dropped DOT tracker update");
+                        }
                         last_dot_tracker_count = count;
                     } else if last_dot_tracker_count > 0 {
-                        if overlay_tx.try_send(OverlayUpdate::DotTrackerUpdated(DotTrackerData {
-                            targets: vec![],
-                        })).is_err() {
+                        if overlay_tx
+                            .try_send(OverlayUpdate::DotTrackerUpdated(DotTrackerData { targets: vec![] }))
+                            .is_err()
+                        {
                             warn!("Overlay channel full, dropped DOT tracker clear");
                         }
                         last_dot_tracker_count = 0;
@@ -2961,59 +2968,73 @@ impl CombatService {
                 if boss_active
                     && in_combat
                     && let Some(data) = build_boss_health_data(&shared, icon_cache.as_ref()).await
-                    && overlay_tx.try_send(OverlayUpdate::BossHealthUpdated(data)).is_err() {
-                        warn!("Overlay channel full, dropped boss health update");
-                    }
+                    && overlay_tx.try_send(OverlayUpdate::BossHealthUpdated(data)).is_err()
+                {
+                    warn!("Overlay channel full, dropped boss health update");
+                }
 
                 // Timers + Audio: always poll when in live mode (alerts can fire at combat end)
                 if shared.is_live_tailing.load(Ordering::SeqCst)
-                    && let Some(bundle) =
-                        build_timer_data_with_audio(&shared, icon_cache.as_ref()).await
-                    {
-                        // Send timer overlay data (only when in combat)
-                        if in_combat && timer_active {
-                            if overlay_tx.try_send(OverlayUpdate::TimersAUpdated(bundle.timers_a)).is_err() {
-                                warn!("Overlay channel full, dropped timers A update");
-                            }
-                            if overlay_tx.try_send(OverlayUpdate::TimersBUpdated(bundle.timers_b)).is_err() {
-                                warn!("Overlay channel full, dropped timers B update");
-                            }
+                    && let Some(bundle) = build_timer_data_with_audio(&shared, icon_cache.as_ref()).await
+                {
+                    // Send timer overlay data (only when in combat)
+                    if in_combat && timer_active {
+                        if overlay_tx
+                            .try_send(OverlayUpdate::TimersAUpdated(bundle.timers_a))
+                            .is_err()
+                        {
+                            warn!("Overlay channel full, dropped timers A update");
                         }
-
-                        // Ability queue: always send (overlay gates on its own active flag)
-                        if overlay_tx.try_send(OverlayUpdate::AbilityQueueUpdated(bundle.ability_queue)).is_err() {
-                            warn!("Overlay channel full, dropped ability queue update");
-                        }
-
-                        // Send countdown audio events (only when in combat)
-                        if in_combat {
-                            for (name, seconds, voice_pack) in bundle.countdowns {
-                                let _ = audio_tx.try_send(AudioEvent::Countdown {
-                                    timer_name: name,
-                                    seconds,
-                                    voice_pack,
-                                });
-                            }
-                        }
-
-                        // Send text alerts to overlay (only those with alert_text_enabled and not stale)
-                        let text_alerts: Vec<_> = bundle.alerts.iter().filter(|a| a.alert_text_enabled && a.timestamp >= tailing_started_at).cloned().collect();
-                        if !text_alerts.is_empty()
-                            && overlay_tx.try_send(OverlayUpdate::AlertsFired(text_alerts)).is_err() {
-                                warn!("Overlay channel full, dropped timer alerts");
-                            }
-
-                        // Send alert audio events (only if audio_enabled for that alert)
-                        // Skip alerts from before we started tailing (stale encounter recovery)
-                        for alert in bundle.alerts {
-                            if alert.audio_enabled && alert.timestamp >= tailing_started_at {
-                                let _ = audio_tx.try_send(AudioEvent::Alert {
-                                    text: alert.text,
-                                    custom_sound: alert.audio_file,
-                                });
-                            }
+                        if overlay_tx
+                            .try_send(OverlayUpdate::TimersBUpdated(bundle.timers_b))
+                            .is_err()
+                        {
+                            warn!("Overlay channel full, dropped timers B update");
                         }
                     }
+
+                    // Ability queue: always send (overlay gates on its own active flag)
+                    if overlay_tx
+                        .try_send(OverlayUpdate::AbilityQueueUpdated(bundle.ability_queue))
+                        .is_err()
+                    {
+                        warn!("Overlay channel full, dropped ability queue update");
+                    }
+
+                    // Send countdown audio events (only when in combat)
+                    if in_combat {
+                        for (name, seconds, voice_pack) in bundle.countdowns {
+                            let _ = audio_tx.try_send(AudioEvent::Countdown {
+                                timer_name: name,
+                                seconds,
+                                voice_pack,
+                            });
+                        }
+                    }
+
+                    // Send text alerts to overlay (only those with alert_text_enabled and not stale)
+                    let text_alerts: Vec<_> = bundle
+                        .alerts
+                        .iter()
+                        .filter(|a| a.alert_text_enabled && a.timestamp >= tailing_started_at)
+                        .cloned()
+                        .collect();
+                    if !text_alerts.is_empty() && overlay_tx.try_send(OverlayUpdate::AlertsFired(text_alerts)).is_err()
+                    {
+                        warn!("Overlay channel full, dropped timer alerts");
+                    }
+
+                    // Send alert audio events (only if audio_enabled for that alert)
+                    // Skip alerts from before we started tailing (stale encounter recovery)
+                    for alert in bundle.alerts {
+                        if alert.audio_enabled && alert.timestamp >= tailing_started_at {
+                            let _ = audio_tx.try_send(AudioEvent::Alert {
+                                text: alert.text,
+                                custom_sound: alert.audio_file,
+                            });
+                        }
+                    }
+                }
             }
         });
 
@@ -3079,8 +3100,7 @@ impl CombatService {
                             // Game just closed
                             info!("Game process no longer detected");
                             clear_uptime_tracking(&shared).await;
-                            let _ = overlay_tx
-                                .try_send(OverlayUpdate::NotLiveStateChanged { is_live: false });
+                            let _ = overlay_tx.try_send(OverlayUpdate::NotLiveStateChanged { is_live: false });
                         } else if !was_running && is_running {
                             // Game just launched — set the starting flag so stale-recovery
                             // stays blocked until a fresh session confirms a new character.
@@ -3111,8 +3131,7 @@ impl CombatService {
 
     async fn refresh_index(&mut self) {
         let log_dir = self.shared.config.read().await.log_directory.clone();
-        let cache_path = DirectoryIndex::default_cache_path()
-            .unwrap_or_else(|| PathBuf::from("directory_cache.json"));
+        let cache_path = DirectoryIndex::default_cache_path().unwrap_or_else(|| PathBuf::from("directory_cache.json"));
         if let Ok(index) = DirectoryIndex::build_index_cached(&PathBuf::from(&log_dir), &cache_path) {
             *self.shared.directory_index.write().await = index;
         }
@@ -3155,19 +3174,20 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
         // Use encounter's stored area/difficulty info (falls back to cache if not set)
         let area_id_for_classification = encounter.area_id.unwrap_or(cache.current_area.area_id);
         let difficulty_id_for_classification = encounter.difficulty_id.unwrap_or(cache.current_area.difficulty_id);
-        let (encounter_type, boss_info) = classify_encounter(encounter, area_id_for_classification, difficulty_id_for_classification);
+        let (encounter_type, boss_info) =
+            classify_encounter(encounter, area_id_for_classification, difficulty_id_for_classification);
 
         // Generate encounter name with pull count
         // Priority: definition name > hardcoded boss name > phase type
-        // 
+        //
         // Important: PostCombat state alone doesn't mean the encounter is finalized.
         // During the grace period, the encounter is PostCombat but hasn't been added
         // to history yet (that happens when push_new_encounter() is called after
         // the grace period expires). We detect this by checking last_combat_exit_time:
         // - Some(_) = grace period active, encounter not yet in history
         // - None = grace period expired, encounter has been finalized to history
-        let is_finalized = matches!(encounter.state, EncounterState::PostCombat { .. })
-            && cache.last_combat_exit_time.is_none();
+        let is_finalized =
+            matches!(encounter.state, EncounterState::PostCombat { .. }) && cache.last_combat_exit_time.is_none();
 
         let encounter_name = if is_finalized {
             // Encounter finalized and in history - use the display_name from history
@@ -3205,7 +3225,8 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
         let difficulty = short_difficulty(difficulty_id_for_classification, &cache.current_area.difficulty_name);
 
         // Calculate metrics for all players (use session-level discipline registry)
-        let entity_metrics = encounter.calculate_entity_metrics(&cache.player_disciplines, session.interpolated_game_time())?;
+        let entity_metrics =
+            encounter.calculate_entity_metrics(&cache.player_disciplines, session.interpolated_game_time())?;
         let is_pvp = encounter.is_pvp();
         let metrics: Vec<PlayerMetrics> = entity_metrics
             .into_iter()
@@ -3215,9 +3236,7 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
                 // Faction relative to the local player (drives the friendly/enemy
                 // split in metric overlays)
                 if is_pvp {
-                    pm.pvp_faction = encounter
-                        .pvp_factions
-                        .faction_of(pm.entity_id, player_entity_id);
+                    pm.pvp_faction = encounter.pvp_factions.faction_of(pm.entity_id, player_entity_id);
                 }
                 pm
             })
@@ -3316,12 +3335,9 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
 
         // Build challenge data from encounter's tracker (persists with encounter, not boss state)
         let challenges = if encounter.challenge_tracker.is_active() {
-            let boss_name = encounter.active_boss_idx().and_then(|idx| {
-                encounter
-                    .boss_definitions()
-                    .get(idx)
-                    .map(|def| def.name.clone())
-            });
+            let boss_name = encounter
+                .active_boss_idx()
+                .and_then(|idx| encounter.boss_definitions().get(idx).map(|def| def.name.clone()));
             let overall_duration = encounter.combat_time_secs.max(1.0);
             // Use exit time when in PostCombat (grace window) so duration doesn't keep ticking.
             // Fall back to last event time (game time) instead of system clock to avoid
@@ -3377,10 +3393,8 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
                                 0.0
                             };
 
-                            let (class_icon, discipline_icon, role) = player_lookup
-                                .get(&entity_id)
-                                .cloned()
-                                .unwrap_or((None, None, None));
+                            let (class_icon, discipline_icon, role) =
+                                player_lookup.get(&entity_id).cloned().unwrap_or((None, None, None));
 
                             PlayerContribution {
                                 entity_id,
@@ -3435,12 +3449,9 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
         // Get phase info from encounter's boss state
         // Look up the phase display name from the boss definition
         let current_phase = encounter.current_phase.as_ref().and_then(|phase_id| {
-            encounter.active_boss_definition().and_then(|def| {
-                def.phases
-                    .iter()
-                    .find(|p| &p.id == phase_id)
-                    .map(|p| p.name.clone())
-            })
+            encounter
+                .active_boss_definition()
+                .and_then(|def| def.phases.iter().find(|p| &p.id == phase_id).map(|p| p.name.clone()))
         });
         let phase_time_secs = encounter
             .phase_started_at
@@ -3504,10 +3515,8 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
                         .by_player
                         .iter()
                         .map(|p| {
-                            let (class_icon, discipline_icon, role) = player_lookup
-                                .get(&p.entity_id)
-                                .cloned()
-                                .unwrap_or((None, None, None));
+                            let (class_icon, discipline_icon, role) =
+                                player_lookup.get(&p.entity_id).cloned().unwrap_or((None, None, None));
                             PlayerContribution {
                                 entity_id: p.entity_id,
                                 name: p.name.clone(),
@@ -3578,10 +3587,7 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
 /// Registration will otherwise wait until combat, not when probing someone.
 async fn promote_provisional_slots(shared: &Arc<SharedState>) {
     let provisional = {
-        let registry = shared
-            .raid_registry
-            .lock()
-            .unwrap_or_else(|p| p.into_inner());
+        let registry = shared.raid_registry.lock().unwrap_or_else(|p| p.into_inner());
         registry.provisional_entries()
     };
     if provisional.is_empty() {
@@ -3630,15 +3636,12 @@ async fn promote_provisional_slots(shared: &Arc<SharedState>) {
     }
 
     {
-        let mut registry = shared
-            .raid_registry
-            .lock()
-            .unwrap_or_else(|p| p.into_inner());
-        registry.assign_slots(assignments.into_iter().filter_map(|a| {
-            u8::try_from(a.row)
-                .ok()
-                .map(|row| (row, a.entity_id, a.name))
-        }));
+        let mut registry = shared.raid_registry.lock().unwrap_or_else(|p| p.into_inner());
+        registry.assign_slots(
+            assignments
+                .into_iter()
+                .filter_map(|a| u8::try_from(a.row).ok().map(|row| (row, a.entity_id, a.name))),
+        );
     }
 }
 
@@ -3662,10 +3665,7 @@ fn provisional_raid_frame(slot: u8, name: &str, ambiguous: bool) -> RaidFrame {
 }
 
 fn provisional_raid_frame_data(shared: &Arc<SharedState>) -> Option<RaidFrameData> {
-    let registry = shared
-        .raid_registry
-        .lock()
-        .unwrap_or_else(|p| p.into_inner());
+    let registry = shared.raid_registry.lock().unwrap_or_else(|p| p.into_inner());
     let frames: Vec<_> = (0..registry.max_slots())
         .filter_map(|slot| {
             registry
@@ -3714,11 +3714,7 @@ pub(crate) async fn build_raid_frame_data(
     let interp_time = tracker.interpolated_game_time();
 
     // Get local player ID for is_self flag
-    let local_player_id = session
-        .session_cache
-        .as_ref()
-        .map(|c| c.player.id)
-        .unwrap_or(0);
+    let local_player_id = session.session_cache.as_ref().map(|c| c.player.id).unwrap_or(0);
 
     // Process new targets queue - these are entities that JUST received an effect from local player
     // The registry handles duplicate rejection via try_register
@@ -3727,10 +3723,7 @@ pub(crate) async fn build_raid_frame_data(
         // Remember these players past a frame clear: a re-run OCR pass can
         // only rebind names it still has candidates for, and out-of-combat
         // targets never reach the discipline roster.
-        let mut roster = shared
-            .ability_roster
-            .lock()
-            .unwrap_or_else(|p| p.into_inner());
+        let mut roster = shared.ability_roster.lock().unwrap_or_else(|p| p.into_inner());
         for target in new_targets {
             let name = resolve(target.name).to_string();
             if let Some(at) = session.last_event_time {
@@ -3745,12 +3738,14 @@ pub(crate) async fn build_raid_frame_data(
     }
 
     // Group effects by target for registered players only
-    let mut effects_by_target: std::collections::HashMap<i64, Vec<RaidEffect>> =
-        std::collections::HashMap::new();
+    let mut effects_by_target: std::collections::HashMap<i64, Vec<RaidEffect>> = std::collections::HashMap::new();
 
     for effect in tracker.active_effects() {
         // Skip effects not destined for raid frames or already removed
-        if !effect.display_targets.contains(&DisplayTarget::RaidFrames) || effect.removed_at.is_some() || effect.timer_expired {
+        if !effect.display_targets.contains(&DisplayTarget::RaidFrames)
+            || effect.removed_at.is_some()
+            || effect.timer_expired
+        {
             continue;
         }
 
@@ -3764,7 +3759,12 @@ pub(crate) async fn build_raid_frame_data(
             effects_by_target
                 .entry(target_id)
                 .or_default()
-                .push(convert_to_raid_effect(effect, icon_cache, interp_time, show_single_stack));
+                .push(convert_to_raid_effect(
+                    effect,
+                    icon_cache,
+                    interp_time,
+                    show_single_stack,
+                ));
         }
     }
 
@@ -3774,17 +3774,13 @@ pub(crate) async fn build_raid_frame_data(
 
     for slot in 0..max_slots {
         if let Some(player) = registry.get_player(slot) {
-            let mut effects = effects_by_target
-                .remove(&player.entity_id)
-                .unwrap_or_default();
+            let mut effects = effects_by_target.remove(&player.entity_id).unwrap_or_default();
 
             // Sort effects by effect_id for stable visual ordering
             effects.sort_by_key(|e| e.effect_id);
 
             // Map discipline to role and class icon (defaults to DPS if unknown)
-            let discipline = player
-                .discipline_id
-                .and_then(Discipline::from_guid);
+            let discipline = player.discipline_id.and_then(Discipline::from_guid);
 
             let role = discipline
                 .map(|d| match d.role() {
@@ -3794,8 +3790,7 @@ pub(crate) async fn build_raid_frame_data(
                 })
                 .unwrap_or(PlayerRole::Dps);
 
-            let class_icon = discipline
-                .map(|d| d.icon_name().to_string());
+            let class_icon = discipline.map(|d| d.icon_name().to_string());
 
             frames.push(RaidFrame {
                 slot,
@@ -3839,46 +3834,49 @@ async fn build_boss_health_data(
 
     // Collect BossHealth-targeted effects grouped by target entity id (so two
     // NPCs sharing a display name don't share icons).
-    let boss_icons: HashMap<i64, Vec<BossEffectIcon>> =
-        if let Some(effect_tracker) = session.effect_tracker() {
-            let tracker = effect_tracker.lock().unwrap_or_else(|p| p.into_inner());
-            let interp_time = tracker.interpolated_game_time();
-            tracker
-                .boss_health_effects_by_target_id()
-                .into_iter()
-                .filter_map(|(entity_id, effects)| {
-                    let icons: Vec<BossEffectIcon> = effects
-                        .into_iter()
-                        .filter_map(|effect| {
-                            let remaining_total = calculate_remaining_secs(effect, interp_time)?;
-                            if !effect.is_visible(remaining_total) {
-                                return None;
-                            }
-                            let remaining_secs = calculate_base_remaining_secs(effect, interp_time)?;
-                            let total_secs = base_total_secs(effect)?;
-                            let icon = icon_cache.and_then(|cache| {
-                                cache
-                                    .get_icon(effect.icon_ability_id)
-                                    .map(|data| StdArc::new((data.width, data.height, data.rgba)))
-                            });
-                            Some(BossEffectIcon {
-                                effect_id: effect.game_effect_id,
-                                icon_ability_id: effect.icon_ability_id,
-                                name: effect.name.clone(),
-                                remaining_secs,
-                                total_secs,
-                                color: effect.color,
-                                show_icon: effect.show_icon,
-                                icon,
-                            })
+    let boss_icons: HashMap<i64, Vec<BossEffectIcon>> = if let Some(effect_tracker) = session.effect_tracker() {
+        let tracker = effect_tracker.lock().unwrap_or_else(|p| p.into_inner());
+        let interp_time = tracker.interpolated_game_time();
+        tracker
+            .boss_health_effects_by_target_id()
+            .into_iter()
+            .filter_map(|(entity_id, effects)| {
+                let icons: Vec<BossEffectIcon> = effects
+                    .into_iter()
+                    .filter_map(|effect| {
+                        let remaining_total = calculate_remaining_secs(effect, interp_time)?;
+                        if !effect.is_visible(remaining_total) {
+                            return None;
+                        }
+                        let remaining_secs = calculate_base_remaining_secs(effect, interp_time)?;
+                        let total_secs = base_total_secs(effect)?;
+                        let icon = icon_cache.and_then(|cache| {
+                            cache
+                                .get_icon(effect.icon_ability_id)
+                                .map(|data| StdArc::new((data.width, data.height, data.rgba)))
+                        });
+                        Some(BossEffectIcon {
+                            effect_id: effect.game_effect_id,
+                            icon_ability_id: effect.icon_ability_id,
+                            name: effect.name.clone(),
+                            remaining_secs,
+                            total_secs,
+                            color: effect.color,
+                            show_icon: effect.show_icon,
+                            icon,
                         })
-                        .collect();
-                    if icons.is_empty() { None } else { Some((entity_id, icons)) }
-                })
-                .collect()
-        } else {
-            HashMap::new()
-        };
+                    })
+                    .collect();
+                if icons.is_empty() {
+                    None
+                } else {
+                    Some((entity_id, icons))
+                }
+            })
+            .collect()
+    } else {
+        HashMap::new()
+    };
 
     // Resolve game icons for active shields (deduped by ability id).
     let mut shield_icons: HashMap<u64, StdArc<(u32, u32, Vec<u8>)>> = HashMap::new();
@@ -3976,8 +3974,7 @@ async fn build_timer_data_with_audio(
     // remaining (pessimistic blocker). Names are intentionally not used here
     // because they're display-only and not guaranteed unique.
     let blocker_remaining: std::collections::HashMap<&str, f32> = {
-        let mut map: std::collections::HashMap<&str, f32> =
-            std::collections::HashMap::new();
+        let mut map: std::collections::HashMap<&str, f32> = std::collections::HashMap::new();
         for t in timer_mgr.active_timers() {
             if t.is_queued {
                 continue;
@@ -4028,9 +4025,7 @@ async fn build_timer_data_with_audio(
             continue;
         }
 
-        let remaining = interp_time
-            .map(|t| timer.remaining_secs(t))
-            .unwrap_or(0.0);
+        let remaining = interp_time.map(|t| timer.remaining_secs(t)).unwrap_or(0.0);
 
         // Load icon from cache if ability ID is set
         let icon = timer.icon_ability_id.and_then(|ability_id| {
@@ -4050,8 +4045,7 @@ async fn build_timer_data_with_audio(
         // Timers A / B: progress-bar entries. Filtered to active, visible timers.
         let bar_visible = remaining > 0.0 && timer.is_visible(remaining);
         if bar_visible
-            && (timer.displays_on(TimerDisplayTarget::TimersA)
-                || timer.displays_on(TimerDisplayTarget::TimersB))
+            && (timer.displays_on(TimerDisplayTarget::TimersA) || timer.displays_on(TimerDisplayTarget::TimersB))
         {
             let entry = TimerEntry {
                 name: timer.name.clone(),
@@ -4075,23 +4069,15 @@ async fn build_timer_data_with_audio(
         // (when remaining hits 0 the `remaining > 0.0` filter drops it) and pops
         // back as READY on the next tick, causing visible flicker and layout
         // reflow on the rows below.
-        let pending_queue = timer.queue_on_expire
-            && !timer.is_queued
-            && !timer.can_repeat()
-            && remaining <= 0.0;
+        let pending_queue = timer.queue_on_expire && !timer.is_queued && !timer.can_repeat() && remaining <= 0.0;
         let display_is_queued = timer.is_queued || pending_queue;
-        if timer.displays_on(TimerDisplayTarget::AbilityQueue)
-            && (display_is_queued || remaining > 0.0)
-        {
+        if timer.displays_on(TimerDisplayTarget::AbilityQueue) && (display_is_queued || remaining > 0.0) {
             let blocked_by_timer = timer.queue_blocking_timers.iter().any(|id| {
                 blocker_remaining
                     .get(id.as_str())
                     .is_some_and(|&rem| rem > gcd_remaining)
             });
-            let current_encounter = session
-                .session_cache
-                .as_ref()
-                .and_then(|c| c.current_encounter());
+            let current_encounter = session.session_cache.as_ref().and_then(|c| c.current_encounter());
             let blocked_by_condition = match (&timer.queue_blocking_condition, current_encounter) {
                 (Some(c), Some(enc)) => enc.evaluate_condition(c),
                 _ => false,
@@ -4123,10 +4109,7 @@ async fn build_timer_data_with_audio(
         let max_prio = aq_entries
             .iter()
             .filter(|e| {
-                !e.is_pinned
-                    && !e.is_blocked
-                    && !e.hide_from_next
-                    && (e.is_queued || e.remaining_secs <= gcd_remaining)
+                !e.is_pinned && !e.is_blocked && !e.hide_from_next && (e.is_queued || e.remaining_secs <= gcd_remaining)
             })
             .map(|e| e.queue_priority)
             .max();
@@ -4220,19 +4203,13 @@ async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -> EffectAud
     // Get session (same pattern as build_effects_overlay_data)
     let session_guard = shared.session.read().await;
     let Some(session_arc) = session_guard.as_ref() else {
-        return EffectAudioResult {
-            countdowns,
-            alerts,
-        };
+        return EffectAudioResult { countdowns, alerts };
     };
     let session = session_arc.read().await;
 
     // Get effect tracker (Live mode only)
     let Some(effect_tracker) = session.effect_tracker() else {
-        return EffectAudioResult {
-            countdowns,
-            alerts,
-        };
+        return EffectAudioResult { countdowns, alerts };
     };
     let mut tracker = effect_tracker.lock().unwrap_or_else(|p| p.into_inner());
 
@@ -4251,9 +4228,7 @@ async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -> EffectAud
         }
 
         // Compute remaining times from interpolated game time
-        let remaining_total = interp_time
-            .and_then(|t| effect.remaining_secs(t))
-            .unwrap_or(0.0);
+        let remaining_total = interp_time.and_then(|t| effect.remaining_secs(t)).unwrap_or(0.0);
         let remaining_base = effect.remaining_base_secs(remaining_total);
 
         // Check for countdown (uses interpolated game time)
@@ -4261,11 +4236,7 @@ async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -> EffectAud
         if effect.removed_at.is_none()
             && let Some(seconds) = effect.check_countdown(remaining_base)
         {
-            countdowns.push((
-                effect.display_text.clone(),
-                seconds,
-                effect.countdown_voice.clone(),
-            ));
+            countdowns.push((effect.display_text.clone(), seconds, effect.countdown_voice.clone()));
         }
 
         // Check for audio offset trigger (early warning sound, offset > 0)
@@ -4285,10 +4256,7 @@ async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -> EffectAud
         }
     }
 
-    EffectAudioResult {
-        countdowns,
-        alerts,
-    }
+    EffectAudioResult { countdowns, alerts }
 }
 
 /// Convert an ActiveEffect (core) to RaidEffect (overlay)
@@ -4301,7 +4269,11 @@ fn convert_to_raid_effect(
     interp_time: Option<chrono::NaiveDateTime>,
     show_single_stack: bool,
 ) -> RaidEffect {
-    let charges = if show_single_stack { effect.stacks.max(1) } else { effect.stacks };
+    let charges = if show_single_stack {
+        effect.stacks.max(1)
+    } else {
+        effect.stacks
+    };
     // Effects on raid frames are typically HoTs/shields (is_buff defaults to true in RaidEffect::new())
     let mut raid_effect = RaidEffect::new(effect.game_effect_id, effect.name.clone())
         .with_charges(charges)
@@ -4314,8 +4286,7 @@ fn convert_to_raid_effect(
     if let Some(dur) = effect.duration {
         let remaining_secs = calculate_base_remaining_secs(effect, interp_time).unwrap_or(0.0);
         if remaining_secs > 0.0 {
-            let base_dur =
-                dur.saturating_sub(std::time::Duration::from_secs_f32(effect.cooldown_ready_secs));
+            let base_dur = dur.saturating_sub(std::time::Duration::from_secs_f32(effect.cooldown_ready_secs));
             let remaining_dur = std::time::Duration::from_secs_f32(remaining_secs);
             let expires_at = std::time::Instant::now() + remaining_dur;
             raid_effect = raid_effect.with_duration(base_dur).with_expiry(expires_at);
@@ -4324,41 +4295,27 @@ fn convert_to_raid_effect(
 
     // Load icon if cache available
     if let Some(cache) = icon_cache
-        && let Some(data) = cache.get_icon(effect.icon_ability_id) {
-            raid_effect =
-                raid_effect.with_icon(std::sync::Arc::new((data.width, data.height, data.rgba)));
-        }
+        && let Some(data) = cache.get_icon(effect.icon_ability_id)
+    {
+        raid_effect = raid_effect.with_icon(std::sync::Arc::new((data.width, data.height, data.rgba)));
+    }
 
     raid_effect
 }
 
 /// Calculate remaining time for an effect in seconds
 /// Uses interpolated game time for accurate values without clock skew
-fn calculate_remaining_secs(
-    effect: &ActiveEffect,
-    interp_time: Option<chrono::NaiveDateTime>,
-) -> Option<f32> {
-    let remaining = interp_time
-        .and_then(|t| effect.remaining_secs(t))
-        .unwrap_or(0.0);
-    if remaining <= 0.0 {
-        None
-    } else {
-        Some(remaining)
-    }
+fn calculate_remaining_secs(effect: &ActiveEffect, interp_time: Option<chrono::NaiveDateTime>) -> Option<f32> {
+    let remaining = interp_time.and_then(|t| effect.remaining_secs(t)).unwrap_or(0.0);
+    if remaining <= 0.0 { None } else { Some(remaining) }
 }
 
 /// Like `calculate_remaining_secs` but excludes the cooldown ready-state tail.
 /// Non-cooldown overlays use this so an effect that also displays on the
 /// cooldowns overlay disappears when its base duration ends instead of
 /// lingering (with inflated time) through the ready state.
-fn calculate_base_remaining_secs(
-    effect: &ActiveEffect,
-    interp_time: Option<chrono::NaiveDateTime>,
-) -> Option<f32> {
-    let remaining = interp_time
-        .and_then(|t| effect.remaining_secs(t))
-        .unwrap_or(0.0);
+fn calculate_base_remaining_secs(effect: &ActiveEffect, interp_time: Option<chrono::NaiveDateTime>) -> Option<f32> {
+    let remaining = interp_time.and_then(|t| effect.remaining_secs(t)).unwrap_or(0.0);
     let base = effect.remaining_base_secs(remaining);
     if base <= 0.0 { None } else { Some(base) }
 }
@@ -4394,9 +4351,7 @@ fn active_to_ab_entry(
     def: Option<&baras_core::EffectDefinition>,
 ) -> Option<EffectABEntry> {
     if !pinned {
-        let remaining_total = interp_time
-            .and_then(|t| effect.remaining_secs(t))
-            .unwrap_or(0.0);
+        let remaining_total = interp_time.and_then(|t| effect.remaining_secs(t)).unwrap_or(0.0);
         // Skip effects hidden by show_at_secs threshold
         if !effect.is_visible(remaining_total) {
             return None;
@@ -4417,9 +4372,9 @@ fn active_to_ab_entry(
     let max_total_secs = effect
         .max_expires_at
         .map(|max_exp| (max_exp - effect.applied_at).num_milliseconds() as f32 / 1000.0);
-    let max_remaining_secs = effect.max_expires_at.and_then(|max_exp| {
-        interp_time.map(|t| (max_exp - t).num_milliseconds() as f32 / 1000.0)
-    });
+    let max_remaining_secs = effect
+        .max_expires_at
+        .and_then(|max_exp| interp_time.map(|t| (max_exp - t).num_milliseconds() as f32 / 1000.0));
 
     // show_single_stack: always display a count, floored at 1.
     // Otherwise hide a lone "1" (matching raid frames) — real counts show from 2.
@@ -4535,8 +4490,7 @@ async fn build_effects_ab_data(
         entries.push(entry);
     }
 
-    let uptime_ids: std::collections::HashSet<&str> =
-        uptime_defs.iter().map(|d| d.id.as_str()).collect();
+    let uptime_ids: std::collections::HashSet<&str> = uptime_defs.iter().map(|d| d.id.as_str()).collect();
     entries.extend(
         effects
             .iter()
@@ -4587,9 +4541,7 @@ async fn build_cooldowns_data(
     let entries: Vec<CooldownEntry> = effects
         .into_iter()
         .filter_map(|effect| {
-            let remaining_total = interp_time
-                .and_then(|t| effect.remaining_secs(t))
-                .unwrap_or(0.0);
+            let remaining_total = interp_time.and_then(|t| effect.remaining_secs(t)).unwrap_or(0.0);
             // Skip effects hidden by show_at_secs threshold
             if !effect.is_visible(remaining_total) {
                 return None;
@@ -4604,9 +4556,7 @@ async fn build_cooldowns_data(
             // Between log events the interpolated clock can pass expires_at before the
             // tracker has a chance to run tick(), so dropping at 0 would cut the ready
             // state short (or skip it entirely for effects with cooldown_ready_secs = 0).
-            let tracker_remaining = interp_time
-                .and_then(|t| effect.remaining_secs(t))
-                .unwrap_or(0.0);
+            let tracker_remaining = interp_time.and_then(|t| effect.remaining_secs(t)).unwrap_or(0.0);
 
             // Display remaining = tracker remaining minus ready period (clamped to 0)
             // So display hits 0 when entering ready state, not when effect disappears
@@ -4638,8 +4588,7 @@ async fn build_cooldowns_data(
                 icon,
                 show_icon: effect.show_icon,
                 display_source: effect.display_source,
-                show_target: effect.show_target
-                    && effect.target_entity_id != effect.source_entity_id,
+                show_target: effect.show_target && effect.target_entity_id != effect.source_entity_id,
                 is_in_ready_state,
             })
         })
@@ -4682,9 +4631,7 @@ async fn build_dot_tracker_data(
             let dots: Vec<DotEntry> = effects
                 .into_iter()
                 .filter_map(|effect| {
-                    let remaining_total = interp_time
-                        .and_then(|t| effect.remaining_secs(t))
-                        .unwrap_or(0.0);
+                    let remaining_total = interp_time.and_then(|t| effect.remaining_secs(t)).unwrap_or(0.0);
                     // Skip effects hidden by show_at_secs threshold
                     if !effect.is_visible(remaining_total) {
                         return None;
@@ -4812,10 +4759,7 @@ pub struct CombatData {
 impl CombatData {
     /// Convert to PersonalStats by finding the player's entry in metrics
     pub fn to_personal_stats(&self) -> Option<PersonalStats> {
-        let player = self
-            .metrics
-            .iter()
-            .find(|m| m.entity_id == self.player_entity_id)?;
+        let player = self.metrics.iter().find(|m| m.entity_id == self.player_entity_id)?;
         Some(PersonalStats {
             encounter_name: self.encounter_name.clone(),
             difficulty: self.difficulty.clone(),

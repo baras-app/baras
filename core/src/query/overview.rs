@@ -17,10 +17,7 @@ impl EncounterQuery<'_> {
     /// - Multiple shields + full absorb: credit FIRST applied (FIFO)
     /// - Multiple shields + damage through: credit earlier shields with estimated_max,
     ///   LAST shield with actual dmg_absorbed
-    async fn query_shield_attribution(
-        &self,
-        time_range: Option<&TimeRange>,
-    ) -> Result<HashMap<String, f64>, String> {
+    async fn query_shield_attribution(&self, time_range: Option<&TimeRange>) -> Result<HashMap<String, f64>, String> {
         let time_filter = time_range
             .map(|tr| format!("AND {}", tr.sql_filter()))
             .unwrap_or_default();
@@ -72,9 +69,7 @@ impl EncounterQuery<'_> {
 
     /// Get entity ID to name mapping
     async fn get_entity_names(&self) -> Result<HashMap<i64, String>, String> {
-        let batches = self
-            .sql("SELECT DISTINCT source_id, source_name FROM events")
-            .await?;
+        let batches = self.sql("SELECT DISTINCT source_id, source_name FROM events").await?;
 
         let mut names: HashMap<i64, String> = HashMap::new();
         for batch in &batches {
@@ -111,7 +106,8 @@ impl EncounterQuery<'_> {
         };
 
         let batches = self
-            .sql(r#"
+            .sql(
+                r#"
             SELECT source_id, source_name, target_id, target_name,
                    CAST(dmg_amount AS BIGINT) as dmg
             FROM events
@@ -120,7 +116,8 @@ impl EncounterQuery<'_> {
               AND target_entity_type = 'Player'
               AND source_id != target_id
             ORDER BY line_number
-            "#)
+            "#,
+            )
             .await?;
 
         let mut tracker = PvpFactionTracker::default();
@@ -162,10 +159,7 @@ impl EncounterQuery<'_> {
         let duration_ms = (duration_secs.unwrap_or(1.0).max(0.001) * 1000.0).round() as i64;
 
         // Query shield attribution
-        let shielding_given = self
-            .query_shield_attribution(time_range)
-            .await
-            .unwrap_or_default();
+        let shielding_given = self.query_shield_attribution(time_range).await.unwrap_or_default();
 
         // Threat floored at 0 per player (matches the group chart)
         let mut threat: HashMap<String, f64> = HashMap::new();
@@ -435,22 +429,14 @@ impl EncounterQuery<'_> {
     ///
     /// Uses FIRST appearance for max_hp (avoids SWTOR combat log bug where AoE events
     /// can report incorrect max_hp from other entities).
-    pub async fn query_npc_health(
-        &self,
-        time_range: Option<&TimeRange>,
-    ) -> Result<Vec<NpcHealthRow>, String> {
+    pub async fn query_npc_health(&self, time_range: Option<&TimeRange>) -> Result<Vec<NpcHealthRow>, String> {
         let time_filter = time_range
             .map(|tr| format!("AND {}", tr.sql_filter()))
             .unwrap_or_default();
 
         // Death/damage events can trail slightly after combat exit; give a 2s buffer
         let death_time_filter = time_range
-            .map(|tr| {
-                format!(
-                    "AND {}",
-                    TimeRange::new(tr.start, tr.end + 2.0).sql_filter()
-                )
-            })
+            .map(|tr| format!("AND {}", TimeRange::new(tr.start, tr.end + 2.0).sql_filter()))
             .unwrap_or_default();
 
         let batches = self

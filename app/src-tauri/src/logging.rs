@@ -40,10 +40,7 @@ pub fn init() -> Option<tracing_appender::non_blocking::WorkerGuard> {
     // Create log directory if needed
     if let Err(e) = std::fs::create_dir_all(&log_dir) {
         // Can't use tracing yet since subscriber not initialized
-        eprintln!(
-            "Failed to create log directory {:?}: {}, using stdout only",
-            log_dir, e
-        );
+        eprintln!("Failed to create log directory {:?}: {}, using stdout only", log_dir, e);
         init_stdout_only(debug_logging);
         return None;
     }
@@ -121,10 +118,7 @@ fn init_stdout_only(debug_logging: bool) {
 
     let filter = EnvFilter::new(filter_directive);
 
-    tracing_subscriber::registry()
-        .with(stdout_layer)
-        .with(filter)
-        .init();
+    tracing_subscriber::registry().with(stdout_layer).with(filter).init();
 
     tracing::info!(debug_logging, "BARAS logging initialized (stdout only)");
 }

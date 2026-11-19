@@ -7,7 +7,9 @@ use std::path::PathBuf;
 pub const CONFIG_DIR_ENV: &str = "BARAS_CONFIG_DIR";
 
 fn override_dir() -> Option<PathBuf> {
-    std::env::var_os(CONFIG_DIR_ENV).filter(|d| !d.is_empty()).map(PathBuf::from)
+    std::env::var_os(CONFIG_DIR_ENV)
+        .filter(|d| !d.is_empty())
+        .map(PathBuf::from)
 }
 
 /// Whether `BARAS_CONFIG_DIR` redirects this process away from the default directory

@@ -19,7 +19,8 @@ pub fn NavMenu(
     items: Vec<NavItem>,
     #[props(default)] actions: Vec<NavAction>,
     /// Drop the group name when none of its views is open (the icon says it)
-    #[props(default)] icon_only: bool,
+    #[props(default)]
+    icon_only: bool,
     state: Signal<UiSessionState>,
 ) -> Element {
     let mut open = use_signal(|| false);
@@ -39,7 +40,10 @@ pub fn NavMenu(
     let (btn_icon, btn_label) = current.map_or((icon, label), |(_, i, l, _)| (*i, *l));
     let in_menu = current.is_some();
     let last_tab = *last.read();
-    let last_label = items.iter().find(|(t, ..)| Some(*t) == last_tab).map_or(label, |(_, _, l, _)| *l);
+    let last_label = items
+        .iter()
+        .find(|(t, ..)| Some(*t) == last_tab)
+        .map_or(label, |(_, _, l, _)| *l);
     let has_items = !items.is_empty();
 
     rsx! {

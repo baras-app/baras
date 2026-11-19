@@ -12,9 +12,7 @@ impl EncounterQuery<'_> {
         // Calculate duration from combat_time_secs (only includes actual combat events)
         let duration_secs = scalar_f32(
             &self
-                .sql(
-                    "SELECT COALESCE(MAX(combat_time_secs), 0) FROM events WHERE combat_time_secs IS NOT NULL",
-                )
+                .sql("SELECT COALESCE(MAX(combat_time_secs), 0) FROM events WHERE combat_time_secs IS NOT NULL")
                 .await?,
         );
 
@@ -85,9 +83,6 @@ impl EncounterQuery<'_> {
             first.start_secs = 0.0;
         }
 
-        Ok(EncounterTimeline {
-            duration_secs,
-            phases,
-        })
+        Ok(EncounterTimeline { duration_secs, phases })
     }
 }

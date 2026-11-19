@@ -7,9 +7,9 @@ pub mod effects;
 pub mod encounter;
 pub mod game_data;
 pub mod history;
+pub mod icons;
 pub mod library;
 pub mod paths;
-pub mod icons;
 #[cfg(feature = "query")]
 pub mod query;
 pub mod raid_detect;
@@ -30,12 +30,12 @@ pub use dsl::AudioConfig;
 pub use dsl::EntityFilter;
 pub use dsl::{AbilitySelector, EffectSelector, EntitySelector};
 pub use dsl::{
-    BossConfig, BossEncounterDefinition, BossTimerDefinition, CounterCondition, CounterDefinition,
-    OperationTimerStart, PhaseDefinition, PhaseTrigger, load_bosses_from_dir,
+    BossConfig, BossEncounterDefinition, BossTimerDefinition, CounterCondition, CounterDefinition, OperationTimerStart,
+    PhaseDefinition, PhaseTrigger, load_bosses_from_dir,
 };
 pub use effects::{
-    ActiveEffect, DefinitionConfig, DefinitionSet, DisplayTarget, EFFECTS_DSL_VERSION,
-    EffectDefinition, EffectTracker, NewTargetInfo,
+    ActiveEffect, DefinitionConfig, DefinitionSet, DisplayTarget, EFFECTS_DSL_VERSION, EffectDefinition, EffectTracker,
+    NewTargetInfo,
 };
 pub use encounter::metrics::{IncomingDamageRow, PlayerMetrics};
 pub use encounter::summary::{EncounterHistory, EncounterSummary};

@@ -14,8 +14,8 @@ use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::sync::RwLock;
 
-use baras_core::context::{AppConfig, DirectoryIndex, LogAreaCache, ParsingSession};
 use baras_core::characters::CharacterStore;
+use baras_core::context::{AppConfig, DirectoryIndex, LogAreaCache, ParsingSession};
 use baras_core::history::{LibraryMeta, PullIndex};
 use baras_core::query::QueryContext;
 
@@ -61,8 +61,7 @@ impl AutoHideState {
     /// Returns true if ANY auto-hide condition is active.
     /// This is the single check all overlay spawn paths use.
     pub fn is_auto_hidden(&self) -> bool {
-        self.conversation_active.load(Ordering::SeqCst)
-            || self.not_live_active.load(Ordering::SeqCst)
+        self.conversation_active.load(Ordering::SeqCst) || self.not_live_active.load(Ordering::SeqCst)
     }
 
     /// Whether conversation auto-hide is currently active.
@@ -297,11 +296,7 @@ impl SharedState {
         };
 
         let s = session.read().await;
-        let has_player = s
-            .session_cache
-            .as_ref()
-            .map(|c| c.player_initialized)
-            .unwrap_or(false);
+        let has_player = s.session_cache.as_ref().map(|c| c.player_initialized).unwrap_or(false);
 
         if !has_player {
             return true;

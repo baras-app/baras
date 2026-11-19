@@ -61,12 +61,11 @@ impl EncounterQuery<'_> {
             let first_cast_secs = timestamps.first().copied().unwrap_or(0.0);
             let last_cast_secs = timestamps.last().copied().unwrap_or(0.0);
 
-            let (avg_time_between, median_time_between, min_time_between, max_time_between) =
-                if cast_count >= 2 {
-                    compute_inter_cast_stats(&timestamps)
-                } else {
-                    (0.0, 0.0, 0.0, 0.0)
-                };
+            let (avg_time_between, median_time_between, min_time_between, max_time_between) = if cast_count >= 2 {
+                compute_inter_cast_stats(&timestamps)
+            } else {
+                (0.0, 0.0, 0.0, 0.0)
+            };
 
             results.push(AbilityUsageRow {
                 ability_name,
@@ -91,10 +90,7 @@ impl EncounterQuery<'_> {
 /// Assumes `timestamps` has at least 2 elements and is sorted ascending.
 /// Returns (avg, median, min, max) of the deltas between consecutive casts.
 fn compute_inter_cast_stats(timestamps: &[f32]) -> (f32, f32, f32, f32) {
-    let mut deltas: Vec<f32> = timestamps
-        .windows(2)
-        .map(|w| w[1] - w[0])
-        .collect();
+    let mut deltas: Vec<f32> = timestamps.windows(2).map(|w| w[1] - w[0]).collect();
 
     if deltas.is_empty() {
         return (0.0, 0.0, 0.0, 0.0);

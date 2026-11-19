@@ -1,6 +1,6 @@
 use datafusion::arrow::array::{
-    Array, Float32Array, Float64Array, Int32Array, Int64Array, LargeStringArray, StringArray,
-    StringViewArray, TimestampMillisecondArray, UInt64Array,
+    Array, Float32Array, Float64Array, Int32Array, Int64Array, LargeStringArray, StringArray, StringViewArray,
+    TimestampMillisecondArray, UInt64Array,
 };
 use datafusion::arrow::record_batch::RecordBatch;
 
@@ -20,10 +20,7 @@ pub fn col_strings(batch: &RecordBatch, idx: usize) -> Result<Vec<String>, Strin
     if let Some(a) = col.as_any().downcast_ref::<LargeStringArray>() {
         return Ok((0..a.len()).map(|i| a.value(i).to_string()).collect());
     }
-    Err(format!(
-        "col {idx}: expected string, got {:?}",
-        col.data_type()
-    ))
+    Err(format!("col {idx}: expected string, got {:?}", col.data_type()))
 }
 
 pub fn col_i64(batch: &RecordBatch, idx: usize) -> Result<Vec<i64>, String> {
@@ -37,10 +34,7 @@ pub fn col_i64(batch: &RecordBatch, idx: usize) -> Result<Vec<i64>, String> {
     if let Some(a) = col.as_any().downcast_ref::<UInt64Array>() {
         return Ok((0..a.len()).map(|i| a.value(i) as i64).collect());
     }
-    Err(format!(
-        "col {idx}: expected int, got {:?}",
-        col.data_type()
-    ))
+    Err(format!("col {idx}: expected int, got {:?}", col.data_type()))
 }
 
 pub fn col_f64(batch: &RecordBatch, idx: usize) -> Result<Vec<f64>, String> {
@@ -57,10 +51,7 @@ pub fn col_f64(batch: &RecordBatch, idx: usize) -> Result<Vec<f64>, String> {
     if let Some(a) = col.as_any().downcast_ref::<Int32Array>() {
         return Ok((0..a.len()).map(|i| a.value(i) as f64).collect());
     }
-    Err(format!(
-        "col {idx}: expected float, got {:?}",
-        col.data_type()
-    ))
+    Err(format!("col {idx}: expected float, got {:?}", col.data_type()))
 }
 
 pub fn col_f32(batch: &RecordBatch, idx: usize) -> Result<Vec<f32>, String> {
@@ -71,10 +62,7 @@ pub fn col_f32(batch: &RecordBatch, idx: usize) -> Result<Vec<f32>, String> {
     if let Some(a) = col.as_any().downcast_ref::<Float64Array>() {
         return Ok((0..a.len()).map(|i| a.value(i) as f32).collect());
     }
-    Err(format!(
-        "col {idx}: expected float, got {:?}",
-        col.data_type()
-    ))
+    Err(format!("col {idx}: expected float, got {:?}", col.data_type()))
 }
 
 pub fn col_opt_f32(batch: &RecordBatch, idx: usize) -> Result<Vec<Option<f32>>, String> {
@@ -89,10 +77,7 @@ pub fn col_opt_f32(batch: &RecordBatch, idx: usize) -> Result<Vec<Option<f32>>, 
             .map(|i| if a.is_null(i) { None } else { Some(a.value(i) as f32) })
             .collect());
     }
-    Err(format!(
-        "col {idx}: expected float, got {:?}",
-        col.data_type()
-    ))
+    Err(format!("col {idx}: expected float, got {:?}", col.data_type()))
 }
 
 pub fn scalar_f32(batches: &[RecordBatch]) -> f32 {
@@ -115,10 +100,7 @@ pub fn col_i32(batch: &RecordBatch, idx: usize) -> Result<Vec<i32>, String> {
     if let Some(a) = col.as_any().downcast_ref::<Int64Array>() {
         return Ok((0..a.len()).map(|i| a.value(i) as i32).collect());
     }
-    Err(format!(
-        "col {idx}: expected i32, got {:?}",
-        col.data_type()
-    ))
+    Err(format!("col {idx}: expected i32, got {:?}", col.data_type()))
 }
 
 pub fn col_bool(batch: &RecordBatch, idx: usize) -> Result<Vec<bool>, String> {
@@ -126,10 +108,7 @@ pub fn col_bool(batch: &RecordBatch, idx: usize) -> Result<Vec<bool>, String> {
     if let Some(a) = col.as_any().downcast_ref::<arrow::array::BooleanArray>() {
         return Ok((0..a.len()).map(|i| a.value(i)).collect());
     }
-    Err(format!(
-        "col {idx}: expected bool, got {:?}",
-        col.data_type()
-    ))
+    Err(format!("col {idx}: expected bool, got {:?}", col.data_type()))
 }
 
 pub fn col_timestamp_ms(batch: &RecordBatch, idx: usize) -> Result<Vec<i64>, String> {
@@ -141,8 +120,5 @@ pub fn col_timestamp_ms(batch: &RecordBatch, idx: usize) -> Result<Vec<i64>, Str
     if let Some(a) = col.as_any().downcast_ref::<Int64Array>() {
         return Ok((0..a.len()).map(|i| a.value(i)).collect());
     }
-    Err(format!(
-        "col {idx}: expected timestamp, got {:?}",
-        col.data_type()
-    ))
+    Err(format!("col {idx}: expected timestamp, got {:?}", col.data_type()))
 }

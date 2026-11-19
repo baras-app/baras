@@ -72,11 +72,7 @@ impl AudioService {
             // Read settings and extract what we need, then drop the guard
             let (enabled, tts_enabled, volume) = {
                 let config = self.shared.config.read().await;
-                (
-                    config.audio.enabled,
-                    config.audio.tts_enabled,
-                    config.audio.volume,
-                )
+                (config.audio.enabled, config.audio.tts_enabled, config.audio.volume)
             };
 
             // Master audio toggle
@@ -148,11 +144,7 @@ impl AudioService {
     fn play_countdown_voice(&self, voice: &str, seconds: u8, volume: u8) -> bool {
         let filename = format!("{}.mp3", seconds);
         let user_path = self.user_sounds_dir.join(voice).join(&filename);
-        let bundled_path = self
-            .bundled_definitions_dir
-            .join("sounds")
-            .join(voice)
-            .join(&filename);
+        let bundled_path = self.bundled_definitions_dir.join("sounds").join(voice).join(&filename);
 
         let path = if user_path.exists() {
             user_path
@@ -169,11 +161,8 @@ impl AudioService {
     /// Play a custom sound file. Accepts folder-relative refs, legacy bare
     /// filenames, or absolute paths — see [`super::resolve_sound_path`].
     fn play_custom_sound(&self, filename: &str, volume: u8) {
-        let Some(path) = super::resolve_sound_path(
-            filename,
-            &self.user_sounds_dir,
-            &self.bundled_definitions_dir,
-        ) else {
+        let Some(path) = super::resolve_sound_path(filename, &self.user_sounds_dir, &self.bundled_definitions_dir)
+        else {
             return;
         };
 

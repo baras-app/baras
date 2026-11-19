@@ -15,12 +15,12 @@ pub use runtime::{configure_threads, release_memory};
 use std::time::Instant;
 
 use analysis::{
-    Band, BandKind, BarPosition, PreparedCrop, detect_health_bar, harmonize_names,
-    parse_health_text, prepare, reconcile_bars, slot_bands,
+    Band, BandKind, BarPosition, PreparedCrop, detect_health_bar, harmonize_names, parse_health_text, prepare,
+    reconcile_bars, slot_bands,
 };
 use baras_core::raid_detect::{
-    HEALTH_RESCUE_FLOOR, RowDecision, assign_rows_explained,
-    MIN_OCR_NAME_CHARS, MatchConfig, PlayerCandidate, RowAssignment, RowObservation,
+    HEALTH_RESCUE_FLOOR, MIN_OCR_NAME_CHARS, MatchConfig, PlayerCandidate, RowAssignment, RowDecision, RowObservation,
+    assign_rows_explained,
 };
 use baras_overlay::capture::CapturedImage;
 
@@ -58,9 +58,7 @@ fn clean_for_display(text: &str) -> String {
     // space (`I CHIE SIA`). SWTOR requires at least three characters either side
     // of a space, so a one- or two-letter first part cannot be genuine.
     match trimmed.split_once(' ') {
-        Some((first, rest)) if first.chars().count() < 3 && !rest.trim().is_empty() => {
-            rest.trim().to_string()
-        }
+        Some((first, rest)) if first.chars().count() < 3 && !rest.trim().is_empty() => rest.trim().to_string(),
         _ => trimmed.to_string(),
     }
 }
@@ -74,11 +72,7 @@ pub fn observe_slots(image: &CapturedImage, slots: &[SlotRect]) -> Reading {
 ///
 /// The dump lives here because this is the only place a crop and the text it
 /// produced exist at the same time.
-pub fn observe_slots_dumping(
-    image: &CapturedImage,
-    slots: &[SlotRect],
-    mut dump: Option<&mut DebugDump>,
-) -> Reading {
+pub fn observe_slots_dumping(image: &CapturedImage, slots: &[SlotRect], mut dump: Option<&mut DebugDump>) -> Reading {
     if let Some(dump) = dump.as_deref_mut() {
         dump.capture(image);
     }
@@ -125,9 +119,7 @@ pub fn observe_slots_dumping(
     // Prepare everything first: crops can only overlap once they all exist.
     // Bands outside their slot stay `None` so readings keep lining up.
     let mut crops: Vec<(usize, Band, Option<PreparedCrop>)> = Vec::new();
-    for (slot_index, (slot_image, slot_bands)) in
-        slot_images.iter().zip(&per_slot_bands).enumerate()
-    {
+    for (slot_index, (slot_image, slot_bands)) in slot_images.iter().zip(&per_slot_bands).enumerate() {
         let Some(slot_image) = slot_image else {
             continue;
         };
@@ -179,10 +171,7 @@ pub fn observe_slots_dumping(
         }
 
         if let Some(dump) = dump.as_deref_mut() {
-            dump.slot(
-                slot_rect.0,
-                (slot_rect.1, slot_rect.2, slot_rect.3, slot_rect.4),
-            );
+            dump.slot(slot_rect.0, (slot_rect.1, slot_rect.2, slot_rect.3, slot_rect.4));
             dump.bar(slot_rect.0, bars[slot_index], inferred[slot_index]);
             if slot_bands.is_empty() {
                 dump.no_bands(slot_rect.0);
@@ -390,10 +379,7 @@ impl Reading {
 
 /// One reading per crop from a batched result. The batch fails as a whole, so
 /// a failure is reported against every crop in it.
-fn spread(
-    batch: Result<Vec<String>, engine::OcrError>,
-    len: usize,
-) -> Vec<Result<String, engine::OcrError>> {
+fn spread(batch: Result<Vec<String>, engine::OcrError>, len: usize) -> Vec<Result<String, engine::OcrError>> {
     match batch {
         Ok(texts) => texts.into_iter().map(Ok).collect(),
         Err(e) => std::iter::repeat_n(Err(e), len).collect(),
@@ -418,10 +404,7 @@ fn narrow_names(crops: &mut [(usize, Band, Option<PreparedCrop>)]) -> (usize, Ve
         .filter(|(_, e)| e.1.kind == BandKind::Name && e.2.is_some())
         .map(|(i, _)| i)
         .collect();
-    let batch: Vec<&PreparedCrop> = asked
-        .iter()
-        .filter_map(|&i| crops[i].2.as_ref())
-        .collect();
+    let batch: Vec<&PreparedCrop> = asked.iter().filter_map(|&i| crops[i].2.as_ref()).collect();
 
     let mut changed = 0;
     let mut textless = Vec::new();
@@ -447,9 +430,7 @@ fn narrow_names(crops: &mut [(usize, Band, Option<PreparedCrop>)]) -> (usize, Ve
 
 /// Reads every crop in one batch. Lines up with `crops`, `None` where there
 /// was nothing to read.
-fn recognize_all(
-    crops: &[(usize, Band, Option<PreparedCrop>)],
-) -> Vec<Option<Result<String, engine::OcrError>>> {
+fn recognize_all(crops: &[(usize, Band, Option<PreparedCrop>)]) -> Vec<Option<Result<String, engine::OcrError>>> {
     let present: Vec<&PreparedCrop> = crops.iter().filter_map(|e| e.2.as_ref()).collect();
     let mut readings = spread(engine::recognize_many(&present), present.len()).into_iter();
     crops
@@ -459,11 +440,7 @@ fn recognize_all(
 }
 
 /// Full detection pass: read the screen, then match against known players.
-pub fn detect(
-    image: &CapturedImage,
-    slots: &[SlotRect],
-    candidates: &[PlayerCandidate],
-) -> Vec<RowAssignment> {
+pub fn detect(image: &CapturedImage, slots: &[SlotRect], candidates: &[PlayerCandidate]) -> Vec<RowAssignment> {
     let mut reading = observe_slots(image, slots);
     tracing::debug!(
         "Raid detection read {} of {} slots against {} candidates",
@@ -497,11 +474,8 @@ pub fn assign_with_health(
         return (assignments, decisions);
     }
 
-    let (retried, retried_decisions) = assign_rows_explained(
-        &reading.rows,
-        candidates,
-        &config.clone().with_health_rescue(),
-    );
+    let (retried, retried_decisions) =
+        assign_rows_explained(&reading.rows, candidates, &config.clone().with_health_rescue());
 
     // Whether health earns its pass is still open; this answers it live.
     let before: Vec<(usize, i64)> = assignments.iter().map(|a| (a.row, a.entity_id)).collect();
@@ -529,8 +503,7 @@ fn rows_needing_health(decisions: &[RowDecision], config: &MatchConfig) -> Vec<u
             };
             // Two candidates within the margin, or one that almost cleared the bar.
             best.total - d.runner_up < config.min_margin
-                || (best.name_score >= HEALTH_RESCUE_FLOOR
-                    && best.name_score < config.min_confidence)
+                || (best.name_score >= HEALTH_RESCUE_FLOOR && best.name_score < config.min_confidence)
         })
         .map(|d| d.row)
         .collect()

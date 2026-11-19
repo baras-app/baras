@@ -58,23 +58,21 @@ unsafe impl<T> Send for SendPtr<T> {}
 unsafe impl<T> Sync for SendPtr<T> {}
 
 use baras_core::context::{
-    AlertsOverlayConfig, BossHealthConfig, ChallengeOverlayConfig, OverlayAppearanceConfig,
-    OverlayPositionConfig, PersonalOverlayConfig, TimerOverlayConfig,
+    AlertsOverlayConfig, BossHealthConfig, ChallengeOverlayConfig, OverlayAppearanceConfig, OverlayPositionConfig,
+    PersonalOverlayConfig, TimerOverlayConfig,
 };
 use baras_overlay::{
-    AbilityCastConfig, AbilityCastOverlay, AbilityQueueConfig, AbilityQueueOverlay, AlertsOverlay, BossHealthOverlay, ChallengeOverlay,
-    CombatTimeConfig, CombatTimeOverlay, CooldownConfig, CooldownOverlay, DotTrackerConfig,
+    AbilityCastConfig, AbilityCastOverlay, AbilityQueueConfig, AbilityQueueOverlay, AlertsOverlay, BossHealthOverlay,
+    ChallengeOverlay, CombatTimeConfig, CombatTimeOverlay, CooldownConfig, CooldownOverlay, DotTrackerConfig,
     DotTrackerOverlay, EffectsABConfig, EffectsABOverlay, MetricOverlay, NotesConfig, NotesOverlay,
-    OperationTimerConfig, OperationTimerOverlay, Overlay, OverlayConfig, PersonalOverlay,
-    RaidGridLayout, RaidOverlay, RaidOverlayConfig, RaidRegistryAction, TimerOverlay,
+    OperationTimerConfig, OperationTimerOverlay, Overlay, OverlayConfig, PersonalOverlay, RaidGridLayout, RaidOverlay,
+    RaidOverlayConfig, RaidRegistryAction, TimerOverlay,
 };
 use baras_types::{
-    AbilityCastOverlayConfig as TypesAbilityCastConfig,
-    AbilityQueueOverlayConfig as TypesAbilityQueueConfig, ClassIconMode,
-    CombatTimeOverlayConfig as TypesCombatTimeConfig, CooldownTrackerConfig,
+    AbilityCastOverlayConfig as TypesAbilityCastConfig, AbilityQueueOverlayConfig as TypesAbilityQueueConfig,
+    ClassIconMode, CombatTimeOverlayConfig as TypesCombatTimeConfig, CooldownTrackerConfig,
     DotTrackerConfig as TypesDotTrackerConfig, EffectsAConfig as TypesEffectsAConfig,
-    NotesOverlayConfig as TypesNotesOverlayConfig,
-    OperationTimerOverlayConfig as TypesOperationTimerConfig,
+    NotesOverlayConfig as TypesNotesOverlayConfig, OperationTimerOverlayConfig as TypesOperationTimerConfig,
 };
 
 use super::state::{OverlayCommand, OverlayHandle, PositionEvent};
@@ -189,9 +187,8 @@ where
                     OverlayCommand::GetPosition(response_tx) => {
                         let pos = overlay.position();
                         let current_monitor = overlay.frame().window().current_monitor();
-                        let (monitor_id, monitor_x, monitor_y) = current_monitor
-                            .map(|m| (Some(m.id), m.x, m.y))
-                            .unwrap_or((None, 0, 0));
+                        let (monitor_id, monitor_x, monitor_y) =
+                            current_monitor.map(|m| (Some(m.id), m.x, m.y)).unwrap_or((None, 0, 0));
                         let _ = response_tx.send(PositionEvent {
                             kind,
                             x: pos.x,
@@ -304,17 +301,16 @@ where
     let handle = thread::spawn(move || {
         // Create the overlay on the main thread via GCD
         // Returns a raw pointer wrapped in SendPtr since we can't move the overlay between threads
-        let overlay_ptr: SendPtr<O> =
-            dispatch::Queue::main().exec_sync(move || match create_overlay() {
-                Ok(o) => {
-                    let _ = confirm_tx.send(Ok(()));
-                    SendPtr(Box::into_raw(Box::new(o)))
-                }
-                Err(e) => {
-                    let _ = confirm_tx.send(Err(e));
-                    SendPtr(ptr::null_mut())
-                }
-            });
+        let overlay_ptr: SendPtr<O> = dispatch::Queue::main().exec_sync(move || match create_overlay() {
+            Ok(o) => {
+                let _ = confirm_tx.send(Ok(()));
+                SendPtr(Box::into_raw(Box::new(o)))
+            }
+            Err(e) => {
+                let _ = confirm_tx.send(Err(e));
+                SendPtr(ptr::null_mut())
+            }
+        });
 
         if overlay_ptr.is_null() {
             return;
@@ -394,9 +390,8 @@ where
                             let overlay = unsafe { &*overlay_ptr.get() };
                             let pos = overlay.position();
                             let current_monitor = overlay.frame().window().current_monitor();
-                            let (monitor_id, monitor_x, monitor_y) = current_monitor
-                                .map(|m| (Some(m.id), m.x, m.y))
-                                .unwrap_or((None, 0, 0));
+                            let (monitor_id, monitor_x, monitor_y) =
+                                current_monitor.map(|m| (Some(m.id), m.x, m.y)).unwrap_or((None, 0, 0));
                             PositionEvent {
                                 kind,
                                 x: pos.x,
@@ -623,8 +618,7 @@ pub fn create_personal_overlay(
 
     // Create a factory closure that will be called inside the spawned thread
     let factory = move || {
-        PersonalOverlay::new(config, personal_config)
-            .map_err(|e| format!("Failed to create personal overlay: {}", e))
+        PersonalOverlay::new(config, personal_config).map_err(|e| format!("Failed to create personal overlay: {}", e))
     };
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
@@ -665,8 +659,7 @@ pub fn create_raid_overlay(
     let (registry_tx, registry_rx) = std::sync::mpsc::channel::<RaidRegistryAction>();
 
     let factory = move || {
-        RaidOverlay::new(config, layout, raid_config)
-            .map_err(|e| format!("Failed to create raid overlay: {}", e))
+        RaidOverlay::new(config, layout, raid_config).map_err(|e| format!("Failed to create raid overlay: {}", e))
     };
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, Some(registry_tx))?;
@@ -698,8 +691,7 @@ pub fn create_boss_health_overlay(
     let kind = OverlayType::BossHealth;
 
     let factory = move || {
-        BossHealthOverlay::new(config, boss_config)
-            .map_err(|e| format!("Failed to create boss health overlay: {}", e))
+        BossHealthOverlay::new(config, boss_config).map_err(|e| format!("Failed to create boss health overlay: {}", e))
     };
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
@@ -830,8 +822,7 @@ pub fn create_alerts_overlay(
     let kind = OverlayType::Alerts;
 
     let factory = move || {
-        AlertsOverlay::new(config, alerts_config)
-            .map_err(|e| format!("Failed to create alerts overlay: {}", e))
+        AlertsOverlay::new(config, alerts_config).map_err(|e| format!("Failed to create alerts overlay: {}", e))
     };
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
@@ -945,8 +936,7 @@ pub fn create_cooldowns_overlay(
     let overlay_config = cooldown_config(&cooldowns_config);
 
     let factory = move || {
-        CooldownOverlay::new(config, overlay_config)
-            .map_err(|e| format!("Failed to create cooldowns overlay: {}", e))
+        CooldownOverlay::new(config, overlay_config).map_err(|e| format!("Failed to create cooldowns overlay: {}", e))
     };
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
@@ -1075,10 +1065,8 @@ pub fn create_notes_overlay(
         dynamic_background: notes_config.dynamic_background,
     };
 
-    let factory = move || {
-        NotesOverlay::new(config, overlay_config)
-            .map_err(|e| format!("Failed to create notes overlay: {}", e))
-    };
+    let factory =
+        move || NotesOverlay::new(config, overlay_config).map_err(|e| format!("Failed to create notes overlay: {}", e));
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
 

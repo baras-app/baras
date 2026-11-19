@@ -197,11 +197,19 @@ pub(super) fn PhaseEditForm(
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[component]
-fn CounterListEditor(counters: Vec<String>, available_counters: Vec<String>, on_change: EventHandler<Vec<String>>) -> Element {
+fn CounterListEditor(
+    counters: Vec<String>,
+    available_counters: Vec<String>,
+    on_change: EventHandler<Vec<String>>,
+) -> Element {
     let mut selected_counter = use_signal(String::new);
 
     // Available counters not already picked
-    let remaining: Vec<_> = available_counters.iter().filter(|c| !counters.contains(c)).cloned().collect();
+    let remaining: Vec<_> = available_counters
+        .iter()
+        .filter(|c| !counters.contains(c))
+        .cloned()
+        .collect();
     let counters_for_add = counters.clone();
 
     rsx! {

@@ -42,7 +42,13 @@ pub fn ago(iso: &str) -> String {
     // Log stamps are local time read as UTC; shift "now" the same way
     let now_local = js_sys::Date::now() - js_sys::Date::new_0().get_timezone_offset() * MINUTE_MS;
     let days = ((now_local - seen as f64) / DAY_MS).floor();
-    let plural = |n: i64, unit: &str| if n == 1 { format!("1 {unit} ago") } else { format!("{n} {unit}s ago") };
+    let plural = |n: i64, unit: &str| {
+        if n == 1 {
+            format!("1 {unit} ago")
+        } else {
+            format!("{n} {unit}s ago")
+        }
+    };
     match days as i64 {
         i64::MIN..=0 => "Today".into(),
         1 => "Yesterday".into(),

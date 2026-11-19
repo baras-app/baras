@@ -75,7 +75,11 @@ pub fn AlacrityPill(
     let mut characters = use_signal(Vec::<String>::new);
     let (name, discipline) = (player_name.clone(), player_discipline.clone());
     let start_adding = move |_| {
-        new_discipline.set(discipline.clone().unwrap_or_else(|| ALL_DISCIPLINES[0].1[0].to_string()));
+        new_discipline.set(
+            discipline
+                .clone()
+                .unwrap_or_else(|| ALL_DISCIPLINES[0].1[0].to_string()),
+        );
         new_character.set(name.clone().unwrap_or_default());
         new_value.set(alacrity());
         adding.set(true);
@@ -314,7 +318,10 @@ pub fn BossNotesMenu(area_bosses: Signal<Vec<BossNotesInfo>>, selected_boss_id: 
     let mut open = use_signal(|| false);
     let bosses: Vec<BossNotesInfo> = area_bosses().iter().filter(|b| b.has_notes).cloned().collect();
     let selected = selected_boss_id();
-    let selected_name = bosses.iter().find(|b| selected.as_ref() == Some(&b.id)).map(|b| b.name.clone());
+    let selected_name = bosses
+        .iter()
+        .find(|b| selected.as_ref() == Some(&b.id))
+        .map(|b| b.name.clone());
     let none = bosses.is_empty();
     let title = match (&selected_name, none) {
         (_, true) => "Boss notes: none for this area".to_string(),

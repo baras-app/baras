@@ -8,9 +8,7 @@
 //! Types live in `baras-types` (shared with the WASM frontend); this module
 //! re-exports them for DSL consumers.
 
-pub use baras_types::{
-    PositionAxis, PositionConstraint, PositionEntity, PositionOp, matches_position_constraints,
-};
+pub use baras_types::{PositionAxis, PositionConstraint, PositionEntity, PositionOp, matches_position_constraints};
 
 #[cfg(test)]
 mod tests {
@@ -18,12 +16,7 @@ mod tests {
     use crate::combat_log::Position;
 
     fn pos(x: f32, y: f32, z: f32) -> Option<Position> {
-        Some(Position {
-            x,
-            y,
-            z,
-            facing: 0.0,
-        })
+        Some(Position { x, y, z, facing: 0.0 })
     }
 
     #[test]
@@ -31,10 +24,7 @@ mod tests {
         let c = PositionConstraint {
             entity: PositionEntity::Source,
             axis: PositionAxis::X,
-            op: PositionOp::Between {
-                min: 100.0,
-                max: 150.0,
-            },
+            op: PositionOp::Between { min: 100.0, max: 150.0 },
         };
         assert!(c.matches(pos(100.0, 0.0, 0.0), None));
         assert!(c.matches(pos(150.0, 0.0, 0.0), None));
@@ -62,10 +52,7 @@ mod tests {
         let c = PositionConstraint {
             entity: PositionEntity::Source,
             axis: PositionAxis::Z,
-            op: PositionOp::Between {
-                min: -10.0,
-                max: 10.0,
-            },
+            op: PositionOp::Between { min: -10.0, max: 10.0 },
         };
         let toml = toml::to_string(&c).unwrap();
         let parsed: PositionConstraint = toml::from_str(&toml).unwrap();

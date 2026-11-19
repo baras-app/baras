@@ -85,7 +85,6 @@ impl OverlayHealthEntry {
 
     /// Whether this entity has been pushed out of combat (HP% at or below pushes_at threshold)
     pub fn is_pushed(&self) -> bool {
-        self.pushes_at
-            .is_some_and(|threshold| self.percent() <= threshold)
+        self.pushes_at.is_some_and(|threshold| self.percent() <= threshold)
     }
 }

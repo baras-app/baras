@@ -44,8 +44,5 @@ const SERVERS: &[(&str, &str)] = &[
 /// Display name for a server code, e.g. `he3000` → "Star Forge". Unknown
 /// codes come back unchanged (still identifies the server, just not by name).
 pub fn server_name(code: &str) -> &str {
-    SERVERS
-        .iter()
-        .find(|(c, _)| *c == code)
-        .map_or(code, |(_, name)| name)
+    SERVERS.iter().find(|(c, _)| *c == code).map_or(code, |(_, name)| name)
 }

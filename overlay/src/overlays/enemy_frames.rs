@@ -7,14 +7,14 @@
 //! Extensibility: `EnemyFrame` carries a `guarded` flag (blue accent) and is
 //! the intended home for future per-frame highlights (debuff tracking, etc.).
 
-use baras_types::{formatting, ClassColorConfig};
+use baras_types::{ClassColorConfig, formatting};
 
 use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
 use crate::utils::color_from_rgba;
-use crate::widgets::colors;
 use crate::widgets::ProgressBar;
+use crate::widgets::colors;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration & Data
@@ -92,10 +92,7 @@ pub struct EnemyFramesOverlay {
 }
 
 impl EnemyFramesOverlay {
-    pub fn new(
-        window_config: OverlayConfig,
-        config: EnemyFramesConfig,
-    ) -> Result<Self, PlatformError> {
+    pub fn new(window_config: OverlayConfig, config: EnemyFramesConfig) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
         frame.set_label("Enemy Frames");
 
@@ -110,7 +107,6 @@ impl EnemyFramesOverlay {
     pub fn set_config(&mut self, config: EnemyFramesConfig) {
         self.config = config;
     }
-
 
     pub fn render(&mut self) {
         let width = self.frame.width() as f32;
@@ -143,9 +139,7 @@ impl EnemyFramesOverlay {
         self.frame.begin_frame();
 
         let cell_w = ((width - padding * 2.0 - gap) / 2.0).max(20.0);
-        let cell_h = ((height - padding * 2.0 - (GRID_ROWS - 1) as f32 * gap)
-            / GRID_ROWS as f32)
-            .max(20.0);
+        let cell_h = ((height - padding * 2.0 - (GRID_ROWS - 1) as f32 * gap) / GRID_ROWS as f32).max(20.0);
 
         // Split borrows: frames may borrow self.data, cells draw via self.frame
         let (frame, config, eu) = (&mut self.frame, &self.config, self.european_number_format);
@@ -296,15 +290,7 @@ fn render_cell(
         };
         if !text.is_empty() {
             let text = frame.truncate_to_width(&text, w - inset * 2.0, target_font, bold);
-            frame.draw_text_styled(
-                &text,
-                x + inset,
-                target_baseline,
-                target_font,
-                color,
-                bold,
-                false,
-            );
+            frame.draw_text_styled(&text, x + inset, target_baseline, target_font, color, bold, false);
         }
     }
 

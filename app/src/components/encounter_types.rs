@@ -133,9 +133,7 @@ pub fn time_in_instance(section: &[EncounterSummary]) -> Option<i64> {
 }
 
 /// Group encounters into sections by area (based on is_phase_start flag or area change)
-pub fn group_by_area(
-    encounters: &[EncounterSummary],
-) -> Vec<(String, Option<String>, Vec<&EncounterSummary>)> {
+pub fn group_by_area(encounters: &[EncounterSummary]) -> Vec<(String, Option<String>, Vec<&EncounterSummary>)> {
     let mut sections: Vec<(String, Option<String>, Vec<&EncounterSummary>)> = Vec::new();
 
     for enc in encounters.iter() {

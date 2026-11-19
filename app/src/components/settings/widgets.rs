@@ -94,7 +94,8 @@ pub(super) fn Check(
     #[props(default = false)] disabled: bool,
     #[props(default = "")] tooltip: &'static str,
     /// Muted note after the label, e.g. "(bar layout)"
-    #[props(default = "")] note: &'static str,
+    #[props(default = "")]
+    note: &'static str,
     on_change: EventHandler<bool>,
 ) -> Element {
     rsx! {
@@ -214,9 +215,11 @@ pub(super) fn BorderRows(
     show: bool,
     color: Color,
     /// Note on the checkbox when it only applies in one mode, e.g. "(bar layout)"
-    #[props(default = "")] note: &'static str,
+    #[props(default = "")]
+    note: &'static str,
     /// Both rows off, e.g. outside bar layout
-    #[props(default = false)] disabled: bool,
+    #[props(default = false)]
+    disabled: bool,
     on_show: EventHandler<bool>,
     on_color: EventHandler<Color>,
 ) -> Element {

@@ -146,7 +146,12 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
     };
 
     let row_deaths = |row: &RaidOverviewRow| -> Vec<PlayerDeath> {
-        props.deaths.iter().filter(|d| d.name == row.name && d.faction == row.faction).cloned().collect()
+        props
+            .deaths
+            .iter()
+            .filter(|d| d.name == row.name && d.faction == row.faction)
+            .cloned()
+            .collect()
     };
 
     rsx! {
@@ -271,9 +276,20 @@ fn death_cell(deaths: Vec<PlayerDeath>, on_click: EventHandler<PlayerDeath>) -> 
     let Some(first) = deaths.first().cloned() else {
         return rsx! { td { class: "death-col" } };
     };
-    let times: Vec<String> = deaths.iter().map(|d| formatting::format_duration(d.death_time_secs as i64)).collect();
-    let label = if deaths.len() == 1 { times[0].clone() } else { format!("\u{00D7}{}", deaths.len()) };
-    let class = if deaths.iter().any(|d| d.local_kill) { "death-col local-kill" } else { "death-col" };
+    let times: Vec<String> = deaths
+        .iter()
+        .map(|d| formatting::format_duration(d.death_time_secs as i64))
+        .collect();
+    let label = if deaths.len() == 1 {
+        times[0].clone()
+    } else {
+        format!("\u{00D7}{}", deaths.len())
+    };
+    let class = if deaths.iter().any(|d| d.local_kill) {
+        "death-col local-kill"
+    } else {
+        "death-col"
+    };
     rsx! {
         td { class: "{class}",
             button {

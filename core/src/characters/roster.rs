@@ -2,7 +2,9 @@
 
 use hashbrown::HashMap;
 
-use baras_types::characters::{CharacterRecord, CharacterRoster, CharacterRow, IconLabel, OperationRef, TierBosses, character_key, operation_key};
+use baras_types::characters::{
+    CharacterRecord, CharacterRoster, CharacterRow, IconLabel, OperationRef, TierBosses, character_key, operation_key,
+};
 use baras_types::history::PullRow;
 
 use super::lockouts::{lockouts, next_reset, now_utc_ms};
@@ -22,7 +24,10 @@ struct Seen<'a> {
 impl Seen<'_> {
     fn note(&mut self, started_ms: i64, last_event_ms: Option<i64>, rows: &[PullRow]) {
         let newest = rows.iter().map(|r| r.start_ms + r.duration_seconds * 1000).max();
-        self.last_ms = [Some(started_ms), last_event_ms, newest].into_iter().flatten().fold(self.last_ms, i64::max);
+        self.last_ms = [Some(started_ms), last_event_ms, newest]
+            .into_iter()
+            .flatten()
+            .fold(self.last_ms, i64::max);
     }
 }
 
@@ -32,7 +37,11 @@ fn logged_classes(rows: &[&PullRow]) -> Vec<Class> {
     sorted.sort_by_key(|r| std::cmp::Reverse(r.start_ms));
     let mut classes: Vec<Class> = Vec::new();
     for r in sorted {
-        if let Some(c) = r.discipline.as_deref().and_then(Discipline::from_name).map(|d| d.class())
+        if let Some(c) = r
+            .discipline
+            .as_deref()
+            .and_then(Discipline::from_name)
+            .map(|d| d.class())
             && !classes.contains(&c)
         {
             classes.push(c);
@@ -59,16 +68,21 @@ pub fn roster(
     let now_ms = now_utc_ms();
     let mut seen: HashMap<String, Seen> = HashMap::new();
     let mut unplaced = Vec::new();
-    for log in index.logs().filter(|l| !l.character.is_empty() && l.character != "Unknown") {
+    for log in index
+        .logs()
+        .filter(|l| !l.character.is_empty() && l.character != "Unknown")
+    {
         if log.server.is_empty() {
             unplaced.push(log);
             continue;
         }
-        let s = seen.entry(character_key(log.character, log.server)).or_insert_with(|| Seen {
-            name: log.character.to_string(),
-            server: log.server.to_string(),
-            ..Default::default()
-        });
+        let s = seen
+            .entry(character_key(log.character, log.server))
+            .or_insert_with(|| Seen {
+                name: log.character.to_string(),
+                server: log.server.to_string(),
+                ..Default::default()
+            });
         s.note(log.started_ms, last_events.get(log.filename).copied(), log.rows);
         s.rows.extend(log.rows);
     }
@@ -90,7 +104,11 @@ pub fn roster(
         };
         let (name, server) = key.rsplit_once('@').unwrap_or((&key, ""));
         let (name, server) = (name.to_string(), server.to_string());
-        let s = seen.entry(key).or_insert_with(|| Seen { name, server, ..Default::default() });
+        let s = seen.entry(key).or_insert_with(|| Seen {
+            name,
+            server,
+            ..Default::default()
+        });
         s.note(log.started_ms, last_events.get(log.filename).copied(), log.rows);
         s.rows.extend(log.rows);
     }
@@ -125,12 +143,18 @@ pub fn roster(
                 faction: r.faction.unwrap_or_default(),
                 classes: classes
                     .iter()
-                    .map(|c| IconLabel { name: c.name().to_string(), icon: c.icon_name().to_string() })
+                    .map(|c| IconLabel {
+                        name: c.name().to_string(),
+                        icon: c.icon_name().to_string(),
+                    })
                     .collect(),
                 classes_auto,
                 roles: roles
                     .iter()
-                    .map(|r| IconLabel { name: format!("{r:?}"), icon: r.icon_name().to_string() })
+                    .map(|r| IconLabel {
+                        name: format!("{r:?}"),
+                        icon: r.icon_name().to_string(),
+                    })
                     .collect(),
                 crew_skills: r.crew_skills.clone(),
                 guild: r.guild.clone(),
@@ -146,7 +170,11 @@ pub fn roster(
         })
         .collect();
 
-    let mut servers: Vec<String> = rows.iter().map(|r| r.server.clone()).filter(|s| !s.is_empty()).collect();
+    let mut servers: Vec<String> = rows
+        .iter()
+        .map(|r| r.server.clone())
+        .filter(|s| !s.is_empty())
+        .collect();
     servers.sort();
     servers.dedup();
     // Pull counts per (area, name); each area keeps its most-used name
@@ -174,12 +202,16 @@ pub fn roster(
                         .map(|t| TierBosses {
                             // Config keys are lowercase; rows and lockouts use the capitalized word
                             tier: capitalize(t),
-                            bosses: a.bosses_at(t, 8).chain(a.bosses_at(t, 16)).map(|b| b.name.clone()).fold(Vec::new(), |mut v, n| {
-                                if !v.contains(&n) {
-                                    v.push(n);
-                                }
-                                v
-                            }),
+                            bosses: a
+                                .bosses_at(t, 8)
+                                .chain(a.bosses_at(t, 16))
+                                .map(|b| b.name.clone())
+                                .fold(Vec::new(), |mut v, n| {
+                                    if !v.contains(&n) {
+                                        v.push(n);
+                                    }
+                                    v
+                                }),
                         })
                         .collect()
                 })
@@ -200,5 +232,7 @@ pub fn roster(
 /// First letter uppercased; char-safe for empty or non-ASCII config keys
 fn capitalize(s: &str) -> String {
     let mut chars = s.chars();
-    chars.next().map_or_else(String::new, |c| c.to_uppercase().chain(chars).collect())
+    chars
+        .next()
+        .map_or_else(String::new, |c| c.to_uppercase().chain(chars).collect())
 }

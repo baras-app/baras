@@ -5,10 +5,10 @@
 
 use dioxus::prelude::*;
 
-use crate::components::ability_naming::AbilityNamingPills;
 use crate::api;
 use crate::api::{RotationAnalysis, TimeRange};
 use crate::components::ability_icon::AbilityIcon;
+use crate::components::ability_naming::AbilityNamingPills;
 use crate::components::mirror_names::{display_id, display_name};
 use baras_types::formatting;
 
@@ -126,8 +126,7 @@ pub fn RotationView(props: RotationViewProps) -> Element {
 
         loading.set(true);
         spawn(async move {
-            let result =
-                api::query_rotation(enc_idx, &source_name, anchor_id, tr_opt.as_ref()).await;
+            let result = api::query_rotation(enc_idx, &source_name, anchor_id, tr_opt.as_ref()).await;
             rotation.set(result);
             loading.set(false);
         });
@@ -315,5 +314,3 @@ pub fn RotationView(props: RotationViewProps) -> Element {
         }
     }
 }
-
-

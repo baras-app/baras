@@ -7,8 +7,7 @@ use crate::components::editor_drawer::{EmptyDrawer, use_drawer_guard};
 use dioxus::prelude::*;
 
 use crate::types::{
-    BossTimerDefinition, BossWithPath, ChallengeDefinition, CounterDefinition, EntityDefinition,
-    PhaseDefinition,
+    BossTimerDefinition, BossWithPath, ChallengeDefinition, CounterDefinition, EntityDefinition, PhaseDefinition,
 };
 
 use super::challenges::ChallengesTab;
@@ -191,11 +190,15 @@ pub fn BossTabs(
     let empty_hint = match active_tab_enum() {
         BossTab::Timers if !open(expanded_timer, boss.timers.iter().map(|t| &t.id)) => Some("Select a timer to edit"),
         BossTab::Phases if !open(expanded_phase, boss.phases.iter().map(|p| &p.id)) => Some("Select a phase to edit"),
-        BossTab::Counters if !open(expanded_counter, boss.counters.iter().map(|c| &c.id)) => Some("Select a counter to edit"),
+        BossTab::Counters if !open(expanded_counter, boss.counters.iter().map(|c| &c.id)) => {
+            Some("Select a counter to edit")
+        }
         BossTab::Challenges if !open(expanded_challenge, boss.challenges.iter().map(|c| &c.id)) => {
             Some("Select a challenge to edit")
         }
-        BossTab::Entities if !open(expanded_entity, boss.entities.iter().map(|e| &e.name)) => Some("Select an entity to edit"),
+        BossTab::Entities if !open(expanded_entity, boss.entities.iter().map(|e| &e.name)) => {
+            Some("Select an entity to edit")
+        }
         _ => None,
     };
 

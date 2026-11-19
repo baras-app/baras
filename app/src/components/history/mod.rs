@@ -110,7 +110,11 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
 
     // Tauri callbacks run outside the Dioxus runtime, so the listener only
     // writes the signal; the toast happens in the effect below.
-    let backfill = Backfill { event: use_signal(|| None::<BackfillEvent>), history: use_signal(|| 0u32), toast };
+    let backfill = Backfill {
+        event: use_signal(|| None::<BackfillEvent>),
+        history: use_signal(|| 0u32),
+        toast,
+    };
     use_future(move || async move {
         let mut version = backfill.history;
         let closure = Closure::new(move |_: JsValue| {
@@ -133,11 +137,21 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
         closure.forget();
     });
     use_effect(move || {
-        if let Some(BackfillEvent::Done { pulls, logs, failed, skipped, cancelled, .. }) = *backfill.event.read() {
+        if let Some(BackfillEvent::Done {
+            pulls,
+            logs,
+            failed,
+            skipped,
+            cancelled,
+            ..
+        }) = *backfill.event.read()
+        {
             let msg = if cancelled {
                 "Re-scan cancelled; logs already scanned kept their history".to_string()
             } else {
-                format!("Re-scan complete: {pulls} pulls across {logs} logs, {skipped} already current, {failed} failed")
+                format!(
+                    "Re-scan complete: {pulls} pulls across {logs} logs, {skipped} already current, {failed} failed"
+                )
             };
             toast.show(msg, ToastSeverity::Normal);
         }
@@ -160,9 +174,18 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
     });
     use_effect(move || {
         if let Some(CleanupEvent::Done { report: r }) = &*cleanup.read() {
-            let failed = if r.failed.is_empty() { String::new() } else { format!(", {} failed", r.failed.len()) };
+            let failed = if r.failed.is_empty() {
+                String::new()
+            } else {
+                format!(", {} failed", r.failed.len())
+            };
             toast.show(
-                format!("Archived {} and deleted {} logs, freed {}{failed}", r.archived, r.deleted, library::fmt_bytes(r.bytes_freed)),
+                format!(
+                    "Archived {} and deleted {} logs, freed {}{failed}",
+                    r.archived,
+                    r.deleted,
+                    library::fmt_bytes(r.bytes_freed)
+                ),
                 ToastSeverity::Normal,
             );
         }
@@ -285,7 +308,11 @@ pub(super) fn content_group(is_operation: bool, is_flashpoint: bool) -> usize {
 fn ContentGroupHeader(group: usize, count: usize, closed: Signal<std::collections::HashSet<usize>>) -> Element {
     let (title, icon) = CONTENT_GROUPS[group];
     let is_closed = closed.read().contains(&group);
-    let chevron = if is_closed { "fa-chevron-right" } else { "fa-chevron-down" };
+    let chevron = if is_closed {
+        "fa-chevron-right"
+    } else {
+        "fa-chevron-down"
+    };
     rsx! {
         div {
             class: "sidebar-group-header",

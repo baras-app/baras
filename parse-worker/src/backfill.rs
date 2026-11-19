@@ -79,9 +79,7 @@ pub fn run(log_dir: &Path, definitions_dir: Option<&Path>, stale_only: bool) -> 
         if let Some(defs) = definitions_dir {
             cmd.arg(defs);
         }
-        cmd.arg("--summary-only")
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null());
+        cmd.arg("--summary-only").stdout(Stdio::piped()).stderr(Stdio::null());
 
         let output = match cmd.output().and_then(|o| {
             if o.status.success() {
@@ -111,7 +109,11 @@ pub fn run(log_dir: &Path, definitions_dir: Option<&Path>, stale_only: bool) -> 
         let history = LogHistory::from_summaries(
             path,
             character,
-            parsed.player_disciplines.iter().find(|d| d.entity_id == parsed.player.entity_id).cloned(),
+            parsed
+                .player_disciplines
+                .iter()
+                .find(|d| d.entity_id == parsed.player.entity_id)
+                .cloned(),
             &parsed.encounters,
             &parsed.timer_starts,
             &parsed.visits,
@@ -190,7 +192,10 @@ impl Source {
     /// History file exists, is at the current version, and matches the log's
     /// length and mtime.
     fn is_current(&self) -> bool {
-        let Some(header) = history_file_for(self.name()).ok().and_then(|hf| HistoryHeader::read(&hf).ok()) else {
+        let Some(header) = history_file_for(self.name())
+            .ok()
+            .and_then(|hf| HistoryHeader::read(&hf).ok())
+        else {
             return false;
         };
         match self {

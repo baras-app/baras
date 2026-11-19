@@ -38,10 +38,7 @@ impl ShieldInfo {
     /// Estimated max absorb for limited shields, None for unlimited (percentage-based)
     pub fn estimated_absorb(&self) -> Option<i64> {
         if self.is_limited() {
-            Some(
-                ((self.std_health_min * STD_HEALTH) + (self.healing_coefficient * BONUS_HEALING))
-                    as i64,
-            )
+            Some(((self.std_health_min * STD_HEALTH) + (self.healing_coefficient * BONUS_HEALING)) as i64)
         } else {
             None
         }

@@ -77,9 +77,7 @@ fn spawn_auto_show_overlays(overlay_state: SharedOverlayState, service_handle: S
 
         // Seed the game_running state before any overlay decisions.
         // The continuous process monitor will take over once tailing starts.
-        let game_running = service::process_monitor::is_game_running()
-            .await
-            .unwrap_or(true); // safe default: assume running if check fails
+        let game_running = service::process_monitor::is_game_running().await.unwrap_or(true); // safe default: assume running if check fails
         service_handle
             .shared
             .game_running
@@ -89,12 +87,11 @@ fn spawn_auto_show_overlays(overlay_state: SharedOverlayState, service_handle: S
         // The initial file parse may have completed during our delay, revealing a stale
         // or empty session. In that case, skip showing overlays and mark the auto-hide
         // as active so they restore when the session becomes live.
-        if config.overlay_settings.hide_when_not_live
-            && service_handle.shared.is_session_not_live().await {
-                service_handle.shared.auto_hide.set_session_not_live(true);
-                service_handle.shared.auto_hide.set_not_live(true);
-                return;
-            }
+        if config.overlay_settings.hide_when_not_live && service_handle.shared.is_session_not_live().await {
+            service_handle.shared.auto_hide.set_session_not_live(true);
+            service_handle.shared.auto_hide.set_not_live(true);
+            return;
+        }
 
         // Use OverlayManager to show all enabled overlays
         let _ = OverlayManager::show_all(&overlay_state, &service_handle).await;
@@ -210,11 +207,7 @@ pub fn run() {
                 spawn_auto_show_overlays(overlay_state.clone(), handle.clone());
 
                 // Register global hotkeys (not supported on Wayland)
-                hotkeys::spawn_register_hotkeys(
-                    app.handle().clone(),
-                    overlay_state.clone(),
-                    handle,
-                );
+                hotkeys::spawn_register_hotkeys(app.handle().clone(), overlay_state.clone(), handle);
 
                 // Set up system tray
                 let _ = tray::setup_tray(app.handle());
@@ -236,11 +229,7 @@ pub fn run() {
                 let minimize_to_tray = window
                     .app_handle()
                     .try_state::<ServiceHandle>()
-                    .map(|handle| {
-                        tauri::async_runtime::block_on(async {
-                            handle.config().await.minimize_to_tray
-                        })
-                    })
+                    .map(|handle| tauri::async_runtime::block_on(async { handle.config().await.minimize_to_tray }))
                     .unwrap_or(true);
 
                 if minimize_to_tray {

@@ -34,18 +34,12 @@ pub struct Reader {
 
 impl Reader {
     pub fn from(file_path: PathBuf, state: Arc<RwLock<ParsingSession>>) -> Self {
-        Reader {
-            path: file_path,
-            state,
-        }
+        Reader { path: file_path, state }
     }
 
     /// Parallel-parse log file, returning all events.
     /// Fast but allocates Vec<CombatEvent>. Call mi_collect after processing.
-    pub fn read_log_file_parallel(
-        &self,
-        session_date: chrono::NaiveDateTime,
-    ) -> Result<(Vec<CombatEvent>, u64)> {
+    pub fn read_log_file_parallel(&self, session_date: chrono::NaiveDateTime) -> Result<(Vec<CombatEvent>, u64)> {
         let file = fs::File::open(&self.path)?;
         let mmap = unsafe { Mmap::map(&file)? };
         let bytes = mmap.as_ref();
@@ -83,11 +77,7 @@ impl Reader {
     /// Returns the final byte position and event count.
     ///
     /// Note: `session_date` must be passed in to avoid deadlock when caller holds session lock.
-    pub fn read_log_file_streaming<F>(
-        &self,
-        session_date: chrono::NaiveDateTime,
-        on_event: F,
-    ) -> Result<(u64, usize)>
+    pub fn read_log_file_streaming<F>(&self, session_date: chrono::NaiveDateTime, on_event: F) -> Result<(u64, usize)>
     where
         F: FnMut(CombatEvent),
     {
@@ -150,19 +140,17 @@ impl Reader {
     }
 
     /// Tail a live log file, processing new lines as they are written.
-    /// 
+    ///
     /// This method is designed to be "immortal" - it will never exit due to transient
     /// I/O errors. Instead, it logs errors and retries with exponential backoff.
     /// The only way this loop exits is via task abort (when stop_tailing is called)
     /// or if the file cannot be opened/seeked initially.
     pub async fn tail_log_file(self) -> std::result::Result<(), ReaderError> {
         const CRLF: &[u8] = b"\r\n";
-        let file = File::open(&self.path)
-            .await
-            .map_err(|source| ReaderError::OpenFile {
-                path: self.path.clone(),
-                source,
-            })?;
+        let file = File::open(&self.path).await.map_err(|source| ReaderError::OpenFile {
+            path: self.path.clone(),
+            source,
+        })?;
         let mut reader = BufReader::new(file);
         // Initialize line number from subprocess parse result (if available)
         // This ensures correct line numbering for events processed during tailing

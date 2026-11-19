@@ -107,10 +107,7 @@ impl Dispatch<WlOutput, u32> for MonitorEnumState {
                 info.model = model;
             }
             wl_output::Event::Mode {
-                flags,
-                width,
-                height,
-                ..
+                flags, width, height, ..
             } => {
                 // Only use the current mode (physical pixels)
                 if let wayland_client::WEnum::Value(mode_flags) = flags
@@ -207,14 +204,13 @@ pub(super) fn has_layer_shell() -> bool {
             return false;
         }
     };
-    let (globals, _queue) =
-        match wayland_client::globals::registry_queue_init::<WaylandState>(&connection) {
-            Ok(registry) => registry,
-            Err(error) => {
-                tracing::warn!(%error, "layer-shell probe could not read the compositor's globals");
-                return false;
-            }
-        };
+    let (globals, _queue) = match wayland_client::globals::registry_queue_init::<WaylandState>(&connection) {
+        Ok(registry) => registry,
+        Err(error) => {
+            tracing::warn!(%error, "layer-shell probe could not read the compositor's globals");
+            return false;
+        }
+    };
     let name = <ZwlrLayerShellV1 as wayland_client::Proxy>::interface().name;
     globals
         .contents()
@@ -269,9 +265,7 @@ pub fn get_all_monitors() -> Vec<MonitorInfo> {
     state
         .outputs
         .into_iter()
-        .filter(|(_, info)| {
-            info.is_ready() && info.logical_width() > 0 && info.logical_height() > 0
-        })
+        .filter(|(_, info)| info.is_ready() && info.logical_width() > 0 && info.logical_height() > 0)
         .enumerate()
         .map(|(idx, (_, info))| {
             let id = info.id();
@@ -350,9 +344,7 @@ impl OutputInfo {
     /// untouched to preserve persisted overlay positions.
     fn id(&self) -> String {
         if !self.description.is_empty() {
-            if !self.connector_name.is_empty()
-                && !self.description.contains(&self.connector_name)
-            {
+            if !self.connector_name.is_empty() && !self.description.contains(&self.connector_name) {
                 format!("{} ({})", self.description, self.connector_name)
             } else {
                 self.description.clone()
@@ -457,8 +449,7 @@ struct ResizeCorner;
 impl ResizeCorner {
     /// Check if position is in the bottom-right resize corner
     fn is_in_corner(x: f64, y: f64, width: u32, height: u32) -> bool {
-        x > (width as f64 - RESIZE_CORNER_SIZE as f64)
-            && y > (height as f64 - RESIZE_CORNER_SIZE as f64)
+        x > (width as f64 - RESIZE_CORNER_SIZE as f64) && y > (height as f64 - RESIZE_CORNER_SIZE as f64)
     }
 }
 
@@ -471,14 +462,7 @@ struct ShmBuffer {
 unsafe impl Send for ShmBuffer {}
 
 impl WaylandState {
-    fn new(
-        width: u32,
-        height: u32,
-        x: i32,
-        y: i32,
-        click_through: bool,
-        snap_to_grid: bool,
-    ) -> Self {
+    fn new(width: u32, height: u32, x: i32, y: i32, click_through: bool, snap_to_grid: bool) -> Self {
         let pixel_count = (width * height) as usize;
         Self {
             running: true,
@@ -607,8 +591,7 @@ impl WaylandState {
         let size = (stride * self.height) as usize;
 
         // Create anonymous shared memory
-        let fd = memfd_create(c"baras-overlay-buffer", MemfdFlags::CLOEXEC)
-            .expect("Failed to create memfd");
+        let fd = memfd_create(c"baras-overlay-buffer", MemfdFlags::CLOEXEC).expect("Failed to create memfd");
 
         rustix::fs::ftruncate(&fd, size as u64).expect("Failed to set memfd size");
 
@@ -810,12 +793,10 @@ impl WaylandOverlay {
 
 impl OverlayPlatform for WaylandOverlay {
     fn new(config: OverlayConfig) -> Result<Self, PlatformError> {
-        let connection = Connection::connect_to_env()
-            .map_err(|e| PlatformError::ConnectionFailed(e.to_string()))?;
+        let connection = Connection::connect_to_env().map_err(|e| PlatformError::ConnectionFailed(e.to_string()))?;
 
-        let (globals, mut event_queue) =
-            wayland_client::globals::registry_queue_init::<WaylandState>(&connection)
-                .map_err(|e| PlatformError::ConnectionFailed(e.to_string()))?;
+        let (globals, mut event_queue) = wayland_client::globals::registry_queue_init::<WaylandState>(&connection)
+            .map_err(|e| PlatformError::ConnectionFailed(e.to_string()))?;
 
         let qh = event_queue.handle();
         let mut state = WaylandState::new(
@@ -864,10 +845,9 @@ impl OverlayPlatform for WaylandOverlay {
         // We store the global name as the output ID
         for global in globals.contents().clone_list() {
             if global.interface == "wl_output" {
-                let output: WlOutput =
-                    globals
-                        .registry()
-                        .bind(global.name, global.version.min(4), &qh, global.name);
+                let output: WlOutput = globals
+                    .registry()
+                    .bind(global.name, global.version.min(4), &qh, global.name);
                 let info = OutputInfo {
                     name: global.name,
                     ..Default::default()
@@ -915,54 +895,50 @@ impl OverlayPlatform for WaylandOverlay {
         // Output selection strategy:
         // 1. If monitor_id is set, bind to that specific output
         // 2. If monitor_id is None, let the compositor choose (active/focused output)
-        let (target_output, margin_x, margin_y, bound_output_bounds) = if let Some(ref target_id) =
-            config.target_monitor_id
-        {
-            // Find the specific output by ID
-            if let Some((output, info)) = state
-                .outputs
-                .iter()
-                .find(|(_, info)| info.is_ready() && info.id() == *target_id)
-            {
-                tracing::debug!(
-                    output = %info.id(),
-                    x = info.x,
-                    y = info.y,
-                    width = info.logical_width(),
-                    height = info.logical_height(),
-                    "Binding to saved output"
-                );
+        let (target_output, margin_x, margin_y, bound_output_bounds) =
+            if let Some(ref target_id) = config.target_monitor_id {
+                // Find the specific output by ID
+                if let Some((output, info)) = state
+                    .outputs
+                    .iter()
+                    .find(|(_, info)| info.is_ready() && info.id() == *target_id)
+                {
+                    tracing::debug!(
+                        output = %info.id(),
+                        x = info.x,
+                        y = info.y,
+                        width = info.logical_width(),
+                        height = info.logical_height(),
+                        "Binding to saved output"
+                    );
 
-                // Position is already relative to this monitor, just clamp it
-                let max_x = (info.logical_width() - config.width as i32).max(0);
-                let max_y = (info.logical_height() - config.height as i32).max(0);
-                let clamped_x = config.x.clamp(0, max_x);
-                let clamped_y = config.y.clamp(0, max_y);
-                tracing::debug!(
-                    input_x = config.x,
-                    input_y = config.y,
-                    clamped_x,
-                    clamped_y,
-                    "Position clamping"
-                );
+                    // Position is already relative to this monitor, just clamp it
+                    let max_x = (info.logical_width() - config.width as i32).max(0);
+                    let max_y = (info.logical_height() - config.height as i32).max(0);
+                    let clamped_x = config.x.clamp(0, max_x);
+                    let clamped_y = config.y.clamp(0, max_y);
+                    tracing::debug!(
+                        input_x = config.x,
+                        input_y = config.y,
+                        clamped_x,
+                        clamped_y,
+                        "Position clamping"
+                    );
 
-                let bounds = Some((info.x, info.y, info.logical_width(), info.logical_height()));
-                (Some(output.clone()), clamped_x, clamped_y, bounds)
+                    let bounds = Some((info.x, info.y, info.logical_width(), info.logical_height()));
+                    (Some(output.clone()), clamped_x, clamped_y, bounds)
+                } else {
+                    // Saved monitor not found, let compositor decide
+                    tracing::warn!(target_id, "Saved monitor not found, letting compositor choose");
+                    (None, config.x.max(0), config.y.max(0), None)
+                }
             } else {
-                // Saved monitor not found, let compositor decide
-                tracing::warn!(
-                    target_id,
-                    "Saved monitor not found, letting compositor choose"
-                );
+                // No saved monitor_id - let compositor choose (will be active/focused output)
+                // The wl_surface::Enter event will tell us which output we ended up on
+                tracing::debug!("No monitor_id, compositor chooses output");
+                tracing::debug!(x = config.x, y = config.y, "Using position as margins");
                 (None, config.x.max(0), config.y.max(0), None)
-            }
-        } else {
-            // No saved monitor_id - let compositor choose (will be active/focused output)
-            // The wl_surface::Enter event will tell us which output we ended up on
-            tracing::debug!("No monitor_id, compositor chooses output");
-            tracing::debug!(x = config.x, y = config.y, "Using position as margins");
-            (None, config.x.max(0), config.y.max(0), None)
-        };
+            };
         tracing::debug!(?bound_output_bounds, "Final output bounds");
 
         // Store bound output info for clamping
@@ -1278,9 +1254,7 @@ impl OverlayPlatform for WaylandOverlay {
         self.state
             .outputs
             .iter()
-            .filter(|(_, info)| {
-                info.is_ready() && info.logical_width() > 0 && info.logical_height() > 0
-            })
+            .filter(|(_, info)| info.is_ready() && info.logical_width() > 0 && info.logical_height() > 0)
             .enumerate()
             .map(|(idx, (_, info))| {
                 let id = info.id();
@@ -1393,8 +1367,7 @@ impl Dispatch<WlSurface, ()> for WaylandState {
                     height = info.logical_height(),
                     "Surface entered output"
                 );
-                state.bound_output_bounds =
-                    Some((info.x, info.y, info.logical_width(), info.logical_height()));
+                state.bound_output_bounds = Some((info.x, info.y, info.logical_width(), info.logical_height()));
             }
         }
     }
@@ -1412,12 +1385,7 @@ impl Dispatch<WlOutput, u32> for WaylandState {
         _qh: &QueueHandle<Self>,
     ) {
         // Find the output info for this output by matching the proxy
-        let Some(info) = state
-            .outputs
-            .iter_mut()
-            .find(|(o, _)| o == proxy)
-            .map(|(_, i)| i)
-        else {
+        let Some(info) = state.outputs.iter_mut().find(|(o, _)| o == proxy).map(|(_, i)| i) else {
             return;
         };
 
@@ -1431,10 +1399,7 @@ impl Dispatch<WlOutput, u32> for WaylandState {
                 info.model = model;
             }
             wl_output::Event::Mode {
-                flags,
-                width,
-                height,
-                ..
+                flags, width, height, ..
             } => {
                 // Only use the current mode (physical pixels)
                 if let wayland_client::WEnum::Value(mode_flags) = flags
@@ -1494,11 +1459,7 @@ impl Dispatch<ZwlrLayerSurfaceV1, ()> for WaylandState {
         _qh: &QueueHandle<Self>,
     ) {
         match event {
-            zwlr_layer_surface_v1::Event::Configure {
-                serial,
-                width,
-                height,
-            } => {
+            zwlr_layer_surface_v1::Event::Configure { serial, width, height } => {
                 proxy.ack_configure(serial);
 
                 if width > 0 && height > 0 {
@@ -1708,12 +1669,7 @@ impl Dispatch<ZxdgOutputV1, u32> for WaylandState {
         _qh: &QueueHandle<Self>,
     ) {
         // Find the output info by global name
-        let Some(info) = state
-            .outputs
-            .iter_mut()
-            .find(|(_, o)| o.name == *name)
-            .map(|(_, i)| i)
-        else {
+        let Some(info) = state.outputs.iter_mut().find(|(_, o)| o.name == *name).map(|(_, i)| i) else {
             return;
         };
 

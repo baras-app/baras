@@ -10,7 +10,7 @@ use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
 use crate::utils::{color_from_rgba, shared_scaled_icons};
-use crate::widgets::{colors, Header, IconBarRow, ProgressBar, RowIcon};
+use crate::widgets::{Header, IconBarRow, ProgressBar, RowIcon, colors};
 
 /// A single DOT entry on a target
 #[derive(Debug, Clone)]
@@ -146,10 +146,7 @@ pub struct DotTrackerOverlay {
 
 impl DotTrackerOverlay {
     /// Create a new DOT tracker overlay
-    pub fn new(
-        window_config: OverlayConfig,
-        config: DotTrackerConfig,
-    ) -> Result<Self, PlatformError> {
+    pub fn new(window_config: OverlayConfig, config: DotTrackerConfig) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
         frame.set_label("DOT Tracker");
 
@@ -170,7 +167,6 @@ impl DotTrackerOverlay {
         self.last_rendered.clear();
         self.last_rendered_bar.clear();
     }
-
 
     /// Icon pixel size to cache: the drawn size in bar layout, else the configured icon size
     fn bar_or_icon_size(&self, bar_layout: bool) -> u32 {
@@ -193,8 +189,7 @@ impl DotTrackerOverlay {
             for dot in &target.dots {
                 if let Some(ref icon_arc) = dot.icon {
                     let (src_w, src_h, ref src_data) = **icon_arc;
-                    let _ =
-                        cache.get_or_scale(dot.icon_ability_id, icon_size, src_data, src_w, src_h);
+                    let _ = cache.get_or_scale(dot.icon_ability_id, icon_size, src_data, src_w, src_h);
                 }
             }
         }
@@ -227,14 +222,7 @@ impl DotTrackerOverlay {
     /// Starting x for a row's icon run. Left-aligned runs begin at the end of
     /// the name column; right-aligned runs end at the window's right edge but
     /// never start before the name column, so wide runs degrade to left-aligned.
-    fn icon_run_start_x(
-        &self,
-        count: usize,
-        icon_size: f32,
-        icon_spacing: f32,
-        name_end_x: f32,
-        padding: f32,
-    ) -> f32 {
+    fn icon_run_start_x(&self, count: usize, icon_size: f32, icon_spacing: f32, name_end_x: f32, padding: f32) -> f32 {
         if !self.config.right_align_icons || count == 0 {
             return name_end_x;
         }
@@ -285,8 +273,7 @@ impl DotTrackerOverlay {
         let header_font_size = font_size * 1.4;
 
         // Calculate header space if enabled
-        let header_space =
-            Header::space(self.config.show_header, header_font_size, row_spacing, scale);
+        let header_space = Header::space(self.config.show_header, header_font_size, row_spacing, scale);
 
         // Compute content height for dynamic background
         let num_visible = self
@@ -308,8 +295,7 @@ impl DotTrackerOverlay {
         let window_height = self.frame.height() as f32;
         let total_rows_height = num_visible as f32 * row_height;
         let rows_start_y = if self.config.stack_from_bottom && num_visible > 0 {
-            (window_height - padding - total_rows_height + row_spacing)
-                .max(padding + header_space)
+            (window_height - padding - total_rows_height + row_spacing).max(padding + header_space)
         } else {
             padding + header_space
         };
@@ -323,8 +309,7 @@ impl DotTrackerOverlay {
         if self.config.dynamic_background {
             if self.config.stack_from_bottom && num_visible > 0 {
                 let content_y = (header_y - padding).max(0.0);
-                self.frame
-                    .begin_frame_with_content_rect(content_y, content_height);
+                self.frame.begin_frame_with_content_rect(content_y, content_height);
             } else {
                 self.frame.begin_frame_with_content_height(content_height);
             }
@@ -335,16 +320,14 @@ impl DotTrackerOverlay {
         // Render header if enabled
         if self.config.show_header {
             let content_width = self.frame.width() as f32 - 2.0 * padding;
-            Header::new("DOT Tracker")
-                .with_color(colors::white())
-                .render(
-                    &mut self.frame,
-                    padding,
-                    header_y,
-                    content_width,
-                    header_font_size,
-                    row_spacing,
-                );
+            Header::new("DOT Tracker").with_color(colors::white()).render(
+                &mut self.frame,
+                padding,
+                header_y,
+                content_width,
+                header_font_size,
+                row_spacing,
+            );
         }
 
         if self.data.targets.is_empty() {
@@ -395,21 +378,13 @@ impl DotTrackerOverlay {
             }
 
             // DOT icons after name (or flushed right)
-            let mut icon_x = self.icon_run_start_x(
-                target.dots.len(),
-                icon_size,
-                icon_spacing,
-                x + name_width,
-                padding,
-            );
+            let mut icon_x = self.icon_run_start_x(target.dots.len(), icon_size, icon_spacing, x + name_width, padding);
 
             for dot in &target.dots {
                 // Draw icon from cache or colored square fallback
                 // Only show icon if show_icon is true
                 let has_icon = if dot.show_icon {
-                    if let Some(scaled_icon) =
-                        shared_scaled_icons().get(dot.icon_ability_id, icon_size_u32)
-                    {
+                    if let Some(scaled_icon) = shared_scaled_icons().get(dot.icon_ability_id, icon_size_u32) {
                         self.frame.draw_image(
                             &scaled_icon,
                             icon_size_u32,
@@ -445,13 +420,8 @@ impl DotTrackerOverlay {
                 let progress = dot.progress();
                 let overlay_height = icon_size * (1.0 - progress);
                 if overlay_height > 1.0 {
-                    self.frame.fill_rect(
-                        icon_x,
-                        y,
-                        icon_size,
-                        overlay_height,
-                        color_from_rgba([0, 0, 0, 140]),
-                    );
+                    self.frame
+                        .fill_rect(icon_x, y, icon_size, overlay_height, color_from_rgba([0, 0, 0, 140]));
                 }
 
                 // Border; colored squares use the DOT's own color so identity
@@ -461,15 +431,8 @@ impl DotTrackerOverlay {
                 } else {
                     color_from_rgba([dot.color[0], dot.color[1], dot.color[2], 255])
                 };
-                self.frame.stroke_rounded_rect(
-                    icon_x,
-                    y,
-                    icon_size,
-                    icon_size,
-                    2.0,
-                    1.0,
-                    border,
-                );
+                self.frame
+                    .stroke_rounded_rect(icon_x, y, icon_size, icon_size, 2.0, 1.0, border);
 
                 // Font size for countdown text
                 let time_font_size = font_size * 0.95;
@@ -486,13 +449,8 @@ impl DotTrackerOverlay {
                     } else {
                         colors::white()
                     };
-                    self.frame.draw_text_glowed(
-                        &time_text,
-                        text_x,
-                        text_y,
-                        time_font_size,
-                        time_color,
-                    );
+                    self.frame
+                        .draw_text_glowed(&time_text, text_x, text_y, time_font_size, time_color);
                 }
 
                 icon_x += icon_size + icon_spacing;
@@ -550,10 +508,12 @@ impl DotTrackerOverlay {
         let header_font_size = font_size * 1.4;
 
         let row = IconBarRow::new(padding, content_width, bar_height, bar_radius, scale);
-        let border = self.config.show_border.then(|| color_from_rgba(self.config.border_color));
+        let border = self
+            .config
+            .show_border
+            .then(|| color_from_rgba(self.config.border_color));
 
-        let header_space =
-            Header::space(self.config.show_header, header_font_size, entry_spacing, scale);
+        let header_space = Header::space(self.config.show_header, header_font_size, entry_spacing, scale);
 
         // Group layout: target name line, then one bar per DOT
         let name_line_height = name_font_size + entry_spacing;
@@ -567,9 +527,7 @@ impl DotTrackerOverlay {
                 if n == 0 {
                     continue;
                 }
-                total += name_line_height
-                    + n as f32 * bar_height
-                    + (n - 1) as f32 * entry_spacing;
+                total += name_line_height + n as f32 * bar_height + (n - 1) as f32 * entry_spacing;
                 num_groups += 1;
             }
             total + num_groups.saturating_sub(1) as f32 * group_spacing
@@ -604,8 +562,7 @@ impl DotTrackerOverlay {
         if self.config.dynamic_background {
             if self.config.stack_from_bottom && num_visible > 0 {
                 let content_y = (header_y - padding).max(0.0);
-                self.frame
-                    .begin_frame_with_content_rect(content_y, content_height);
+                self.frame.begin_frame_with_content_rect(content_y, content_height);
             } else {
                 self.frame.begin_frame_with_content_height(content_height);
             }
@@ -614,16 +571,14 @@ impl DotTrackerOverlay {
         }
 
         if self.config.show_header {
-            Header::new("DOT Tracker")
-                .with_color(colors::white())
-                .render(
-                    &mut self.frame,
-                    padding,
-                    header_y,
-                    content_width,
-                    header_font_size,
-                    entry_spacing,
-                );
+            Header::new("DOT Tracker").with_color(colors::white()).render(
+                &mut self.frame,
+                padding,
+                header_y,
+                content_width,
+                header_font_size,
+                entry_spacing,
+            );
         }
 
         if num_visible == 0 {
@@ -707,8 +662,7 @@ impl DotTrackerOverlay {
         let content_width = self.frame.width() as f32 - 2.0 * padding;
         let header_font_size = font_size * 1.4;
 
-        let header_space =
-            Header::space(self.config.show_header, header_font_size, entry_spacing, scale);
+        let header_space = Header::space(self.config.show_header, header_font_size, entry_spacing, scale);
 
         let name_line_height = name_font_size + entry_spacing;
         let group_spacing = entry_spacing * 2.0;
@@ -725,11 +679,9 @@ impl DotTrackerOverlay {
         let window_height = self.frame.height() as f32;
         let n_groups = targets.len();
         let bars_per_group = 2usize;
-        let group_height = name_line_height
-            + bars_per_group as f32 * bar_height
-            + (bars_per_group - 1) as f32 * entry_spacing;
-        let total_groups_height =
-            n_groups as f32 * group_height + (n_groups - 1) as f32 * group_spacing;
+        let group_height =
+            name_line_height + bars_per_group as f32 * bar_height + (bars_per_group - 1) as f32 * entry_spacing;
+        let total_groups_height = n_groups as f32 * group_height + (n_groups - 1) as f32 * group_spacing;
 
         let groups_start_y = if self.config.stack_from_bottom {
             (window_height - padding - total_groups_height).max(padding + header_space)
@@ -743,20 +695,21 @@ impl DotTrackerOverlay {
         };
 
         if self.config.show_header {
-            Header::new("DOT Tracker")
-                .with_color(colors::white())
-                .render(
-                    &mut self.frame,
-                    padding,
-                    header_y,
-                    content_width,
-                    header_font_size,
-                    entry_spacing,
-                );
+            Header::new("DOT Tracker").with_color(colors::white()).render(
+                &mut self.frame,
+                padding,
+                header_y,
+                content_width,
+                header_font_size,
+                entry_spacing,
+            );
         }
 
         let row = IconBarRow::new(padding, content_width, bar_height, bar_radius, scale);
-        let border = self.config.show_border.then(|| color_from_rgba(self.config.border_color));
+        let border = self
+            .config
+            .show_border
+            .then(|| color_from_rgba(self.config.border_color));
         let mut y = groups_start_y;
 
         for (target_name, dots) in &targets {
@@ -808,23 +761,18 @@ impl DotTrackerOverlay {
         let header_font_size = font_size * 1.4;
 
         // Calculate header space if enabled
-        let header_space =
-            Header::space(self.config.show_header, header_font_size, row_spacing, scale);
+        let header_space = Header::space(self.config.show_header, header_font_size, row_spacing, scale);
 
         self.frame.begin_frame();
 
         // Sample preview data: 2 targets with 3 DOTs each
-        let targets = [
-            ("Target 1", ["12.3", "8.5", "45"]),
-            ("Target 2", ["5.2", "18", "3.1"]),
-        ];
+        let targets = [("Target 1", ["12.3", "8.5", "45"]), ("Target 2", ["5.2", "18", "3.1"])];
 
         let window_height = self.frame.height() as f32;
         let n = targets.len() as f32;
         let total_rows_height = n * row_height;
         let rows_start_y = if self.config.stack_from_bottom {
-            (window_height - padding - total_rows_height + row_spacing)
-                .max(padding + header_space)
+            (window_height - padding - total_rows_height + row_spacing).max(padding + header_space)
         } else {
             padding + header_space
         };
@@ -837,16 +785,14 @@ impl DotTrackerOverlay {
         // Render header if enabled
         if self.config.show_header {
             let content_width = self.frame.width() as f32 - 2.0 * padding;
-            Header::new("DOT Tracker")
-                .with_color(colors::white())
-                .render(
-                    &mut self.frame,
-                    padding,
-                    header_y,
-                    content_width,
-                    header_font_size,
-                    row_spacing,
-                );
+            Header::new("DOT Tracker").with_color(colors::white()).render(
+                &mut self.frame,
+                padding,
+                header_y,
+                content_width,
+                header_font_size,
+                row_spacing,
+            );
         }
 
         let mut y = rows_start_y;
@@ -873,19 +819,12 @@ impl DotTrackerOverlay {
             }
 
             // DOT icons after name (or flushed right)
-            let mut icon_x =
-                self.icon_run_start_x(dots.len(), icon_size, icon_spacing, x + name_width, padding);
+            let mut icon_x = self.icon_run_start_x(dots.len(), icon_size, icon_spacing, x + name_width, padding);
 
             for time_text in dots {
                 // Placeholder icon background
-                self.frame.fill_rounded_rect(
-                    icon_x,
-                    y,
-                    icon_size,
-                    icon_size,
-                    2.0,
-                    colors::effect_icon_bg(),
-                );
+                self.frame
+                    .fill_rounded_rect(icon_x, y, icon_size, icon_size, 2.0, colors::effect_icon_bg());
 
                 // Dashed border to indicate preview
                 self.frame.stroke_rounded_rect_dashed(
@@ -906,13 +845,8 @@ impl DotTrackerOverlay {
                 let text_x = icon_x + (icon_size - text_width) / 2.0;
                 let text_y = y + icon_size / 2.0 + time_font_size * 0.4;
 
-                self.frame.draw_text_glowed(
-                    time_text,
-                    text_x,
-                    text_y,
-                    time_font_size,
-                    colors::white(),
-                );
+                self.frame
+                    .draw_text_glowed(time_text, text_x, text_y, time_font_size, colors::white());
 
                 icon_x += icon_size + icon_spacing;
             }

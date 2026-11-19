@@ -2,7 +2,7 @@
 
 use dioxus::prelude::*;
 
-use super::toast::{use_toast, ToastSeverity};
+use super::toast::{ToastSeverity, use_toast};
 use crate::api;
 
 /// Type of upload being performed
@@ -145,7 +145,8 @@ pub fn ParselyUploadModal(
     let active_guild: Option<String> = if req.no_guild {
         None
     } else {
-        req.guild.clone()
+        req.guild
+            .clone()
             .or_else(|| selected_guild.read().clone().filter(|g| guilds.iter().any(|x| x == g)))
             .or_else(|| guilds.first().cloned())
     };

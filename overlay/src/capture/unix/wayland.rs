@@ -57,29 +57,19 @@ pub fn supported() -> bool {
     })
 }
 
-pub fn capture_region(
-    x: i32,
-    y: i32,
-    width: u32,
-    height: u32,
-) -> Result<CapturedImage, CaptureError> {
+pub fn capture_region(x: i32, y: i32, width: u32, height: u32) -> Result<CapturedImage, CaptureError> {
     let started = Instant::now();
     let deadline = started + TIMEOUT;
 
-    let conn = Connection::connect_to_env()
-        .map_err(|e| CaptureError::ConnectionFailed(format!("no Wayland display: {e}")))?;
+    let conn =
+        Connection::connect_to_env().map_err(|e| CaptureError::ConnectionFailed(format!("no Wayland display: {e}")))?;
     let (globals, mut queue) = registry_queue_init::<Capture>(&conn)
         .map_err(|e| CaptureError::ConnectionFailed(format!("registry init failed: {e}")))?;
     let qh = queue.handle();
 
-    let missing = |what: &str| {
-        CaptureError::Unsupported(format!(
-            "compositor does not implement {what}"
-        ))
-    };
+    let missing = |what: &str| CaptureError::Unsupported(format!("compositor does not implement {what}"));
     let shm: WlShm = globals.bind(&qh, 1..=1, ()).map_err(|_| missing("wl_shm"))?;
-    let xdg_outputs: ZxdgOutputManagerV1 =
-        globals.bind(&qh, 1..=3, ()).map_err(|_| missing("xdg-output"))?;
+    let xdg_outputs: ZxdgOutputManagerV1 = globals.bind(&qh, 1..=3, ()).map_err(|_| missing("xdg-output"))?;
     let sources: ExtOutputImageCaptureSourceManagerV1 = globals
         .bind(&qh, 1..=1, ())
         .map_err(|_| missing("ext-image-capture-source-v1"))?;
@@ -90,16 +80,10 @@ pub fn capture_region(
     // xdg-output reports logical geometry; wl_output only knows device pixels.
     let mut state = Capture::default();
     globals.contents().with_list(|list| {
-        for global in list
-            .iter()
-            .filter(|g| g.interface == WlOutput::interface().name)
-        {
-            let output = globals.registry().bind::<WlOutput, _, _>(
-                global.name,
-                global.version.min(4),
-                &qh,
-                (),
-            );
+        for global in list.iter().filter(|g| g.interface == WlOutput::interface().name) {
+            let output = globals
+                .registry()
+                .bind::<WlOutput, _, _>(global.name, global.version.min(4), &qh, ());
             state.outputs.push(Output::new(output));
         }
     });
@@ -111,9 +95,7 @@ pub fn capture_region(
         .map_err(|e| CaptureError::ConnectionFailed(format!("output query failed: {e}")))?;
 
     let region = (x, y, width, height);
-    let outside = || {
-        CaptureError::InvalidRegion(format!("{width}x{height} at ({x},{y}) is not on any output"))
-    };
+    let outside = || CaptureError::InvalidRegion(format!("{width}x{height} at ({x},{y}) is not on any output"));
     let picked = state
         .outputs
         .iter()
@@ -125,12 +107,7 @@ pub fn capture_region(
     let (origin, logical) = (state.outputs[picked].origin, state.outputs[picked].logical);
 
     let source = sources.create_source(&state.outputs[picked].output, &qh, ());
-    let session = capture.create_session(
-        &source,
-        ext_image_copy_capture_manager_v1::Options::empty(),
-        &qh,
-        (),
-    );
+    let session = capture.create_session(&source, ext_image_copy_capture_manager_v1::Options::empty(), &qh, ());
 
     let setup = started.elapsed();
     let copy_started = Instant::now();
@@ -141,14 +118,13 @@ pub fn capture_region(
     let (buffer_width, buffer_height) = state
         .buffer_size
         .ok_or_else(|| CaptureError::Failed("compositor advertised no buffer size".into()))?;
-    let format = state.format.ok_or_else(|| {
-        CaptureError::Unsupported("compositor offered no readable shm format".into())
-    })?;
+    let format = state
+        .format
+        .ok_or_else(|| CaptureError::Unsupported("compositor offered no readable shm format".into()))?;
 
     // Fail before the round trip if the region cannot land on the buffer.
     let (crop_x, crop_y, crop_width, crop_height) =
-        device_region(region, origin, logical, (buffer_width, buffer_height))
-            .ok_or_else(outside)?;
+        device_region(region, origin, logical, (buffer_width, buffer_height)).ok_or_else(outside)?;
 
     let len = (buffer_width as usize) * (buffer_height as usize) * 4;
     let fd = memfd_create(c"baras-capture", MemfdFlags::CLOEXEC)
@@ -232,11 +208,7 @@ pub fn capture_region(
     })
 }
 
-fn pump(
-    queue: &mut EventQueue<Capture>,
-    state: &mut Capture,
-    deadline: Instant,
-) -> Result<(), CaptureError> {
+fn pump(queue: &mut EventQueue<Capture>, state: &mut Capture, deadline: Instant) -> Result<(), CaptureError> {
     if Instant::now() >= deadline {
         return Err(CaptureError::Failed(
             "compositor did not answer the capture request in time".into(),
@@ -281,10 +253,7 @@ impl Output {
     /// straddling two monitors mostly sits on.
     fn overlap(&self, region: (i32, i32, u32, u32)) -> i64 {
         let (left, top) = (i64::from(self.origin.0), i64::from(self.origin.1));
-        let (right, bottom) = (
-            left + i64::from(self.logical.0),
-            top + i64::from(self.logical.1),
-        );
+        let (right, bottom) = (left + i64::from(self.logical.0), top + i64::from(self.logical.1));
 
         let x0 = i64::from(region.0).max(left);
         let y0 = i64::from(region.1).max(top);
@@ -359,16 +328,11 @@ impl Dispatch<ExtImageCopyCaptureSessionV1, ()> for Capture {
                 if state.format.is_none()
                     && matches!(
                         format,
-                        WEnum::Value(
-                            Format::Xrgb8888
-                                | Format::Argb8888
-                                | Format::Xbgr8888
-                                | Format::Abgr8888
-                        )
-                    )
-                => {
-                    state.format = format.into_result().ok();
-                }
+                        WEnum::Value(Format::Xrgb8888 | Format::Argb8888 | Format::Xbgr8888 | Format::Abgr8888)
+                    ) =>
+            {
+                state.format = format.into_result().ok();
+            }
             ext_image_copy_capture_session_v1::Event::Done => state.constraints_done = true,
             ext_image_copy_capture_session_v1::Event::Stopped => {
                 state.constraints_done = true;
@@ -389,9 +353,7 @@ impl Dispatch<ExtImageCopyCaptureFrameV1, ()> for Capture {
         _: &QueueHandle<Self>,
     ) {
         match event {
-            ext_image_copy_capture_frame_v1::Event::Transform { transform } => {
-                state.transform = Some(transform)
-            }
+            ext_image_copy_capture_frame_v1::Event::Transform { transform } => state.transform = Some(transform),
             ext_image_copy_capture_frame_v1::Event::Ready => state.outcome = Some(Ok(())),
             ext_image_copy_capture_frame_v1::Event::Failed { reason } => {
                 state.outcome = Some(Err(format!("compositor refused the capture: {reason:?}")))

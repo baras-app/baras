@@ -7,11 +7,10 @@ use super::error::ConfigError;
 
 // Re-export all shared types
 pub use baras_types::{
-    overlay_colors, AlertsOverlayConfig, AppConfig, BossHealthConfig, ChallengeColumns,
-    ChallengeLayout, ChallengeOverlayConfig, Color, HotkeySettings, IconPosition,
-    OverlayAppearanceConfig,
-    OverlayPositionConfig, OverlayProfile, OverlaySettings, PersonalOverlayConfig, PersonalStat,
-    PersonalStatCategory, RaidOverlaySettings, TimerOverlayConfig, MAX_PROFILES,
+    AlertsOverlayConfig, AppConfig, BossHealthConfig, ChallengeColumns, ChallengeLayout, ChallengeOverlayConfig, Color,
+    HotkeySettings, IconPosition, MAX_PROFILES, OverlayAppearanceConfig, OverlayPositionConfig, OverlayProfile,
+    OverlaySettings, PersonalOverlayConfig, PersonalStat, PersonalStatCategory, RaidOverlaySettings,
+    TimerOverlayConfig, overlay_colors,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -85,17 +84,15 @@ impl AppConfigExt for AppConfig {
 
                 // Back up the invalid config file so it isn't lost on next save
                 if let Ok(path) = crate::paths::config_file()
-                    && path.exists() {
-                        let backup = path.with_extension("toml.bak");
-                        if let Err(e) = std::fs::copy(&path, &backup) {
-                            tracing::error!(
-                                "Failed to back up config to {}: {e}",
-                                backup.display()
-                            );
-                        } else {
-                            tracing::info!("Backed up invalid config to {}", backup.display());
-                        }
+                    && path.exists()
+                {
+                    let backup = path.with_extension("toml.bak");
+                    if let Err(e) = std::fs::copy(&path, &backup) {
+                        tracing::error!("Failed to back up config to {}: {e}", backup.display());
+                    } else {
+                        tracing::info!("Backed up invalid config to {}", backup.display());
                     }
+                }
 
                 Self::load_with_defaults()
             }
@@ -130,8 +127,7 @@ impl AppConfigExt for AppConfig {
             return Err("Maximum number of profiles reached (12)");
         }
 
-        self.profiles
-            .push(OverlayProfile::new(name.clone(), settings_to_save));
+        self.profiles.push(OverlayProfile::new(name.clone(), settings_to_save));
         self.active_profile_name = Some(name);
         Ok(())
     }

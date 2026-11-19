@@ -64,9 +64,7 @@ pub struct OverlayStatusResponse {
 
 #[tauri::command]
 pub async fn enable_screen_capture() -> Result<(), String> {
-    baras_overlay::capture::enable_portal()
-        .await
-        .map_err(|e| e.to_string())
+    baras_overlay::capture::enable_portal().await.map_err(|e| e.to_string())
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -127,8 +125,7 @@ pub async fn apply_not_live_auto_hide(
         // We check both the tracked condition flag (from prior NotLiveStateChanged
         // events that may have fired while the setting was off) AND the async
         // session check (for conditions like stale session that don't emit events).
-        let should_hide =
-            shared.auto_hide.is_session_not_live() || shared.is_session_not_live().await;
+        let should_hide = shared.auto_hide.is_session_not_live() || shared.is_session_not_live().await;
 
         if should_hide {
             let was_hidden = shared.auto_hide.is_auto_hidden();
@@ -364,10 +361,7 @@ pub async fn preview_overlay_settings(
     let european = service.config().await.european_number_format;
     let overlays: Vec<_> = {
         let s = overlay_state.lock().map_err(|e| e.to_string())?;
-        s.all_overlays()
-            .into_iter()
-            .map(|(k, tx)| (k, tx.clone()))
-            .collect()
+        s.all_overlays().into_iter().map(|(k, tx)| (k, tx.clone())).collect()
     };
 
     for (kind, tx) in overlays {
@@ -406,23 +400,17 @@ pub async fn preview_overlay_entry(
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[tauri::command]
-pub async fn start_operation_timer(
-    service: State<'_, ServiceHandle>,
-) -> Result<(), String> {
+pub async fn start_operation_timer(service: State<'_, ServiceHandle>) -> Result<(), String> {
     service.start_operation_timer().await
 }
 
 #[tauri::command]
-pub async fn stop_operation_timer(
-    service: State<'_, ServiceHandle>,
-) -> Result<(), String> {
+pub async fn stop_operation_timer(service: State<'_, ServiceHandle>) -> Result<(), String> {
     service.stop_operation_timer().await
 }
 
 #[tauri::command]
-pub async fn reset_operation_timer(
-    service: State<'_, ServiceHandle>,
-) -> Result<(), String> {
+pub async fn reset_operation_timer(service: State<'_, ServiceHandle>) -> Result<(), String> {
     service.reset_operation_timer().await
 }
 
@@ -439,11 +427,7 @@ pub async fn clear_raid_registry(service: State<'_, ServiceHandle>) -> Result<()
 
 /// Swap two slots in the raid frame registry
 #[tauri::command]
-pub async fn swap_raid_slots(
-    slot_a: u8,
-    slot_b: u8,
-    service: State<'_, ServiceHandle>,
-) -> Result<(), String> {
+pub async fn swap_raid_slots(slot_a: u8, slot_b: u8, service: State<'_, ServiceHandle>) -> Result<(), String> {
     service.swap_raid_slots(slot_a, slot_b).await;
     Ok(())
 }

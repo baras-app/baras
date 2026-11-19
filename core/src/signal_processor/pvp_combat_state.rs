@@ -22,15 +22,11 @@ use super::GameSignal;
 /// Zoning out (AreaEntered with a different area ID) remains as a fallback
 /// for quits/disconnects; the encounter end is then backdated to the final
 /// ExitCombat seen, so scoreboard idle time isn't counted.
-pub fn handle_in_combat_warzone(
-    event: &CombatEvent,
-    cache: &mut SessionCache,
-) -> (Vec<GameSignal>, bool) {
+pub fn handle_in_combat_warzone(event: &CombatEvent, cache: &mut SessionCache) -> (Vec<GameSignal>, bool) {
     let mut signals = Vec::new();
     let timestamp = event.timestamp;
 
-    let match_ended = event.effect.effect_id == effect_id::HEAL
-        && event.action.action_id == REBIRTH_ABILITY_ID;
+    let match_ended = event.effect.effect_id == effect_id::HEAL && event.action.action_id == REBIRTH_ABILITY_ID;
     if match_ended {
         end_pvp_match(cache, &mut signals, timestamp, true, "Warzone match ended");
         return (signals, false);
@@ -58,10 +54,7 @@ pub fn handle_in_combat_warzone(
 /// such heal ends the round; the rest of the burst lands in the next
 /// encounter's pre-combat buffer like any between-round event. The next
 /// round starts on its EnterCombat as usual.
-pub fn handle_in_combat_arena(
-    event: &CombatEvent,
-    cache: &mut SessionCache,
-) -> (Vec<GameSignal>, bool) {
+pub fn handle_in_combat_arena(event: &CombatEvent, cache: &mut SessionCache) -> (Vec<GameSignal>, bool) {
     let mut signals = Vec::new();
     let timestamp = event.timestamp;
 
@@ -80,9 +73,7 @@ pub fn handle_in_combat_arena(
     // can't have ended.
     let round_ended = event.effect.effect_id == effect_id::HEAL
         && ARENA_ROUND_END_ABILITY_IDS.contains(&event.action.action_id)
-        && cache
-            .current_encounter()
-            .is_some_and(|e| e.last_damage_time.is_some());
+        && cache.current_encounter().is_some_and(|e| e.last_damage_time.is_some());
     if round_ended {
         let success = round_success();
         if event.action.action_id == REBIRTH_ABILITY_ID
@@ -138,9 +129,7 @@ fn end_pvp_match(
         enc.challenge_tracker.finalize(exit_time, duration);
     }
 
-    tracing::info!(
-        "[ENCOUNTER] {reason}, ending encounter {encounter_id} at {exit_time}"
-    );
+    tracing::info!("[ENCOUNTER] {reason}, ending encounter {encounter_id} at {exit_time}");
 
     signals.push(GameSignal::CombatEnded {
         timestamp: exit_time,

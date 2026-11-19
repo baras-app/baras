@@ -65,29 +65,38 @@ pub enum SettingsSection {
 
 /// Non-metric overlays as the selector groups them: `(group, [(label, tab key)])`
 const OVERLAY_GROUPS: &[(&str, &[(&str, &str)])] = &[
-    ("General", &[
-        ("Personal Stats", "personal"),
-        ("Raid Frames", "raid"),
-        ("Alerts", "alerts"),
-        ("Combat Time", "combat_time"),
-        ("Op Timer", "operation_timer"),
-        ("Abilities Cast", "ability_cast"),
-    ]),
-    ("Encounters", &[
-        ("Boss Health", "boss_health"),
-        ("Timers A", "timers_a"),
-        ("Timers B", "timers_b"),
-        ("Challenges", "challenges"),
-        ("Notes", "notes"),
-    ]),
-    ("Effects", &[
-        ("Effects A", "effects_a"),
-        ("Effects B", "effects_b"),
-        ("Effects C", "effects_c"),
-        ("Cooldowns A", "cooldowns"),
-        ("Cooldowns B", "cooldowns_b"),
-        ("DOT Tracker", "dot_tracker"),
-    ]),
+    (
+        "General",
+        &[
+            ("Personal Stats", "personal"),
+            ("Raid Frames", "raid"),
+            ("Alerts", "alerts"),
+            ("Combat Time", "combat_time"),
+            ("Op Timer", "operation_timer"),
+            ("Abilities Cast", "ability_cast"),
+        ],
+    ),
+    (
+        "Encounters",
+        &[
+            ("Boss Health", "boss_health"),
+            ("Timers A", "timers_a"),
+            ("Timers B", "timers_b"),
+            ("Challenges", "challenges"),
+            ("Notes", "notes"),
+        ],
+    ),
+    (
+        "Effects",
+        &[
+            ("Effects A", "effects_a"),
+            ("Effects B", "effects_b"),
+            ("Effects C", "effects_c"),
+            ("Cooldowns A", "cooldowns"),
+            ("Cooldowns B", "cooldowns_b"),
+            ("DOT Tracker", "dot_tracker"),
+        ],
+    ),
     ("PvP", &[("Enemy Frames", "enemy_frames")]),
 ];
 
@@ -98,7 +107,11 @@ fn overlay_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>)> {
     if let Some((_, pvp)) = groups.iter_mut().find(|(g, _)| *g == "PvP") {
         pvp.extend(MetricType::pvp().iter().map(metric));
     }
-    let metrics = MetricType::all().iter().filter(|m| !MetricType::pvp().contains(m)).map(metric).collect();
+    let metrics = MetricType::all()
+        .iter()
+        .filter(|m| !MetricType::pvp().contains(m))
+        .map(metric)
+        .collect();
     groups.push(("Metrics", metrics));
     groups
 }
@@ -167,15 +180,12 @@ pub fn SettingsPanel(
                 config.overlay_settings.frame_style = new_settings.frame_style;
                 config.overlay_settings.frame_overrides = new_settings.frame_overrides.clone();
                 config.overlay_settings.personal_overlay = new_settings.personal_overlay.clone();
-                config.overlay_settings.metric_show_empty_bars =
-                    new_settings.metric_show_empty_bars;
-                config.overlay_settings.metric_stack_from_bottom =
-                    new_settings.metric_stack_from_bottom;
+                config.overlay_settings.metric_show_empty_bars = new_settings.metric_show_empty_bars;
+                config.overlay_settings.metric_stack_from_bottom = new_settings.metric_stack_from_bottom;
                 config.overlay_settings.metric_scaling_factor = new_settings.metric_scaling_factor;
                 config.overlay_settings.metric_bar_spacing = new_settings.metric_bar_spacing;
                 config.overlay_settings.metric_font_scale = new_settings.metric_font_scale;
-                config.overlay_settings.metric_gradient_intensity =
-                    new_settings.metric_gradient_intensity;
+                config.overlay_settings.metric_gradient_intensity = new_settings.metric_gradient_intensity;
                 config.overlay_settings.metric_dynamic_background = new_settings.metric_dynamic_background;
                 config.overlay_settings.metric_show_background_bar = new_settings.metric_show_background_bar;
                 config.overlay_settings.class_icon_mode = new_settings.class_icon_mode;

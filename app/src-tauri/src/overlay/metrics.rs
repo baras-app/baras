@@ -5,8 +5,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use baras_core::game_data::Role as GameRole;
 use baras_core::PlayerMetrics;
+use baras_core::game_data::Role as GameRole;
 use baras_overlay::{Color, MetricEntry, Role as OverlayRole};
 
 use super::types::MetricType;
@@ -158,7 +158,17 @@ pub fn create_entries_for_type(
             });
             let is_local = m.entity_id == local_player_id;
             let is_enemy = m.pvp_faction == Some(baras_core::encounter::PvpFaction::Enemy);
-            (m.name.clone(), v, class_icon, discipline_icon, class_name, role, is_local, is_enemy, m)
+            (
+                m.name.clone(),
+                v,
+                class_icon,
+                discipline_icon,
+                class_name,
+                role,
+                is_local,
+                is_enemy,
+                m,
+            )
         })
         .collect();
 
@@ -169,35 +179,37 @@ pub fn create_entries_for_type(
 
     values
         .into_iter()
-        .map(|(name, v, class_icon, discipline_icon, class_name, role, is_local, is_enemy, player)| {
-            let mut entry = MetricEntry::new(&name, v.rate, max_value).with_total(v.total);
-            entry.player = Some(Arc::clone(player));
-            if let (Some(dv), Some(dt)) = (v.display_value, v.display_total) {
-                entry = entry.with_display(dv, dt);
-            }
-            entry.is_local = is_local;
-            entry.is_enemy = is_enemy;
-            if let (Some(sr), Some(st)) = (v.split_rate, v.split_total) {
-                entry = entry.with_split(sr, st);
-                if let Some(color) = v.split_color {
-                    entry = entry.with_split_color(color);
+        .map(
+            |(name, v, class_icon, discipline_icon, class_name, role, is_local, is_enemy, player)| {
+                let mut entry = MetricEntry::new(&name, v.rate, max_value).with_total(v.total);
+                entry.player = Some(Arc::clone(player));
+                if let (Some(dv), Some(dt)) = (v.display_value, v.display_total) {
+                    entry = entry.with_display(dv, dt);
                 }
-            }
-            if let Some(icon) = class_icon {
-                if let Some(role) = role {
-                    entry = entry.with_class_icon(icon, role);
-                } else {
-                    entry = entry.with_icon(icon);
+                entry.is_local = is_local;
+                entry.is_enemy = is_enemy;
+                if let (Some(sr), Some(st)) = (v.split_rate, v.split_total) {
+                    entry = entry.with_split(sr, st);
+                    if let Some(color) = v.split_color {
+                        entry = entry.with_split_color(color);
+                    }
                 }
-            }
-            if let Some(icon) = discipline_icon {
-                entry = entry.with_discipline_icon(icon);
-            }
-            if let Some(name) = class_name {
-                entry = entry.with_class_name(name);
-            }
-            entry
-        })
+                if let Some(icon) = class_icon {
+                    if let Some(role) = role {
+                        entry = entry.with_class_icon(icon, role);
+                    } else {
+                        entry = entry.with_icon(icon);
+                    }
+                }
+                if let Some(icon) = discipline_icon {
+                    entry = entry.with_discipline_icon(icon);
+                }
+                if let Some(name) = class_name {
+                    entry = entry.with_class_name(name);
+                }
+                entry
+            },
+        )
         .collect()
 }
 
@@ -242,10 +254,7 @@ pub fn shared_metrics(metrics: &[PlayerMetrics]) -> Vec<Arc<PlayerMetrics>> {
 }
 
 /// Create entries for all overlay types from metrics
-pub fn create_all_entries(
-    metrics: &[PlayerMetrics],
-    local_player_id: i64,
-) -> HashMap<MetricType, Vec<MetricEntry>> {
+pub fn create_all_entries(metrics: &[PlayerMetrics], local_player_id: i64) -> HashMap<MetricType, Vec<MetricEntry>> {
     let metrics = &shared_metrics(metrics);
     let mut result = HashMap::new();
     for overlay_type in MetricType::all() {

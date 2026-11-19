@@ -55,9 +55,7 @@ pub async fn enable() -> Result<(), CaptureError> {
             return Ok(());
         }
         if state.starting {
-            return Err(CaptureError::Failed(
-                "screen capture is already starting".into(),
-            ));
+            return Err(CaptureError::Failed("screen capture is already starting".into()));
         }
         state.starting = true;
     }
@@ -117,9 +115,7 @@ async fn start_portal() -> Result<mpsc::Sender<CaptureRequest>, CaptureError> {
         .await
         .map_err(|e| CaptureError::Failed(format!("screen capture request failed: {e}")))?
         .response()
-        .map_err(|e| {
-            CaptureError::PermissionRequired(format!("screen capture was declined: {e}"))
-        })?;
+        .map_err(|e| CaptureError::PermissionRequired(format!("screen capture was declined: {e}")))?;
     let stream = response
         .streams()
         .first()
@@ -170,20 +166,13 @@ async fn start_portal() -> Result<mpsc::Sender<CaptureRequest>, CaptureError> {
     Ok(tx)
 }
 
-pub fn capture_region(
-    x: i32,
-    y: i32,
-    width: u32,
-    height: u32,
-) -> Result<CapturedImage, CaptureError> {
+pub fn capture_region(x: i32, y: i32, width: u32, height: u32) -> Result<CapturedImage, CaptureError> {
     let tx = state()
         .lock()
         .unwrap_or_else(|p| p.into_inner())
         .tx
         .clone()
-        .ok_or_else(|| {
-            CaptureError::PermissionRequired("screen capture permission is required".into())
-        })?;
+        .ok_or_else(|| CaptureError::PermissionRequired("screen capture permission is required".into()))?;
     let (reply, result) = mpsc::channel();
     let started = Instant::now();
     if tx
@@ -194,9 +183,7 @@ pub fn capture_region(
         .is_err()
     {
         state().lock().unwrap_or_else(|p| p.into_inner()).tx = None;
-        return Err(CaptureError::PermissionRequired(
-            "screen capture session ended".into(),
-        ));
+        return Err(CaptureError::PermissionRequired("screen capture session ended".into()));
     }
     let image = result
         .recv_timeout(TIMEOUT)
@@ -272,29 +259,24 @@ fn run_stream(
             if id == pw::spa::param::ParamType::Format.as_raw()
                 && let Some(param) = param
                 && data.format.parse(param).is_ok()
-                && !data.format_logged {
-                    let size = data.format.size();
-                    let frame_mib =
-                        f64::from(size.width) * f64::from(size.height) * 4.0 / (1024.0 * 1024.0);
-                    tracing::info!(
-                        target: "baras::capture",
-                        backend = "pipewire-portal",
-                        format = ?data.format.format(),
-                        width = size.width,
-                        height = size.height,
-                        frame_mib,
-                        "screen capture stream ready"
-                    );
-                    data.format_logged = true;
-                }
+                && !data.format_logged
+            {
+                let size = data.format.size();
+                let frame_mib = f64::from(size.width) * f64::from(size.height) * 4.0 / (1024.0 * 1024.0);
+                tracing::info!(
+                    target: "baras::capture",
+                    backend = "pipewire-portal",
+                    format = ?data.format.format(),
+                    width = size.width,
+                    height = size.height,
+                    frame_mib,
+                    "screen capture stream ready"
+                );
+                data.format_logged = true;
+            }
         })
         .process(|stream, data| {
-            if data
-                .pending
-                .lock()
-                .unwrap_or_else(|p| p.into_inner())
-                .is_none()
-            {
+            if data.pending.lock().unwrap_or_else(|p| p.into_inner()).is_none() {
                 let _ = stream.set_active(false);
                 return;
             }
@@ -307,21 +289,12 @@ fn run_stream(
             // and stay active for the next frame; the caller's timeout is the
             // backstop if none ever comes.
             let has_pixels = buffer.datas_mut().first().is_some_and(|pixels| {
-                pixels.chunk().size() > 0
-                    && !pixels
-                        .chunk()
-                        .flags()
-                        .contains(pw::spa::buffer::ChunkFlags::CORRUPTED)
+                pixels.chunk().size() > 0 && !pixels.chunk().flags().contains(pw::spa::buffer::ChunkFlags::CORRUPTED)
             });
             if !has_pixels {
                 return;
             }
-            let Some(request) = data
-                .pending
-                .lock()
-                .unwrap_or_else(|p| p.into_inner())
-                .take()
-            else {
+            let Some(request) = data.pending.lock().unwrap_or_else(|p| p.into_inner()).take() else {
                 let _ = stream.set_active(false);
                 return;
             };
@@ -329,15 +302,7 @@ fn run_stream(
                 .datas_mut()
                 .first_mut()
                 .ok_or_else(|| CaptureError::Failed("PipeWire returned an empty buffer".into()))
-                .and_then(|pixels| {
-                    frame_from_buffer(
-                        pixels,
-                        &data.format,
-                        data.origin,
-                        data.logical,
-                        request.region,
-                    )
-                });
+                .and_then(|pixels| frame_from_buffer(pixels, &data.format, data.origin, data.logical, request.region));
             let _ = stream.set_active(false);
             let _ = request.reply.send(result);
         })
@@ -379,9 +344,7 @@ fn run_stream(
     stream.connect(
         pw::spa::utils::Direction::Input,
         Some(node),
-        pw::stream::StreamFlags::AUTOCONNECT
-            | pw::stream::StreamFlags::INACTIVE
-            | pw::stream::StreamFlags::MAP_BUFFERS,
+        pw::stream::StreamFlags::AUTOCONNECT | pw::stream::StreamFlags::INACTIVE | pw::stream::StreamFlags::MAP_BUFFERS,
         &mut params,
     )?;
     thread_loop.start();
@@ -390,20 +353,19 @@ fn run_stream(
     for request in requests {
         let mut slot = pending.lock().unwrap_or_else(|p| p.into_inner());
         if slot.is_some() {
-            let _ = request.reply.send(Err(CaptureError::Failed(
-                "capture is already running".into(),
-            )));
+            let _ = request
+                .reply
+                .send(Err(CaptureError::Failed("capture is already running".into())));
             continue;
         }
         *slot = Some(request);
         drop(slot);
         let _guard = thread_loop.lock();
         if let Err(error) = stream.set_active(true)
-            && let Some(request) = pending.lock().unwrap_or_else(|p| p.into_inner()).take() {
-                let _ = request
-                    .reply
-                    .send(Err(CaptureError::Failed(error.to_string())));
-            }
+            && let Some(request) = pending.lock().unwrap_or_else(|p| p.into_inner()).take()
+        {
+            let _ = request.reply.send(Err(CaptureError::Failed(error.to_string())));
+        }
     }
     thread_loop.stop();
     Ok(())
@@ -419,21 +381,15 @@ fn frame_from_buffer(
     let size = format.size();
     let (width, height) = (size.width, size.height);
     if width == 0 || height == 0 {
-        return Err(CaptureError::Failed(
-            "PipeWire returned no frame size".into(),
-        ));
+        return Err(CaptureError::Failed("PipeWire returned no frame size".into()));
     }
     let logical = if logical.0 == 0 || logical.1 == 0 {
         (width, height)
     } else {
         logical
     };
-    let (crop_x, crop_y, crop_width, crop_height) =
-        device_region(region, origin, logical, (width, height)).ok_or_else(|| {
-            CaptureError::InvalidRegion(
-                "the selected monitor does not contain the raid frames".into(),
-            )
-        })?;
+    let (crop_x, crop_y, crop_width, crop_height) = device_region(region, origin, logical, (width, height))
+        .ok_or_else(|| CaptureError::InvalidRegion("the selected monitor does not contain the raid frames".into()))?;
     let offset = data.chunk().offset() as usize;
     // Some producers leave the chunk stride unset; the chunk size still spans
     // the whole frame, so the row length can be derived from it instead.
@@ -442,9 +398,7 @@ fn frame_from_buffer(
         _ => data.chunk().size() as usize / height as usize,
     };
     if stride < width as usize * 4 {
-        return Err(CaptureError::Failed(
-            "PipeWire returned an unusable row layout".into(),
-        ));
+        return Err(CaptureError::Failed("PipeWire returned an unusable row layout".into()));
     }
     let bytes = data
         .data()

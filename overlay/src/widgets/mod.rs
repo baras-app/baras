@@ -24,4 +24,4 @@ pub use compound_row::{CompoundLayout, CompoundRow, CompoundValue};
 pub use header::{Footer, Header};
 pub use icon_bar::{IconBarRow, RowIcon};
 pub use labeled_value::LabeledValue;
-pub use progress_bar::{darken_color, draw_icon_placeholder, lighten_color, ProgressBar};
+pub use progress_bar::{ProgressBar, darken_color, draw_icon_placeholder, lighten_color};

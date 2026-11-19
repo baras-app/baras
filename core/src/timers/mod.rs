@@ -36,19 +36,18 @@ pub use error::TimerError;
 pub use manager::{FiredAlert, TimerManager};
 pub use matching::matches_source_target_filters;
 pub use preferences::{
-    CounterPreference, PhasePreference, PreferencesError, TimerPreference, TimerPreferences,
-    boss_counter_key, boss_phase_key, boss_timer_key, standalone_timer_key,
+    CounterPreference, PhasePreference, PreferencesError, TimerPreference, TimerPreferences, boss_counter_key,
+    boss_phase_key, boss_timer_key, standalone_timer_key,
 };
 
 use std::path::Path;
 
 /// Load timer definitions from a TOML file
 pub fn load_timers_from_file(path: &Path) -> Result<Vec<TimerDefinition>, String> {
-    let content = std::fs::read_to_string(path)
-        .map_err(|e| format!("Failed to read timer file {:?}: {}", path, e))?;
+    let content = std::fs::read_to_string(path).map_err(|e| format!("Failed to read timer file {:?}: {}", path, e))?;
 
-    let config: TimerConfig = toml::from_str(&content)
-        .map_err(|e| format!("Failed to parse timer file {:?}: {}", path, e))?;
+    let config: TimerConfig =
+        toml::from_str(&content).map_err(|e| format!("Failed to parse timer file {:?}: {}", path, e))?;
 
     Ok(config.timers)
 }
@@ -61,8 +60,7 @@ pub fn load_timers_from_dir(dir: &Path) -> Result<Vec<TimerDefinition>, String> 
         return Ok(all_timers); // Empty if directory doesn't exist
     }
 
-    let entries = std::fs::read_dir(dir)
-        .map_err(|e| format!("Failed to read timer directory {:?}: {}", dir, e))?;
+    let entries = std::fs::read_dir(dir).map_err(|e| format!("Failed to read timer directory {:?}: {}", dir, e))?;
 
     for entry in entries.flatten() {
         let path = entry.path();

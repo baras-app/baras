@@ -5,8 +5,8 @@
 use dioxus::prelude::*;
 
 use crate::types::{
-    AbilitySelector, EffectSelector, EntityFilter, EntitySelector, MitigationType, PositionAxis,
-    PositionConstraint, PositionEntity, PositionOp, TimerTrigger,
+    AbilitySelector, EffectSelector, EntityFilter, EntitySelector, MitigationType, PositionAxis, PositionConstraint,
+    PositionEntity, PositionOp, TimerTrigger,
 };
 
 use super::tabs::EncounterData;
@@ -17,12 +17,7 @@ use super::tabs::EncounterData;
 
 /// Generic dropdown selector for IDs (timers, phases, counters)
 #[component]
-fn IdSelector(
-    label: &'static str,
-    value: String,
-    available: Vec<String>,
-    on_change: EventHandler<String>,
-) -> Element {
+fn IdSelector(label: &'static str, value: String, available: Vec<String>, on_change: EventHandler<String>) -> Element {
     rsx! {
         div { class: "flex items-center gap-xs",
             label { class: "text-sm text-secondary", "{label}" }
@@ -384,10 +379,7 @@ pub fn SimpleTriggerEditor(
     let preserved_position = trigger.position_constraints().to_vec();
     let trigger_for_position = trigger.clone();
     let on_change = EventHandler::new(move |t: TimerTrigger| {
-        let t = if t.supports_position()
-            && t.position_constraints().is_empty()
-            && !preserved_position.is_empty()
-        {
+        let t = if t.supports_position() && t.position_constraints().is_empty() && !preserved_position.is_empty() {
             t.with_position(preserved_position.clone())
         } else {
             t
@@ -1043,8 +1035,7 @@ fn PositionConstraintList(
 fn PositionConstraintRow(
     constraint: PositionConstraint,
     on_change: EventHandler<PositionConstraint>,
-    #[props(default = true)]
-    show_entity: bool,
+    #[props(default = true)] show_entity: bool,
 ) -> Element {
     let c_entity = constraint.clone();
     let c_axis = constraint.clone();
@@ -1377,10 +1368,7 @@ pub fn AbilitySelectorEditor(
 /// Renders chips for selected types and a dropdown to add more.
 /// An empty list means "any hit result" (no filtering).
 #[component]
-pub fn MitigationTypeEditor(
-    selected: Vec<MitigationType>,
-    on_change: EventHandler<Vec<MitigationType>>,
-) -> Element {
+pub fn MitigationTypeEditor(selected: Vec<MitigationType>, on_change: EventHandler<Vec<MitigationType>>) -> Element {
     let mut pending = use_signal(|| MitigationType::Miss);
 
     let selected_for_add = selected.clone();

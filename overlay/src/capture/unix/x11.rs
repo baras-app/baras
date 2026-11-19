@@ -10,12 +10,7 @@ use x11rb::protocol::xproto::{ConnectionExt as _, ImageFormat, ImageOrder};
 
 use super::{CaptureError, CapturedImage};
 
-pub fn capture_region(
-    x: i32,
-    y: i32,
-    width: u32,
-    height: u32,
-) -> Result<CapturedImage, CaptureError> {
+pub fn capture_region(x: i32, y: i32, width: u32, height: u32) -> Result<CapturedImage, CaptureError> {
     let started = Instant::now();
 
     let bounds = |what: &str| CaptureError::InvalidRegion(format!("{what} is out of X11 range"));
@@ -28,8 +23,8 @@ pub fn capture_region(
         u16::try_from(height).map_err(|_| bounds("height"))?,
     );
 
-    let (conn, screen) = x11rb::connect(None)
-        .map_err(|e| CaptureError::ConnectionFailed(format!("no X display: {e}")))?;
+    let (conn, screen) =
+        x11rb::connect(None).map_err(|e| CaptureError::ConnectionFailed(format!("no X display: {e}")))?;
     let setup = conn.setup();
     let root = setup.roots[screen].root;
 
@@ -80,9 +75,5 @@ pub fn capture_region(
         (width, height),
     );
 
-    Ok(CapturedImage {
-        width,
-        height,
-        rgba,
-    })
+    Ok(CapturedImage { width, height, rgba })
 }

@@ -111,15 +111,9 @@ impl LogParser {
         let hour = (b[0] - b'0') * 10 + (b[1] - b'0');
         let minute = (b[3] - b'0') * 10 + (b[4] - b'0');
         let second = (b[6] - b'0') * 10 + (b[7] - b'0');
-        let millis =
-            (b[9] - b'0') as u16 * 100 + (b[10] - b'0') as u16 * 10 + (b[11] - b'0') as u16;
+        let millis = (b[9] - b'0') as u16 * 100 + (b[10] - b'0') as u16 * 10 + (b[11] - b'0') as u16;
 
-        let timestamp = chrono::NaiveTime::from_hms_milli_opt(
-            hour as u32,
-            minute as u32,
-            second as u32,
-            millis as u32,
-        );
+        let timestamp = chrono::NaiveTime::from_hms_milli_opt(hour as u32, minute as u32, second as u32, millis as u32);
 
         if let Some(compare_time) = timestamp {
             if compare_time
@@ -152,9 +146,7 @@ impl LogParser {
         }
         //handle []
         if segment.is_empty() {
-            return Some(Entity {
-                ..Default::default()
-            });
+            return Some(Entity { ..Default::default() });
         }
 
         // Find first two pipes (only need positions 0 and 1)
@@ -270,13 +262,9 @@ impl LogParser {
 
                 return Some((player_name, 0, player_id, EntityType::Player));
             } else {
-                let companion_name = segment
-                    .get(slash? + 1..brace?.saturating_sub(1))
-                    .unwrap_or("");
-                let companion_char_id =
-                    parse_i64!(segment.get(brace? + 1..end_brace?).unwrap_or(""));
-                let companion_log_id =
-                    parse_i64!(segment.get(end_brace? + 2..).unwrap_or(""));
+                let companion_name = segment.get(slash? + 1..brace?.saturating_sub(1)).unwrap_or("");
+                let companion_char_id = parse_i64!(segment.get(brace? + 1..end_brace?).unwrap_or(""));
+                let companion_log_id = parse_i64!(segment.get(end_brace? + 2..).unwrap_or(""));
 
                 return Some((
                     companion_name,
@@ -302,9 +290,7 @@ impl LogParser {
         let end_brace = memchr(b'}', bytes);
 
         if segment.is_empty() {
-            return Some(Action {
-                ..Default::default()
-            });
+            return Some(Action { ..Default::default() });
         }
 
         let action_name = segment.get(..brace?).unwrap_or("").trim();
@@ -340,9 +326,7 @@ impl LogParser {
         }
 
         if brace_count < 2 || end_brace_count < 2 {
-            return Some(Effect {
-                ..Default::default()
-            });
+            return Some(Effect { ..Default::default() });
         }
 
         let type_name = intern(segment.get(..braces[0]).unwrap_or("").trim());
@@ -355,29 +339,18 @@ impl LogParser {
         );
         let effect_id = parse_i64!(segment.get(braces[1] + 1..end_braces[1]).unwrap_or(""));
 
-        let (difficulty_name, difficulty_id) =
-            if type_id == effect_type_id::AREAENTERED && brace_count == 3 {
-                (
-                    intern(
-                        segment
-                            .get(end_braces[1] + 1..braces[2])
-                            .unwrap_or("")
-                            .trim(),
-                    ),
-                    parse_i64!(segment.get(braces[2] + 1..end_braces[2]).unwrap_or("")),
-                )
-            } else {
-                (intern(""), 0)
-            };
+        let (difficulty_name, difficulty_id) = if type_id == effect_type_id::AREAENTERED && brace_count == 3 {
+            (
+                intern(segment.get(end_braces[1] + 1..braces[2]).unwrap_or("").trim()),
+                parse_i64!(segment.get(braces[2] + 1..end_braces[2]).unwrap_or("")),
+            )
+        } else {
+            (intern(""), 0)
+        };
 
         let (discipline_name, discipline_id) = if type_id == effect_type_id::DISCIPLINECHANGED {
             (
-                intern(
-                    segment
-                        .get(slash? + 1..braces[2])
-                        .unwrap_or("")
-                        .trim(),
-                ),
+                intern(segment.get(slash? + 1..braces[2]).unwrap_or("").trim()),
                 parse_i64!(segment.get(braces[2] + 1..end_braces[2]).unwrap_or("")),
             )
         } else {
@@ -415,8 +388,7 @@ impl LogParser {
                 })
             }
             _ => {
-                if (effect_type_id == effect_type_id::APPLYEFFECT
-                    || effect_type_id == effect_type_id::MODIFYCHARGES)
+                if (effect_type_id == effect_type_id::APPLYEFFECT || effect_type_id == effect_type_id::MODIFYCHARGES)
                     && memchr(b'(', segment.as_bytes()).is_some()
                 {
                     LogParser::parse_charges(segment)
@@ -432,9 +404,7 @@ impl LogParser {
                         ..Default::default()
                     })
                 } else {
-                    Some(Details {
-                        ..Default::default()
-                    })
+                    Some(Details { ..Default::default() })
                 }
             }
         }
@@ -492,9 +462,7 @@ impl LogParser {
         let is_reflect = memmem::find(inner_bytes, b"}(").is_some();
 
         // Parse amount (first number)
-        let amount_end = inner
-            .find(|c: char| !c.is_ascii_digit())
-            .unwrap_or(inner.len());
+        let amount_end = inner.find(|c: char| !c.is_ascii_digit()).unwrap_or(inner.len());
         let dmg_amount = parse_i32!(inner.get(..amount_end).unwrap_or(""));
 
         // Parse effective damage after ~
@@ -536,26 +504,22 @@ impl LogParser {
         };
 
         // Parse absorbed amount from nested (X absorbed {id})
-        let dmg_absorbed =
-            if let Some(absorbed_pos) = memchr::memmem::find(inner_bytes, b"{836045448945511}") {
-                let before_absorbed = inner.get(..absorbed_pos).unwrap_or("");
-                if let Some(nested_paren) = before_absorbed.rfind('(') {
-                    let num_section = before_absorbed
-                        .get(nested_paren + 1..)
-                        .unwrap_or("")
-                        .trim_start();
-                    // Extract only the leading digits
-                    let num_end = num_section
-                        .find(|c: char| !c.is_ascii_digit())
-                        .unwrap_or(num_section.len());
-                    Some(parse_i32!(num_section.get(..num_end).unwrap_or("")))
-                } else {
-                    Some(0)
-                }
+        let dmg_absorbed = if let Some(absorbed_pos) = memchr::memmem::find(inner_bytes, b"{836045448945511}") {
+            let before_absorbed = inner.get(..absorbed_pos).unwrap_or("");
+            if let Some(nested_paren) = before_absorbed.rfind('(') {
+                let num_section = before_absorbed.get(nested_paren + 1..).unwrap_or("").trim_start();
+                // Extract only the leading digits
+                let num_end = num_section
+                    .find(|c: char| !c.is_ascii_digit())
+                    .unwrap_or(num_section.len());
+                Some(parse_i32!(num_section.get(..num_end).unwrap_or("")))
             } else {
-                None
+                Some(0)
             }
-            .unwrap_or(0);
+        } else {
+            None
+        }
+        .unwrap_or(0);
         Some(Details {
             dmg_amount,
             is_crit,
@@ -609,9 +573,7 @@ impl LogParser {
         let is_crit = memchr(b'*', inner_bytes).is_some();
 
         // Parse heal amount (first number)
-        let amount_end = inner
-            .find(|c: char| !c.is_ascii_digit())
-            .unwrap_or(inner.len());
+        let amount_end = inner.find(|c: char| !c.is_ascii_digit()).unwrap_or(inner.len());
         let heal_amount = parse_i32!(inner.get(..amount_end).unwrap_or(""));
 
         // Parse effective heal after ~, default to heal_amount if not present
@@ -648,9 +610,7 @@ impl LogParser {
 
         // Parse count: number before "charges"
         let inner = segment.get(paren + 1..paren_end).unwrap_or("");
-        let count_end = inner
-            .find(|c: char| !c.is_ascii_digit())
-            .unwrap_or(inner.len());
+        let count_end = inner.find(|c: char| !c.is_ascii_digit()).unwrap_or(inner.len());
         let charges = parse_i32!(inner.get(..count_end).unwrap_or(""));
 
         // Parse ability ID

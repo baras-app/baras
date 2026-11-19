@@ -112,9 +112,7 @@ fn frame_cache() -> &'static Mutex<HashMap<String, CachedFrame>> {
 }
 
 fn lock_frames() -> std::sync::MutexGuard<'static, HashMap<String, CachedFrame>> {
-    frame_cache()
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+    frame_cache().lock().unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 struct CachedFrame {
@@ -203,12 +201,7 @@ fn frame_png(id: &str) -> Option<Vec<u8>> {
         if let Some(png) = &frame.png {
             return Some(png.clone());
         }
-        (
-            frame.revision,
-            frame.width,
-            frame.height,
-            frame.rgba.clone(),
-        )
+        (frame.revision, frame.width, frame.height, frame.rgba.clone())
     };
 
     let png = encode_png(width, height, rgba).ok()?;
@@ -238,9 +231,7 @@ fn encode_png(width: u32, height: u32, mut rgba: Vec<u8>) -> Result<Vec<u8>, Str
         encoder.set_color(png::ColorType::Rgba);
         encoder.set_depth(png::BitDepth::Eight);
         let mut writer = encoder.write_header().map_err(|error| error.to_string())?;
-        writer
-            .write_image_data(&rgba)
-            .map_err(|error| error.to_string())?;
+        writer.write_image_data(&rgba).map_err(|error| error.to_string())?;
     }
     Ok(output)
 }
@@ -263,9 +254,9 @@ impl WebOverlayServer {
         }
 
         let address = SocketAddr::from((Ipv4Addr::LOCALHOST, WEB_OVERLAY_PORT));
-        let listener = TcpListener::bind(address).await.map_err(|error| {
-            format!("Could not start web overlay on {WEB_OVERLAY_URL}: {error}")
-        })?;
+        let listener = TcpListener::bind(address)
+            .await
+            .map_err(|error| format!("Could not start web overlay on {WEB_OVERLAY_URL}: {error}"))?;
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
 
         CAPTURE_ENABLED.store(true, Ordering::Relaxed);
@@ -321,11 +312,7 @@ async fn handle_connection(mut stream: TcpStream) -> std::io::Result<()> {
     }
 
     let request = String::from_utf8_lossy(&request[..read]);
-    let mut request_parts = request
-        .lines()
-        .next()
-        .unwrap_or_default()
-        .split_whitespace();
+    let mut request_parts = request.lines().next().unwrap_or_default().split_whitespace();
     let method = request_parts.next().unwrap_or_default();
     let target = request_parts.next().unwrap_or_default();
     let path = target.split('?').next().unwrap_or(target);
@@ -337,11 +324,7 @@ async fn handle_connection(mut stream: TcpStream) -> std::io::Result<()> {
             b"Method not allowed".to_vec(),
         )
     } else if matches!(path, "/" | "/overlay" | "/overlay/") {
-        (
-            "200 OK",
-            "text/html; charset=utf-8",
-            OVERLAY_PAGE.as_bytes().to_vec(),
-        )
+        ("200 OK", "text/html; charset=utf-8", OVERLAY_PAGE.as_bytes().to_vec())
     } else if path == "/scene" {
         ("200 OK", "application/json", scene_json())
     } else if let Some(id) = path
@@ -357,11 +340,7 @@ async fn handle_connection(mut stream: TcpStream) -> std::io::Result<()> {
             ),
         }
     } else {
-        (
-            "404 Not Found",
-            "text/plain; charset=utf-8",
-            b"Not found".to_vec(),
-        )
+        ("404 Not Found", "text/plain; charset=utf-8", b"Not found".to_vec())
     };
 
     let headers = format!(

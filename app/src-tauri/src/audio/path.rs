@@ -42,11 +42,7 @@ pub fn resolve_bundled_definitions_dir(app: &AppHandle) -> PathBuf {
 /// Resolve a sound file reference to an absolute on-disk path.
 ///
 /// Returns `Some(path)` only if the file exists.
-pub fn resolve_sound_path(
-    file_ref: &str,
-    user_sounds_dir: &Path,
-    bundled_definitions_dir: &Path,
-) -> Option<PathBuf> {
+pub fn resolve_sound_path(file_ref: &str, user_sounds_dir: &Path, bundled_definitions_dir: &Path) -> Option<PathBuf> {
     if file_ref.is_empty() {
         return None;
     }

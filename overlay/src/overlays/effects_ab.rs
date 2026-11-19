@@ -10,7 +10,7 @@ use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
 use crate::utils::{color_from_rgba, shared_scaled_icons};
-use crate::widgets::{colors, Header, IconBarRow, ProgressBar, RowIcon};
+use crate::widgets::{Header, IconBarRow, ProgressBar, RowIcon, colors};
 
 /// Layout direction for effects display
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -73,12 +73,16 @@ pub struct EffectABEntry {
 impl EffectABEntry {
     /// Source/target annotation, if any flag is set and the name is known
     fn entity_label(&self) -> Option<String> {
-        super::entity_label(self.display_source, &self.source_name, self.show_target, &self.target_name)
+        super::entity_label(
+            self.display_source,
+            &self.source_name,
+            self.show_target,
+            &self.target_name,
+        )
     }
 
     fn has_entity_label(&self) -> bool {
-        (self.display_source && !self.source_name.is_empty())
-            || (self.show_target && !self.target_name.is_empty())
+        (self.display_source && !self.source_name.is_empty()) || (self.show_target && !self.target_name.is_empty())
     }
 
     /// Progress as 0.0 (expired) to 1.0 (full)
@@ -186,11 +190,7 @@ pub struct EffectsABOverlay {
 
 impl EffectsABOverlay {
     /// Create a new effects overlay
-    pub fn new(
-        window_config: OverlayConfig,
-        config: EffectsABConfig,
-        label: &str,
-    ) -> Result<Self, PlatformError> {
+    pub fn new(window_config: OverlayConfig, config: EffectsABConfig, label: &str) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
         frame.set_label(label);
 
@@ -212,7 +212,6 @@ impl EffectsABOverlay {
         self.last_rendered.clear();
         self.last_rendered_bar.clear();
     }
-
 
     /// Icon pixel size to cache: the drawn size in bar layout, else the configured icon size
     fn bar_or_icon_size(&self, bar_layout: bool) -> u32 {
@@ -313,12 +312,7 @@ impl EffectsABOverlay {
         let num_visible = self.data.effects.iter().take(max_display).count();
 
         // Text rows drawn under the icons: effect name and source/target label
-        let has_labels = self
-            .data
-            .effects
-            .iter()
-            .take(max_display)
-            .any(|e| e.has_entity_label());
+        let has_labels = self.data.effects.iter().take(max_display).any(|e| e.has_entity_label());
         let extra_below = below_icon_height(self.config.show_effect_names, has_labels, font_size);
 
         // Inner content height (without padding) and total content height
@@ -349,8 +343,7 @@ impl EffectsABOverlay {
         if self.config.dynamic_background {
             if self.config.stack_from_bottom && num_visible > 0 {
                 let content_y = (header_y - padding).max(0.0);
-                self.frame
-                    .begin_frame_with_content_rect(content_y, content_height);
+                self.frame.begin_frame_with_content_rect(content_y, content_height);
             } else {
                 self.frame.begin_frame_with_content_height(content_height);
             }
@@ -383,13 +376,7 @@ impl EffectsABOverlay {
         let icon_size_u32 = icon_size.round() as u32;
 
         // Clone effects to avoid borrow issues
-        let effects: Vec<_> = self
-            .data
-            .effects
-            .iter()
-            .take(max_display)
-            .cloned()
-            .collect();
+        let effects: Vec<_> = self.data.effects.iter().take(max_display).cloned().collect();
 
         for effect in &effects {
             // Draw icon
@@ -399,13 +386,8 @@ impl EffectsABOverlay {
             let progress = effect.progress();
             let overlay_height = icon_size * (1.0 - progress);
             if overlay_height > 1.0 {
-                self.frame.fill_rect(
-                    x,
-                    y,
-                    icon_size,
-                    overlay_height,
-                    color_from_rgba([0, 0, 0, 140]),
-                );
+                self.frame
+                    .fill_rect(x, y, icon_size, overlay_height, color_from_rgba([0, 0, 0, 140]));
             }
 
             // Border (after wipe so it stays bright); colored squares use the
@@ -432,9 +414,9 @@ impl EffectsABOverlay {
             let mut text_y_offset = 0.0;
             if self.config.show_effect_names {
                 let name_font_size = font_size * 0.85;
-                let name =
-                    self.frame
-                        .truncate_to_width(&effect.name, label_max, name_font_size, false);
+                let name = self
+                    .frame
+                    .truncate_to_width(&effect.name, label_max, name_font_size, false);
                 let name_width = self.frame.measure_text(&name, name_font_size).0;
                 let name_x = x + (icon_size - name_width) / 2.0;
                 let name_y = y + icon_size + name_font_size + 2.0;
@@ -447,20 +429,13 @@ impl EffectsABOverlay {
             // Source/target label below effect name
             if let Some(label) = effect.entity_label() {
                 let source_font_size = font_size * 0.75;
-                let source =
-                    self.frame
-                        .truncate_to_width(&label, label_max, source_font_size, false);
+                let source = self.frame.truncate_to_width(&label, label_max, source_font_size, false);
                 let source_width = self.frame.measure_text(&source, source_font_size).0;
                 let source_x = x + (icon_size - source_width) / 2.0;
                 let source_y = y + icon_size + source_font_size + 2.0 + text_y_offset;
 
-                self.frame.draw_text_glowed(
-                    &source,
-                    source_x,
-                    source_y,
-                    source_font_size,
-                    colors::white(),
-                );
+                self.frame
+                    .draw_text_glowed(&source, source_x, source_y, source_font_size, colors::white());
             }
 
             x += icon_size + spacing;
@@ -511,8 +486,7 @@ impl EffectsABOverlay {
         let header_font_size = font_size * 1.4;
 
         // Calculate header space if enabled
-        let header_space =
-            Header::space(self.config.show_header, header_font_size, row_spacing, scale);
+        let header_space = Header::space(self.config.show_header, header_font_size, row_spacing, scale);
 
         // Count visible entries for dynamic background
         let num_visible = self.data.effects.iter().take(max_display).count();
@@ -534,8 +508,7 @@ impl EffectsABOverlay {
         let window_height = self.frame.height() as f32;
         let total_rows_height = num_visible as f32 * row_height;
         let rows_start_y = if self.config.stack_from_bottom && num_visible > 0 {
-            (window_height - padding - total_rows_height + row_spacing)
-                .max(padding + header_space)
+            (window_height - padding - total_rows_height + row_spacing).max(padding + header_space)
         } else {
             padding + header_space
         };
@@ -548,8 +521,7 @@ impl EffectsABOverlay {
         if self.config.dynamic_background {
             if self.config.stack_from_bottom && num_visible > 0 {
                 let content_y = (header_y - padding).max(0.0);
-                self.frame
-                    .begin_frame_with_content_rect(content_y, content_height);
+                self.frame.begin_frame_with_content_rect(content_y, content_height);
             } else {
                 self.frame.begin_frame_with_content_height(content_height);
             }
@@ -581,13 +553,7 @@ impl EffectsABOverlay {
         let icon_size_u32 = icon_size.round() as u32;
 
         // Clone effects to avoid borrow issues
-        let effects: Vec<_> = self
-            .data
-            .effects
-            .iter()
-            .take(max_display)
-            .cloned()
-            .collect();
+        let effects: Vec<_> = self.data.effects.iter().take(max_display).cloned().collect();
 
         for effect in &effects {
             let x = padding;
@@ -599,13 +565,8 @@ impl EffectsABOverlay {
             let progress = effect.progress();
             let overlay_height = icon_size * (1.0 - progress);
             if overlay_height > 1.0 {
-                self.frame.fill_rect(
-                    x,
-                    y,
-                    icon_size,
-                    overlay_height,
-                    color_from_rgba([0, 0, 0, 140]),
-                );
+                self.frame
+                    .fill_rect(x, y, icon_size, overlay_height, color_from_rgba([0, 0, 0, 140]));
             }
 
             // Border; colored squares use the effect's own color so identity
@@ -635,23 +596,14 @@ impl EffectsABOverlay {
             if self.config.show_effect_names {
                 // Effect name on top
                 let name_y = text_y - font_size * 0.3;
-                let name = self
-                    .frame
-                    .truncate_to_width(&effect.name, text_max, font_size, false);
-                self.frame.draw_text_glowed(
-                    &name,
-                    text_x,
-                    name_y,
-                    font_size,
-                    colors::white(),
-                );
+                let name = self.frame.truncate_to_width(&effect.name, text_max, font_size, false);
+                self.frame
+                    .draw_text_glowed(&name, text_x, name_y, font_size, colors::white());
 
                 // Source/target label below effect name
                 if let Some(label) = effect.entity_label() {
                     let source_font_size = font_size * 0.8;
-                    let label =
-                        self.frame
-                            .truncate_to_width(&label, text_max, source_font_size, false);
+                    let label = self.frame.truncate_to_width(&label, text_max, source_font_size, false);
                     self.frame.draw_text_glowed(
                         &label,
                         text_x,
@@ -664,9 +616,7 @@ impl EffectsABOverlay {
                 // Source/target label centered to the right of icon
                 if let Some(label) = effect.entity_label() {
                     let source_font_size = font_size * 0.8;
-                    let label =
-                        self.frame
-                            .truncate_to_width(&label, text_max, source_font_size, false);
+                    let label = self.frame.truncate_to_width(&label, text_max, source_font_size, false);
                     self.frame.draw_text_glowed(
                         &label,
                         text_x,
@@ -689,8 +639,19 @@ impl EffectsABOverlay {
 
         // Dirty check — include remaining_secs bits so bar fill updates each frame
         let current_state: Vec<(u64, String, u8, u32, bool)> = self
-            .data.effects.iter().take(max_display)
-            .map(|e| (e.effect_id, e.format_time(self.european_number_format), e.stacks, e.remaining_secs.to_bits(), e.inactive))
+            .data
+            .effects
+            .iter()
+            .take(max_display)
+            .map(|e| {
+                (
+                    e.effect_id,
+                    e.format_time(self.european_number_format),
+                    e.stacks,
+                    e.remaining_secs.to_bits(),
+                    e.inactive,
+                )
+            })
             .collect();
 
         if current_state == self.last_rendered_bar && !self.last_rendered_bar.is_empty() {
@@ -712,10 +673,12 @@ impl EffectsABOverlay {
         let header_font_size = font_size * 1.4;
 
         let row = IconBarRow::new(padding, content_width, bar_height, bar_radius, scale);
-        let border = self.config.show_border.then(|| color_from_rgba(self.config.border_color));
+        let border = self
+            .config
+            .show_border
+            .then(|| color_from_rgba(self.config.border_color));
 
-        let header_space =
-            Header::space(self.config.show_header, header_font_size, entry_spacing, scale);
+        let header_space = Header::space(self.config.show_header, header_font_size, entry_spacing, scale);
 
         let num_visible = self.data.effects.iter().take(max_display).count();
         let total_bars_height = if num_visible > 0 {
@@ -724,7 +687,11 @@ impl EffectsABOverlay {
             0.0
         };
         let content_height = if num_visible == 0 {
-            if self.config.show_header { padding * 2.0 + header_space } else { 0.0 }
+            if self.config.show_header {
+                padding * 2.0 + header_space
+            } else {
+                0.0
+            }
         } else {
             padding * 2.0 + header_space + total_bars_height
         };
@@ -744,8 +711,7 @@ impl EffectsABOverlay {
         if self.config.dynamic_background {
             if self.config.stack_from_bottom && num_visible > 0 {
                 let content_y = (header_y - padding).max(0.0);
-                self.frame
-                    .begin_frame_with_content_rect(content_y, content_height);
+                self.frame.begin_frame_with_content_rect(content_y, content_height);
             } else {
                 self.frame.begin_frame_with_content_height(content_height);
             }
@@ -756,7 +722,14 @@ impl EffectsABOverlay {
         if self.config.show_header && !self.config.header_title.is_empty() {
             Header::new(&self.config.header_title)
                 .with_color(colors::white())
-                .render(&mut self.frame, padding, header_y, content_width, header_font_size, entry_spacing);
+                .render(
+                    &mut self.frame,
+                    padding,
+                    header_y,
+                    content_width,
+                    header_font_size,
+                    entry_spacing,
+                );
         }
 
         if self.data.effects.is_empty() {
@@ -780,7 +753,11 @@ impl EffectsABOverlay {
                 label.push_str(&format!("{}x ", effect.stacks));
             }
             if self.config.show_effect_names || !has_icon {
-                let text = if !effect.display_text.is_empty() { &effect.display_text } else { &effect.name };
+                let text = if !effect.display_text.is_empty() {
+                    &effect.display_text
+                } else {
+                    &effect.name
+                };
                 label.push_str(text);
             }
             if let Some(entity) = effect.entity_label() {
@@ -848,14 +825,7 @@ impl EffectsABOverlay {
     }
 
     /// Draw icon or colored square fallback; returns whether an icon was drawn
-    fn draw_icon(
-        &mut self,
-        effect: &EffectABEntry,
-        x: f32,
-        y: f32,
-        icon_size: f32,
-        icon_size_u32: u32,
-    ) -> bool {
+    fn draw_icon(&mut self, effect: &EffectABEntry, x: f32, y: f32, icon_size: f32, icon_size_u32: u32) -> bool {
         let has_icon = if effect.show_icon {
             // On cache miss, scale (and desaturate if inactive) through the cache
             // rather than drawing the raw color RGBA — keeps inactive entries gray.
@@ -875,15 +845,8 @@ impl EffectsABOverlay {
                     })
                 });
             if let Some(scaled_icon) = scaled_icon {
-                self.frame.draw_image(
-                    &scaled_icon,
-                    icon_size_u32,
-                    icon_size_u32,
-                    x,
-                    y,
-                    icon_size,
-                    icon_size,
-                );
+                self.frame
+                    .draw_image(&scaled_icon, icon_size_u32, icon_size_u32, x, y, icon_size, icon_size);
                 true
             } else {
                 false
@@ -899,50 +862,31 @@ impl EffectsABOverlay {
             } else {
                 color_from_rgba(effect.color)
             };
-            self.frame
-                .fill_rounded_rect(x, y, icon_size, icon_size, 3.0, bg_color);
+            self.frame.fill_rounded_rect(x, y, icon_size, icon_size, 3.0, bg_color);
         }
         has_icon
     }
 
     /// Draw stack-priority mode (big stacks centered, timer in corner)
-    fn draw_stack_priority(
-        &mut self,
-        effect: &EffectABEntry,
-        x: f32,
-        y: f32,
-        icon_size: f32,
-        font_size: f32,
-    ) {
+    fn draw_stack_priority(&mut self, effect: &EffectABEntry, x: f32, y: f32, icon_size: f32, font_size: f32) {
         let stack_text = format!("{}", effect.stacks);
         let stack_font_size = font_size * 1.9;
         let text_width = self.frame.measure_text(&stack_text, stack_font_size).0;
         let text_x = x + (icon_size - text_width) / 2.0;
         let text_y = y + icon_size / 2.0 + stack_font_size / 3.0;
 
-        self.frame.draw_text_glowed(
-            &stack_text,
-            text_x,
-            text_y,
-            stack_font_size,
-            colors::white(),
-        );
+        self.frame
+            .draw_text_glowed(&stack_text, text_x, text_y, stack_font_size, colors::white());
 
         // Timer small in top-right corner
         if self.config.show_countdown && effect.show_countdown && effect.total_secs > 0.0 {
             let time_text = effect.format_time(self.european_number_format);
             let time_font_size = font_size * 0.9;
-            let time_x =
-                x + icon_size - self.frame.measure_text(&time_text, time_font_size).0 - 2.0;
+            let time_x = x + icon_size - self.frame.measure_text(&time_text, time_font_size).0 - 2.0;
             let time_y = y + time_font_size + 2.0;
 
-            self.frame.draw_text_glowed(
-                &time_text,
-                time_x,
-                time_y,
-                time_font_size,
-                colors::icon_countdown(),
-            );
+            self.frame
+                .draw_text_glowed(&time_text, time_x, time_y, time_font_size, colors::icon_countdown());
         }
 
         // Budget text top-left corner (top-right has timer in stack priority)
@@ -950,32 +894,21 @@ impl EffectsABOverlay {
             let budget_size = font_size * 0.7;
             let bx = x + 2.0;
             let by = y + budget_size + 2.0;
-            self.frame.draw_text_glowed(&budget, bx, by, budget_size, colors::white());
+            self.frame
+                .draw_text_glowed(&budget, bx, by, budget_size, colors::white());
         }
     }
 
     /// Draw normal mode (timer centered, stacks in corner)
-    fn draw_normal_mode(
-        &mut self,
-        effect: &EffectABEntry,
-        x: f32,
-        y: f32,
-        icon_size: f32,
-        font_size: f32,
-    ) {
+    fn draw_normal_mode(&mut self, effect: &EffectABEntry, x: f32, y: f32, icon_size: f32, font_size: f32) {
         if self.config.show_countdown && effect.show_countdown && effect.total_secs > 0.0 {
             let time_text = effect.format_time(self.european_number_format);
             let text_width = self.frame.measure_text(&time_text, font_size).0;
             let text_x = x + (icon_size - text_width) / 2.0;
             let text_y = y + icon_size / 2.0 + font_size * 0.4;
 
-            self.frame.draw_text_glowed(
-                &time_text,
-                text_x,
-                text_y,
-                font_size,
-                colors::icon_countdown(),
-            );
+            self.frame
+                .draw_text_glowed(&time_text, text_x, text_y, font_size, colors::icon_countdown());
         }
 
         // Budget text (elapsed/max) top-right corner
@@ -984,24 +917,19 @@ impl EffectsABOverlay {
             let bw = self.frame.measure_text(&budget, budget_size).0;
             let bx = x + icon_size - bw - 2.0;
             let by = y + budget_size + 2.0;
-            self.frame.draw_text_glowed(&budget, bx, by, budget_size, colors::white());
+            self.frame
+                .draw_text_glowed(&budget, bx, by, budget_size, colors::white());
         }
 
         // Stack count in bottom-right corner
         if effect.stacks >= 1 {
             let stack_text = format!("{}", effect.stacks);
             let stack_font_size = font_size * 0.9;
-            let stack_x =
-                x + icon_size - self.frame.measure_text(&stack_text, stack_font_size).0 - 2.0;
+            let stack_x = x + icon_size - self.frame.measure_text(&stack_text, stack_font_size).0 - 2.0;
             let stack_y = y + icon_size - 3.0;
 
-            self.frame.draw_text_glowed(
-                &stack_text,
-                stack_x,
-                stack_y,
-                stack_font_size,
-                colors::white(),
-            );
+            self.frame
+                .draw_text_glowed(&stack_text, stack_x, stack_y, stack_font_size, colors::white());
         }
     }
 
@@ -1116,8 +1044,7 @@ impl EffectsABOverlay {
         let header_font_size = font_size * 1.4;
 
         // Calculate header space if enabled
-        let header_space =
-            Header::space(self.config.show_header, header_font_size, row_spacing, scale);
+        let header_space = Header::space(self.config.show_header, header_font_size, row_spacing, scale);
 
         self.frame.begin_frame();
 
@@ -1128,8 +1055,7 @@ impl EffectsABOverlay {
         let n = previews.len() as f32;
         let total_rows_height = n * row_height;
         let rows_start_y = if self.config.stack_from_bottom {
-            (window_height - padding - total_rows_height + row_spacing)
-                .max(padding + header_space)
+            (window_height - padding - total_rows_height + row_spacing).max(padding + header_space)
         } else {
             padding + header_space
         };
@@ -1180,17 +1106,11 @@ impl EffectsABOverlay {
             if *stacks >= 1 {
                 let stack_text = format!("{}", stacks);
                 let stack_font_size = font_size * 1.0;
-                let stack_x =
-                    x + icon_size - self.frame.measure_text(&stack_text, stack_font_size).0 - 2.0;
+                let stack_x = x + icon_size - self.frame.measure_text(&stack_text, stack_font_size).0 - 2.0;
                 let stack_y = y + stack_font_size + 2.0;
 
-                self.frame.draw_text_glowed(
-                    &stack_text,
-                    stack_x,
-                    stack_y,
-                    stack_font_size,
-                    colors::icon_countdown(),
-                );
+                self.frame
+                    .draw_text_glowed(&stack_text, stack_x, stack_y, stack_font_size, colors::icon_countdown());
             }
 
             // Text to the right of icon
@@ -1223,8 +1143,7 @@ impl EffectsABOverlay {
         let font_color = colors::white();
         let header_font_size = font_size * 1.4;
 
-        let header_space =
-            Header::space(self.config.show_header, header_font_size, entry_spacing, scale);
+        let header_space = Header::space(self.config.show_header, header_font_size, entry_spacing, scale);
 
         self.frame.begin_frame();
 
@@ -1235,7 +1154,11 @@ impl EffectsABOverlay {
                 ("2x Effect Name (Source)", "8.5", 0.10_f32),
             ]
         } else {
-            [("3x", "12.3", 0.75_f32), ("", "45.0", 0.40_f32), ("2x", "8.5", 0.10_f32)]
+            [
+                ("3x", "12.3", 0.75_f32),
+                ("", "45.0", 0.40_f32),
+                ("2x", "8.5", 0.10_f32),
+            ]
         };
 
         let window_height = self.frame.height() as f32;
@@ -1255,7 +1178,14 @@ impl EffectsABOverlay {
         if self.config.show_header && !self.config.header_title.is_empty() {
             Header::new(&self.config.header_title)
                 .with_color(colors::white())
-                .render(&mut self.frame, padding, header_y, content_width, header_font_size, entry_spacing);
+                .render(
+                    &mut self.frame,
+                    padding,
+                    header_y,
+                    content_width,
+                    header_font_size,
+                    entry_spacing,
+                );
         }
 
         let row = IconBarRow::new(padding, content_width, bar_height, bar_radius, scale);
@@ -1295,13 +1225,8 @@ impl EffectsABOverlay {
         let text_x = x + (icon_size - text_width) / 2.0;
         let text_y = y + icon_size / 2.0 + stack_font_size / 3.0;
 
-        self.frame.draw_text_glowed(
-            &stack_text,
-            text_x,
-            text_y,
-            stack_font_size,
-            colors::white(),
-        );
+        self.frame
+            .draw_text_glowed(&stack_text, text_x, text_y, stack_font_size, colors::white());
 
         // Timer small in top-right corner
         if self.config.show_countdown {
@@ -1309,13 +1234,8 @@ impl EffectsABOverlay {
             let time_x = x + icon_size - self.frame.measure_text(time_text, time_font_size).0 - 2.0;
             let time_y = y + time_font_size + 2.0;
 
-            self.frame.draw_text_glowed(
-                time_text,
-                time_x,
-                time_y,
-                time_font_size,
-                colors::icon_countdown(),
-            );
+            self.frame
+                .draw_text_glowed(time_text, time_x, time_y, time_font_size, colors::icon_countdown());
         }
     }
 
@@ -1334,30 +1254,19 @@ impl EffectsABOverlay {
             let text_x = x + (icon_size - text_width) / 2.0;
             let text_y = y + icon_size / 2.0 + font_size * 0.4;
 
-            self.frame.draw_text_glowed(
-                time_text,
-                text_x,
-                text_y,
-                font_size,
-                colors::icon_countdown(),
-            );
+            self.frame
+                .draw_text_glowed(time_text, text_x, text_y, font_size, colors::icon_countdown());
         }
 
         // Stack count in bottom-right corner
         if stacks >= 1 {
             let stack_text = format!("{}", stacks);
             let stack_font_size = font_size * 1.4;
-            let stack_x =
-                x + icon_size - self.frame.measure_text(&stack_text, stack_font_size).0 - 2.0;
+            let stack_x = x + icon_size - self.frame.measure_text(&stack_text, stack_font_size).0 - 2.0;
             let stack_y = y + icon_size - 3.0;
 
-            self.frame.draw_text_glowed(
-                &stack_text,
-                stack_x,
-                stack_y,
-                stack_font_size,
-                colors::icon_countdown(),
-            );
+            self.frame
+                .draw_text_glowed(&stack_text, stack_x, stack_y, stack_font_size, colors::icon_countdown());
         }
     }
 }

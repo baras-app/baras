@@ -89,7 +89,6 @@ pub struct OverlayState {
     pub rearrange_mode: bool,
 }
 
-
 impl std::fmt::Debug for OverlayState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("OverlayState")
@@ -107,8 +106,7 @@ impl OverlayState {
 
     /// Check if a metric overlay type is running (convenience method)
     pub fn is_metric_running(&self, overlay_type: MetricType) -> bool {
-        self.overlays
-            .contains_key(&OverlayType::Metric(overlay_type))
+        self.overlays.contains_key(&OverlayType::Metric(overlay_type))
     }
 
     /// Check if personal overlay is running

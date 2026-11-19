@@ -6,12 +6,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::EntityFilter;
 use crate::dsl::{
-    ChallengeCondition, ChallengeContext, ChallengeDefinition, ChallengeMetric, EntityDefinition,
-    EntityInfo,
+    ChallengeCondition, ChallengeContext, ChallengeDefinition, ChallengeMetric, EntityDefinition, EntityInfo,
 };
 use crate::game_data::Difficulty;
-use crate::EntityFilter;
 use baras_types::ChallengeColumns;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -131,9 +130,7 @@ impl ChallengeTracker {
             .into_iter()
             .filter(|c| {
                 c.difficulties.is_empty()
-                    || current_difficulty.is_none_or(|d| {
-                        c.difficulties.iter().any(|key| d.matches_config_key(key))
-                    })
+                    || current_difficulty.is_none_or(|d| c.difficulties.iter().any(|key| d.matches_config_key(key)))
             })
             .collect();
         self.definitions = challenges;
@@ -268,10 +265,7 @@ impl ChallengeTracker {
 
         if let Some(phase_ids) = phase_ids {
             // Sum accumulated durations for all matching phases
-            let mut total: f32 = phase_ids
-                .iter()
-                .filter_map(|pid| self.phase_durations.get(pid))
-                .sum();
+            let mut total: f32 = phase_ids.iter().filter_map(|pid| self.phase_durations.get(pid)).sum();
 
             // Add elapsed time if a matching phase is currently running
             if let Some((ref current_id, start_time)) = self.current_phase_start
@@ -379,13 +373,9 @@ impl ChallengeTracker {
         let phase_ids = def.and_then(|d| d.phase_ids());
 
         if let Some(phase_ids) = phase_ids {
-            let total: f32 = phase_ids
-                .iter()
-                .filter_map(|pid| self.phase_durations.get(pid))
-                .sum();
+            let total: f32 = phase_ids.iter().filter_map(|pid| self.phase_durations.get(pid)).sum();
             total.max(1.0)
-        } else if val.condition_active_secs > 0.0 && def.is_some_and(has_scoping_condition)
-        {
+        } else if val.condition_active_secs > 0.0 && def.is_some_and(has_scoping_condition) {
             // Use condition-scoped duration for BossHpRange/Counter challenges
             val.condition_active_secs.max(1.0)
         } else {
@@ -395,11 +385,7 @@ impl ChallengeTracker {
 
     /// Update condition-active duration tracking for non-phase scoping conditions.
     /// Called after each event to track when BossHpRange/Counter conditions are met.
-    pub fn update_condition_tracking(
-        &mut self,
-        ctx: &ChallengeContext,
-        timestamp: chrono::NaiveDateTime,
-    ) {
+    pub fn update_condition_tracking(&mut self, ctx: &ChallengeContext, timestamp: chrono::NaiveDateTime) {
         for def in &self.definitions {
             if def.has_phase_condition() || !has_scoping_condition(def) {
                 continue;
@@ -425,8 +411,7 @@ impl ChallengeTracker {
             } else if let Some(start) = val.condition_active_start.take() {
                 // Accumulate the elapsed active time
                 let elapsed = timestamp.signed_duration_since(start);
-                val.condition_active_secs +=
-                    (elapsed.num_milliseconds() as f32 / 1000.0).max(0.0);
+                val.condition_active_secs += (elapsed.num_milliseconds() as f32 / 1000.0).max(0.0);
             }
         }
     }
@@ -475,14 +460,8 @@ impl ChallengeTracker {
                 continue;
             }
 
-            if def.matches(
-                ctx,
-                &self.entities,
-                Some(source),
-                Some(target),
-                Some(ability_id),
-                None,
-            ) && let Some(val) = self.values.get_mut(&def.id)
+            if def.matches(ctx, &self.entities, Some(source), Some(target), Some(ability_id), None)
+                && let Some(val) = self.values.get_mut(&def.id)
             {
                 let entity = if track_source { source } else { target };
                 // Only count player contributions (not companions/NPCs)
@@ -531,14 +510,8 @@ impl ChallengeTracker {
                 continue;
             }
 
-            if def.matches(
-                ctx,
-                &self.entities,
-                Some(source),
-                Some(target),
-                Some(ability_id),
-                None,
-            ) && let Some(val) = self.values.get_mut(&def.id)
+            if def.matches(ctx, &self.entities, Some(source), Some(target), Some(ability_id), None)
+                && let Some(val) = self.values.get_mut(&def.id)
             {
                 let entity = if track_source { source } else { target };
                 // Only count player contributions (not companions/NPCs)
@@ -613,14 +586,8 @@ impl ChallengeTracker {
                 continue;
             }
 
-            if def.matches(
-                ctx,
-                &self.entities,
-                Some(source),
-                Some(target),
-                Some(ability_id),
-                None,
-            ) && let Some(val) = self.values.get_mut(&def.id)
+            if def.matches(ctx, &self.entities, Some(source), Some(target), Some(ability_id), None)
+                && let Some(val) = self.values.get_mut(&def.id)
             {
                 // Determine tracking entity: if challenge tracks by target (player), use target;
                 // otherwise use source (default behavior)
@@ -662,21 +629,11 @@ impl ChallengeTracker {
         let mut updated = Vec::new();
 
         for def in &self.definitions {
-            if !matches!(
-                def.metric,
-                ChallengeMetric::EffectCount | ChallengeMetric::EffectStacks
-            ) {
+            if !matches!(def.metric, ChallengeMetric::EffectCount | ChallengeMetric::EffectStacks) {
                 continue;
             }
 
-            if def.matches(
-                ctx,
-                &self.entities,
-                Some(source),
-                Some(target),
-                None,
-                Some(effect_id),
-            ) {
+            if def.matches(ctx, &self.entities, Some(source), Some(target), None, Some(effect_id)) {
                 // Determine tracking entity: if challenge tracks by target (player), use target;
                 // otherwise use source (default behavior)
                 let entity = if target.is_player && has_player_target_condition(&def.conditions) {
@@ -702,10 +659,7 @@ impl ChallengeTracker {
                     }
                     ChallengeMetric::EffectStacks => {
                         let stacks = if is_modify { charges } else { charges.max(1) };
-                        let pending = self
-                            .pending_stacks
-                            .entry(def.id.clone())
-                            .or_default();
+                        let pending = self.pending_stacks.entry(def.id.clone()).or_default();
 
                         if is_modify {
                             // Update max for existing window
@@ -714,12 +668,12 @@ impl ChallengeTracker {
                         } else {
                             // New application — flush any existing window first
                             if let Some(prev_max) = pending.remove(&entity.entity_id)
-                                && let Some(val) = self.values.get_mut(&def.id) {
-                                    val.value += prev_max as i64;
-                                    val.event_count += 1;
-                                    *val.by_player.entry(entity.entity_id).or_insert(0) +=
-                                        prev_max as i64;
-                                }
+                                && let Some(val) = self.values.get_mut(&def.id)
+                            {
+                                val.value += prev_max as i64;
+                                val.event_count += 1;
+                                *val.by_player.entry(entity.entity_id).or_insert(0) += prev_max as i64;
+                            }
                             pending.insert(entity.entity_id, stacks);
                         }
 
@@ -758,14 +712,7 @@ impl ChallengeTracker {
                 continue;
             }
 
-            if def.matches(
-                ctx,
-                &self.entities,
-                Some(source),
-                Some(target),
-                None,
-                Some(effect_id),
-            ) {
+            if def.matches(ctx, &self.entities, Some(source), Some(target), None, Some(effect_id)) {
                 let entity = if target.is_player && has_player_target_condition(&def.conditions) {
                     target
                 } else {
@@ -822,13 +769,15 @@ fn has_scoping_condition(def: &ChallengeDefinition) -> bool {
 /// Check if a challenge has a Target condition that matches players.
 /// Used to determine whether to track count metrics by target (received) vs source (used).
 fn has_player_target_condition(conditions: &[ChallengeCondition]) -> bool {
-    conditions.iter().any(|c| matches!(c,
-        ChallengeCondition::Target { matcher }
-            if matches!(matcher,
-                EntityFilter::AnyPlayer
-                | EntityFilter::LocalPlayer
-                | EntityFilter::OtherPlayers
-                | EntityFilter::AnyPlayerOrCompanion
-            )
-    ))
+    conditions.iter().any(|c| {
+        matches!(c,
+            ChallengeCondition::Target { matcher }
+                if matches!(matcher,
+                    EntityFilter::AnyPlayer
+                    | EntityFilter::LocalPlayer
+                    | EntityFilter::OtherPlayers
+                    | EntityFilter::AnyPlayerOrCompanion
+                )
+        )
+    })
 }

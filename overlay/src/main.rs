@@ -18,19 +18,17 @@ use std::time::{Duration, Instant};
 
 mod examples {
     use super::*;
+    use baras_core::OverlayHealthEntry;
     use baras_core::context::BossHealthConfig;
     use baras_core::context::{
-        ChallengeColumns, ChallengeLayout, ChallengeOverlayConfig, OverlayAppearanceConfig,
-        TimerOverlayConfig,
+        ChallengeColumns, ChallengeLayout, ChallengeOverlayConfig, OverlayAppearanceConfig, TimerOverlayConfig,
     };
     use baras_core::dsl::HpMarker;
     use baras_core::encounter::ActiveShield;
-    use baras_core::OverlayHealthEntry;
     use baras_overlay::{
-        colors, BossHealthData, BossHealthOverlay, ChallengeData, ChallengeEntry, ChallengeOverlay,
-        Color, InteractionMode, MetricEntry, MetricOverlay, Overlay, OverlayConfig,
-        PlayerContribution, PlayerRole, RaidEffect, RaidFrame, RaidGridLayout, RaidOverlay,
-        RaidOverlayConfig, TimerData, TimerEntry, TimerOverlay,
+        BossHealthData, BossHealthOverlay, ChallengeData, ChallengeEntry, ChallengeOverlay, Color, InteractionMode,
+        MetricEntry, MetricOverlay, Overlay, OverlayConfig, PlayerContribution, PlayerRole, RaidEffect, RaidFrame,
+        RaidGridLayout, RaidOverlay, RaidOverlayConfig, TimerData, TimerEntry, TimerOverlay, colors,
     };
     use baras_types::ClassIconMode;
 
@@ -412,10 +410,7 @@ mod examples {
 
     /// Run three raid overlays side-by-side demonstrating each interaction mode
     pub fn run_raid_overlay() {
-        let layout = RaidGridLayout {
-            columns: 2,
-            rows: 4,
-        };
+        let layout = RaidGridLayout { columns: 2, rows: 4 };
         let raid_config = RaidOverlayConfig::default();
         let test_frames = create_test_frames();
 
@@ -456,17 +451,15 @@ mod examples {
             target_monitor_id: None,
         };
 
-        let mut overlay_normal =
-            match RaidOverlay::new(config_normal, layout, raid_config.clone()) {
-                Ok(o) => o,
-                Err(e) => {
-                    tracing::error!(error = %e, "Failed to create normal raid overlay");
-                    return;
-                }
-            };
+        let mut overlay_normal = match RaidOverlay::new(config_normal, layout, raid_config.clone()) {
+            Ok(o) => o,
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to create normal raid overlay");
+                return;
+            }
+        };
 
-        let mut overlay_move = match RaidOverlay::new(config_move, layout, raid_config.clone())
-        {
+        let mut overlay_move = match RaidOverlay::new(config_move, layout, raid_config.clone()) {
             Ok(o) => o,
             Err(e) => {
                 tracing::error!(error = %e, "Failed to create move raid overlay");
@@ -474,14 +467,13 @@ mod examples {
             }
         };
 
-        let mut overlay_rearrange =
-            match RaidOverlay::new(config_rearrange, layout, raid_config) {
-                Ok(o) => o,
-                Err(e) => {
-                    tracing::error!(error = %e, "Failed to create rearrange raid overlay");
-                    return;
-                }
-            };
+        let mut overlay_rearrange = match RaidOverlay::new(config_rearrange, layout, raid_config) {
+            Ok(o) => o,
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to create rearrange raid overlay");
+                return;
+            }
+        };
 
         // Set up each overlay with test data and its interaction mode
         overlay_normal.set_frames(test_frames.clone());
@@ -525,8 +517,7 @@ mod examples {
 
             // Adaptive sleep: faster polling when any overlay is interactive
             // In production, you'd also check for data changes (dirty flag)
-            let any_interactive =
-                overlay_move.is_interactive() || overlay_rearrange.is_interactive();
+            let any_interactive = overlay_move.is_interactive() || overlay_rearrange.is_interactive();
             let sleep_ms = if any_interactive { 4 } else { 16 };
             std::thread::sleep(Duration::from_millis(sleep_ms));
         }
@@ -542,8 +533,9 @@ mod examples {
                 hp_percent: 0.0,
                 role: PlayerRole::Tank,
                 class_icon: Some("juggernaut.png".to_string()),
-                effects: vec![RaidEffect::new(100, "Guard")
-                    .with_color(tiny_skia::Color::from_rgba8(100, 150, 220, 255))],
+                effects: vec![
+                    RaidEffect::new(100, "Guard").with_color(tiny_skia::Color::from_rgba8(100, 150, 220, 255)),
+                ],
                 is_self: true,
                 ambiguous: false,
             },
@@ -555,9 +547,11 @@ mod examples {
                 hp_percent: 0.0,
                 role: PlayerRole::Healer,
                 class_icon: Some("sorcerer.png".to_string()),
-                effects: vec![RaidEffect::new(200, "Resurgence")
-                    .with_color(tiny_skia::Color::from_rgba8(100, 220, 100, 255))
-                    .with_charges(2)],
+                effects: vec![
+                    RaidEffect::new(200, "Resurgence")
+                        .with_color(tiny_skia::Color::from_rgba8(100, 220, 100, 255))
+                        .with_charges(2),
+                ],
                 is_self: false,
                 ambiguous: false,
             },
@@ -570,10 +564,8 @@ mod examples {
                 role: PlayerRole::Dps,
                 class_icon: Some("sniper.png".to_string()),
                 effects: vec![
-                    RaidEffect::new(300, "Kolto Probe")
-                        .with_color(tiny_skia::Color::from_rgba8(150, 255, 150, 255)),
-                    RaidEffect::new(301, "Force Armor")
-                        .with_color(tiny_skia::Color::from_rgba8(200, 200, 100, 255)),
+                    RaidEffect::new(300, "Kolto Probe").with_color(tiny_skia::Color::from_rgba8(150, 255, 150, 255)),
+                    RaidEffect::new(301, "Force Armor").with_color(tiny_skia::Color::from_rgba8(200, 200, 100, 255)),
                 ],
                 is_self: false,
                 ambiguous: false,
@@ -598,8 +590,9 @@ mod examples {
                 hp_percent: 0.0,
                 role: PlayerRole::Tank,
                 class_icon: Some("powertech.png".to_string()),
-                effects: vec![RaidEffect::new(400, "Saber Ward")
-                    .with_color(tiny_skia::Color::from_rgba8(255, 200, 100, 255))],
+                effects: vec![
+                    RaidEffect::new(400, "Saber Ward").with_color(tiny_skia::Color::from_rgba8(255, 200, 100, 255)),
+                ],
                 is_self: false,
                 ambiguous: false,
             },
@@ -623,9 +616,11 @@ mod examples {
                 hp_percent: 0.0,
                 role: PlayerRole::Dps,
                 class_icon: Some("marauder.png".to_string()),
-                effects: vec![RaidEffect::new(500, "Burning")
-                    .with_color(tiny_skia::Color::from_rgba8(255, 100, 50, 255))
-                    .with_is_buff(false)],
+                effects: vec![
+                    RaidEffect::new(500, "Burning")
+                        .with_color(tiny_skia::Color::from_rgba8(255, 100, 50, 255))
+                        .with_is_buff(false),
+                ],
                 is_self: false,
                 ambiguous: false,
             },
@@ -644,10 +639,7 @@ mod examples {
     /// - Row 3: Opaque, with text
     pub fn run_raid_timer_stress_test() {
         // 4x4 grid = 16 frames
-        let layout = RaidGridLayout {
-            columns: 4,
-            rows: 4,
-        };
+        let layout = RaidGridLayout { columns: 4, rows: 4 };
         let raid_config = RaidOverlayConfig {
             max_effects_per_frame: 4,
             effect_size: 20.0, // 1.4x scale (default 14 * 1.4 ≈ 20)
@@ -811,11 +803,10 @@ mod examples {
                     0
                 };
 
-                let effect2 =
-                    RaidEffect::new(slot as u64 * 10 + 1, format!("Effect{}", slot * 2 + 1))
-                        .with_duration_from_now(base_duration_2)
-                        .with_color(tiny_skia::Color::from_rgba8(r2, g2, b2, alpha))
-                        .with_charges(charges2);
+                let effect2 = RaidEffect::new(slot as u64 * 10 + 1, format!("Effect{}", slot * 2 + 1))
+                    .with_duration_from_now(base_duration_2)
+                    .with_color(tiny_skia::Color::from_rgba8(r2, g2, b2, alpha))
+                    .with_charges(charges2);
 
                 RaidFrame {
                     slot: slot as u8,
@@ -901,7 +892,12 @@ mod examples {
         // (name, cycle, color, optional icon entry)
         let mechanics: [(&str, f32, [u8; 4], Option<&(u64, Option<IconArc>)>); 5] = [
             ("Doom", 30.0, [200, 50, 50, 255], Some(&icons.thundering_blast)),
-            ("Lightning Storm", 20.0, [100, 150, 255, 255], Some(&icons.lightning_strike)),
+            (
+                "Lightning Storm",
+                20.0,
+                [100, 150, 255, 255],
+                Some(&icons.lightning_strike),
+            ),
             ("Adds Spawn", 45.0, [180, 100, 220, 255], None),
             ("Enrage Check", 60.0, [255, 180, 50, 255], Some(&icons.recklessness)),
             ("A VERY LONG Tank Swap", 15.0, [100, 220, 100, 255], None),
@@ -1017,11 +1013,7 @@ mod examples {
                 last_frame = now;
             }
 
-            let sleep_ms = if overlay.frame().is_interactive() {
-                4
-            } else {
-                50
-            };
+            let sleep_ms = if overlay.frame().is_interactive() { 4 } else { 50 };
             std::thread::sleep(Duration::from_millis(sleep_ms));
         }
     }
@@ -1425,11 +1417,7 @@ mod examples {
                 last_frame = now;
             }
 
-            let sleep_ms = if overlay.frame().is_interactive() {
-                4
-            } else {
-                50
-            };
+            let sleep_ms = if overlay.frame().is_interactive() { 4 } else { 50 };
             std::thread::sleep(Duration::from_millis(sleep_ms));
         }
     }
@@ -1485,7 +1473,7 @@ mod examples {
             max: 12_000_000,
             first_seen_at: None,
             target_name: Some("Tanky McTank".to_string()),
-                target_role: Some(baras_core::game_data::Role::Tank),
+            target_role: Some(baras_core::game_data::Role::Tank),
             hp_markers: vec![],
             active_shields: vec![],
             pushes_at: None,
@@ -1819,8 +1807,7 @@ mod examples {
             if now.duration_since(last_alert) >= alert_interval {
                 let (text, color) = sample_alerts[alert_index % sample_alerts.len()];
 
-                let entry =
-                    AlertEntry::new(text.to_string(), color, alerts_config.default_duration);
+                let entry = AlertEntry::new(text.to_string(), color, alerts_config.default_duration);
                 overlay.add_alerts(vec![entry]);
 
                 alert_index += 1;
@@ -1932,29 +1919,26 @@ mod examples {
             std::path::Path::new("icons/icons.csv"),
             std::path::Path::new("icons/icons.zip"),
             200,
-        ).ok();
+        )
+        .ok();
 
         let load = |id: u64| -> Option<IconArc> {
-            icon_cache.as_ref().and_then(|c| {
-                c.get_icon(id)
-                    .map(|d| std::sync::Arc::new((d.width, d.height, d.rgba)))
-            })
+            icon_cache
+                .as_ref()
+                .and_then(|c| c.get_icon(id).map(|d| std::sync::Arc::new((d.width, d.height, d.rgba))))
         };
 
         DemoIcons {
-            shock:             (3362023089897472, load(3362023089897472)),
-            lightning_strike:  (3244358165856256, load(3244358165856256)),
+            shock: (3362023089897472, load(3362023089897472)),
+            lightning_strike: (3244358165856256, load(3244358165856256)),
             crushing_darkness: (1460787096846593, load(1460787096846593)),
-            thundering_blast:  (3221088033046528, load(3221088033046528)),
-            recklessness:      (3659741632921600, load(3659741632921600)),
-            force_lightning:   (2022405610405888, load(2022405610405888)),
+            thundering_blast: (3221088033046528, load(3221088033046528)),
+            recklessness: (3659741632921600, load(3659741632921600)),
+            force_lightning: (2022405610405888, load(2022405610405888)),
         }
     }
 
-    fn build_ability_queue_snapshot(
-        elapsed: f32,
-        icons: &DemoIcons,
-    ) -> baras_overlay::AbilityQueueData {
+    fn build_ability_queue_snapshot(elapsed: f32, icons: &DemoIcons) -> baras_overlay::AbilityQueueData {
         use baras_overlay::{AbilityQueueData, AbilityQueueEntry};
 
         let gcd_cycle = 2.5_f32;
@@ -2068,11 +2052,35 @@ mod examples {
         // is a moving set, with higher-priority recent refreshes bumping
         // above older ready entries.
         entries.push(cycling("Shock", [220, 180, 50, 255], 6.0, 1.8, 8, &icons.shock, false));
-        entries.push(cycling("Lightning Strike", [120, 200, 255, 255], 4.0, 1.5, 6, &icons.lightning_strike, lockout_active));
-        entries.push(cycling("Crushing Darkness", [220, 100, 80, 255], 9.0, 1.8, 7, &icons.crushing_darkness, false));
+        entries.push(cycling(
+            "Lightning Strike",
+            [120, 200, 255, 255],
+            4.0,
+            1.5,
+            6,
+            &icons.lightning_strike,
+            lockout_active,
+        ));
+        entries.push(cycling(
+            "Crushing Darkness",
+            [220, 100, 80, 255],
+            9.0,
+            1.8,
+            7,
+            &icons.crushing_darkness,
+            false,
+        ));
         // Shares priority=6 with Lightning Strike — whenever both are ready
         // at once both rows glow gold (tied for "next cast" candidate).
-        entries.push(cycling("Thundering Blast", [140, 100, 240, 255], 4.5, 1.6, 6, &icons.thundering_blast, lockout_active));
+        entries.push(cycling(
+            "Thundering Blast",
+            [140, 100, 240, 255],
+            4.5,
+            1.6,
+            6,
+            &icons.thundering_blast,
+            lockout_active,
+        ));
 
         // Long cooldown — priority 2 so it sits between filler and the
         // 6-priority bracket regardless of CD state.
@@ -2120,10 +2128,7 @@ mod examples {
 
     /// Standalone combat time overlay that increments every second
     pub fn run_combat_time_overlay() {
-        use baras_overlay::{
-            CombatTimeConfig, CombatTimeData, CombatTimeOverlay, Overlay, OverlayConfig,
-            OverlayData,
-        };
+        use baras_overlay::{CombatTimeConfig, CombatTimeData, CombatTimeOverlay, Overlay, OverlayConfig, OverlayData};
 
         let config = OverlayConfig {
             x: 300,
@@ -2177,10 +2182,7 @@ mod examples {
 fn main() {
     // Initialize tracing for standalone overlay debugging
     tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive(tracing::Level::INFO.into()),
-        )
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
         .init();
 
     let args: Vec<String> = env::args().collect();
@@ -2212,9 +2214,7 @@ fn main() {
             println!("  --timers       Boss timer overlay with countdown bars");
             println!("  --boss         Boss health bars with target names");
             println!("  --challenges   Challenge overlay (vertical, 2-col: value + percent)");
-            println!(
-                "  --challenges-h Challenge overlay (horizontal, 3-col: value + /s + percent)"
-            );
+            println!("  --challenges-h Challenge overlay (horizontal, 3-col: value + /s + percent)");
             println!("  --alerts       Alerts text overlay with fade-out effect");
             println!("  --combat-time  Standalone combat time display");
             println!("  --ability-queue 3-tier ability queue with cycling GCD and promotion demo");

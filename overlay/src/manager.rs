@@ -102,8 +102,7 @@ impl OverlayWindow {
         let width = self.platform.width();
         let height = self.platform.height();
         if let Some(buffer) = self.platform.pixel_buffer() {
-            self.renderer
-                .fill_rect(buffer, width, height, x, y, w, h, color);
+            self.renderer.fill_rect(buffer, width, height, x, y, w, h, color);
         }
     }
 
@@ -112,8 +111,7 @@ impl OverlayWindow {
         let width = self.platform.width();
         let height = self.platform.height();
         if let Some(buffer) = self.platform.pixel_buffer() {
-            self.renderer
-                .fill_diamond(buffer, width, height, cx, cy, radius, color);
+            self.renderer.fill_diamond(buffer, width, height, cx, cy, radius, color);
         }
     }
 
@@ -141,18 +139,8 @@ impl OverlayWindow {
         let width = self.platform.width();
         let height = self.platform.height();
         if let Some(buffer) = self.platform.pixel_buffer() {
-            self.renderer.fill_corner_rounded_rect(
-                buffer,
-                width,
-                height,
-                x,
-                y,
-                w,
-                h,
-                top_radius,
-                bottom_radius,
-                color,
-            );
+            self.renderer
+                .fill_corner_rounded_rect(buffer, width, height, x, y, w, h, top_radius, bottom_radius, color);
         }
     }
 
@@ -174,7 +162,17 @@ impl OverlayWindow {
         let height = self.platform.height();
         if let Some(buffer) = self.platform.pixel_buffer() {
             self.renderer.fill_rounded_rect_gradient(
-                buffer, width, height, x, y, w, h, radius, grad_x0, grad_x1, start_color,
+                buffer,
+                width,
+                height,
+                x,
+                y,
+                w,
+                h,
+                radius,
+                grad_x0,
+                grad_x1,
+                start_color,
                 end_color,
             );
         }
@@ -194,38 +192,18 @@ impl OverlayWindow {
         let width = self.platform.width();
         let height = self.platform.height();
         if let Some(buffer) = self.platform.pixel_buffer() {
-            self.renderer.stroke_rounded_rect(
-                buffer,
-                width,
-                height,
-                x,
-                y,
-                w,
-                h,
-                radius,
-                stroke_width,
-                color,
-            );
+            self.renderer
+                .stroke_rounded_rect(buffer, width, height, x, y, w, h, radius, stroke_width, color);
         }
     }
 
     /// Stroke an open folder-tab outline (top + sides, open bottom)
-    pub fn stroke_tab_outline(
-        &mut self,
-        x: f32,
-        y: f32,
-        w: f32,
-        h: f32,
-        radius: f32,
-        stroke_width: f32,
-        color: Color,
-    ) {
+    pub fn stroke_tab_outline(&mut self, x: f32, y: f32, w: f32, h: f32, radius: f32, stroke_width: f32, color: Color) {
         let width = self.platform.width();
         let height = self.platform.height();
         if let Some(buffer) = self.platform.pixel_buffer() {
-            self.renderer.stroke_tab_outline(
-                buffer, width, height, x, y, w, h, radius, stroke_width, color,
-            );
+            self.renderer
+                .stroke_tab_outline(buffer, width, height, x, y, w, h, radius, stroke_width, color);
         }
     }
 
@@ -286,9 +264,8 @@ impl OverlayWindow {
         let width = self.platform.width();
         let height = self.platform.height();
         if let Some(buffer) = self.platform.pixel_buffer() {
-            self.renderer.draw_text_styled(
-                buffer, width, height, text, x, y, font_size, color, bold, italic,
-            );
+            self.renderer
+                .draw_text_styled(buffer, width, height, text, x, y, font_size, color, bold, italic);
         }
     }
 
@@ -298,15 +275,8 @@ impl OverlayWindow {
     }
 
     /// Measure text dimensions with style options
-    pub fn measure_text_styled(
-        &mut self,
-        text: &str,
-        font_size: f32,
-        bold: bool,
-        italic: bool,
-    ) -> (f32, f32) {
-        self.renderer
-            .measure_text_styled(text, font_size, bold, italic)
+    pub fn measure_text_styled(&mut self, text: &str, font_size: f32, bold: bool, italic: bool) -> (f32, f32) {
+        self.renderer.measure_text_styled(text, font_size, bold, italic)
     }
 
     /// Draw an RGBA image at the specified position with scaling

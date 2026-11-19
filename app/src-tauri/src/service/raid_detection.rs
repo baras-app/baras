@@ -32,11 +32,7 @@ pub(super) async fn raid_detection_candidates(shared: &Arc<SharedState>) -> Vec<
         .lock()
         .unwrap_or_else(|p| p.into_inner())
         .or(cache.current_area.entered_at);
-    let cutoff = candidate_cutoff(
-        last_event,
-        cache.current_area.area_id,
-        pvp_roster_started_at,
-    );
+    let cutoff = candidate_cutoff(last_event, cache.current_area.area_id, pvp_roster_started_at);
     let mut set = CandidateSet::new();
     for player in cache.player_disciplines.values() {
         if let Some(last_seen) = player.last_seen_at
@@ -52,10 +48,7 @@ pub(super) async fn raid_detection_candidates(shared: &Arc<SharedState>) -> Vec<
     }
 
     // Ability targets may not exist in the discipline roster yet.
-    let mut roster = shared
-        .ability_roster
-        .lock()
-        .unwrap_or_else(|p| p.into_inner());
+    let mut roster = shared.ability_roster.lock().unwrap_or_else(|p| p.into_inner());
     roster.expire_before(cutoff);
     for candidate in roster.candidates() {
         set.observe_raw(
@@ -68,11 +61,7 @@ pub(super) async fn raid_detection_candidates(shared: &Arc<SharedState>) -> Vec<
     set.candidates()
 }
 
-fn candidate_cutoff(
-    last_event: NaiveDateTime,
-    area_id: i64,
-    entered_at: Option<NaiveDateTime>,
-) -> NaiveDateTime {
+fn candidate_cutoff(last_event: NaiveDateTime, area_id: i64, entered_at: Option<NaiveDateTime>) -> NaiveDateTime {
     let rolling_cutoff = last_event - chrono::Duration::minutes(ROSTER_WINDOW_MINUTES);
 
     if baras_core::game_data::is_pvp_area(area_id) {
@@ -82,14 +71,8 @@ fn candidate_cutoff(
     }
 }
 
-pub(super) fn should_reset_on_area_entry(
-    current_area_id: i64,
-    entered_area_id: i64,
-    is_live: bool,
-) -> bool {
-    is_live
-        && current_area_id != entered_area_id
-        && baras_core::game_data::is_pvp_area(entered_area_id)
+pub(super) fn should_reset_on_area_entry(current_area_id: i64, entered_area_id: i64, is_live: bool) -> bool {
+    is_live && current_area_id != entered_area_id && baras_core::game_data::is_pvp_area(entered_area_id)
 }
 
 #[cfg(test)]
@@ -106,18 +89,12 @@ mod tests {
 
     #[test]
     fn pvp_candidates_must_have_been_seen_since_area_entry() {
-        assert_eq!(
-            candidate_cutoff(ts(1_800), PVP_AREA_ID, Some(ts(1_500))),
-            ts(1_500),
-        );
+        assert_eq!(candidate_cutoff(ts(1_800), PVP_AREA_ID, Some(ts(1_500))), ts(1_500),);
     }
 
     #[test]
     fn normal_rolling_window_still_applies() {
-        assert_eq!(
-            candidate_cutoff(ts(3_600), PVP_AREA_ID, Some(ts(0))),
-            ts(1_800),
-        );
+        assert_eq!(candidate_cutoff(ts(3_600), PVP_AREA_ID, Some(ts(0))), ts(1_800),);
         assert_eq!(candidate_cutoff(ts(3_600), 0, Some(ts(3_500))), ts(1_800));
     }
 

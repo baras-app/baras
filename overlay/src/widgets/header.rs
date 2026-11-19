@@ -46,15 +46,7 @@ impl Header {
     ///
     /// # Returns
     /// The y position after the header (ready for next content)
-    pub fn render(
-        &self,
-        frame: &mut OverlayFrame,
-        x: f32,
-        y: f32,
-        width: f32,
-        font_size: f32,
-        spacing: f32,
-    ) -> f32 {
+    pub fn render(&self, frame: &mut OverlayFrame, x: f32, y: f32, width: f32, font_size: f32, spacing: f32) -> f32 {
         let title_y = y + font_size;
         let title_x = if self.centered {
             let (text_width, _) = frame.measure_text(&self.title, font_size);
@@ -79,7 +71,11 @@ impl Header {
 
     /// `height` when the header is shown, 0 otherwise
     pub fn space(show: bool, font_size: f32, spacing: f32, scale: f32) -> f32 {
-        if show { Self::height(font_size, spacing, scale) } else { 0.0 }
+        if show {
+            Self::height(font_size, spacing, scale)
+        } else {
+            0.0
+        }
     }
 }
 
@@ -136,22 +132,12 @@ impl Footer {
         let is_two_col = self.is_two_column();
 
         // Use smaller font for two-column layout
-        let effective_font_size = if is_two_col {
-            font_size * 0.85
-        } else {
-            font_size
-        };
+        let effective_font_size = if is_two_col { font_size * 0.85 } else { font_size };
 
         // Draw primary value right-aligned
         let (text_width, _) = frame.measure_text(&self.value, effective_font_size);
         let primary_x = x + width - text_width - text_padding;
-        frame.draw_text_glowed(
-            &self.value,
-            primary_x,
-            text_y,
-            effective_font_size,
-            self.color,
-        );
+        frame.draw_text_glowed(&self.value, primary_x, text_y, effective_font_size, self.color);
 
         // Draw secondary value in center area (if present)
         if let Some(ref secondary) = self.secondary_value {
@@ -159,13 +145,7 @@ impl Footer {
             let right_start = x + width * 0.71; // Match progress bar column layout
             let (secondary_width, _) = frame.measure_text(secondary, effective_font_size);
             let secondary_x = right_start - secondary_width - text_padding;
-            frame.draw_text_glowed(
-                secondary,
-                secondary_x,
-                text_y,
-                effective_font_size,
-                self.color,
-            );
+            frame.draw_text_glowed(secondary, secondary_x, text_y, effective_font_size, self.color);
         }
     }
 }

@@ -6,18 +6,13 @@
 use std::time::Instant;
 
 use windows::Win32::Graphics::Gdi::{
-    BitBlt, CreateCompatibleDC, CreateDIBSection, DeleteDC, DeleteObject, GetDC, HDC, ReleaseDC,
-    SelectObject, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, HBITMAP, SRCCOPY,
+    BI_RGB, BITMAPINFO, BITMAPINFOHEADER, BitBlt, CreateCompatibleDC, CreateDIBSection, DIB_RGB_COLORS, DeleteDC,
+    DeleteObject, GetDC, HBITMAP, HDC, ReleaseDC, SRCCOPY, SelectObject,
 };
 
 use super::{CaptureError, CapturedImage};
 
-pub fn capture_region(
-    x: i32,
-    y: i32,
-    width: u32,
-    height: u32,
-) -> Result<CapturedImage, CaptureError> {
+pub fn capture_region(x: i32, y: i32, width: u32, height: u32) -> Result<CapturedImage, CaptureError> {
     let started = Instant::now();
 
     let screen_dc = unsafe { GetDC(None) };
@@ -58,23 +53,22 @@ fn capture_with_dc(
     };
 
     let mut bits: *mut core::ffi::c_void = std::ptr::null_mut();
-    let bitmap: HBITMAP =
-        match unsafe { CreateDIBSection(Some(mem_dc), &info, DIB_RGB_COLORS, &mut bits, None, 0) } {
-            Ok(b) => b,
-            Err(e) => {
-                unsafe { let _ = DeleteDC(mem_dc); };
-                return Err(CaptureError::Failed(format!("CreateDIBSection failed: {e}")));
-            }
-        };
+    let bitmap: HBITMAP = match unsafe { CreateDIBSection(Some(mem_dc), &info, DIB_RGB_COLORS, &mut bits, None, 0) } {
+        Ok(b) => b,
+        Err(e) => {
+            unsafe {
+                let _ = DeleteDC(mem_dc);
+            };
+            return Err(CaptureError::Failed(format!("CreateDIBSection failed: {e}")));
+        }
+    };
 
     if bits.is_null() {
         unsafe {
             let _ = DeleteObject(bitmap.into());
             let _ = DeleteDC(mem_dc);
         }
-        return Err(CaptureError::Failed(
-            "DIB section has no backing memory".into(),
-        ));
+        return Err(CaptureError::Failed("DIB section has no backing memory".into()));
     }
 
     let old = unsafe { SelectObject(mem_dc, bitmap.into()) };
@@ -115,13 +109,9 @@ fn capture_with_dc(
             dst[3] = 255;
         }
 
-        if rgba
-            .chunks_exact(4)
-            .all(|p| p[0] == 0 && p[1] == 0 && p[2] == 0)
-        {
+        if rgba.chunks_exact(4).all(|p| p[0] == 0 && p[1] == 0 && p[2] == 0) {
             Err(CaptureError::Failed(
-                "captured region was entirely black — the game may be in exclusive fullscreen"
-                    .into(),
+                "captured region was entirely black — the game may be in exclusive fullscreen".into(),
             ))
         } else {
             super::log_timing(
@@ -132,11 +122,7 @@ fn capture_with_dc(
                 started.elapsed(),
                 (width, height),
             );
-            Ok(CapturedImage {
-                width,
-                height,
-                rgba,
-            })
+            Ok(CapturedImage { width, height, rgba })
         }
     } else {
         Err(CaptureError::Failed("BitBlt failed".into()))

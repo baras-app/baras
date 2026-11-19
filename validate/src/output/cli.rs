@@ -9,8 +9,7 @@ use baras_core::encounter::ChallengeValue;
 use chrono::NaiveDateTime;
 
 /// Output verbosity level
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum OutputLevel {
     /// Only show summary at end
     Quiet,
@@ -22,7 +21,6 @@ pub enum OutputLevel {
     /// Show all events including non-timer signals
     Verbose,
 }
-
 
 /// A recorded phase span with start/end times
 #[derive(Debug, Clone)]
@@ -204,13 +202,7 @@ impl CliOutput {
     // ═══════════════════════════════════════════════════════════════════════════
 
     /// Log timer start
-    pub fn timer_start(
-        &mut self,
-        time: NaiveDateTime,
-        name: &str,
-        duration_secs: f32,
-        timer_id: &str,
-    ) {
+    pub fn timer_start(&mut self, time: NaiveDateTime, name: &str, duration_secs: f32, timer_id: &str) {
         self.timers_started += 1;
         if self.level < OutputLevel::Timers || !self.should_output() {
             return;
@@ -289,13 +281,7 @@ impl CliOutput {
     }
 
     /// Log entity death (for kill targets)
-    pub fn entity_death(
-        &mut self,
-        time: NaiveDateTime,
-        name: &str,
-        npc_id: i64,
-        is_kill_target: bool,
-    ) {
+    pub fn entity_death(&mut self, time: NaiveDateTime, name: &str, npc_id: i64, is_kill_target: bool) {
         if self.level < OutputLevel::Timers || !self.should_output() {
             return;
         }
@@ -304,17 +290,11 @@ impl CliOutput {
         if is_kill_target {
             let marker = self.red("XXX");
             let label = self.red("KILL TARGET DEAD:");
-            println!(
-                "[{}] {} {} \"{}\" [{}]",
-                time_str, marker, label, name, npc_id
-            );
+            println!("[{}] {} {} \"{}\" [{}]", time_str, marker, label, name, npc_id);
         } else if self.level >= OutputLevel::Verbose {
             let marker = self.dim("xxx");
             let label = self.dim("DEATH:");
-            println!(
-                "[{}] {} {} \"{}\" [{}]",
-                time_str, marker, label, name, npc_id
-            );
+            println!("[{}] {} {} \"{}\" [{}]", time_str, marker, label, name, npc_id);
         }
     }
 
@@ -332,10 +312,7 @@ impl CliOutput {
         if text.is_empty() || text == name {
             println!("[{}] {} {} \"{}\"", time_str, marker, label, name);
         } else {
-            println!(
-                "[{}] {} {} \"{}\" - {}",
-                time_str, marker, label, name, text
-            );
+            println!("[{}] {} {} \"{}\" - {}", time_str, marker, label, name, text);
         }
     }
 
@@ -349,10 +326,7 @@ impl CliOutput {
             if self.level >= OutputLevel::Timers && self.should_output() {
                 let time_str = self.format_time(time);
                 let duration = (time - start_time).num_milliseconds() as f32 / 1000.0;
-                let text = self.cyan(&format!(
-                    " x  PHASE ENDED: \"{}\" ({:.1}s)",
-                    phase_id, duration
-                ));
+                let text = self.cyan(&format!(" x  PHASE ENDED: \"{}\" ({:.1}s)", phase_id, duration));
                 println!("[{}] {}", time_str, text);
             }
 
@@ -391,10 +365,7 @@ impl CliOutput {
         let marker = self.bright_green("+++");
         let label = self.bright_green("COUNTER:");
 
-        println!(
-            "[{}] {} {} {} = {} → {}",
-            time_str, marker, label, counter_id, old, new
-        );
+        println!("[{}] {} {} {} = {} → {}", time_str, marker, label, counter_id, old, new);
     }
 
     /// Log boss detection - prints buffered combat start
@@ -467,12 +438,7 @@ impl CliOutput {
     }
 
     /// Log combat end - only prints if boss was detected
-    pub fn combat_end(
-        &mut self,
-        time: NaiveDateTime,
-        duration_secs: f32,
-        challenges: &[ChallengeValue],
-    ) {
+    pub fn combat_end(&mut self, time: NaiveDateTime, duration_secs: f32, challenges: &[ChallengeValue]) {
         // Finalize current phase if still active
         if let Some((phase_id, start_time)) = self.current_phase.take() {
             self.phase_spans.push(PhaseSpan {
@@ -505,10 +471,7 @@ impl CliOutput {
 
         let time_str = self.format_time(time);
         let label = self.bold(&self.yellow("═══ COMBAT END ═══"));
-        println!(
-            "\n{} (duration: {:.1}s at {})\n",
-            label, duration_secs, time_str
-        );
+        println!("\n{} (duration: {:.1}s at {})\n", label, duration_secs, time_str);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -660,10 +623,7 @@ impl CliOutput {
     fn print_challenge_table(&self, challenges: &[ChallengeValue], duration_secs: f32) {
         println!();
         println!("CHALLENGES:");
-        println!(
-            "  {:25} {:>12} {:>8} {:>10}",
-            "Name", "Value", "Events", "Per Sec"
-        );
+        println!("  {:25} {:>12} {:>8} {:>10}", "Name", "Value", "Events", "Per Sec");
         println!("  {}", "─".repeat(58));
 
         for cv in challenges {

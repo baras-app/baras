@@ -17,13 +17,7 @@ use crate::service::ServiceHandle;
 pub fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::error::Error>> {
     // Create menu items
     let show_hide = MenuItem::with_id(app, "show_hide", "Show/Hide Window", true, None::<&str>)?;
-    let toggle_overlays = MenuItem::with_id(
-        app,
-        "toggle_overlays",
-        "Toggle Overlays",
-        true,
-        None::<&str>,
-    )?;
+    let toggle_overlays = MenuItem::with_id(app, "toggle_overlays", "Toggle Overlays", true, None::<&str>)?;
     let separator = MenuItem::with_id(app, "sep", "─────────────", false, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
 
@@ -97,10 +91,7 @@ fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
 ///
 /// If auto-hide is active, show_all() records intent but does not spawn overlays.
 /// A toast event is emitted so the frontend can inform the user.
-async fn toggle_all_overlays(
-    overlay_state: Arc<Mutex<OverlayState>>,
-    service_handle: ServiceHandle,
-) {
+async fn toggle_all_overlays(overlay_state: Arc<Mutex<OverlayState>>, service_handle: ServiceHandle) {
     let config = service_handle.config().await;
     let currently_visible = config.overlay_settings.overlays_visible;
 
@@ -110,9 +101,7 @@ async fn toggle_all_overlays(
     } else {
         let _ = OverlayManager::show_all(&overlay_state, &service_handle).await;
         if service_handle.shared.auto_hide.is_auto_hidden() {
-            let _ = service_handle
-                .app_handle
-                .emit("overlays-auto-hidden-toast", ());
+            let _ = service_handle.app_handle.emit("overlays-auto-hidden-toast", ());
         }
     }
 }

@@ -34,11 +34,7 @@ impl OverlayFrame {
     /// * `config` - Window configuration
     /// * `base_width` - Reference width for scaling calculations
     /// * `base_height` - Reference height for scaling calculations
-    pub fn new(
-        config: OverlayConfig,
-        base_width: f32,
-        base_height: f32,
-    ) -> Result<Self, PlatformError> {
+    pub fn new(config: OverlayConfig, base_width: f32, base_height: f32) -> Result<Self, PlatformError> {
         let window = OverlayWindow::new(config)?;
 
         Ok(Self {
@@ -258,8 +254,7 @@ impl OverlayFrame {
         bold: bool,
         italic: bool,
     ) {
-        self.window
-            .draw_text_styled(text, x, y, font_size, color, bold, italic);
+        self.window.draw_text_styled(text, x, y, font_size, color, bold, italic);
     }
 
     /// Draw styled text with a full surrounding dark glow for readability.
@@ -302,27 +297,14 @@ impl OverlayFrame {
     }
 
     /// Measure text dimensions with style options
-    pub fn measure_text_styled(
-        &mut self,
-        text: &str,
-        font_size: f32,
-        bold: bool,
-        italic: bool,
-    ) -> (f32, f32) {
-        self.window
-            .measure_text_styled(text, font_size, bold, italic)
+    pub fn measure_text_styled(&mut self, text: &str, font_size: f32, bold: bool, italic: bool) -> (f32, f32) {
+        self.window.measure_text_styled(text, font_size, bold, italic)
     }
 
     /// Truncate `text` with "…" so it fits `max_width`, measured in the same
     /// weight it will be drawn with. Returns an empty string if not even the
     /// ellipsis fits.
-    pub fn truncate_to_width(
-        &mut self,
-        text: &str,
-        max_width: f32,
-        font_size: f32,
-        bold: bool,
-    ) -> String {
+    pub fn truncate_to_width(&mut self, text: &str, max_width: f32, font_size: f32, bold: bool) -> String {
         if self.measure_text_styled(text, font_size, bold, false).0 <= max_width {
             return text.to_string();
         }
@@ -491,23 +473,12 @@ impl OverlayFrame {
         stroke_width: f32,
         color: Color,
     ) {
-        self.window
-            .stroke_rounded_rect(x, y, w, h, radius, stroke_width, color);
+        self.window.stroke_rounded_rect(x, y, w, h, radius, stroke_width, color);
     }
 
     /// Stroke an open folder-tab outline (rounded top + sides, open bottom)
-    pub fn stroke_tab_outline(
-        &mut self,
-        x: f32,
-        y: f32,
-        w: f32,
-        h: f32,
-        radius: f32,
-        stroke_width: f32,
-        color: Color,
-    ) {
-        self.window
-            .stroke_tab_outline(x, y, w, h, radius, stroke_width, color);
+    pub fn stroke_tab_outline(&mut self, x: f32, y: f32, w: f32, h: f32, radius: f32, stroke_width: f32, color: Color) {
+        self.window.stroke_tab_outline(x, y, w, h, radius, stroke_width, color);
     }
 
     /// Draw a dashed rounded rectangle outline (useful for alignment guides)
@@ -523,17 +494,8 @@ impl OverlayFrame {
         dash_length: f32,
         gap_length: f32,
     ) {
-        self.window.stroke_rounded_rect_dashed(
-            x,
-            y,
-            w,
-            h,
-            radius,
-            stroke_width,
-            color,
-            dash_length,
-            gap_length,
-        );
+        self.window
+            .stroke_rounded_rect_dashed(x, y, w, h, radius, stroke_width, color, dash_length, gap_length);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

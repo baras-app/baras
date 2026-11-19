@@ -23,7 +23,10 @@ fn lock_at<'a>(row: &'a CharacterRow, op_key: &str, tier: &str) -> Option<&'a Lo
 /// One mode's bar: a segment per boss, filled while locked
 #[component]
 fn LockBar(operation: String, tier: &'static str, bosses: usize, lock: Option<Lockout>, label: bool) -> Element {
-    let total = lock.as_ref().filter(|l| l.total > 0).map_or(bosses, |l| l.total as usize);
+    let total = lock
+        .as_ref()
+        .filter(|l| l.total > 0)
+        .map_or(bosses, |l| l.total as usize);
     let locked = lock.as_ref().map_or(0, |l| l.locked.len());
     let title = match &lock {
         Some(l) => format!(
@@ -99,9 +102,18 @@ pub fn LockoutMatrix(
         .filter_map(|o| {
             let k = operation_key(o.area_id, &o.name);
             let modes: Vec<(&'static str, usize)> = if o.tiers.is_empty() {
-                picked.iter().copied().filter(|t| rows.iter().any(|r| lock_at(r, &k, t).is_some())).map(|t| (t, 0)).collect()
+                picked
+                    .iter()
+                    .copied()
+                    .filter(|t| rows.iter().any(|r| lock_at(r, &k, t).is_some()))
+                    .map(|t| (t, 0))
+                    .collect()
             } else {
-                picked.iter().copied().filter_map(|t| o.tiers.iter().find(|tb| tb.tier == t).map(|tb| (t, tb.bosses.len()))).collect()
+                picked
+                    .iter()
+                    .copied()
+                    .filter_map(|t| o.tiers.iter().find(|tb| tb.tier == t).map(|tb| (t, tb.bosses.len())))
+                    .collect()
             };
             (o.tiers.is_empty() || !modes.is_empty()).then_some((o, (k, modes)))
         })
@@ -110,7 +122,11 @@ pub fn LockoutMatrix(
     let locked_counts: Vec<usize> = keys
         .iter()
         .zip(shown.iter())
-        .map(|(k, modes)| rows.iter().filter(|r| modes.iter().any(|(t, _)| lock_at(r, k, t).is_some())).count())
+        .map(|(k, modes)| {
+            rows.iter()
+                .filter(|r| modes.iter().any(|(t, _)| lock_at(r, k, t).is_some()))
+                .count()
+        })
         .collect();
 
     rsx! {

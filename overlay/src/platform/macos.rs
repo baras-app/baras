@@ -15,8 +15,8 @@ use objc2_foundation::{NSPoint, NSRect, NSSize};
 
 // objc2-app-kit types
 use objc2_app_kit::{
-    NSBackingStoreType, NSColor, NSEvent, NSGraphicsContext, NSScreen, NSScreenSaverWindowLevel,
-    NSWindow, NSWindowCollectionBehavior, NSWindowStyleMask,
+    NSBackingStoreType, NSColor, NSEvent, NSGraphicsContext, NSScreen, NSScreenSaverWindowLevel, NSWindow,
+    NSWindowCollectionBehavior, NSWindowStyleMask,
 };
 
 // Keep core-graphics for CGContext operations
@@ -346,16 +346,12 @@ impl MacOSOverlay {
     }
 
     fn update_view_buffer(&mut self) {
-        self.view.set_pixel_data(
-            self.bgra_buffer.as_mut_ptr() as *mut c_void,
-            self.width,
-            self.height,
-        );
+        self.view
+            .set_pixel_data(self.bgra_buffer.as_mut_ptr() as *mut c_void, self.width, self.height);
     }
 
     fn is_in_resize_corner(&self, x: f64, y: f64) -> bool {
-        x > (self.width as f64 - RESIZE_CORNER_SIZE as f64)
-            && y > (self.height as f64 - RESIZE_CORNER_SIZE as f64)
+        x > (self.width as f64 - RESIZE_CORNER_SIZE as f64) && y > (self.height as f64 - RESIZE_CORNER_SIZE as f64)
     }
 }
 
@@ -371,8 +367,7 @@ impl OverlayPlatform for MacOSOverlay {
             // Dock icon and menu bar.
 
             // Get main screen height for coordinate conversion
-            let main_screen = NSScreen::mainScreen(mtm)
-                .ok_or_else(|| PlatformError::Other("No main screen".into()))?;
+            let main_screen = NSScreen::mainScreen(mtm).ok_or_else(|| PlatformError::Other("No main screen".into()))?;
             let main_frame = main_screen.frame();
             let main_screen_height = main_frame.size.height;
 
@@ -519,10 +514,7 @@ impl OverlayPlatform for MacOSOverlay {
         self.window.setFrame_display(rect, false); // false = don't redisplay yet
 
         // Update view frame
-        let view_rect = NSRect::new(
-            NSPoint::new(0.0, 0.0),
-            NSSize::new(width as f64, height as f64),
-        );
+        let view_rect = NSRect::new(NSPoint::new(0.0, 0.0), NSSize::new(width as f64, height as f64));
         self.view.setFrame(view_rect);
 
         self.pending_width = width;
@@ -583,8 +575,7 @@ impl OverlayPlatform for MacOSOverlay {
     }
 
     fn pending_size(&self) -> Option<(u32, u32)> {
-        self.is_resizing
-            .then_some((self.pending_width, self.pending_height))
+        self.is_resizing.then_some((self.pending_width, self.pending_height))
     }
 
     fn is_interactive(&self) -> bool {

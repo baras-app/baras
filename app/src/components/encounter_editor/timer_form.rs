@@ -7,11 +7,14 @@ use crate::api;
 use crate::components::SoundPicker;
 use crate::components::editor_common::{FormCard, ItemActions, Origin, PreviewButton, preview_audio};
 use crate::components::form_fields::{CheckField, Deprecated, Field, NumberField, SubSection, TextField, TogglePill};
-use crate::types::{AlertTrigger, BossTimerDefinition, BossWithPath, Condition, EncounterItem, TimerDisplayTarget, Trigger, timer_alert_label};
+use crate::types::{
+    AlertTrigger, BossTimerDefinition, BossWithPath, Condition, EncounterItem, TimerDisplayTarget, Trigger,
+    timer_alert_label,
+};
 use crate::utils::parse_hex_color;
 
-use super::optional_trigger::OptionalTrigger;
 use super::conditions::{ConditionsEditor, CounterConditionEditor};
+use super::optional_trigger::OptionalTrigger;
 use super::tabs::EncounterData;
 use super::timers::PhaseSelector;
 use super::triggers::ComposableTriggerEditor;
@@ -123,10 +126,7 @@ pub(super) fn TimerEditForm(
                             on_collapse.call(());
                             on_refetch.call(());
                         } else {
-                            let filtered: Vec<_> = timers_clone
-                                .into_iter()
-                                .filter(|timer| timer.id != t.id)
-                                .collect();
+                            let filtered: Vec<_> = timers_clone.into_iter().filter(|timer| timer.id != t.id).collect();
                             on_change.call(filtered);
                             on_collapse.call(());
                             on_status.call(("Deleted".to_string(), false));
@@ -580,7 +580,11 @@ const DISPLAY_TEXT_HELP: &str = "Text shown on the overlay timer bar. Defaults t
 const ALERT_TEXT_HELP: &str = "Text shown in the alert notification. Defaults to timer name. {source} and {target} will show the source/target names if available";
 
 #[component]
-fn AbilityQueueCard(mut draft: Signal<BossTimerDefinition>, all_timers: Vec<BossTimerDefinition>, encounter_data: EncounterData) -> Element {
+fn AbilityQueueCard(
+    mut draft: Signal<BossTimerDefinition>,
+    all_timers: Vec<BossTimerDefinition>,
+    encounter_data: EncounterData,
+) -> Element {
     let d = draft();
     let next_audio = d.queue_next_audio.clone().unwrap_or_default();
     let next_audio_on = d.queue_next_audio.as_ref().is_some_and(|a| a.enabled);

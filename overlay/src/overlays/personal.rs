@@ -93,10 +93,7 @@ pub struct PersonalOverlay {
 
 impl PersonalOverlay {
     /// Create a new personal overlay
-    pub fn new(
-        window_config: OverlayConfig,
-        config: PersonalOverlayConfig,
-    ) -> Result<Self, PlatformError> {
+    pub fn new(window_config: OverlayConfig, config: PersonalOverlayConfig) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
         frame.set_label("Personal Stats");
 
@@ -114,7 +111,6 @@ impl PersonalOverlay {
         self.config = config;
     }
 
-
     /// Update the stats
     pub fn set_stats(&mut self, stats: PersonalStats) {
         self.stats = stats;
@@ -127,20 +123,13 @@ impl PersonalOverlay {
                 let name = self.stats.encounter_name.as_deref().unwrap_or("");
                 ("", name.to_string())
             }
-            PersonalStat::Difficulty => {
-                ("", self.stats.difficulty.clone().unwrap_or_default())
-            }
+            PersonalStat::Difficulty => ("", self.stats.difficulty.clone().unwrap_or_default()),
             PersonalStat::EncounterTime => (
                 "Combat Time",
                 formatting::format_duration_u64(self.stats.encounter_time_secs),
             ),
-            PersonalStat::OperationTime => (
-                "Op Time",
-                formatting::format_duration_u64(self.operation_time_secs),
-            ),
-            PersonalStat::EncounterCount => {
-                ("Encounters", format!("{}", self.stats.encounter_count))
-            }
+            PersonalStat::OperationTime => ("Op Time", formatting::format_duration_u64(self.operation_time_secs)),
+            PersonalStat::EncounterCount => ("Encounters", format!("{}", self.stats.encounter_count)),
             PersonalStat::ClassDiscipline => {
                 let value = self
                     .stats
@@ -176,10 +165,7 @@ impl PersonalOverlay {
             PersonalStat::BossDamageGroup => (
                 "Boss Dmg",
                 vec![
-                    CompoundValue::new(formatting::format_compact(
-                        self.stats.total_damage_boss,
-                        eu,
-                    )),
+                    CompoundValue::new(formatting::format_compact(self.stats.total_damage_boss, eu)),
                     CompoundValue::new(formatting::format_compact(self.stats.bossdps as i64, eu)),
                 ],
             ),
@@ -196,25 +182,18 @@ impl PersonalOverlay {
                 "Total Heal",
                 vec![
                     CompoundValue::new(formatting::format_compact(self.stats.total_healing, eu)),
-                    CompoundValue::new(formatting::format_compact(
-                        self.stats.total_healing_effective,
-                        eu,
-                    ))
-                    .with_prefix("e")
-                    .with_prefix_scale(LETTER_PREFIX_SCALE),
+                    CompoundValue::new(formatting::format_compact(self.stats.total_healing_effective, eu))
+                        .with_prefix("e")
+                        .with_prefix_scale(LETTER_PREFIX_SCALE),
                 ],
             ),
             PersonalStat::HealPctGroup => (
                 "Heal %",
                 vec![
-                    CompoundValue::new(formatting::format_pct_f32(
-                        self.stats.effective_heal_pct,
-                        eu,
-                    ))
-                    .with_prefix("e")
-                    .with_prefix_scale(LETTER_PREFIX_SCALE),
-                    CompoundValue::new(formatting::format_pct_f32(self.stats.heal_crit_pct, eu))
-                        .with_prefix("*"),
+                    CompoundValue::new(formatting::format_pct_f32(self.stats.effective_heal_pct, eu))
+                        .with_prefix("e")
+                        .with_prefix_scale(LETTER_PREFIX_SCALE),
+                    CompoundValue::new(formatting::format_pct_f32(self.stats.heal_crit_pct, eu)).with_prefix("*"),
                 ],
             ),
             PersonalStat::HealingTakenGroup => (
@@ -237,10 +216,7 @@ impl PersonalOverlay {
             PersonalStat::MitigationGroup => (
                 "DTPS",
                 vec![
-                    CompoundValue::new(formatting::format_compact(
-                        self.stats.total_damage_taken_effective,
-                        eu,
-                    )),
+                    CompoundValue::new(formatting::format_compact(self.stats.total_damage_taken_effective, eu)),
                     CompoundValue::new(formatting::format_compact(self.stats.edtps as i64, eu)),
                 ],
             ),
@@ -256,21 +232,13 @@ impl PersonalOverlay {
                 ],
             ),
             PersonalStat::PhaseGroup => {
-                let phase = self
-                    .stats
-                    .current_phase
-                    .as_deref()
-                    .unwrap_or("")
-                    .to_string();
+                let phase = self.stats.current_phase.as_deref().unwrap_or("").to_string();
                 let time = if self.stats.current_phase.is_some() {
                     formatting::format_duration_u64(self.stats.phase_time_secs as u64)
                 } else {
                     String::new()
                 };
-                (
-                    "Phase",
-                    vec![CompoundValue::new(phase), CompoundValue::new(time)],
-                )
+                ("Phase", vec![CompoundValue::new(phase), CompoundValue::new(time)])
             }
             // Single-value stats should not be called here
             _ => (stat.label(), Vec::new()),
@@ -280,12 +248,7 @@ impl PersonalOverlay {
     /// Check if a stat currently has an empty/zero value
     fn is_stat_empty(&self, stat: PersonalStat) -> bool {
         match stat {
-            PersonalStat::EncounterName => self
-                .stats
-                .encounter_name
-                .as_deref()
-                .unwrap_or("")
-                .is_empty(),
+            PersonalStat::EncounterName => self.stats.encounter_name.as_deref().unwrap_or("").is_empty(),
             PersonalStat::Difficulty => self.stats.difficulty.is_none(),
             PersonalStat::EncounterTime => self.stats.encounter_time_secs == 0,
             PersonalStat::EncounterCount => false, // always meaningful
@@ -296,29 +259,17 @@ impl PersonalOverlay {
 
             // Compound groups: empty when all primary values are zero
             PersonalStat::DamageGroup => self.stats.dps == 0 && self.stats.total_damage == 0,
-            PersonalStat::BossDamageGroup => {
-                self.stats.bossdps == 0 && self.stats.total_damage_boss == 0
-            }
+            PersonalStat::BossDamageGroup => self.stats.bossdps == 0 && self.stats.total_damage_boss == 0,
             PersonalStat::HealingGroup => self.stats.hps == 0 && self.stats.ehps == 0,
-            PersonalStat::HealingAdvanced => {
-                self.stats.total_healing == 0 && self.stats.total_healing_effective == 0
-            }
-            PersonalStat::HealPctGroup => {
-                self.stats.effective_heal_pct == 0.0 && self.stats.heal_crit_pct == 0.0
-            }
+            PersonalStat::HealingAdvanced => self.stats.total_healing == 0 && self.stats.total_healing_effective == 0,
+            PersonalStat::HealPctGroup => self.stats.effective_heal_pct == 0.0 && self.stats.heal_crit_pct == 0.0,
             PersonalStat::HealingTakenGroup => {
                 self.stats.ehtps == 0 && self.stats.total_healing_received_effective == 0
             }
             PersonalStat::ThreatGroup => self.stats.tps == 0 && self.stats.total_threat == 0,
-            PersonalStat::MitigationGroup => {
-                self.stats.edtps == 0 && self.stats.total_damage_taken_effective == 0
-            }
-            PersonalStat::DefensiveGroup => {
-                self.stats.defense_pct == 0.0 && self.stats.shield_pct == 0.0
-            }
-            PersonalStat::PhaseGroup => {
-                self.stats.current_phase.as_deref().unwrap_or("").is_empty()
-            }
+            PersonalStat::MitigationGroup => self.stats.edtps == 0 && self.stats.total_damage_taken_effective == 0,
+            PersonalStat::DefensiveGroup => self.stats.defense_pct == 0.0 && self.stats.shield_pct == 0.0,
+            PersonalStat::PhaseGroup => self.stats.current_phase.as_deref().unwrap_or("").is_empty(),
 
             // Separators are never empty
             PersonalStat::Separator => false,
@@ -360,9 +311,7 @@ impl PersonalOverlay {
                 continue;
             }
             // No difficulty (open world) is always hidden: the encounter name already says it
-            if (self.config.hide_empty_values || stat == PersonalStat::Difficulty)
-                && self.is_stat_empty(stat)
-            {
+            if (self.config.hide_empty_values || stat == PersonalStat::Difficulty) && self.is_stat_empty(stat) {
                 continue;
             }
 
@@ -437,9 +386,7 @@ impl PersonalOverlay {
             if let Row::Heading(text, _) = row {
                 let (w, _) = self.frame.measure_text_styled(text, heading_fs, true, false);
                 if w > content_width {
-                    info_fs = info_fs.min(
-                        (heading_fs * content_width / w).max(heading_fs * MIN_INFO_RATIO),
-                    );
+                    info_fs = info_fs.min((heading_fs * content_width / w).max(heading_fs * MIN_INFO_RATIO));
                 }
             }
         }
@@ -481,26 +428,17 @@ impl PersonalOverlay {
 
         for (row, y) in rows.iter().zip(ys) {
             match row {
-                Row::Separator => self.frame.fill_rect(
-                    padding,
-                    y,
-                    content_width,
-                    separator_thickness,
-                    colors::separator_line(),
-                ),
+                Row::Separator => {
+                    self.frame
+                        .fill_rect(padding, y, content_width, separator_thickness, colors::separator_line())
+                }
                 Row::Heading(text, color) => {
-                    let text = self
-                        .frame
-                        .truncate_to_width(text, content_width, info_fs, true);
+                    let text = self.frame.truncate_to_width(text, content_width, info_fs, true);
                     self.frame
                         .draw_text_with_glow(&text, padding, y, info_fs, *color, true, false);
                 }
-                Row::Labeled(lv) => {
-                    lv.render(&mut self.frame, padding, y, content_width, metric_fs)
-                }
-                Row::Compound(c, true) => {
-                    c.render(&mut self.frame, padding, y, content_width, row_fs, &grid)
-                }
+                Row::Labeled(lv) => lv.render(&mut self.frame, padding, y, content_width, metric_fs),
+                Row::Compound(c, true) => c.render(&mut self.frame, padding, y, content_width, row_fs, &grid),
                 Row::Compound(c, false) => {
                     let own = CompoundLayout::new(&mut self.frame, [c], content_width, metric_fs);
                     c.render(&mut self.frame, padding, y, content_width, metric_fs, &own);

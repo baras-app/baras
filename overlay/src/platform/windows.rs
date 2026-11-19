@@ -14,35 +14,33 @@ macro_rules! overlay_log {
 use std::mem;
 use std::ptr;
 
-use windows::core::PCWSTR;
 use windows::Win32::Devices::Display::{
-    DisplayConfigGetDeviceInfo, GetDisplayConfigBufferSizes, QueryDisplayConfig,
     DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME, DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME,
-    DISPLAYCONFIG_DEVICE_INFO_HEADER, DISPLAYCONFIG_SOURCE_DEVICE_NAME,
-    DISPLAYCONFIG_TARGET_DEVICE_NAME, QDC_ONLY_ACTIVE_PATHS,
+    DISPLAYCONFIG_DEVICE_INFO_HEADER, DISPLAYCONFIG_SOURCE_DEVICE_NAME, DISPLAYCONFIG_TARGET_DEVICE_NAME,
+    DisplayConfigGetDeviceInfo, GetDisplayConfigBufferSizes, QDC_ONLY_ACTIVE_PATHS, QueryDisplayConfig,
 };
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows::Win32::Graphics::Gdi::{
-    CreateCompatibleDC, CreateDIBSection, DeleteDC, EnumDisplayMonitors, GetCurrentObject, GetDC,
-    GetMonitorInfoW, ReleaseDC, SelectObject, SetDIBits, BITMAPINFO, BITMAPINFOHEADER, BI_RGB,
-    DIB_RGB_COLORS, HBITMAP, HDC, HMONITOR, MONITORINFOEXW, OBJ_BITMAP,
+    BI_RGB, BITMAPINFO, BITMAPINFOHEADER, CreateCompatibleDC, CreateDIBSection, DIB_RGB_COLORS, DeleteDC,
+    EnumDisplayMonitors, GetCurrentObject, GetDC, GetMonitorInfoW, HBITMAP, HDC, HMONITOR, MONITORINFOEXW, OBJ_BITMAP,
+    ReleaseDC, SelectObject, SetDIBits,
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::Input::KeyboardAndMouse::{ReleaseCapture, SetCapture};
 use windows::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetCursorPos, LoadCursorW,
-    PeekMessageW, RegisterClassExW, SetWindowLongPtrW, SetWindowPos, ShowWindow, TranslateMessage,
-    UpdateLayeredWindow, CS_HREDRAW, CS_VREDRAW, GWL_EXSTYLE, HTCLIENT, HWND_TOPMOST, IDC_ARROW,
-    MA_NOACTIVATE, MSG, PM_REMOVE, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SW_SHOWNOACTIVATE,
-    ULW_ALPHA, WM_DESTROY, WM_ERASEBKGND, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEACTIVATE,
-    WM_MOUSEMOVE, WM_NCHITTEST, WM_QUIT, WNDCLASSEXW, WS_EX_LAYERED, WS_EX_NOACTIVATE,
+    CS_HREDRAW, CS_VREDRAW, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GWL_EXSTYLE,
+    GetCursorPos, HTCLIENT, HWND_TOPMOST, IDC_ARROW, LoadCursorW, MA_NOACTIVATE, MSG, PM_REMOVE, PeekMessageW,
+    RegisterClassExW, SW_SHOWNOACTIVATE, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SetWindowLongPtrW, SetWindowPos,
+    ShowWindow, TranslateMessage, ULW_ALPHA, UpdateLayeredWindow, WM_DESTROY, WM_ERASEBKGND, WM_LBUTTONDOWN,
+    WM_LBUTTONUP, WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_NCHITTEST, WM_QUIT, WNDCLASSEXW, WS_EX_LAYERED, WS_EX_NOACTIVATE,
     WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_EX_TRANSPARENT, WS_POPUP,
 };
+use windows::core::PCWSTR;
 
 use windows::Win32::Foundation::RECT;
 
-use super::{MonitorInfo, OverlayConfig, OverlayPlatform, PlatformError};
 use super::{MAX_OVERLAY_HEIGHT, MAX_OVERLAY_WIDTH, MIN_OVERLAY_SIZE, RESIZE_CORNER_SIZE};
+use super::{MonitorInfo, OverlayConfig, OverlayPlatform, PlatformError};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Standalone Monitor Enumeration
@@ -118,8 +116,7 @@ fn get_monitor_device_path(gdi_device_name: &str) -> Option<String> {
         // Step 1: size the buffers
         let mut num_paths: u32 = 0;
         let mut num_modes: u32 = 0;
-        let err =
-            GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &mut num_paths, &mut num_modes);
+        let err = GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &mut num_paths, &mut num_modes);
         if err.0 != 0 {
             overlay_log!(
                 "get_monitor_device_path: GetDisplayConfigBufferSizes failed (err={})",
@@ -129,14 +126,8 @@ fn get_monitor_device_path(gdi_device_name: &str) -> Option<String> {
         }
 
         // Step 2: query the display config
-        let mut paths = vec![
-            windows::Win32::Devices::Display::DISPLAYCONFIG_PATH_INFO::default();
-            num_paths as usize
-        ];
-        let mut modes = vec![
-            windows::Win32::Devices::Display::DISPLAYCONFIG_MODE_INFO::default();
-            num_modes as usize
-        ];
+        let mut paths = vec![windows::Win32::Devices::Display::DISPLAYCONFIG_PATH_INFO::default(); num_paths as usize];
+        let mut modes = vec![windows::Win32::Devices::Display::DISPLAYCONFIG_MODE_INFO::default(); num_modes as usize];
         let err = QueryDisplayConfig(
             QDC_ONLY_ACTIVE_PATHS,
             &mut num_paths,
@@ -146,10 +137,7 @@ fn get_monitor_device_path(gdi_device_name: &str) -> Option<String> {
             None,
         );
         if err.0 != 0 {
-            overlay_log!(
-                "get_monitor_device_path: QueryDisplayConfig failed (err={})",
-                err.0
-            );
+            overlay_log!("get_monitor_device_path: QueryDisplayConfig failed (err={})", err.0);
             return None;
         }
         paths.truncate(num_paths as usize);
@@ -168,9 +156,7 @@ fn get_monitor_device_path(gdi_device_name: &str) -> Option<String> {
                 },
                 ..Default::default()
             };
-            let ret = DisplayConfigGetDeviceInfo(
-                &mut src_name.header as *mut DISPLAYCONFIG_DEVICE_INFO_HEADER,
-            );
+            let ret = DisplayConfigGetDeviceInfo(&mut src_name.header as *mut DISPLAYCONFIG_DEVICE_INFO_HEADER);
             if ret != 0 {
                 continue;
             }
@@ -197,9 +183,7 @@ fn get_monitor_device_path(gdi_device_name: &str) -> Option<String> {
                 },
                 ..Default::default()
             };
-            let ret = DisplayConfigGetDeviceInfo(
-                &mut tgt_name.header as *mut DISPLAYCONFIG_DEVICE_INFO_HEADER,
-            );
+            let ret = DisplayConfigGetDeviceInfo(&mut tgt_name.header as *mut DISPLAYCONFIG_DEVICE_INFO_HEADER);
             if ret != 0 {
                 overlay_log!(
                     "get_monitor_device_path: DisplayConfigGetDeviceInfo(target) failed (ret={})",
@@ -217,8 +201,7 @@ fn get_monitor_device_path(gdi_device_name: &str) -> Option<String> {
             if path_len == 0 {
                 return None; // empty path — treat as unsupported
             }
-            let device_path =
-                String::from_utf16_lossy(&tgt_name.monitorDevicePath[..path_len]).to_string();
+            let device_path = String::from_utf16_lossy(&tgt_name.monitorDevicePath[..path_len]).to_string();
             return Some(device_path);
         }
 
@@ -274,16 +257,8 @@ pub fn get_all_monitors() -> Vec<MonitorInfo> {
 
     unsafe {
         let raw_ptr = &mut raw_monitors as *mut Vec<RawMonitor>;
-        let result = EnumDisplayMonitors(
-            None,
-            None,
-            Some(enum_monitors_callback),
-            LPARAM(raw_ptr as isize),
-        );
-        overlay_log!(
-            "get_all_monitors: EnumDisplayMonitors returned {:?}",
-            result
-        );
+        let result = EnumDisplayMonitors(None, None, Some(enum_monitors_callback), LPARAM(raw_ptr as isize));
+        overlay_log!("get_all_monitors: EnumDisplayMonitors returned {:?}", result);
     }
 
     let monitors = raw_monitors_to_info(raw_monitors);
@@ -354,8 +329,8 @@ impl WindowsOverlay {
     fn register_class() -> Result<(), PlatformError> {
         unsafe {
             let class_name = wide_string("BarasOverlayClass");
-            let hinstance = GetModuleHandleW(None)
-                .map_err(|e| PlatformError::Other(format!("GetModuleHandleW failed: {}", e)))?;
+            let hinstance =
+                GetModuleHandleW(None).map_err(|e| PlatformError::Other(format!("GetModuleHandleW failed: {}", e)))?;
 
             let wc = WNDCLASSEXW {
                 cbSize: mem::size_of::<WNDCLASSEXW>() as u32,
@@ -373,10 +348,7 @@ impl WindowsOverlay {
                 let err = std::io::Error::last_os_error();
                 if err.raw_os_error() != Some(1410) {
                     // ERROR_CLASS_ALREADY_EXISTS
-                    return Err(PlatformError::Other(format!(
-                        "RegisterClassExW failed: {}",
-                        err
-                    )));
+                    return Err(PlatformError::Other(format!("RegisterClassExW failed: {}", err)));
                 }
             }
         }
@@ -394,9 +366,7 @@ impl WindowsOverlay {
             self.hdc_mem = CreateCompatibleDC(Some(hdc_screen));
             if self.hdc_mem.is_invalid() {
                 ReleaseDC(None, hdc_screen);
-                return Err(PlatformError::BufferError(
-                    "CreateCompatibleDC failed".to_string(),
-                ));
+                return Err(PlatformError::BufferError("CreateCompatibleDC failed".to_string()));
             }
 
             let bmi = BITMAPINFO {
@@ -414,9 +384,7 @@ impl WindowsOverlay {
 
             let mut bits: *mut std::ffi::c_void = ptr::null_mut();
             let hbitmap = CreateDIBSection(Some(hdc_screen), &bmi, DIB_RGB_COLORS, &mut bits, None, 0)
-                .map_err(|e| {
-                    PlatformError::BufferError(format!("CreateDIBSection failed: {}", e))
-                })?;
+                .map_err(|e| PlatformError::BufferError(format!("CreateDIBSection failed: {}", e)))?;
 
             SelectObject(self.hdc_mem, hbitmap.into());
             ReleaseDC(None, hdc_screen);
@@ -479,10 +447,7 @@ impl WindowsOverlay {
 
             // Use UpdateLayeredWindow for per-pixel alpha
             let pt_src = POINT { x: 0, y: 0 };
-            let pt_dst = POINT {
-                x: self.x,
-                y: self.y,
-            };
+            let pt_dst = POINT { x: self.x, y: self.y };
             let size = windows::Win32::Foundation::SIZE {
                 cx: self.width as i32,
                 cy: self.height as i32,
@@ -511,15 +476,12 @@ impl WindowsOverlay {
     }
 
     fn is_in_resize_corner(&self, x: i32, y: i32) -> bool {
-        x > (self.width as i32 - RESIZE_CORNER_SIZE)
-            && y > (self.height as i32 - RESIZE_CORNER_SIZE)
+        x > (self.width as i32 - RESIZE_CORNER_SIZE) && y > (self.height as i32 - RESIZE_CORNER_SIZE)
     }
 
     fn is_in_interactive_region(&self, x: i32, y: i32) -> bool {
         self.interactive_region
-            .is_some_and(|(rx, ry, rw, rh)| {
-                x >= rx && x < rx + rw as i32 && y >= ry && y < ry + rh as i32
-            })
+            .is_some_and(|(rx, ry, rw, rh)| x >= rx && x < rx + rw as i32 && y >= ry && y < ry + rh as i32)
     }
 
     fn update_extended_style(&self) {
@@ -530,8 +492,7 @@ impl WindowsOverlay {
         );
         unsafe {
             // Make sure overlay interaction does not steal focus from SWTOR.
-            let mut ex_style =
-                WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE;
+            let mut ex_style = WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE;
             if self.click_through && !self.region_hot {
                 ex_style |= WS_EX_TRANSPARENT;
             }
@@ -590,16 +551,11 @@ impl OverlayPlatform for WindowsOverlay {
         // Convert relative position to absolute screen coordinates
         // Uses the shared resolution function for consistent fallback behavior
         let monitors = get_all_monitors();
-        let (raw_x, raw_y) = super::resolve_absolute_position(
-            config.x,
-            config.y,
-            config.target_monitor_id.as_deref(),
-            &monitors,
-        );
+        let (raw_x, raw_y) =
+            super::resolve_absolute_position(config.x, config.y, config.target_monitor_id.as_deref(), &monitors);
         // Clamp to ensure the overlay is visible on an actual monitor,
         // not in a dead zone between monitors of different dimensions.
-        let (abs_x, abs_y) =
-            super::ensure_visible_on_monitor(raw_x, raw_y, config.width, config.height, &monitors);
+        let (abs_x, abs_y) = super::ensure_visible_on_monitor(raw_x, raw_y, config.width, config.height, &monitors);
         overlay_log!(
             "  Absolute position: ({},{}) target_monitor={:?}{}",
             abs_x,
@@ -620,8 +576,7 @@ impl OverlayPlatform for WindowsOverlay {
                 PlatformError::Other(format!("GetModuleHandleW failed: {}", e))
             })?;
 
-            let mut ex_style =
-                WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE;
+            let mut ex_style = WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE;
             if config.click_through {
                 ex_style |= WS_EX_TRANSPARENT;
             }
@@ -691,10 +646,7 @@ impl OverlayPlatform for WindowsOverlay {
             let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
         }
         overlay_log!("  Window shown");
-        overlay_log!(
-            "=== Overlay '{}' created successfully ===",
-            config.namespace
-        );
+        overlay_log!("=== Overlay '{}' created successfully ===", config.namespace);
 
         Ok(overlay)
     }
@@ -724,8 +676,7 @@ impl OverlayPlatform for WindowsOverlay {
     fn set_position(&mut self, x: i32, y: i32) {
         // Clamp position to virtual screen bounds (all monitors combined)
         let monitors = self.get_monitors();
-        let (clamped_x, clamped_y) =
-            super::clamp_to_virtual_screen(x, y, self.width, self.height, &monitors);
+        let (clamped_x, clamped_y) = super::clamp_to_virtual_screen(x, y, self.width, self.height, &monitors);
 
         // Skip if position unchanged
         if clamped_x == self.x && clamped_y == self.y {
@@ -954,12 +905,10 @@ impl OverlayPlatform for WindowsOverlay {
                             let dy = y - self.resize_start_y;
                             let raw_w = (self.pending_width as i32 + dx)
                                 .max(MIN_OVERLAY_SIZE as i32)
-                                .min(MAX_OVERLAY_WIDTH as i32)
-                                as u32;
+                                .min(MAX_OVERLAY_WIDTH as i32) as u32;
                             let raw_h = (self.pending_height as i32 + dy)
                                 .max(MIN_OVERLAY_SIZE as i32)
-                                .min(MAX_OVERLAY_HEIGHT as i32)
-                                as u32;
+                                .min(MAX_OVERLAY_HEIGHT as i32) as u32;
                             let snapped_w = super::snap_size_to_grid(raw_w, self.snap_to_grid);
                             let snapped_h = super::snap_size_to_grid(raw_h, self.snap_to_grid);
 
@@ -983,16 +932,8 @@ impl OverlayPlatform for WindowsOverlay {
                     _ => {
                         // Log unexpected messages for debugging (but not too verbose)
                         // Common messages to ignore: WM_NCHITTEST (132), WM_SETCURSOR (32), WM_PAINT (15)
-                        if msg.message != 132
-                            && msg.message != 32
-                            && msg.message != 15
-                            && msg.message != 512
-                        {
-                            overlay_log!(
-                                "HWND={:?}: Unhandled message: {}",
-                                self.hwnd,
-                                msg.message
-                            );
+                        if msg.message != 132 && msg.message != 32 && msg.message != 15 && msg.message != 512 {
+                            overlay_log!("HWND={:?}: Unhandled message: {}", self.hwnd, msg.message);
                         }
                         let _ = TranslateMessage(&msg);
                         DispatchMessageW(&msg);
@@ -1027,12 +968,7 @@ impl Drop for WindowsOverlay {
 }
 
 /// Window procedure for overlay windows
-unsafe extern "system" fn window_proc(
-    hwnd: HWND,
-    msg: u32,
-    wparam: WPARAM,
-    lparam: LPARAM,
-) -> LRESULT {
+unsafe extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     match msg {
         // A overlay still receives mouse input, but never takes
         // focus from the SWTOR when being clicked.

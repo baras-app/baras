@@ -45,9 +45,7 @@ fn phase_color(phase_id: &str) -> String {
 /// A phase is selected when the range matches it exactly. A full range never
 /// counts, even if a single phase happens to span the entire fight.
 fn is_phase_selected(range: TimeRange, duration: f32, phase: &PhaseSegment) -> bool {
-    !range.is_full(duration)
-        && (range.start - phase.start_secs).abs() < 0.1
-        && (range.end - phase.end_secs).abs() < 0.1
+    !range.is_full(duration) && (range.start - phase.start_secs).abs() < 0.1 && (range.end - phase.end_secs).abs() < 0.1
 }
 
 #[derive(Props, Clone, PartialEq)]
@@ -86,13 +84,7 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
     let mut up_fn: Signal<Option<js_sys::Function>> = use_signal(|| None);
 
     // Calculate percentage position for a time value
-    let time_to_pct = |t: f32| -> f32 {
-        if duration > 0.0 {
-            (t / duration) * 100.0
-        } else {
-            0.0
-        }
-    };
+    let time_to_pct = |t: f32| -> f32 { if duration > 0.0 { (t / duration) * 100.0 } else { 0.0 } };
 
     // Handle clicking on a phase segment or chip; clicking the selected phase clears it
     let select_phase = move |phase: &PhaseSegment| {
@@ -154,38 +146,37 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
         let drag_start_mv = drag_start;
         let mut committed_range_mv = committed_range;
         let dur_mv = current_duration;
-        let on_mousemove =
-            Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |e: web_sys::MouseEvent| {
-                let Ok(drag_guard) = drag_start_mv.try_read() else {
-                    return;
-                };
-                let Some(start_time) = *drag_guard else {
-                    return;
-                };
-                let duration = *dur_mv.peek();
-                let Some(el) = web_sys::window()
-                    .and_then(|w| w.document())
-                    .and_then(|d| d.get_element_by_id("phase-timeline-track"))
-                else {
-                    return;
-                };
+        let on_mousemove = Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |e: web_sys::MouseEvent| {
+            let Ok(drag_guard) = drag_start_mv.try_read() else {
+                return;
+            };
+            let Some(start_time) = *drag_guard else {
+                return;
+            };
+            let duration = *dur_mv.peek();
+            let Some(el) = web_sys::window()
+                .and_then(|w| w.document())
+                .and_then(|d| d.get_element_by_id("phase-timeline-track"))
+            else {
+                return;
+            };
 
-                let rect = el.get_bounding_client_rect();
-                let x = e.client_x() as f64 - rect.left();
-                let width = rect.width();
-                if width > 0.0 && duration > 0.0 {
-                    let pct = (x / width).clamp(0.0, 1.0);
-                    let current_time = (pct as f32) * duration;
-                    let (start, end) = if current_time < start_time {
-                        (current_time, start_time)
-                    } else {
-                        (start_time, current_time)
-                    };
-                    let _ = committed_range_mv
-                        .try_write()
-                        .map(|mut w| *w = Some(TimeRange::new(start, end)));
-                }
-            });
+            let rect = el.get_bounding_client_rect();
+            let x = e.client_x() as f64 - rect.left();
+            let width = rect.width();
+            if width > 0.0 && duration > 0.0 {
+                let pct = (x / width).clamp(0.0, 1.0);
+                let current_time = (pct as f32) * duration;
+                let (start, end) = if current_time < start_time {
+                    (current_time, start_time)
+                } else {
+                    (start_time, current_time)
+                };
+                let _ = committed_range_mv
+                    .try_write()
+                    .map(|mut w| *w = Some(TimeRange::new(start, end)));
+            }
+        });
 
         // Mouseup handler
         let mut drag_start_up = drag_start;
@@ -193,59 +184,56 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
         let mut was_dragged_up = was_dragged;
         let dur_up = current_duration;
         let on_range_change = props.on_range_change;
-        let on_mouseup =
-            Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |e: web_sys::MouseEvent| {
-                let Ok(drag_guard) = drag_start_up.try_read() else {
-                    return;
-                };
-                let Some(start_time) = *drag_guard else {
-                    return;
-                };
-                drop(drag_guard); // Release read lock before writing
+        let on_mouseup = Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |e: web_sys::MouseEvent| {
+            let Ok(drag_guard) = drag_start_up.try_read() else {
+                return;
+            };
+            let Some(start_time) = *drag_guard else {
+                return;
+            };
+            drop(drag_guard); // Release read lock before writing
 
-                let duration = *dur_up.peek();
-                let Some(el) = web_sys::window()
-                    .and_then(|w| w.document())
-                    .and_then(|d| d.get_element_by_id("phase-timeline-track"))
-                else {
-                    let _ = drag_start_up.try_write().map(|mut w| {
-                        *w = None;
-                    });
-                    return;
-                };
-
-                let rect = el.get_bounding_client_rect();
-                let x = e.client_x() as f64 - rect.left();
-                let width = rect.width();
-                if width > 0.0 && duration > 0.0 {
-                    let pct = (x / width).clamp(0.0, 1.0);
-                    let end_time = (pct as f32) * duration;
-
-                    let (start, end) = if end_time < start_time {
-                        (end_time, start_time)
-                    } else {
-                        (start_time, end_time)
-                    };
-
-                    // Only commit real drags here. Plain clicks are handled by the
-                    // click handlers (phase segment selects itself, bare track resets),
-                    // avoiding a redundant range change that races the segment onclick.
-                    if (end - start).abs() >= 1.0 {
-                        // Mark as dragged so phase/track onclick doesn't clobber
-                        let _ = was_dragged_up.try_write().map(|mut w| *w = true);
-                        let final_range = TimeRange::new(start, end);
-                        let _ = committed_range_up
-                            .try_write()
-                            .map(|mut w| *w = Some(final_range));
-                        on_range_change.call(final_range);
-                    } else {
-                        let _ = committed_range_up.try_write().map(|mut w| *w = None);
-                    }
-                }
+            let duration = *dur_up.peek();
+            let Some(el) = web_sys::window()
+                .and_then(|w| w.document())
+                .and_then(|d| d.get_element_by_id("phase-timeline-track"))
+            else {
                 let _ = drag_start_up.try_write().map(|mut w| {
                     *w = None;
                 });
+                return;
+            };
+
+            let rect = el.get_bounding_client_rect();
+            let x = e.client_x() as f64 - rect.left();
+            let width = rect.width();
+            if width > 0.0 && duration > 0.0 {
+                let pct = (x / width).clamp(0.0, 1.0);
+                let end_time = (pct as f32) * duration;
+
+                let (start, end) = if end_time < start_time {
+                    (end_time, start_time)
+                } else {
+                    (start_time, end_time)
+                };
+
+                // Only commit real drags here. Plain clicks are handled by the
+                // click handlers (phase segment selects itself, bare track resets),
+                // avoiding a redundant range change that races the segment onclick.
+                if (end - start).abs() >= 1.0 {
+                    // Mark as dragged so phase/track onclick doesn't clobber
+                    let _ = was_dragged_up.try_write().map(|mut w| *w = true);
+                    let final_range = TimeRange::new(start, end);
+                    let _ = committed_range_up.try_write().map(|mut w| *w = Some(final_range));
+                    on_range_change.call(final_range);
+                } else {
+                    let _ = committed_range_up.try_write().map(|mut w| *w = None);
+                }
+            }
+            let _ = drag_start_up.try_write().map(|mut w| {
+                *w = None;
             });
+        });
 
         // Register listeners and store function refs for cleanup
         let move_func = on_mousemove.as_ref().unchecked_ref::<js_sys::Function>().clone();
@@ -283,8 +271,14 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
     };
 
     // Display values for editable time inputs
-    let start_display = editing_start.read().clone().unwrap_or_else(|| format_time(display_range.start));
-    let end_display = editing_end.read().clone().unwrap_or_else(|| format_time(display_range.end));
+    let start_display = editing_start
+        .read()
+        .clone()
+        .unwrap_or_else(|| format_time(display_range.start));
+    let end_display = editing_end
+        .read()
+        .clone()
+        .unwrap_or_else(|| format_time(display_range.end));
 
     rsx! {
         div { class: "phase-timeline",

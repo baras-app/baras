@@ -8,26 +8,26 @@ use std::collections::{HashMap, HashSet};
 use wasm_bindgen::prelude::*;
 
 use crate::api::{
-    self, AbilityBreakdown, AbilityUsageRow, DamageTakenSummary, EncounterTimeline,
-    EntityBreakdown, NpcHealthRow, PlayerDeath, PvpFaction, RaidOverviewRow, TimeRange,
+    self, AbilityBreakdown, AbilityUsageRow, DamageTakenSummary, EncounterTimeline, EntityBreakdown, NpcHealthRow,
+    PlayerDeath, PvpFaction, RaidOverviewRow, TimeRange,
 };
 use crate::components::ability_icon::AbilityIcon;
+use crate::components::ability_naming::AbilityNamingPills;
 use crate::components::charts_panel::ChartsPanel;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::components::combat_log::CombatLog;
 use crate::components::death_recap_drawer::DeathRecapDrawer;
-use crate::components::encounter_types::{ChallengeSummary, EncounterSummary, group_by_area};
+use crate::components::dt_summary::DtSummaryTable;
 use crate::components::effect_uptime::EffectUptimeView;
+use crate::components::encounter_types::{ChallengeSummary, EncounterSummary, group_by_area};
+use crate::components::entity_picker::EntityPicker;
+use crate::components::mirror_names::{self, display_id, display_name};
 use crate::components::overview_chart::OverviewGroupChart;
-use crate::components::ability_naming::AbilityNamingPills;
 use crate::components::overview_table::{OverviewSort, OverviewTable, OverviewTotals};
 use crate::components::phase_timeline::PhaseTimelineFilter;
-use crate::components::toggle_switch::ToggleSwitch;
-use crate::components::dt_summary::DtSummaryTable;
-use crate::components::entity_picker::EntityPicker;
 use crate::components::rotation_view::RotationView;
+use crate::components::toggle_switch::ToggleSwitch;
 use crate::components::{ToastSeverity, use_parsely_upload, use_toast};
-use crate::components::mirror_names::{self, display_id, display_name};
 use crate::types::{DataTab, SortColumn, SortDirection, UiSessionState, UsageSortColumn, ViewMode};
 use crate::utils::{LightTheme, css_var, js_set};
 use baras_types::formatting;
@@ -58,8 +58,6 @@ struct OverviewTableData {
 // Helper Functions
 // ─────────────────────────────────────────────────────────────────────────────
 
-
-
 // group_by_area is now in encounter_types module
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -75,24 +73,24 @@ pub struct DataExplorerProps {
 /// Entity list for Rotation/Usage/Charts: Damage + Healing totals merged, plus every
 /// other actor from the Charts roster (buff-only adds, healers with 0 dmg) at 0.
 /// Returns (sorted entities, per-entity damage totals for color coding).
-async fn load_actor_entities(
-    idx: Option<u32>,
-    tr: Option<&TimeRange>,
-) -> (Vec<EntityBreakdown>, HashMap<String, f64>) {
+async fn load_actor_entities(idx: Option<u32>, tr: Option<&TimeRange>) -> (Vec<EntityBreakdown>, HashMap<String, f64>) {
     let (dmg, heal, roster) = futures_util::future::join3(
         api::query_entity_breakdown(DataTab::Damage, idx, tr),
         api::query_entity_breakdown(DataTab::Healing, idx, tr),
         api::query_entity_breakdown(DataTab::Charts, idx, tr),
     )
     .await;
-    let (dmg, heal, roster) = (dmg.unwrap_or_default(), heal.unwrap_or_default(), roster.unwrap_or_default());
-    let dmg_map: HashMap<String, f64> = dmg.iter()
-        .map(|e| (e.source_name.clone(), e.total_value))
-        .collect();
+    let (dmg, heal, roster) = (
+        dmg.unwrap_or_default(),
+        heal.unwrap_or_default(),
+        roster.unwrap_or_default(),
+    );
+    let dmg_map: HashMap<String, f64> = dmg.iter().map(|e| (e.source_name.clone(), e.total_value)).collect();
     // Keyed by (name, instance id) so same-named NPC spawns stay separate rows
     let mut merged: HashMap<(String, i64), EntityBreakdown> = HashMap::new();
     for e in dmg.into_iter().chain(heal) {
-        merged.entry((e.source_name.clone(), e.source_id))
+        merged
+            .entry((e.source_name.clone(), e.source_id))
             .and_modify(|existing| {
                 existing.total_value += e.total_value;
                 existing.abilities_used = existing.abilities_used.max(e.abilities_used);
@@ -125,7 +123,9 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
     // Auto-follow: when true, CombatStarted auto-switches to live mode.
     // Clicking a historical encounter sets this false. Clicking the Live button sets it back to true.
     // Only starts enabled when auto_live preference is on AND no encounter is pre-selected.
-    let mut auto_follow = use_signal(|| props.state.read().data_explorer.auto_live && props.state.read().data_explorer.selected_encounter.is_none());
+    let mut auto_follow = use_signal(|| {
+        props.state.read().data_explorer.auto_live && props.state.read().data_explorer.selected_encounter.is_none()
+    });
     // Live query: true only when in combat and actively polling the buffer
     let mut live_query_active = use_signal(|| false);
     // Tracks transition from live → historical (combat ended, selecting completed encounter)
@@ -168,8 +168,6 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
     let mut expanded_entity_groups = use_signal(HashSet::<String>::new);
 
     // (overview_sub_tab removed — NPC Health and Challenges now shown side-by-side)
-
-
 
     // Mirror-class naming map (fetched once per app lifetime)
     mirror_names::ensure_loaded();
@@ -338,7 +336,10 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                 None => 2,
             };
             rank(a).cmp(&rank(b)).then_with(|| {
-                let cmp = sort_col.extract(a).partial_cmp(&sort_col.extract(b)).unwrap_or(std::cmp::Ordering::Equal);
+                let cmp = sort_col
+                    .extract(a)
+                    .partial_cmp(&sort_col.extract(b))
+                    .unwrap_or(std::cmp::Ordering::Equal);
                 if sort_asc { cmp } else { cmp.reverse() }
             })
         });
@@ -348,12 +349,8 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         let totals = OverviewTotals::from_rows(rows.iter());
         let pvp_totals = if rows.iter().any(|r| r.faction.is_some()) {
             Some((
-                OverviewTotals::from_rows(
-                    rows.iter().filter(|r| r.faction == Some(PvpFaction::Friendly)),
-                ),
-                OverviewTotals::from_rows(
-                    rows.iter().filter(|r| r.faction == Some(PvpFaction::Enemy)),
-                ),
+                OverviewTotals::from_rows(rows.iter().filter(|r| r.faction == Some(PvpFaction::Friendly))),
+                OverviewTotals::from_rows(rows.iter().filter(|r| r.faction == Some(PvpFaction::Enemy))),
             ))
         } else {
             None
@@ -373,10 +370,12 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
             if let Some(list) = api::get_encounter_history().await {
                 let latest_id = list.last().map(|e| e.encounter_id as u32);
                 let _ = encounters.try_write().map(|mut w| *w = list);
-                if *auto_follow.peek() && selected_encounter.peek().is_none()
-                    && let Some(id) = latest_id {
-                        let _ = selected_encounter.try_write().map(|mut w| *w = Some(id));
-                    }
+                if *auto_follow.peek()
+                    && selected_encounter.peek().is_none()
+                    && let Some(id) = latest_id
+                {
+                    let _ = selected_encounter.try_write().map(|mut w| *w = Some(id));
+                }
             }
         });
     });
@@ -463,7 +462,9 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         })
         .into_js_value()
         .unchecked_into::<js_sys::Function>();
-        window.add_event_listener_with_callback("parsely-upload-success", &callback).ok()?;
+        window
+            .add_event_listener_with_callback("parsely-upload-success", &callback)
+            .ok()?;
         Some(callback)
     });
 
@@ -662,7 +663,11 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                 )
                 .await
             } else {
-                (api::query_raid_overview(idx, tr_opt.as_ref(), duration).await, None, None)
+                (
+                    api::query_raid_overview(idx, tr_opt.as_ref(), duration).await,
+                    None,
+                    None,
+                )
             };
 
             // Superseded while the queries ran: the newer request owns the signals
@@ -758,7 +763,10 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                 }
 
                 // Load entity breakdown
-                let entity_data = if matches!(mode, ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts | ViewMode::Uptime) {
+                let entity_data = if matches!(
+                    mode,
+                    ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts | ViewMode::Uptime
+                ) {
                     let (result, dmg_map) = load_actor_entities(None, None).await;
                     entity_dmg_totals.set(dmg_map);
                     result
@@ -768,10 +776,14 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
 
                 // Auto-select source if none selected
                 if selected_source.peek().is_none() {
-                    let players = entity_data.iter().filter(|e| e.entity_type == "Player" || e.entity_type == "Companion");
+                    let players = entity_data
+                        .iter()
+                        .filter(|e| e.entity_type == "Player" || e.entity_type == "Companion");
                     let local_name = local_player_name.peek().clone();
                     let auto = if let Some(name) = local_name.as_deref() {
-                        players.clone().find(|e| e.source_name == name)
+                        players
+                            .clone()
+                            .find(|e| e.source_name == name)
                             .or_else(|| players.clone().next())
                             .map(|e| e.source_name.clone())
                     } else {
@@ -798,7 +810,9 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                     None,
                     Some(&breakdown),
                     duration,
-                ).await {
+                )
+                .await
+                {
                     let _ = abilities.try_write().map(|mut w| *w = data);
                 }
             }
@@ -844,21 +858,23 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
             };
 
             // Load entity breakdown - single attempt
-            let entity_data = if matches!(mode, ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts | ViewMode::Uptime) {
+            let entity_data = if matches!(
+                mode,
+                ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts | ViewMode::Uptime
+            ) {
                 let (result, dmg_map) = load_actor_entities(idx, tr_opt.as_ref()).await;
                 entity_dmg_totals.set(dmg_map);
                 result
             } else {
                 // None = no data available: shown as an empty tab
-                api::query_entity_breakdown(tab, idx, tr_opt.as_ref()).await.unwrap_or_default()
+                api::query_entity_breakdown(tab, idx, tr_opt.as_ref())
+                    .await
+                    .unwrap_or_default()
             };
 
             // Superseded while the queries ran: the newer request owns the signals
-            let is_current = move || {
-                *view_mode.peek() == mode
-                    && *selected_encounter.peek() == idx
-                    && *time_range.peek() == tr
-            };
+            let is_current =
+                move || *view_mode.peek() == mode && *selected_encounter.peek() == idx && *time_range.peek() == tr;
             if !is_current() {
                 return;
             }
@@ -867,7 +883,9 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
             // otherwise fall back to local player, then first player
             let auto_selected = {
                 let current = selected_source.read().clone();
-                let players = entity_data.iter().filter(|e| e.entity_type == "Player" || e.entity_type == "Companion");
+                let players = entity_data
+                    .iter()
+                    .filter(|e| e.entity_type == "Player" || e.entity_type == "Companion");
                 // If we have a held selection and it exists in the new encounter, keep it
                 if let Some(ref name) = current {
                     if players.clone().any(|e| &e.source_name == name) {
@@ -876,7 +894,9 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                         // Held player not in this encounter — fall back
                         let local_name = local_player_name.read();
                         if let Some(name) = local_name.as_deref() {
-                            players.clone().find(|e| e.source_name == name)
+                            players
+                                .clone()
+                                .find(|e| e.source_name == name)
                                 .or_else(|| players.clone().next())
                                 .map(|e| e.source_name.clone())
                         } else {
@@ -887,7 +907,9 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                     // No held selection — auto-select local player or first player
                     let local_name = local_player_name.read();
                     if let Some(name) = local_name.as_deref() {
-                        players.clone().find(|e| e.source_name == name)
+                        players
+                            .clone()
+                            .find(|e| e.source_name == name)
                             .or_else(|| players.clone().next())
                             .map(|e| e.source_name.clone())
                     } else {
@@ -932,9 +954,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                 },
                 async {
                     match summary_source {
-                        Some(name) => {
-                            api::query_damage_taken_summary(idx, name, auto_id, tr_opt.as_ref(), None).await
-                        }
+                        Some(name) => api::query_damage_taken_summary(idx, name, auto_id, tr_opt.as_ref(), None).await,
                         None => None,
                     }
                 },
@@ -1039,14 +1059,21 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         }
 
         // Only fetch for DamageTaken tab with a selected source
-        if view != Some(ViewMode::Detailed(DataTab::DamageTaken)) || src.is_none() || !matches!(tl_state, LoadState::Loaded) {
+        if view != Some(ViewMode::Detailed(DataTab::DamageTaken))
+            || src.is_none()
+            || !matches!(tl_state, LoadState::Loaded)
+        {
             dt_summary.set(None);
             return;
         }
 
         let entity_name = src.unwrap();
         spawn(async move {
-            let tr_opt = if tr.start == 0.0 && tr.end == 0.0 { None } else { Some(tr) };
+            let tr_opt = if tr.start == 0.0 && tr.end == 0.0 {
+                None
+            } else {
+                Some(tr)
+            };
             // Don't filter source entity types — the target_name filter already scopes the query
             let result = api::query_damage_taken_summary(idx, &entity_name, src_id, tr_opt.as_ref(), None).await;
             let _ = dt_summary.try_write().map(|mut w| *w = result);
@@ -1182,11 +1209,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         overview_data
             .read()
             .iter()
-            .filter_map(|row| {
-                row.class_icon
-                    .as_ref()
-                    .map(|icon| (row.name.clone(), icon.clone()))
-            })
+            .filter_map(|row| row.class_icon.as_ref().map(|icon| (row.name.clone(), icon.clone())))
             .collect::<HashMap<String, String>>()
     });
 
@@ -1255,15 +1278,9 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                         .percent_of_total
                         .partial_cmp(&b.percent_of_total)
                         .unwrap_or(std::cmp::Ordering::Equal),
-                    SortColumn::Rate => a
-                        .dps
-                        .partial_cmp(&b.dps)
-                        .unwrap_or(std::cmp::Ordering::Equal),
+                    SortColumn::Rate => a.dps.partial_cmp(&b.dps).unwrap_or(std::cmp::Ordering::Equal),
                     SortColumn::Hits => a.hit_count.cmp(&b.hit_count),
-                    SortColumn::Avg => a
-                        .avg_hit
-                        .partial_cmp(&b.avg_hit)
-                        .unwrap_or(std::cmp::Ordering::Equal),
+                    SortColumn::Avg => a.avg_hit.partial_cmp(&b.avg_hit).unwrap_or(std::cmp::Ordering::Equal),
                     SortColumn::CritPct => a
                         .crit_rate
                         .partial_cmp(&b.crit_rate)
@@ -1271,17 +1288,30 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                     SortColumn::MissPct => {
                         let a_total = a.hit_count + a.miss_count;
                         let b_total = b.hit_count + b.miss_count;
-                        let a_pct = if a_total > 0 { a.miss_count as f64 / a_total as f64 } else { 0.0 };
-                        let b_pct = if b_total > 0 { b.miss_count as f64 / b_total as f64 } else { 0.0 };
+                        let a_pct = if a_total > 0 {
+                            a.miss_count as f64 / a_total as f64
+                        } else {
+                            0.0
+                        };
+                        let b_pct = if b_total > 0 {
+                            b.miss_count as f64 / b_total as f64
+                        } else {
+                            0.0
+                        };
                         a_pct.partial_cmp(&b_pct).unwrap_or(std::cmp::Ordering::Equal)
                     }
-                    SortColumn::AvgHit => a
-                        .avg_hit
-                        .partial_cmp(&b.avg_hit)
-                        .unwrap_or(std::cmp::Ordering::Equal),
+                    SortColumn::AvgHit => a.avg_hit.partial_cmp(&b.avg_hit).unwrap_or(std::cmp::Ordering::Equal),
                     SortColumn::AvgCrit => {
-                        let a_avg = if a.crit_count > 0 { a.crit_total / a.crit_count as f64 } else { 0.0 };
-                        let b_avg = if b.crit_count > 0 { b.crit_total / b.crit_count as f64 } else { 0.0 };
+                        let a_avg = if a.crit_count > 0 {
+                            a.crit_total / a.crit_count as f64
+                        } else {
+                            0.0
+                        };
+                        let b_avg = if b.crit_count > 0 {
+                            b.crit_total / b.crit_count as f64
+                        } else {
+                            0.0
+                        };
                         a_avg.partial_cmp(&b_avg).unwrap_or(std::cmp::Ordering::Equal)
                     }
                     SortColumn::Activations => a.activation_count.cmp(&b.activation_count),
@@ -1290,8 +1320,16 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                         .partial_cmp(&b.effective_total)
                         .unwrap_or(std::cmp::Ordering::Equal),
                     SortColumn::EffectivePct => {
-                        let a_pct = if a.total_value > 0.0 { a.effective_total / a.total_value } else { 0.0 };
-                        let b_pct = if b.total_value > 0.0 { b.effective_total / b.total_value } else { 0.0 };
+                        let a_pct = if a.total_value > 0.0 {
+                            a.effective_total / a.total_value
+                        } else {
+                            0.0
+                        };
+                        let b_pct = if b.total_value > 0.0 {
+                            b.effective_total / b.total_value
+                        } else {
+                            0.0
+                        };
                         a_pct.partial_cmp(&b_pct).unwrap_or(std::cmp::Ordering::Equal)
                     }
                     SortColumn::ShieldTotal => {
@@ -1307,21 +1345,40 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                     SortColumn::AttackType => a.attack_type.cmp(&b.attack_type),
                     SortColumn::DamageType => a.damage_type.cmp(&b.damage_type),
                     SortColumn::ShldPct => {
-                        let a_pct = if a.hit_count > 0 { a.shield_count as f64 / a.hit_count as f64 } else { 0.0 };
-                        let b_pct = if b.hit_count > 0 { b.shield_count as f64 / b.hit_count as f64 } else { 0.0 };
+                        let a_pct = if a.hit_count > 0 {
+                            a.shield_count as f64 / a.hit_count as f64
+                        } else {
+                            0.0
+                        };
+                        let b_pct = if b.hit_count > 0 {
+                            b.shield_count as f64 / b.hit_count as f64
+                        } else {
+                            0.0
+                        };
                         a_pct.partial_cmp(&b_pct).unwrap_or(std::cmp::Ordering::Equal)
                     }
-                    SortColumn::Absorbed => a.absorbed_total.partial_cmp(&b.absorbed_total).unwrap_or(std::cmp::Ordering::Equal),
+                    SortColumn::Absorbed => a
+                        .absorbed_total
+                        .partial_cmp(&b.absorbed_total)
+                        .unwrap_or(std::cmp::Ordering::Equal),
                     SortColumn::MaxHit => a.max_hit.partial_cmp(&b.max_hit).unwrap_or(std::cmp::Ordering::Equal),
                     SortColumn::AvgPerActivation => {
                         let val = |x: &AbilityBreakdown| {
-                            if x.activation_count > 0 { x.total_value / x.activation_count as f64 } else { 0.0 }
+                            if x.activation_count > 0 {
+                                x.total_value / x.activation_count as f64
+                            } else {
+                                0.0
+                            }
                         };
                         val(a).partial_cmp(&val(b)).unwrap_or(std::cmp::Ordering::Equal)
                     }
                     SortColumn::AvgPerActivationEff => {
                         let val = |x: &AbilityBreakdown| {
-                            if x.activation_count > 0 { x.effective_total / x.activation_count as f64 } else { 0.0 }
+                            if x.activation_count > 0 {
+                                x.effective_total / x.activation_count as f64
+                            } else {
+                                0.0
+                            }
                         };
                         val(a).partial_cmp(&val(b)).unwrap_or(std::cmp::Ordering::Equal)
                     }
@@ -1351,10 +1408,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
             } else {
                 None
             };
-            groups
-                .entry((target, instance_key))
-                .or_default()
-                .push(ability);
+            groups.entry((target, instance_key)).or_default().push(ability);
         }
 
         // Convert to vec with aggregate group stats
@@ -1411,11 +1465,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         result.sort_by(|a, b| {
             let cmp = match col {
                 SortColumn::Target => a.0.target.cmp(&b.0.target),
-                _ => {
-                    a.0.total
-                        .partial_cmp(&b.0.total)
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                }
+                _ => a.0.total.partial_cmp(&b.0.total).unwrap_or(std::cmp::Ordering::Equal),
             };
             match col {
                 SortColumn::Target => {
@@ -2956,7 +3006,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                         }
                                                         td { class: "num group-stat col-avg col-avg-first",
                                                             {
-                                                                
+
                                                                 if is_damage_tab {
                                                                     let total_attempts = stats.hits + stats.miss_count;
                                                                     if total_attempts > 0 { format_number(stats.total / total_attempts as f64) } else { format_number(0.0) }
@@ -3278,7 +3328,14 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
 
 /// Theme tokens for selected abilities in the timeline chart (palette lives in
 /// styles.css so light mode gets darker, higher-contrast variants)
-const USAGE_COLORS: [&str; 6] = ["--usage-1", "--usage-2", "--usage-3", "--usage-4", "--usage-5", "--usage-6"];
+const USAGE_COLORS: [&str; 6] = [
+    "--usage-1",
+    "--usage-2",
+    "--usage-3",
+    "--usage-4",
+    "--usage-5",
+    "--usage-6",
+];
 
 /// Format a time value in seconds with 3 decimal places.
 fn format_secs(secs: f32, european: bool) -> String {
@@ -3291,12 +3348,30 @@ fn sort_usage_rows(rows: &mut [AbilityUsageRow], column: UsageSortColumn, direct
         let ord = match column {
             UsageSortColumn::Ability => a.ability_name.to_lowercase().cmp(&b.ability_name.to_lowercase()),
             UsageSortColumn::CastCount => a.cast_count.cmp(&b.cast_count),
-            UsageSortColumn::FirstCast => a.first_cast_secs.partial_cmp(&b.first_cast_secs).unwrap_or(std::cmp::Ordering::Equal),
-            UsageSortColumn::LastCast => a.last_cast_secs.partial_cmp(&b.last_cast_secs).unwrap_or(std::cmp::Ordering::Equal),
-            UsageSortColumn::AvgTime => a.avg_time_between.partial_cmp(&b.avg_time_between).unwrap_or(std::cmp::Ordering::Equal),
-            UsageSortColumn::MedianTime => a.median_time_between.partial_cmp(&b.median_time_between).unwrap_or(std::cmp::Ordering::Equal),
-            UsageSortColumn::MinTime => a.min_time_between.partial_cmp(&b.min_time_between).unwrap_or(std::cmp::Ordering::Equal),
-            UsageSortColumn::MaxTime => a.max_time_between.partial_cmp(&b.max_time_between).unwrap_or(std::cmp::Ordering::Equal),
+            UsageSortColumn::FirstCast => a
+                .first_cast_secs
+                .partial_cmp(&b.first_cast_secs)
+                .unwrap_or(std::cmp::Ordering::Equal),
+            UsageSortColumn::LastCast => a
+                .last_cast_secs
+                .partial_cmp(&b.last_cast_secs)
+                .unwrap_or(std::cmp::Ordering::Equal),
+            UsageSortColumn::AvgTime => a
+                .avg_time_between
+                .partial_cmp(&b.avg_time_between)
+                .unwrap_or(std::cmp::Ordering::Equal),
+            UsageSortColumn::MedianTime => a
+                .median_time_between
+                .partial_cmp(&b.median_time_between)
+                .unwrap_or(std::cmp::Ordering::Equal),
+            UsageSortColumn::MinTime => a
+                .min_time_between
+                .partial_cmp(&b.min_time_between)
+                .unwrap_or(std::cmp::Ordering::Equal),
+            UsageSortColumn::MaxTime => a
+                .max_time_between
+                .partial_cmp(&b.max_time_between)
+                .unwrap_or(std::cmp::Ordering::Equal),
         };
         match direction {
             SortDirection::Asc => ord,
@@ -3309,20 +3384,24 @@ fn sort_usage_rows(rows: &mut [AbilityUsageRow], column: UsageSortColumn, direct
 /// Build an ECharts scatter chart option for the ability usage timeline.
 /// `duration_secs` defines the x-axis extent (0..duration) so the chart
 /// always spans the full encounter regardless of when abilities were cast.
-fn build_usage_timeline_option(
-    rows: &[AbilityUsageRow],
-    selected: &[(i64, &str)],
-    duration_secs: f32,
-) -> JsValue {
+fn build_usage_timeline_option(rows: &[AbilityUsageRow], selected: &[(i64, &str)], duration_secs: f32) -> JsValue {
     let option = js_sys::Object::new();
 
     // Tooltip — show ability name + M:SS.mmm timestamp on hover
     let tooltip = js_sys::Object::new();
     js_set(&tooltip, "trigger", &JsValue::from_str("item"));
-    js_set(&tooltip, "backgroundColor", &JsValue::from_str(&css_var("--bg-elevated")));
+    js_set(
+        &tooltip,
+        "backgroundColor",
+        &JsValue::from_str(&css_var("--bg-elevated")),
+    );
     js_set(&tooltip, "borderColor", &JsValue::from_str(&css_var("--border-light")));
     let tip_text_style = js_sys::Object::new();
-    js_set(&tip_text_style, "color", &JsValue::from_str(&css_var("--text-secondary")));
+    js_set(
+        &tip_text_style,
+        "color",
+        &JsValue::from_str(&css_var("--text-secondary")),
+    );
     js_set(&tip_text_style, "fontSize", &JsValue::from_f64(12.0));
     js_set(&tooltip, "textStyle", &tip_text_style);
     // Format tooltip as "AbilityName at M:SS.mmm"
@@ -3482,7 +3561,11 @@ fn UsageTab(
         let tr = *time_range.read();
         async move {
             let source = src?;
-            let tr_opt = if tr.start != 0.0 || tr.end != 0.0 { Some(tr) } else { None };
+            let tr_opt = if tr.start != 0.0 || tr.end != 0.0 {
+                Some(tr)
+            } else {
+                None
+            };
             api::query_ability_usage(&source, enc, tr_opt.as_ref()).await
         }
     });

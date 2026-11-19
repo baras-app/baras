@@ -89,11 +89,7 @@ pub(super) fn handle_ability(
 
     let ctx = make_context(source_name, target_name);
     for def in matching {
-        let instance_id = if def.per_target {
-            Some(target_id)
-        } else {
-            None
-        };
+        let instance_id = if def.per_target { Some(target_id) } else { None };
         manager.start_timer(&def, timestamp, instance_id, ctx.clone());
     }
 
@@ -179,11 +175,7 @@ pub(super) fn handle_effect_applied(
 
     let ctx = make_context(source_name, target_name);
     for def in matching {
-        let instance_id = if def.per_target {
-            Some(target_id)
-        } else {
-            None
-        };
+        let instance_id = if def.per_target { Some(target_id) } else { None };
         manager.start_timer(&def, timestamp, instance_id, ctx.clone());
     }
 
@@ -268,11 +260,7 @@ pub(super) fn handle_effect_removed(
 
     let ctx = make_context(source_name, target_name);
     for def in matching {
-        let instance_id = if def.per_target {
-            Some(target_id)
-        } else {
-            None
-        };
+        let instance_id = if def.per_target { Some(target_id) } else { None };
         manager.start_timer(&def, timestamp, instance_id, ctx.clone());
     }
 
@@ -328,13 +316,8 @@ pub(super) fn handle_boss_hp_change(
         .definitions_for_kind(TriggerKind::BossHpBelow)
         .iter()
         .filter(|d| {
-            d.matches_boss_hp_threshold(
-                get_entities(encounter),
-                npc_id,
-                Some(npc_name),
-                previous_hp,
-                current_hp,
-            ) && manager.is_definition_active(d, encounter)
+            d.matches_boss_hp_threshold(get_entities(encounter), npc_id, Some(npc_name), previous_hp, current_hp)
+                && manager.is_definition_active(d, encounter)
         })
         .cloned()
         .collect();
@@ -436,8 +419,7 @@ pub(super) fn handle_counter_change(
         .definitions_for_kind(TriggerKind::CounterReaches)
         .iter()
         .filter(|d| {
-            d.matches_counter_reaches(counter_id, old_value, new_value)
-                && manager.is_definition_active(d, encounter)
+            d.matches_counter_reaches(counter_id, old_value, new_value) && manager.is_definition_active(d, encounter)
         })
         .cloned()
         .collect();
@@ -450,9 +432,7 @@ pub(super) fn handle_counter_change(
     let matching_changes: Vec<_> = manager
         .definitions_for_kind(TriggerKind::CounterChanges)
         .iter()
-        .filter(|d| {
-            d.matches_counter_changes(counter_id) && manager.is_definition_active(d, encounter)
-        })
+        .filter(|d| d.matches_counter_changes(counter_id) && manager.is_definition_active(d, encounter))
         .cloned()
         .collect();
 
@@ -504,11 +484,7 @@ pub(super) fn handle_npc_first_seen(
     let npc_name_owned = npc_name.to_string();
     manager.cancel_timers_matching_with_entities(entities, |t, ents| {
         t.matches_npc_appears(ents, npc_id, &npc_name_owned)
-            && crate::dsl::triggers::matches_position_constraints(
-                t.position_constraints(),
-                npc_pos,
-                npc_pos,
-            )
+            && crate::dsl::triggers::matches_position_constraints(t.position_constraints(), npc_pos, npc_pos)
     });
 }
 
@@ -549,11 +525,7 @@ pub(super) fn handle_entity_death(
     let entity_name_owned = entity_name.to_string();
     manager.cancel_timers_matching_with_entities(entities, |t, ents| {
         t.matches_entity_death(ents, npc_id, &entity_name_owned)
-            && crate::dsl::triggers::matches_position_constraints(
-                t.position_constraints(),
-                death_pos,
-                death_pos,
-            )
+            && crate::dsl::triggers::matches_position_constraints(t.position_constraints(), death_pos, death_pos)
     });
 }
 
@@ -660,11 +632,7 @@ pub(super) fn handle_damage_taken(
 
     let ctx = make_context(source_name, target_name);
     for def in matching {
-        let instance_id = if def.per_target {
-            Some(target_id)
-        } else {
-            None
-        };
+        let instance_id = if def.per_target { Some(target_id) } else { None };
         manager.start_timer(&def, timestamp, instance_id, ctx.clone());
     }
 
@@ -756,8 +724,14 @@ pub(super) fn handle_threat_modified(
 
     manager.cancel_timers_matching_with_source_target(
         get_entities(encounter),
-        source_id, source_type, source_name, source_npc_id,
-        target_id, target_type, target_name, target_npc_id,
+        source_id,
+        source_type,
+        source_name,
+        source_npc_id,
+        target_id,
+        target_type,
+        target_name,
+        target_npc_id,
         encounter.and_then(|e| e.pvp_faction_context()),
         source_pos,
         target_pos,
@@ -765,8 +739,14 @@ pub(super) fn handle_threat_modified(
     );
     manager.remove_queued_matching_with_source_target(
         get_entities(encounter),
-        source_id, source_type, source_name, source_npc_id,
-        target_id, target_type, target_name, target_npc_id,
+        source_id,
+        source_type,
+        source_name,
+        source_npc_id,
+        target_id,
+        target_type,
+        target_name,
+        target_npc_id,
         encounter.and_then(|e| e.pvp_faction_context()),
         source_pos,
         target_pos,
@@ -822,11 +802,7 @@ pub(super) fn handle_healing_taken(
 
     let ctx = make_context(source_name, target_name);
     for def in matching {
-        let instance_id = if def.per_target {
-            Some(target_id)
-        } else {
-            None
-        };
+        let instance_id = if def.per_target { Some(target_id) } else { None };
         manager.start_timer(&def, timestamp, instance_id, ctx.clone());
     }
 
@@ -872,10 +848,7 @@ pub(super) fn handle_healing_taken(
 /// which ignores already-active timers. Start timestamps are backdated to
 /// `enter_combat_time + threshold` so remaining duration is correct regardless
 /// of when definitions loaded or when this is first evaluated.
-pub(super) fn handle_combat_time_triggers(
-    manager: &mut TimerManager,
-    encounter: Option<&CombatEncounter>,
-) {
+pub(super) fn handle_combat_time_triggers(manager: &mut TimerManager, encounter: Option<&CombatEncounter>) {
     if !manager.in_combat {
         return;
     }

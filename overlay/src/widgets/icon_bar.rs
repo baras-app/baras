@@ -53,7 +53,13 @@ pub struct IconBarRow {
 
 impl IconBarRow {
     pub fn new(x: f32, width: f32, height: f32, radius: f32, scale: f32) -> Self {
-        Self { x, width, height, radius, scale }
+        Self {
+            x,
+            width,
+            height,
+            radius,
+            scale,
+        }
     }
 
     /// Icon pixel size, used as the shared icon cache key
@@ -109,14 +115,6 @@ impl IconBarRow {
 
     /// Stroke one continuous outline around icon + bar
     pub fn outline(&self, frame: &mut OverlayFrame, y: f32, stroke_width: f32, color: Color) {
-        frame.stroke_rounded_rect(
-            self.x,
-            y,
-            self.width,
-            self.height,
-            self.radius,
-            stroke_width,
-            color,
-        );
+        frame.stroke_rounded_rect(self.x, y, self.width, self.height, self.radius, stroke_width, color);
     }
 }

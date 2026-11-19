@@ -3,8 +3,8 @@
 //! discipline, server, patch and tag behind "More filters". Option lists come from the overview
 //! resource; the filter itself lives in the parent so it survives tab switches.
 
-use crate::components::toggle_switch::ToggleSwitch;
 use crate::components::multi_select::{MultiSelect, discipline_entries, plain_entries};
+use crate::components::toggle_switch::ToggleSwitch;
 use dioxus::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -14,7 +14,11 @@ use crate::api;
 use crate::components::class_icons::get_role_icon;
 
 /// Roles: filter value, label, role icon file (see `class_icons::get_role_icon`)
-const ROLES: [(&str, &str, &str); 3] = [("Tank", "Tank", "icon_tank.png"), ("Healer", "Healer", "icon_heal.png"), ("Dps", "DPS", "icon_dps.png")];
+const ROLES: [(&str, &str, &str); 3] = [
+    ("Tank", "Tank", "icon_tank.png"),
+    ("Healer", "Healer", "icon_heal.png"),
+    ("Dps", "DPS", "icon_dps.png"),
+];
 /// Difficulty tiers: value, icon, CSS class (colours shared with the Library chips)
 const TIERS: [(&str, &str, &str); 3] = [
     ("Story", "fa-solid fa-book-open", "tier-story"),
@@ -49,7 +53,9 @@ const DATE_PRESETS: [(&str, Option<i32>); 4] = [("7d", Some(7)), ("30d", Some(30
 /// `YYYY-MM-DD` for `days` ago in local time, or Jan 1 of this year
 fn preset_start(days: Option<i32>) -> String {
     const DAY_MS: f64 = 86_400_000.0;
-    let d = js_sys::Date::new(&JsValue::from_f64(js_sys::Date::now() - days.unwrap_or(0) as f64 * DAY_MS));
+    let d = js_sys::Date::new(&JsValue::from_f64(
+        js_sys::Date::now() - days.unwrap_or(0) as f64 * DAY_MS,
+    ));
     match days {
         Some(_) => format!("{:04}-{:02}-{:02}", d.get_full_year(), d.get_month() + 1, d.get_date()),
         None => format!("{:04}-01-01", d.get_full_year()),
@@ -59,7 +65,10 @@ fn preset_start(days: Option<i32>) -> String {
 /// Filters behind the toggle that are narrowing the view, for its badge
 fn extra_active(f: &PullFilter, runs: bool) -> usize {
     [&f.date_from, &f.date_to].iter().filter(|v| !v.is_empty()).count()
-        + [&f.characters, &f.disciplines, &f.servers, &f.game_versions, &f.tags].iter().filter(|v| !v.is_empty()).count()
+        + [&f.characters, &f.disciplines, &f.servers, &f.game_versions, &f.tags]
+            .iter()
+            .filter(|v| !v.is_empty())
+            .count()
         + usize::from(f.kills_only)
         + usize::from(runs && f.timed_only)
         + usize::from(f.show_hidden)
@@ -67,7 +76,11 @@ fn extra_active(f: &PullFilter, runs: bool) -> usize {
 
 /// Everything narrowing the view, segmented toggles included (Clear button)
 fn active_count(f: &PullFilter, runs: bool) -> usize {
-    extra_active(f, runs) + [&f.tier, &f.group_size, &f.role].iter().filter(|v| !v.is_empty()).count()
+    extra_active(f, runs)
+        + [&f.tier, &f.group_size, &f.role]
+            .iter()
+            .filter(|v| !v.is_empty())
+            .count()
 }
 
 /// `runs`: the Raid Summaries view, where the role played is meaningless
@@ -76,7 +89,9 @@ fn active_count(f: &PullFilter, runs: bool) -> usize {
 pub fn HistoryToolbar(filter: Signal<PullFilter>, runs: bool) -> Element {
     // Option lists are unfiltered, so they only need fetching once per mount
     let options = use_resource(move || async move {
-        api::get_pull_history_overview(&PullFilter::default()).await.unwrap_or_default()
+        api::get_pull_history_overview(&PullFilter::default())
+            .await
+            .unwrap_or_default()
     });
     let options = options.read();
     let o = options.as_ref();

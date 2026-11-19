@@ -10,7 +10,7 @@ use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
 use crate::utils::{color_from_rgba, shared_scaled_icons};
-use crate::widgets::{colors, IconBarRow, ProgressBar, RowIcon};
+use crate::widgets::{IconBarRow, ProgressBar, RowIcon, colors};
 
 /// A single timer entry for display
 #[derive(Debug, Clone)]
@@ -121,11 +121,7 @@ pub struct TimerOverlay {
 
 impl TimerOverlay {
     /// Create a new timer overlay
-    pub fn new(
-        window_config: OverlayConfig,
-        config: TimerOverlayConfig,
-        label: &str,
-    ) -> Result<Self, PlatformError> {
+    pub fn new(window_config: OverlayConfig, config: TimerOverlayConfig, label: &str) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
         frame.set_label(label);
 
@@ -141,7 +137,6 @@ impl TimerOverlay {
     pub fn set_config(&mut self, config: TimerOverlayConfig) {
         self.config = config;
     }
-
 
     /// Update the data and pre-cache icons at current display size
     pub fn set_data(&mut self, data: TimerData) {
@@ -174,7 +169,10 @@ impl TimerOverlay {
 
         let scale = self.frame.scale_factor();
         let row = IconBarRow::new(padding, width - padding * 2.0, bar_height, 2.0 * scale, scale);
-        let border = self.config.show_border.then(|| color_from_rgba(self.config.border_color));
+        let border = self
+            .config
+            .show_border
+            .then(|| color_from_rgba(self.config.border_color));
 
         let previews = [
             ("Mechanic A", "12.3", 0.75_f32),
@@ -263,8 +261,7 @@ impl TimerOverlay {
         if self.config.dynamic_background {
             if self.config.stack_from_bottom {
                 let content_y = (bars_start_y - padding).max(0.0);
-                self.frame
-                    .begin_frame_with_content_rect(content_y, content_height);
+                self.frame.begin_frame_with_content_rect(content_y, content_height);
             } else {
                 self.frame.begin_frame_with_content_height(content_height);
             }
@@ -280,7 +277,10 @@ impl TimerOverlay {
 
         let scale = self.frame.scale_factor();
         let row = IconBarRow::new(padding, width - padding * 2.0, bar_height, 2.0 * scale, scale);
-        let border = self.config.show_border.then(|| color_from_rgba(self.config.border_color));
+        let border = self
+            .config
+            .show_border
+            .then(|| color_from_rgba(self.config.border_color));
 
         let mut y = bars_start_y;
 

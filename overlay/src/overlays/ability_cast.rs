@@ -91,10 +91,7 @@ pub struct AbilityCastOverlay {
 }
 
 impl AbilityCastOverlay {
-    pub fn new(
-        window_config: OverlayConfig,
-        config: AbilityCastConfig,
-    ) -> Result<Self, PlatformError> {
+    pub fn new(window_config: OverlayConfig, config: AbilityCastConfig) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
         frame.set_label("Abilities Cast");
 
@@ -109,7 +106,6 @@ impl AbilityCastOverlay {
         self.config = config;
         self.truncate();
     }
-
 
     fn icon_px(&self) -> f32 {
         self.frame.scaled(self.config.icon_size as f32)
@@ -176,13 +172,7 @@ impl AbilityCastOverlay {
 
     /// Draw one `[icon] name` row at `y`. `icon` is the scaled cache key
     /// (ability id) plus a fallback source image when the cache misses.
-    fn draw_row(
-        &mut self,
-        y: f32,
-        name: &str,
-        icon: Option<(u64, Option<&Arc<(u32, u32, Vec<u8>)>>)>,
-        color: [u8; 4],
-    ) {
+    fn draw_row(&mut self, y: f32, name: &str, icon: Option<(u64, Option<&Arc<(u32, u32, Vec<u8>)>>)>, color: [u8; 4]) {
         let padding = self.frame.scaled(BASE_PADDING);
         let icon_size = self.icon_px();
         let icon_size_u32 = icon_size.round() as u32;
@@ -205,28 +195,15 @@ impl AbilityCastOverlay {
                     );
                 } else if let Some(icon_arc) = fallback {
                     let (w, h, ref rgba) = **icon_arc;
-                    self.frame
-                        .draw_image(rgba, w, h, padding, icon_y, icon_size, icon_size);
+                    self.frame.draw_image(rgba, w, h, padding, icon_y, icon_size, icon_size);
                 } else {
-                    self.frame.fill_rounded_rect(
-                        padding,
-                        icon_y,
-                        icon_size,
-                        icon_size,
-                        2.0,
-                        colors::effect_icon_bg(),
-                    );
+                    self.frame
+                        .fill_rounded_rect(padding, icon_y, icon_size, icon_size, 2.0, colors::effect_icon_bg());
                 }
             }
             None => {
-                self.frame.fill_rounded_rect(
-                    padding,
-                    icon_y,
-                    icon_size,
-                    icon_size,
-                    2.0,
-                    colors::effect_icon_bg(),
-                );
+                self.frame
+                    .fill_rounded_rect(padding, icon_y, icon_size, icon_size, 2.0, colors::effect_icon_bg());
                 self.frame.stroke_rounded_rect_dashed(
                     padding,
                     icon_y,
@@ -253,15 +230,8 @@ impl AbilityCastOverlay {
             true,
             false,
         );
-        self.frame.draw_text_styled(
-            name,
-            text_x,
-            text_y,
-            font_size,
-            color_from_rgba(color),
-            true,
-            false,
-        );
+        self.frame
+            .draw_text_styled(name, text_x, text_y, font_size, color_from_rgba(color), true, false);
     }
 
     fn render_preview(&mut self) {

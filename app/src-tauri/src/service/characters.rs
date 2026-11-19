@@ -66,7 +66,11 @@ impl ServiceHandle {
     }
 
     pub fn lockout_reset_hour(&self) -> u8 {
-        self.shared.character_store.lock().unwrap_or_else(|p| p.into_inner()).reset_hour_utc
+        self.shared
+            .character_store
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .reset_hour_utc
     }
 
     pub fn set_lockout_reset_hour(&self, hour: u8) -> bool {

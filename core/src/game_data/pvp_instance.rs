@@ -75,8 +75,8 @@ pub const REBIRTH_ABILITY_ID: i64 = 773652459028480;
 /// additionally fires "Rebirth" when the final round ends the match (a few ms
 /// before the Heal Target burst). Neither occurs mid-round.
 pub const ARENA_ROUND_END_ABILITY_IDS: [i64; 2] = [
-    REBIRTH_ABILITY_ID,  // Rebirth (match end only)
-    813707324030976,     // Heal Target (every round end)
+    REBIRTH_ABILITY_ID, // Rebirth (match end only)
+    813707324030976,    // Heal Target (every round end)
 ];
 
 /// Display label for a PvP area's match type

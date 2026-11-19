@@ -6,17 +6,18 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
 use crate::api::{self, BossNotesInfo};
+use crate::components::class_icons::{get_class_icon, get_role_icon};
+use crate::components::toggle_switch::ToggleSwitch;
 use crate::components::{
-    ContributorsModal, DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel,
-    CharactersPanel, CleanupRules, FileOpenBanner, HistoryPanel, LockoutResetSetting, HotkeyInput, NavMenu, OverlayToggle, ParselyUploadModal, NumberInput, ProfileUnsavedHint, AlacrityPill, BossNotesMenu, OpTimerControl, SessionStatusChip, SettingsPanel, SettingsSection, Slider, ToastFrame, ToastSeverity,
-    use_file_opener_provider, use_parsely_upload,
+    AlacrityPill, BossNotesMenu, CharactersPanel, CleanupRules, ContributorsModal, DataExplorerPanel,
+    EffectEditorPanel, EncounterEditorPanel, FileOpenBanner, HistoryPanel, HotkeyInput, LockoutResetSetting, NavMenu,
+    NumberInput, OpTimerControl, OverlayToggle, ParselyUploadModal, ProfileUnsavedHint, SessionStatusChip,
+    SettingsPanel, SettingsSection, Slider, ToastFrame, ToastSeverity, use_file_opener_provider, use_parsely_upload,
     use_parsely_upload_provider, use_toast, use_toast_provider,
 };
-use crate::components::toggle_switch::ToggleSwitch;
-use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::types::{
-    AreaVisitInfo, LogFileInfo, MainTab, MetricType, OverlaySettings, OverlayStatus, OverlayType,
-    SessionInfo, UiSessionState, UpdateInfo, WEB_OVERLAY_URL,
+    AreaVisitInfo, LogFileInfo, MainTab, MetricType, OverlaySettings, OverlayStatus, OverlayType, SessionInfo,
+    UiSessionState, UpdateInfo, WEB_OVERLAY_URL,
 };
 
 static CSS: Asset = asset!("/assets/styles.css");
@@ -98,7 +99,6 @@ pub fn App() -> Element {
     // Boss notes selector state
     let mut area_bosses = use_signal(Vec::<BossNotesInfo>::new);
     let selected_boss_id = use_signal(|| None::<String>);
-
 
     // File browser state
     let mut file_browser_open = use_signal(|| false);
@@ -213,11 +213,10 @@ pub fn App() -> Element {
             profile_names.set(config.profiles.iter().map(|p| p.name.clone()).collect());
             active_profile.set(config.active_profile_name);
             // Auto-create a "Default" profile for new users
-            if config.profiles.is_empty()
-                && api::save_profile("Default").await.is_ok() {
-                    profile_names.set(vec!["Default".to_string()]);
-                    active_profile.set(Some("Default".to_string()));
-                }
+            if config.profiles.is_empty() && api::save_profile("Default").await.is_ok() {
+                profile_names.set(vec!["Default".to_string()]);
+                active_profile.set(Some("Default".to_string()));
+            }
             hide_small_log_files.set(config.hide_small_log_files);
             ocr_debug_dump.set(config.ocr_debug_dump);
             ocr_debug_max_dumps.set(config.ocr_debug_max_dumps);
@@ -379,14 +378,33 @@ pub fn App() -> Element {
                 }
                 api::refresh_overlay_settings().await;
                 if let Some(status) = api::get_overlay_status().await {
-                    apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
-                        &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,
-                        &mut timers_b_enabled, &mut challenges_enabled, &mut alerts_enabled,
-                        &mut effects_a_enabled, &mut effects_b_enabled, &mut effects_c_enabled,
-                        &mut cooldowns_enabled, &mut cooldowns_b_enabled, &mut dot_tracker_enabled, &mut notes_enabled,
-                        &mut combat_time_enabled, &mut operation_timer_enabled,
-                        &mut ability_queue_enabled, &mut enemy_frames_enabled, &mut ability_cast_enabled,
-                        &mut overlays_visible, &mut move_mode, &mut rearrange_mode, &mut auto_hidden);
+                    apply_status(
+                        &status,
+                        &mut metric_overlays_enabled,
+                        &mut personal_enabled,
+                        &mut raid_enabled,
+                        &mut boss_health_enabled,
+                        &mut timers_enabled,
+                        &mut timers_b_enabled,
+                        &mut challenges_enabled,
+                        &mut alerts_enabled,
+                        &mut effects_a_enabled,
+                        &mut effects_b_enabled,
+                        &mut effects_c_enabled,
+                        &mut cooldowns_enabled,
+                        &mut cooldowns_b_enabled,
+                        &mut dot_tracker_enabled,
+                        &mut notes_enabled,
+                        &mut combat_time_enabled,
+                        &mut operation_timer_enabled,
+                        &mut ability_queue_enabled,
+                        &mut enemy_frames_enabled,
+                        &mut ability_cast_enabled,
+                        &mut overlays_visible,
+                        &mut move_mode,
+                        &mut rearrange_mode,
+                        &mut auto_hidden,
+                    );
                 }
             });
         });
@@ -415,26 +433,25 @@ pub fn App() -> Element {
                 spawn_local(async move {
                     let global = js_sys::global();
                     if let Ok(data) = js_sys::Reflect::get(&global, &"__parsely_upload_result".into())
-                        && let Some(data_str) = data.as_string() {
-                            // Parse format: "path|success|message"
-                            let parts: Vec<&str> = data_str.splitn(3, '|').collect();
-                            if parts.len() == 3 {
-                                let path = parts[0].to_string();
-                                let success = parts[1] == "true";
-                                let message = parts[2].to_string();
-                                let _ = upload_status.try_write().map(|mut w| {
-                                    w.insert(path, (success, message));
-                                });
-                            }
-                            // Clear after reading
-                            js_sys::Reflect::delete_property(&global, &"__parsely_upload_result".into()).ok();
+                        && let Some(data_str) = data.as_string()
+                    {
+                        // Parse format: "path|success|message"
+                        let parts: Vec<&str> = data_str.splitn(3, '|').collect();
+                        if parts.len() == 3 {
+                            let path = parts[0].to_string();
+                            let success = parts[1] == "true";
+                            let message = parts[2].to_string();
+                            let _ = upload_status.try_write().map(|mut w| {
+                                w.insert(path, (success, message));
+                            });
                         }
+                        // Clear after reading
+                        js_sys::Reflect::delete_property(&global, &"__parsely_upload_result".into()).ok();
+                    }
                 });
             });
-            let _ = window.add_event_listener_with_callback(
-                "parsely-upload-complete",
-                closure.as_ref().unchecked_ref()
-            );
+            let _ =
+                window.add_event_listener_with_callback("parsely-upload-complete", closure.as_ref().unchecked_ref());
             closure.forget();
         }
     });
@@ -500,8 +517,7 @@ pub fn App() -> Element {
             if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
                 && let Some(msg) = payload.as_string()
             {
-                update_failed_toast
-                    .show(format!("Update failed: {}", msg), ToastSeverity::Critical);
+                update_failed_toast.show(format!("Update failed: {}", msg), ToastSeverity::Critical);
             }
             // Reset installing state so user can retry
             let _ = update_installing.try_write().map(|mut w| *w = false);
@@ -518,8 +534,11 @@ pub fn App() -> Element {
                 && let Some(msg) = payload.as_string()
             {
                 hotkeys_toast.show(
-                    format!("Global hotkeys unavailable: {}. Configure shortcuts in compositor settings.", msg),
-                    ToastSeverity::Normal
+                    format!(
+                        "Global hotkeys unavailable: {}. Configure shortcuts in compositor settings.",
+                        msg
+                    ),
+                    ToastSeverity::Normal,
                 );
             }
         });
@@ -564,13 +583,20 @@ pub fn App() -> Element {
             // event.payload has { elapsed_secs, is_running, operation_name }
             if let Ok(payload) = js_sys::Reflect::get(&event, &"payload".into()) {
                 // try_write: this runs outside the Dioxus runtime, where .set() can panic
-                if let Some(secs) = js_sys::Reflect::get(&payload, &"elapsed_secs".into()).ok().and_then(|v| v.as_f64()) {
+                if let Some(secs) = js_sys::Reflect::get(&payload, &"elapsed_secs".into())
+                    .ok()
+                    .and_then(|v| v.as_f64())
+                {
                     let _ = op_timer_secs.try_write().map(|mut w| *w = secs as u64);
                 }
-                if let Some(running) = js_sys::Reflect::get(&payload, &"is_running".into()).ok().and_then(|v| v.as_bool()) {
+                if let Some(running) = js_sys::Reflect::get(&payload, &"is_running".into())
+                    .ok()
+                    .and_then(|v| v.as_bool())
+                {
                     let _ = op_timer_running.try_write().map(|mut w| *w = running);
                 }
-                let name = js_sys::Reflect::get(&payload, &"operation_name".into()).ok()
+                let name = js_sys::Reflect::get(&payload, &"operation_name".into())
+                    .ok()
                     .and_then(|v| v.as_string());
                 let _ = op_timer_name.try_write().map(|mut w| *w = name);
             }
@@ -595,10 +621,11 @@ pub fn App() -> Element {
     use_future(move || async move {
         if let Some(response) = api::get_changelog().await
             && response.should_show
-                && let Some(html) = response.html {
-                    changelog_html.set(html);
-                    changelog_open.set(true);
-                }
+            && let Some(html) = response.html
+        {
+            changelog_html.set(html);
+            changelog_open.set(true);
+        }
     });
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -682,12 +709,36 @@ pub fn App() -> Element {
 
     // Enabled counts for the category card headers on the Overlays page
     let count_on = |flags: &[bool]| flags.iter().filter(|on| **on).count();
-    let general_on = count_on(&[personal_on, raid_on, alerts_on, combat_time_on, operation_timer_on, ability_cast_on]);
-    let encounter_on = count_on(&[boss_health_on, challenges_on, timers_on, timers_b_on, notes_on, ability_queue_on]);
-    let effects_on = count_on(&[effects_a_on, effects_b_on, effects_c_on, cooldowns_on, cooldowns_b_on, dot_tracker_on]);
+    let general_on = count_on(&[
+        personal_on,
+        raid_on,
+        alerts_on,
+        combat_time_on,
+        operation_timer_on,
+        ability_cast_on,
+    ]);
+    let encounter_on = count_on(&[
+        boss_health_on,
+        challenges_on,
+        timers_on,
+        timers_b_on,
+        notes_on,
+        ability_queue_on,
+    ]);
+    let effects_on = count_on(&[
+        effects_a_on,
+        effects_b_on,
+        effects_c_on,
+        cooldowns_on,
+        cooldowns_b_on,
+        dot_tracker_on,
+    ]);
     let pvp_metrics = MetricType::pvp();
     let metric_on = |m: &MetricType| enabled_map.get(m).copied().unwrap_or(false);
-    let metrics_on = MetricType::all().iter().filter(|m| !pvp_metrics.contains(m) && metric_on(m)).count();
+    let metrics_on = MetricType::all()
+        .iter()
+        .filter(|m| !pvp_metrics.contains(m) && metric_on(m))
+        .count();
     let metrics_total = MetricType::all().len() - pvp_metrics.len();
     let pvp_on = usize::from(enemy_frames_on) + pvp_metrics.iter().filter(|m| metric_on(m)).count();
     let pvp_total = 1 + pvp_metrics.len();
@@ -2637,11 +2688,7 @@ fn set_light_theme(mut light_theme: Signal<bool>, on: bool) {
 /// Persist guild fields (`guilds` + `selected_guild`) to the config without
 /// touching unrelated parsely settings. Used by add/remove handlers so the
 /// chip list stays in sync with what the upload modal sees.
-fn save_parsely_guild_fields(
-    guilds: Vec<String>,
-    selected: Option<String>,
-    mut save_status: Signal<String>,
-) {
+fn save_parsely_guild_fields(guilds: Vec<String>, selected: Option<String>, mut save_status: Signal<String>) {
     let mut toast = use_toast();
     spawn(async move {
         if let Some(mut cfg) = api::get_config().await {
@@ -2649,10 +2696,7 @@ fn save_parsely_guild_fields(
             cfg.parsely.selected_guild = selected;
             match api::update_config(&cfg).await {
                 Ok(_) => save_status.set("Saved!".to_string()),
-                Err(err) => toast.show(
-                    format!("Failed to save guilds: {}", err),
-                    ToastSeverity::Normal,
-                ),
+                Err(err) => toast.show(format!("Failed to save guilds: {}", err), ToastSeverity::Normal),
             }
         }
     });
@@ -2676,11 +2720,7 @@ fn add_parsely_guild(
     }
     input.set(String::new());
 
-    save_parsely_guild_fields(
-        guilds.read().clone(),
-        selected.read().clone(),
-        save_status,
-    );
+    save_parsely_guild_fields(guilds.read().clone(), selected.read().clone(), save_status);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2744,4 +2784,3 @@ fn apply_status(
     rearrange_mode.set(status.rearrange_mode);
     auto_hidden.set(status.auto_hidden);
 }
-

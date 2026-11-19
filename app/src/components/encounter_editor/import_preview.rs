@@ -16,7 +16,11 @@ fn group_by_type(items: &[ImportItemDiff]) -> Vec<(String, Vec<String>)> {
 
 /// "1 timer" / "3 timers"
 fn count_label(item_type: &str, count: usize) -> String {
-    if count == 1 { format!("1 {item_type}") } else { format!("{count} {item_type}s") }
+    if count == 1 {
+        format!("1 {item_type}")
+    } else {
+        format!("{count} {item_type}s")
+    }
 }
 
 /// One change line: badge (Replace / Add), count, then the names

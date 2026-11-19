@@ -24,7 +24,11 @@ pub fn AreaCategory(
     on_new_boss: EventHandler<()>,
 ) -> Element {
     let mut collapsed = use_signal(|| false);
-    let chevron = if collapsed() { "fa-chevron-right" } else { "fa-chevron-down" };
+    let chevron = if collapsed() {
+        "fa-chevron-right"
+    } else {
+        "fa-chevron-down"
+    };
 
     rsx! {
         div {

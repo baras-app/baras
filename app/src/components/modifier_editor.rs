@@ -8,13 +8,8 @@ use dioxus::prelude::*;
 use crate::components::editor_common::FormCard;
 use crate::components::form_fields::{CheckField, Field, NumberField, SubSection};
 
-use super::encounter_editor::triggers::{
-    AbilitySelectorEditor, EffectSelectorEditor,
-};
-use crate::types::{
-    AbilitySelector, ChargeDirection, EffectModifier, EffectSelector, MitigationType,
-    Trigger,
-};
+use super::encounter_editor::triggers::{AbilitySelectorEditor, EffectSelectorEditor};
+use crate::types::{AbilitySelector, ChargeDirection, EffectModifier, EffectSelector, MitigationType, Trigger};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Modifier Trigger Type (UI discriminant)
@@ -461,7 +456,9 @@ fn render_trigger_fields(trigger: &Trigger, on_change: EventHandler<Trigger>) ->
                 })
             }
         },
-        Trigger::DamageTaken { abilities, mitigation, .. } => {
+        Trigger::DamageTaken {
+            abilities, mitigation, ..
+        } => {
             let (abs, mits) = (abilities.clone(), mitigation.clone());
             let build = move |abilities: Vec<AbilitySelector>, mitigation: Vec<MitigationType>| Trigger::DamageTaken {
                 abilities,
@@ -482,7 +479,9 @@ fn render_trigger_fields(trigger: &Trigger, on_change: EventHandler<Trigger>) ->
                 {render_mitigation(&mits, EventHandler::new(move |m: Vec<MitigationType>| on_change.call(build(abs.clone(), m))))}
             }
         }
-        Trigger::DamageDealt { abilities, mitigation, .. } => {
+        Trigger::DamageDealt {
+            abilities, mitigation, ..
+        } => {
             let (abs, mits) = (abilities.clone(), mitigation.clone());
             let build = move |abilities: Vec<AbilitySelector>, mitigation: Vec<MitigationType>| Trigger::DamageDealt {
                 abilities,
@@ -565,9 +564,10 @@ fn render_trigger_fields(trigger: &Trigger, on_change: EventHandler<Trigger>) ->
                 })))}
             }
         }
-        Trigger::SelfChargesChanged { direction } => {
-            render_direction_select(*direction, EventHandler::new(move |direction| on_change.call(Trigger::SelfChargesChanged { direction })))
-        }
+        Trigger::SelfChargesChanged { direction } => render_direction_select(
+            *direction,
+            EventHandler::new(move |direction| on_change.call(Trigger::SelfChargesChanged { direction })),
+        ),
         Trigger::ResourceSpent { per_amount } => rsx! {
             NumberField {
                 label: "Per Amount",
@@ -673,7 +673,10 @@ fn render_mitigation(mitigation: &[MitigationType], on_change: EventHandler<Vec<
     }
 }
 
-fn render_direction_select(direction: Option<ChargeDirection>, on_change: EventHandler<Option<ChargeDirection>>) -> Element {
+fn render_direction_select(
+    direction: Option<ChargeDirection>,
+    on_change: EventHandler<Option<ChargeDirection>>,
+) -> Element {
     rsx! {
         Field { label: "Direction",
             select {

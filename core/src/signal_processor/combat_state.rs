@@ -39,10 +39,7 @@ fn within_grace_window(cache: &SessionCache, timestamp: NaiveDateTime) -> bool {
         return false;
     };
 
-    let grace_secs = if cache
-        .current_encounter()
-        .is_some_and(|e| e.active_boss_idx().is_some())
-    {
+    let grace_secs = if cache.current_encounter().is_some_and(|e| e.active_boss_idx().is_some()) {
         BOSS_COMBAT_EXIT_GRACE_SECS
     } else {
         TRASH_COMBAT_EXIT_GRACE_SECS
@@ -54,10 +51,7 @@ fn within_grace_window(cache: &SessionCache, timestamp: NaiveDateTime) -> bool {
 /// Advance the combat state machine and emit CombatStarted/CombatEnded signals.
 /// Returns (signals, was_accumulated) where was_accumulated indicates whether
 /// the event was added to accumulated_data (for parquet write filtering).
-pub fn advance_combat_state(
-    event: &CombatEvent,
-    cache: &mut SessionCache,
-) -> (Vec<GameSignal>, bool) {
+pub fn advance_combat_state(event: &CombatEvent, cache: &mut SessionCache) -> (Vec<GameSignal>, bool) {
     // Track effect applications/removals for shield absorption
     track_encounter_effects(event, cache);
 
@@ -65,10 +59,7 @@ pub fn advance_combat_state(
     let effect_type_id = event.effect.type_id;
     let timestamp = event.timestamp;
 
-    let current_state = cache
-        .current_encounter()
-        .map(|e| e.state.clone())
-        .unwrap_or_default();
+    let current_state = cache.current_encounter().map(|e| e.state.clone()).unwrap_or_default();
 
     match current_state {
         EncounterState::NotStarted => handle_not_started(event, cache, effect_id, timestamp),
@@ -76,12 +67,8 @@ pub fn advance_combat_state(
             // PvP instances replace all PvE encounter boundary logic (timeouts,
             // revive splits, wipe detection, ExitCombat ends) with their own rules.
             match cache.current_encounter().and_then(|e| e.pvp_kind()) {
-                Some(PvpAreaKind::Warzone) => {
-                    super::pvp_combat_state::handle_in_combat_warzone(event, cache)
-                }
-                Some(PvpAreaKind::Arena) => {
-                    super::pvp_combat_state::handle_in_combat_arena(event, cache)
-                }
+                Some(PvpAreaKind::Warzone) => super::pvp_combat_state::handle_in_combat_warzone(event, cache),
+                Some(PvpAreaKind::Arena) => super::pvp_combat_state::handle_in_combat_arena(event, cache),
                 None => handle_in_combat(event, cache, effect_id, effect_type_id, timestamp),
             }
         }
@@ -198,10 +185,7 @@ fn handle_in_combat(
                 encounter_id
             );
 
-            let success = cache
-                .current_encounter()
-                .map(determine_success)
-                .unwrap_or(false);
+            let success = cache.current_encounter().map(determine_success).unwrap_or(false);
             signals.push(GameSignal::CombatEnded {
                 timestamp: last_activity,
                 encounter_id,
@@ -221,58 +205,56 @@ fn handle_in_combat(
     // end the encounter. This handles speedrun scenarios where players die to trash,
     // revive at medcenter, and quick-travel to the boss room.
     if let Some(enc) = cache.current_encounter()
-        && let Some(revive_time) = enc.local_player_revive_immunity_time {
-            let elapsed = timestamp.signed_duration_since(revive_time).num_seconds();
-            if elapsed >= REVIVE_IMMUNITY_WIPE_TIMEOUT_SECS {
-                let is_boss_encounter = enc.active_boss_idx().is_some();
-                // For boss encounters, check if kill targets are still alive (wipe)
-                // For trash encounters, always end (no kill targets to check)
-                // For victory-trigger bosses where victory hasn't fired: medcenter revive
-                // is definitionally a wipe — the only success path is the victory trigger,
-                // so if the player is reviving at medcenter it can only mean a wipe.
-                let should_end = if is_boss_encounter {
-                    enc.is_likely_wipe()
-                        || (enc.has_active_victory_trigger() && !enc.victory_triggered)
-                } else {
-                    true // Always end trash encounters after revive timeout
-                };
+        && let Some(revive_time) = enc.local_player_revive_immunity_time
+    {
+        let elapsed = timestamp.signed_duration_since(revive_time).num_seconds();
+        if elapsed >= REVIVE_IMMUNITY_WIPE_TIMEOUT_SECS {
+            let is_boss_encounter = enc.active_boss_idx().is_some();
+            // For boss encounters, check if kill targets are still alive (wipe)
+            // For trash encounters, always end (no kill targets to check)
+            // For victory-trigger bosses where victory hasn't fired: medcenter revive
+            // is definitionally a wipe — the only success path is the victory trigger,
+            // so if the player is reviving at medcenter it can only mean a wipe.
+            let should_end = if is_boss_encounter {
+                enc.is_likely_wipe() || (enc.has_active_victory_trigger() && !enc.victory_triggered)
+            } else {
+                true // Always end trash encounters after revive timeout
+            };
 
-                if should_end {
-                    let encounter_id = enc.id;
+            if should_end {
+                let encounter_id = enc.id;
 
-                    tracing::info!(
-                        "[ENCOUNTER] Revive immunity timeout at {} (revive was at {}), ending encounter {} (is_boss: {})",
-                        timestamp,
-                        revive_time,
-                        encounter_id,
-                        is_boss_encounter
-                    );
+                tracing::info!(
+                    "[ENCOUNTER] Revive immunity timeout at {} (revive was at {}), ending encounter {} (is_boss: {})",
+                    timestamp,
+                    revive_time,
+                    encounter_id,
+                    is_boss_encounter
+                );
 
-                    // End encounter and mark as wipe
-                    if let Some(enc) = cache.current_encounter_mut() {
-                        enc.all_players_dead = true; // Force wipe flag
-                        enc.exit_combat_time = Some(revive_time);
-                        enc.state = EncounterState::PostCombat {
-                            exit_time: revive_time,
-                        };
-                        let duration = enc.duration_seconds(None).unwrap_or(0) as f32;
-                        enc.challenge_tracker.finalize(revive_time, duration);
-                    }
-
-                    signals.push(GameSignal::CombatEnded {
-                        timestamp: revive_time,
-                        encounter_id,
-                        success: false,
-                    });
-
-                    cache.push_new_encounter();
-                    // Re-process this event in the new encounter's state machine
-                    let (new_signals, new_accumulated) = advance_combat_state(event, cache);
-                    signals.extend(new_signals);
-                    return (signals, new_accumulated);
+                // End encounter and mark as wipe
+                if let Some(enc) = cache.current_encounter_mut() {
+                    enc.all_players_dead = true; // Force wipe flag
+                    enc.exit_combat_time = Some(revive_time);
+                    enc.state = EncounterState::PostCombat { exit_time: revive_time };
+                    let duration = enc.duration_seconds(None).unwrap_or(0) as f32;
+                    enc.challenge_tracker.finalize(revive_time, duration);
                 }
+
+                signals.push(GameSignal::CombatEnded {
+                    timestamp: revive_time,
+                    encounter_id,
+                    success: false,
+                });
+
+                cache.push_new_encounter();
+                // Re-process this event in the new encounter's state machine
+                let (new_signals, new_accumulated) = advance_combat_state(event, cache);
+                signals.extend(new_signals);
+                return (signals, new_accumulated);
             }
         }
+    }
 
     // Boss reset detection (victory-trigger encounters only): a fresh live
     // instance of a single_instance boss class means the fight reset and was
@@ -280,9 +262,9 @@ fn handle_in_combat(
     // player outside the arena). Split here — the re-pull's EnterCombat was
     // already swallowed as a rejoin, so the new encounter starts InCombat
     // immediately instead of waiting for the next EnterCombat.
-    let boss_reset = cache.current_encounter().is_some_and(|enc| {
-        enc.has_active_victory_trigger() && !enc.victory_triggered && enc.detect_boss_reset(event)
-    });
+    let boss_reset = cache
+        .current_encounter()
+        .is_some_and(|enc| enc.has_active_victory_trigger() && !enc.victory_triggered && enc.detect_boss_reset(event));
     if boss_reset {
         let encounter_id = cache.current_encounter().map(|e| e.id).unwrap_or(0);
         let exit_time = cache
@@ -345,10 +327,7 @@ fn handle_in_combat(
         .and_then(|enc| enc.local_player_ooc_revive_time)
         .is_some();
 
-    let all_players_dead = cache
-        .current_encounter()
-        .map(|e| e.all_players_dead)
-        .unwrap_or(false);
+    let all_players_dead = cache.current_encounter().map(|e| e.all_players_dead).unwrap_or(false);
 
     // Check if local player received the post-death revive immortality buff
     // This means they clicked revive and are now out of combat with a grace period
@@ -375,8 +354,7 @@ fn handle_in_combat(
 
         // Must have seen at least one kill target instance, and all of them must be dead.
         // Also consider dead if HP <= 0 (handles game race condition where death event is never logged)
-        kill_target_instances.peek().is_some()
-            && kill_target_instances.all(|npc| npc.is_dead || npc.current_hp <= 0)
+        kill_target_instances.peek().is_some() && kill_target_instances.all(|npc| npc.is_dead || npc.current_hp <= 0)
     });
 
     // Check if this is a boss encounter (has boss definitions loaded OR boss NPCs detected)
@@ -396,9 +374,9 @@ fn handle_in_combat(
     // Check if this is a victory-trigger encounter that hasn't triggered yet
     // If so, ignore ExitCombat events until the victory trigger fires
     // Difficulty-aware: Trandos on Story/Veteran uses normal combat flow
-    let should_ignore_exit_combat = cache.current_encounter().is_some_and(|enc| {
-        enc.has_active_victory_trigger() && !enc.victory_triggered
-    });
+    let should_ignore_exit_combat = cache
+        .current_encounter()
+        .is_some_and(|enc| enc.has_active_victory_trigger() && !enc.victory_triggered);
 
     if effect_id == effect_id::ENTERCOMBAT {
         // Check if this is a victory-trigger encounter
@@ -409,9 +387,7 @@ fn handle_in_combat(
             .current_encounter()
             .is_some_and(|enc| enc.has_active_victory_trigger());
 
-        let victory_already_triggered = cache
-            .current_encounter()
-            .is_some_and(|enc| enc.victory_triggered);
+        let victory_already_triggered = cache.current_encounter().is_some_and(|enc| enc.victory_triggered);
 
         if has_victory_trigger && victory_already_triggered {
             // Victory trigger already fired — this EnterCombat means the encounter is
@@ -426,17 +402,12 @@ fn handle_in_combat(
 
             if let Some(enc) = cache.current_encounter_mut() {
                 enc.exit_combat_time = Some(timestamp);
-                enc.state = EncounterState::PostCombat {
-                    exit_time: timestamp,
-                };
+                enc.state = EncounterState::PostCombat { exit_time: timestamp };
                 let duration = enc.duration_seconds(None).unwrap_or(0) as f32;
                 enc.challenge_tracker.finalize(timestamp, duration);
             }
 
-            let success = cache
-                .current_encounter()
-                .map(determine_success)
-                .unwrap_or(false);
+            let success = cache.current_encounter().map(determine_success).unwrap_or(false);
             signals.push(GameSignal::CombatEnded {
                 timestamp,
                 encounter_id,
@@ -476,9 +447,7 @@ fn handle_in_combat(
             .current_encounter()
             .and_then(|enc| enc.players.get(&cache.player.id));
 
-        let local_player_has_revive_immunity = player_info
-            .map(|p| p.received_revive_immunity)
-            .unwrap_or(false);
+        let local_player_has_revive_immunity = player_info.map(|p| p.received_revive_immunity).unwrap_or(false);
 
         tracing::info!(
             "[ENCOUNTER] EnterCombat during InCombat at {} - player_id: {}, player_found: {}, revive_immunity: {}",
@@ -501,9 +470,7 @@ fn handle_in_combat(
 
             if let Some(enc) = cache.current_encounter_mut() {
                 enc.exit_combat_time = Some(timestamp);
-                enc.state = EncounterState::PostCombat {
-                    exit_time: timestamp,
-                };
+                enc.state = EncounterState::PostCombat { exit_time: timestamp };
                 let duration = enc.duration_seconds(None).unwrap_or(0) as f32;
                 enc.challenge_tracker.finalize(timestamp, duration);
             }
@@ -553,17 +520,12 @@ fn handle_in_combat(
             }
 
             enc.exit_combat_time = Some(timestamp);
-            enc.state = EncounterState::PostCombat {
-                exit_time: timestamp,
-            };
+            enc.state = EncounterState::PostCombat { exit_time: timestamp };
             let duration = enc.duration_seconds(None).unwrap_or(0) as f32;
             enc.challenge_tracker.finalize(timestamp, duration);
         }
 
-        let success = cache
-            .current_encounter()
-            .map(determine_success)
-            .unwrap_or(false);
+        let success = cache.current_encounter().map(determine_success).unwrap_or(false);
         signals.push(GameSignal::CombatEnded {
             timestamp,
             encounter_id,
@@ -624,10 +586,7 @@ fn handle_in_combat(
                 exit_time
             );
 
-            let success = cache
-                .current_encounter()
-                .map(determine_success)
-                .unwrap_or(false);
+            let success = cache.current_encounter().map(determine_success).unwrap_or(false);
             signals.push(GameSignal::CombatEnded {
                 timestamp: exit_time,
                 encounter_id,
@@ -647,9 +606,7 @@ fn handle_in_combat(
 
             if let Some(enc) = cache.current_encounter_mut() {
                 enc.exit_combat_time = Some(timestamp);
-                enc.state = EncounterState::PostCombat {
-                    exit_time: timestamp,
-                };
+                enc.state = EncounterState::PostCombat { exit_time: timestamp };
                 let duration = enc.duration_seconds(None).unwrap_or(0) as f32;
                 enc.challenge_tracker.finalize(timestamp, duration);
             }
@@ -746,10 +703,7 @@ fn handle_post_combat(
 fn finalize_pending_combat_exit(cache: &mut SessionCache, signals: &mut Vec<GameSignal>) {
     if let Some(exit_time) = cache.last_combat_exit_time.take() {
         let encounter_id = cache.current_encounter().map(|e| e.id).unwrap_or(0);
-        let success = cache
-            .current_encounter()
-            .map(determine_success)
-            .unwrap_or(false);
+        let success = cache.current_encounter().map(determine_success).unwrap_or(false);
         signals.push(GameSignal::CombatEnded {
             timestamp: exit_time,
             encounter_id,
@@ -773,17 +727,12 @@ fn finalize_pending_combat_exit(cache: &mut SessionCache, signals: &mut Vec<Game
 pub fn tick_combat_state(cache: &mut SessionCache, now: NaiveDateTime) -> Vec<GameSignal> {
     let mut signals = Vec::new();
 
-    let current_state = cache
-        .current_encounter()
-        .map(|e| e.state.clone())
-        .unwrap_or_default();
+    let current_state = cache.current_encounter().map(|e| e.state.clone()).unwrap_or_default();
 
     // PvP matches have no wall-clock encounter boundaries (no inactivity
     // timeout, no revive splits) — warzones end on zone-out, arena rounds
     // end on the round-end heal burst. See `pvp_combat_state`.
-    if matches!(current_state, EncounterState::InCombat)
-        && cache.current_encounter().is_some_and(|e| e.is_pvp())
-    {
+    if matches!(current_state, EncounterState::InCombat) && cache.current_encounter().is_some_and(|e| e.is_pvp()) {
         return signals;
     }
 
@@ -802,9 +751,7 @@ pub fn tick_combat_state(cache: &mut SessionCache, now: NaiveDateTime) -> Vec<Ga
 
         if let Some(enc) = cache.current_encounter_mut() {
             enc.exit_combat_time = Some(revive_time);
-            enc.state = EncounterState::PostCombat {
-                exit_time: revive_time,
-            };
+            enc.state = EncounterState::PostCombat { exit_time: revive_time };
             let duration = enc.duration_seconds(None).unwrap_or(0) as f32;
             enc.challenge_tracker.finalize(revive_time, duration);
         }
@@ -847,9 +794,7 @@ pub fn tick_combat_state(cache: &mut SessionCache, now: NaiveDateTime) -> Vec<Ga
                 if let Some(enc) = cache.current_encounter_mut() {
                     enc.all_players_dead = true; // Force wipe flag
                     enc.exit_combat_time = Some(revive_time);
-                    enc.state = EncounterState::PostCombat {
-                        exit_time: revive_time,
-                    };
+                    enc.state = EncounterState::PostCombat { exit_time: revive_time };
                     let duration = enc.duration_seconds(None).unwrap_or(0) as f32;
                     enc.challenge_tracker.finalize(revive_time, duration);
                 }
@@ -869,10 +814,7 @@ pub fn tick_combat_state(cache: &mut SessionCache, now: NaiveDateTime) -> Vec<Ga
 
     // Check for grace window expiration
     if let Some(exit_time) = cache.last_combat_exit_time {
-        let grace_secs = if cache
-            .current_encounter()
-            .is_some_and(|e| e.active_boss_idx().is_some())
-        {
+        let grace_secs = if cache.current_encounter().is_some_and(|e| e.active_boss_idx().is_some()) {
             BOSS_COMBAT_EXIT_GRACE_SECS
         } else {
             TRASH_COMBAT_EXIT_GRACE_SECS
@@ -884,10 +826,7 @@ pub fn tick_combat_state(cache: &mut SessionCache, now: NaiveDateTime) -> Vec<Ga
                 EncounterState::PostCombat { .. } => {
                     // Grace expired while in PostCombat - finalize the encounter
                     let encounter_id = cache.current_encounter().map(|e| e.id).unwrap_or(0);
-                    let success = cache
-                        .current_encounter()
-                        .map(determine_success)
-                        .unwrap_or(false);
+                    let success = cache.current_encounter().map(determine_success).unwrap_or(false);
                     signals.push(GameSignal::CombatEnded {
                         timestamp: exit_time,
                         encounter_id,
@@ -939,10 +878,7 @@ pub fn tick_combat_state(cache: &mut SessionCache, now: NaiveDateTime) -> Vec<Ga
                 enc.challenge_tracker.finalize(last_activity, duration);
             }
 
-            let success = cache
-                .current_encounter()
-                .map(determine_success)
-                .unwrap_or(false);
+            let success = cache.current_encounter().map(determine_success).unwrap_or(false);
 
             cache.last_combat_exit_time = None;
             cache.push_new_encounter();

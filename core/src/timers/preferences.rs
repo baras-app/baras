@@ -108,8 +108,7 @@ impl TimerPreferences {
             return Ok(Self::new());
         }
 
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| PreferencesError::Io(path.to_path_buf(), e))?;
+        let content = std::fs::read_to_string(path).map_err(|e| PreferencesError::Io(path.to_path_buf(), e))?;
 
         toml::from_str(&content).map_err(|e| PreferencesError::Parse(path.to_path_buf(), e))
     }
@@ -121,12 +120,10 @@ impl TimerPreferences {
 
         // Create parent directories if needed
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| PreferencesError::Io(path.to_path_buf(), e))?;
+            std::fs::create_dir_all(parent).map_err(|e| PreferencesError::Io(path.to_path_buf(), e))?;
         }
 
-        let content =
-            toml::to_string_pretty(&cleaned).map_err(PreferencesError::Serialize)?;
+        let content = toml::to_string_pretty(&cleaned).map_err(PreferencesError::Serialize)?;
 
         std::fs::write(path, content).map_err(|e| PreferencesError::Io(path.to_path_buf(), e))
     }
@@ -280,11 +277,7 @@ impl TimerPreferences {
     pub fn key_for_definition(def: &TimerDefinition) -> String {
         if let Some(ref boss_name) = def.boss {
             // Boss timer: use first encounter name (area_name) + boss + timer_id
-            let area_name = def
-                .encounters
-                .first()
-                .map(|s| s.as_str())
-                .unwrap_or("unknown");
+            let area_name = def.encounters.first().map(|s| s.as_str()).unwrap_or("unknown");
             boss_timer_key(area_name, boss_name, &def.id)
         } else {
             // Standalone timer: just timer_id
@@ -299,10 +292,7 @@ impl TimerPreferences {
             return def.enabled;
         }
         let key = Self::key_for_definition(def);
-        self.timers
-            .get(&key)
-            .and_then(|p| p.enabled)
-            .unwrap_or(def.enabled)
+        self.timers.get(&key).and_then(|p| p.enabled).unwrap_or(def.enabled)
     }
 
     /// Get effective audio enabled state (preference overrides definition)
@@ -388,10 +378,7 @@ mod tests {
         assert_eq!(prefs.get("test.timer").unwrap().enabled, Some(false));
 
         prefs.update_audio_enabled("test.timer", false);
-        assert_eq!(
-            prefs.get("test.timer").unwrap().audio_enabled,
-            Some(false)
-        );
+        assert_eq!(prefs.get("test.timer").unwrap().audio_enabled, Some(false));
     }
 
     #[test]

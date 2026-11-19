@@ -109,7 +109,13 @@ pub fn LogTagsCell(
 }
 
 #[component]
-pub fn LogNoteCell(filename: String, tags: Vec<String>, note: String, focus: bool, on_change: EventHandler<()>) -> Element {
+pub fn LogNoteCell(
+    filename: String,
+    tags: Vec<String>,
+    note: String,
+    focus: bool,
+    on_change: EventHandler<()>,
+) -> Element {
     let toast = use_toast();
     rsx! {
         input {

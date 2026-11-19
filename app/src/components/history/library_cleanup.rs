@@ -17,7 +17,13 @@ use crate::types::UiSessionState;
 const PREVIEW_ROWS: usize = 200;
 
 #[component]
-pub fn LibraryActions(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Signal<Option<CleanupEvent>>, status: Resource<HistoryStatus>, on_changed: EventHandler<()>) -> Element {
+pub fn LibraryActions(
+    state: Signal<UiSessionState>,
+    backfill: Backfill,
+    cleanup: Signal<Option<CleanupEvent>>,
+    status: Resource<HistoryStatus>,
+    on_changed: EventHandler<()>,
+) -> Element {
     let mut show_confirm = use_signal(|| false);
 
     // Live dry run of the rules, refreshed after a scan or a cleanup
@@ -41,7 +47,11 @@ pub fn LibraryActions(state: Signal<UiSessionState>, backfill: Backfill, cleanup
     let p = plan_read.as_ref();
     let due = p.map_or(0, |p| p.archive.len() + p.delete.len());
     let cleanup_title = match p {
-        Some(p) if !p.is_empty() => format!("The rules would {} right now; {} kept by content. Shows the files first.", describe(p), p.kept),
+        Some(p) if !p.is_empty() => format!(
+            "The rules would {} right now; {} kept by content. Shows the files first.",
+            describe(p),
+            p.kept
+        ),
         _ => "Nothing to archive or delete under the current rules".to_string(),
     };
     let pending = status.read().as_ref().map_or(0, |s| s.stale + s.unscanned);
@@ -115,7 +125,11 @@ fn describe(p: &CleanupPlan) -> String {
     let files = p.delete.len() - archives;
     let mut parts = Vec::new();
     if !p.archive.is_empty() {
-        parts.push(format!("archive {} files ({})", p.archive.len(), fmt_bytes(p.archive_bytes)));
+        parts.push(format!(
+            "archive {} files ({})",
+            p.archive.len(),
+            fmt_bytes(p.archive_bytes)
+        ));
     }
     if !p.delete.is_empty() {
         let what = match (files, archives) {
@@ -147,9 +161,18 @@ fn CleanupModal(plan: CleanupPlan, on_close: EventHandler<()>, on_done: EventHan
         spawn(async move {
             match api::run_log_cleanup().await {
                 Ok(r) => {
-                    let failed = if r.failed.is_empty() { String::new() } else { format!(", {} failed", r.failed.len()) };
+                    let failed = if r.failed.is_empty() {
+                        String::new()
+                    } else {
+                        format!(", {} failed", r.failed.len())
+                    };
                     toast.show(
-                        format!("Archived {} and deleted {} logs, freed {}{failed}", r.archived, r.deleted, fmt_bytes(r.bytes_freed)),
+                        format!(
+                            "Archived {} and deleted {} logs, freed {}{failed}",
+                            r.archived,
+                            r.deleted,
+                            fmt_bytes(r.bytes_freed)
+                        ),
                         ToastSeverity::Normal,
                     );
                     on_done.call(());

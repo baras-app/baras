@@ -196,8 +196,7 @@ impl ActiveTimer {
         queue_hide_from_next: bool,
         trigger_context: Option<TriggerContext>,
     ) -> Self {
-        let expires_at =
-            event_timestamp + chrono::Duration::milliseconds(duration.as_millis() as i64);
+        let expires_at = event_timestamp + chrono::Duration::milliseconds(duration.as_millis() as i64);
 
         Self {
             definition_id,
@@ -219,10 +218,7 @@ impl ActiveTimer {
             show_at_secs,
             countdown_announced: [false; 10],
             countdown_start: audio.countdown_start,
-            countdown_voice: audio
-                .countdown_voice
-                .clone()
-                .unwrap_or_else(|| "Amy".to_string()),
+            countdown_voice: audio.countdown_voice.clone().unwrap_or_else(|| "Amy".to_string()),
             audio_enabled: audio.enabled,
             audio_file: audio.file.clone(),
             audio_offset: audio.offset,
@@ -244,8 +240,7 @@ impl ActiveTimer {
     /// Refresh the timer (restart from event timestamp)
     pub fn refresh(&mut self, event_timestamp: NaiveDateTime) {
         self.started_at = event_timestamp;
-        self.expires_at =
-            event_timestamp + chrono::Duration::milliseconds(self.duration.as_millis() as i64);
+        self.expires_at = event_timestamp + chrono::Duration::milliseconds(self.duration.as_millis() as i64);
         self.alert_fired = false;
         self.audio_offset_fired = false;
         self.countdown_announced = [false; 10];
@@ -412,12 +407,8 @@ pub struct ActiveGcd {
 
 impl ActiveGcd {
     pub fn new(started_at: NaiveDateTime, gcd_secs: f32) -> Self {
-        let expires_at = started_at
-            + chrono::Duration::milliseconds((gcd_secs * 1000.0) as i64);
-        Self {
-            started_at,
-            expires_at,
-        }
+        let expires_at = started_at + chrono::Duration::milliseconds((gcd_secs * 1000.0) as i64);
+        Self { started_at, expires_at }
     }
 
     /// Check if the GCD has expired

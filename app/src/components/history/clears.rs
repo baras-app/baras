@@ -44,16 +44,21 @@ pub(super) struct OpClears {
 pub(super) fn summarize(runs: &[&RunSummary]) -> Vec<OpClears> {
     let mut out: Vec<OpClears> = Vec::new();
     for r in runs {
-        let Some(t) = TIERS.iter().position(|t| *t == r.tier) else { continue };
-        let idx = out.iter().position(|o| o.operation == r.operation && o.size == r.group_size).unwrap_or_else(|| {
-            out.push(OpClears {
-                operation: r.operation.clone(),
-                size: r.group_size,
-                is_flashpoint: r.is_flashpoint,
-                tiers: Default::default(),
+        let Some(t) = TIERS.iter().position(|t| *t == r.tier) else {
+            continue;
+        };
+        let idx = out
+            .iter()
+            .position(|o| o.operation == r.operation && o.size == r.group_size)
+            .unwrap_or_else(|| {
+                out.push(OpClears {
+                    operation: r.operation.clone(),
+                    size: r.group_size,
+                    is_flashpoint: r.is_flashpoint,
+                    tiers: Default::default(),
+                });
+                out.len() - 1
             });
-            out.len() - 1
-        });
         let tier = &mut out[idx].tiers[t];
         tier.has_timer |= r.timer.limit_secs.is_some();
         if !r.cleared {
@@ -63,7 +68,11 @@ pub(super) fn summarize(runs: &[&RunSummary]) -> Vec<OpClears> {
         tier.timed += u32::from(r.timer.achieved == Some(true));
         // A clear clocked from the start region beats any clocked from the first pull
         let approx = r.timer.from_first_pull && r.timer.limit_secs.is_some();
-        if tier.best.as_ref().is_none_or(|b| (approx, r.timer.elapsed_secs) < (b.approx, b.secs)) {
+        if tier
+            .best
+            .as_ref()
+            .is_none_or(|b| (approx, r.timer.elapsed_secs) < (b.approx, b.secs))
+        {
             tier.best = Some(Best {
                 secs: r.timer.elapsed_secs,
                 approx,
@@ -79,13 +88,21 @@ pub(super) fn summarize(runs: &[&RunSummary]) -> Vec<OpClears> {
 
 /// A row opens the operation's run table; a best time opens that run
 #[component]
-pub(super) fn ClearsTable(rows: Vec<OpClears>, on_area: EventHandler<String>, on_pick: EventHandler<RunKey>) -> Element {
+pub(super) fn ClearsTable(
+    rows: Vec<OpClears>,
+    on_area: EventHandler<String>,
+    on_pick: EventHandler<RunKey>,
+) -> Element {
     let mut size = use_signal(|| 8u8);
     let mut sizes: Vec<u8> = rows.iter().map(|o| o.size).collect();
     sizes.sort_unstable();
     sizes.dedup();
     let picked = *size.read();
-    let shown = if sizes.contains(&picked) { picked } else { sizes.first().copied().unwrap_or(8) };
+    let shown = if sizes.contains(&picked) {
+        picked
+    } else {
+        sizes.first().copied().unwrap_or(8)
+    };
     rsx! {
         div { class: "pull-history-header",
             div { class: "pull-history-title",

@@ -109,7 +109,9 @@ impl EncounterQuery<'_> {
         // pre-combat events via COALESCE), then filter to windows overlapping the
         // target range and clamp edges. This handles effects applied before combat
         // or before a selected time range.
-        let batches = self.sql(&format!(r#"
+        let batches = self
+            .sql(&format!(
+                r#"
             WITH real_applies AS (
                 SELECT effect_id, effect_name, ability_name, target_name,
                        COALESCE(combat_time_secs, 0.0) as apply_time, timestamp,
@@ -252,7 +254,9 @@ impl EncounterQuery<'_> {
                    LEAST(total_duration * 100.0 / {range_duration}, 100.0) as uptime_pct
             FROM aggregated
             ORDER BY total_duration DESC
-        "#)).await?;
+        "#
+            ))
+            .await?;
 
         let mut results = Vec::new();
         for batch in &batches {

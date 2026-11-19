@@ -59,15 +59,7 @@ impl LabeledValue {
         let label_max = width - value_width - font_size * 0.4;
         if label_max > 0.0 {
             let label = frame.truncate_to_width(&self.label, label_max, font_size, self.label_bold);
-            frame.draw_text_with_glow(
-                &label,
-                x,
-                y,
-                font_size,
-                self.label_color,
-                self.label_bold,
-                false,
-            );
+            frame.draw_text_with_glow(&label, x, y, font_size, self.label_color, self.label_bold, false);
         }
 
         frame.draw_text_with_glow(

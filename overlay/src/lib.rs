@@ -41,8 +41,8 @@ pub mod widgets;
 
 // Re-export commonly used types
 pub use class_icons::{
-    ClassIcon, Role, get_class_icon, get_role_colored_class_icon, get_role_icon,
-    get_tinted_class_icon, get_white_class_icon,
+    ClassIcon, Role, get_class_icon, get_role_colored_class_icon, get_role_icon, get_tinted_class_icon,
+    get_white_class_icon,
 };
 pub use frame::OverlayFrame;
 pub use manager::OverlayWindow;
@@ -52,6 +52,10 @@ pub use overlays::{
     AbilityCastData,
     AbilityCastEntry,
     AbilityCastOverlay,
+    AbilityQueueConfig,
+    AbilityQueueData,
+    AbilityQueueEntry,
+    AbilityQueueOverlay,
     AlertEntry,
     AlertsData,
     AlertsOverlay,
@@ -124,19 +128,14 @@ pub use overlays::{
     RaidOverlayConfig,
     RaidRegistryAction,
     SwapState,
-    raid_slot_rects,
-    AbilityQueueConfig,
-    AbilityQueueData,
-    AbilityQueueEntry,
-    AbilityQueueOverlay,
     TimerData,
     TimerEntry,
     TimerOverlay,
+    raid_slot_rects,
 };
 pub use platform::{
     MonitorInfo, NativeOverlay, OverlayConfig, OverlayPlatform, PlatformError, VirtualScreenBounds,
-    clamp_to_virtual_screen, find_monitor_at, find_monitor_by_id, get_all_monitors,
-    resolve_absolute_position,
+    clamp_to_virtual_screen, find_monitor_at, find_monitor_by_id, get_all_monitors, resolve_absolute_position,
 };
 pub use renderer::{DEFAULT_FONT_FAMILY, Renderer, available_font_families};
 pub use utils::{color_from_rgba, format_number, format_time};

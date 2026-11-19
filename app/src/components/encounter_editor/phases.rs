@@ -6,14 +6,14 @@
 use crate::components::editor_sort::{ENCOUNTER_SORT_AZ, SortToggle, apply_rank, use_stable_rank};
 use dioxus::prelude::*;
 
-use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
-use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
 use crate::api;
+use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
+use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
 use crate::types::{BossWithPath, EncounterItem, PhaseDefinition, Trigger};
 
-use super::tabs::EncounterData;
 use super::InlineNameCreator;
 use super::phase_form::PhaseEditForm;
+use super::tabs::EncounterData;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Phases Tab
@@ -50,7 +50,10 @@ pub fn PhasesTab(
     // Extract phases and badge IDs from BossWithPath
     let phases = boss_with_path.boss.phases.clone();
     // A–Z when toggled; renaming leaves the row in place
-    let rank = use_stable_rank(phases.iter().map(|x| (x.id.as_str(), x.name.as_str())), ENCOUNTER_SORT_AZ());
+    let rank = use_stable_rank(
+        phases.iter().map(|x| (x.id.as_str(), x.name.as_str())),
+        ENCOUNTER_SORT_AZ(),
+    );
     let builtin_phase_ids = boss_with_path.builtin_phase_ids.clone();
     let modified_phase_ids = boss_with_path.modified_phase_ids.clone();
 
@@ -63,7 +66,12 @@ pub fn PhasesTab(
         phases.clone()
     };
     apply_rank(&mut visible_phases, &rank.read(), |x| &x.id);
-    let origin_of = |id: &str| Origin::of(builtin_phase_ids.iter().any(|b| b == id), modified_phase_ids.iter().any(|m| m == id));
+    let origin_of = |id: &str| {
+        Origin::of(
+            builtin_phase_ids.iter().any(|b| b == id),
+            modified_phase_ids.iter().any(|m| m == id),
+        )
+    };
     let origin_counts = origin_counts(phases.iter().map(|x| origin_of(&x.id)));
     let origin_filter = ENCOUNTER_ORIGIN();
     visible_phases.retain(|x| origin_filter.is_none_or(|o| origin_of(&x.id) == o));

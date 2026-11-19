@@ -79,8 +79,7 @@ pub trait EntityFilterMatching {
     /// * `entities` - Entity roster for name resolution
     /// * `npc_id` - NPC class/template ID
     /// * `name` - Entity's display name (may be localized)
-    fn matches_source_target(&self, entities: &[EntityDefinition], npc_id: i64, name: &str)
-    -> bool;
+    fn matches_source_target(&self, entities: &[EntityDefinition], npc_id: i64, name: &str) -> bool;
 }
 
 impl EntityFilterMatching for EntityFilter {
@@ -176,9 +175,7 @@ impl EntityFilterMatching for EntityFilter {
             // NPC filters - use NPC class IDs for boss matching
             EntityFilter::AnyNpc => is_npc,
             EntityFilter::Boss => is_npc && npc_id.is_some_and(|id| boss_npc_ids.contains(&id)),
-            EntityFilter::NpcExceptBoss => {
-                is_npc && npc_id.is_none_or(|id| !boss_npc_ids.contains(&id))
-            }
+            EntityFilter::NpcExceptBoss => is_npc && npc_id.is_none_or(|id| !boss_npc_ids.contains(&id)),
 
             // Unified selector - matches via roster alias → NPC ID → name
             EntityFilter::Selector(selectors) => {
@@ -192,12 +189,7 @@ impl EntityFilterMatching for EntityFilter {
         }
     }
 
-    fn matches_source_target(
-        &self,
-        entities: &[EntityDefinition],
-        npc_id: i64,
-        name: &str,
-    ) -> bool {
+    fn matches_source_target(&self, entities: &[EntityDefinition], npc_id: i64, name: &str) -> bool {
         match self {
             // Any matches everything
             EntityFilter::Any | EntityFilter::AnyExceptLocal => true,
@@ -223,9 +215,7 @@ impl EntityFilterMatching for EntityFilter {
             EntityFilter::CurrentTarget => false,
 
             // Unified selector - matches via roster alias → NPC ID → name
-            EntityFilter::Selector(selectors) => {
-                selectors.matches_with_roster(entities, npc_id, Some(name))
-            }
+            EntityFilter::Selector(selectors) => selectors.matches_with_roster(entities, npc_id, Some(name)),
         }
     }
 }

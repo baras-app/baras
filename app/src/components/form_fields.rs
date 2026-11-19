@@ -38,7 +38,8 @@ pub fn CheckField(
     #[props(default)] help: &'static str,
     checked: bool,
     /// Indented under the option it depends on
-    #[props(default)] nested: bool,
+    #[props(default)]
+    nested: bool,
     on_change: EventHandler<bool>,
 ) -> Element {
     rsx! {

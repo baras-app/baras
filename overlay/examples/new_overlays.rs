@@ -8,9 +8,9 @@ use std::time::Instant;
 
 use baras_overlay::icons::IconCache;
 use baras_overlay::overlays::{
-    CooldownConfig, CooldownData, CooldownEntry, CooldownOverlay, DotEntry, DotTarget,
-    DotTrackerConfig, DotTrackerData, DotTrackerOverlay, EffectABEntry, EffectsABConfig,
-    EffectsABData, EffectsABOverlay, EffectsLayout, Overlay, OverlayData,
+    CooldownConfig, CooldownData, CooldownEntry, CooldownOverlay, DotEntry, DotTarget, DotTrackerConfig,
+    DotTrackerData, DotTrackerOverlay, EffectABEntry, EffectsABConfig, EffectsABData, EffectsABOverlay, EffectsLayout,
+    Overlay, OverlayData,
 };
 use baras_overlay::platform::OverlayConfig;
 
@@ -19,11 +19,7 @@ fn main() {
     println!("Press Ctrl+C to exit\n");
 
     // Load icon cache
-    let icon_cache = IconCache::new(
-        Path::new("icons/icons.csv"),
-        Path::new("icons/icons.zip"),
-        200,
-    );
+    let icon_cache = IconCache::new(Path::new("icons/icons.csv"), Path::new("icons/icons.zip"), 200);
 
     let icon_cache = match icon_cache {
         Ok(cache) => {
@@ -97,7 +93,11 @@ fn main() {
     };
 
     // Create overlays with show_effect_names enabled
-    let buffs_cfg = EffectsABConfig { show_effect_names: true, icon_size: 40, ..Default::default() };
+    let buffs_cfg = EffectsABConfig {
+        show_effect_names: true,
+        icon_size: 40,
+        ..Default::default()
+    };
 
     let effects_bar_cfg = EffectsABConfig {
         layout: EffectsLayout::Bar,
@@ -106,27 +106,36 @@ fn main() {
         ..Default::default()
     };
 
-    let cooldowns_cfg = CooldownConfig { show_ability_names: true, icon_size: 36, ..Default::default() };
+    let cooldowns_cfg = CooldownConfig {
+        show_ability_names: true,
+        icon_size: 36,
+        ..Default::default()
+    };
 
-    let dots_cfg = DotTrackerConfig { icon_size: 24, ..Default::default() };
+    let dots_cfg = DotTrackerConfig {
+        icon_size: 24,
+        ..Default::default()
+    };
 
-    let dots_bar_cfg = DotTrackerConfig { layout_bar: true, bar_gradient: true, ..Default::default() };
+    let dots_bar_cfg = DotTrackerConfig {
+        layout_bar: true,
+        bar_gradient: true,
+        ..Default::default()
+    };
 
-    let mut buffs_overlay = EffectsABOverlay::new(buffs_config, buffs_cfg, "Effects A")
-        .expect("Failed to create effects overlay");
+    let mut buffs_overlay =
+        EffectsABOverlay::new(buffs_config, buffs_cfg, "Effects A").expect("Failed to create effects overlay");
 
-    let mut effects_bar_overlay =
-        EffectsABOverlay::new(effects_bar_config, effects_bar_cfg, "Effects Bar")
-            .expect("Failed to create bar effects overlay");
+    let mut effects_bar_overlay = EffectsABOverlay::new(effects_bar_config, effects_bar_cfg, "Effects Bar")
+        .expect("Failed to create bar effects overlay");
 
-    let mut cooldowns_overlay = CooldownOverlay::new(cooldowns_config, cooldowns_cfg)
-        .expect("Failed to create cooldowns overlay");
+    let mut cooldowns_overlay =
+        CooldownOverlay::new(cooldowns_config, cooldowns_cfg).expect("Failed to create cooldowns overlay");
 
-    let mut dots_overlay = DotTrackerOverlay::new(dots_config, dots_cfg)
-        .expect("Failed to create DOT tracker overlay");
+    let mut dots_overlay = DotTrackerOverlay::new(dots_config, dots_cfg).expect("Failed to create DOT tracker overlay");
 
-    let mut dots_bar_overlay = DotTrackerOverlay::new(dots_bar_config, dots_bar_cfg)
-        .expect("Failed to create bar mode DOT tracker overlay");
+    let mut dots_bar_overlay =
+        DotTrackerOverlay::new(dots_bar_config, dots_bar_cfg).expect("Failed to create bar mode DOT tracker overlay");
 
     // Pre-load icons once (avoid allocations every frame)
     let icons = CachedIcons::load(icon_cache.as_ref());

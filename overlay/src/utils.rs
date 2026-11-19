@@ -48,14 +48,7 @@ impl SharedScaledIconCache {
     /// Return the cached scaled icon, scaling and inserting on miss.
     /// The expensive `scale_icon` call happens OUTSIDE the lock so parallel
     /// overlay threads don't serialize on scaling work.
-    pub fn get_or_scale(
-        &self,
-        ability_id: u64,
-        target_size: u32,
-        src: &[u8],
-        src_w: u32,
-        src_h: u32,
-    ) -> Arc<Vec<u8>> {
+    pub fn get_or_scale(&self, ability_id: u64, target_size: u32, src: &[u8], src_w: u32, src_h: u32) -> Arc<Vec<u8>> {
         self.get_or_scale_variant(ability_id, target_size, src, src_w, src_h, false)
     }
 
@@ -72,9 +65,10 @@ impl SharedScaledIconCache {
     ) -> Arc<Vec<u8>> {
         let key = (Self::variant_key(ability_id, grayscale), target_size);
         if let Ok(map) = self.inner.lock()
-            && let Some(arc) = map.get(&key) {
-                return arc.clone();
-            }
+            && let Some(arc) = map.get(&key)
+        {
+            return arc.clone();
+        }
         let mut scaled = scale_icon(src, src_w, src_h, target_size);
         if grayscale {
             desaturate_rgba(&mut scaled);
@@ -93,12 +87,7 @@ impl SharedScaledIconCache {
     }
 
     /// Fetch a color or grayscale variant without scaling.
-    pub fn get_variant(
-        &self,
-        ability_id: u64,
-        target_size: u32,
-        grayscale: bool,
-    ) -> Option<Arc<Vec<u8>>> {
+    pub fn get_variant(&self, ability_id: u64, target_size: u32, grayscale: bool) -> Option<Arc<Vec<u8>>> {
         self.inner
             .lock()
             .ok()?
@@ -107,15 +96,18 @@ impl SharedScaledIconCache {
     }
 
     fn variant_key(ability_id: u64, grayscale: bool) -> u64 {
-        if grayscale { ability_id | GRAYSCALE_KEY_FLAG } else { ability_id }
+        if grayscale {
+            ability_id | GRAYSCALE_KEY_FLAG
+        } else {
+            ability_id
+        }
     }
 }
 
 /// Desaturate an RGBA buffer in place (luma-weighted, slightly dimmed).
 pub fn desaturate_rgba(rgba: &mut [u8]) {
     for px in rgba.chunks_exact_mut(4) {
-        let luma =
-            (0.299 * px[0] as f32 + 0.587 * px[1] as f32 + 0.114 * px[2] as f32) * 0.7;
+        let luma = (0.299 * px[0] as f32 + 0.587 * px[1] as f32 + 0.114 * px[2] as f32) * 0.7;
         let v = luma as u8;
         px[0] = v;
         px[1] = v;

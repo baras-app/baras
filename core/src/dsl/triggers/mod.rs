@@ -8,9 +8,7 @@ mod matchers;
 mod position;
 
 pub use matchers::{AbilitySelector, EffectSelector, EntitySelector, EntitySelectorExt};
-pub use position::{
-    PositionAxis, PositionConstraint, PositionEntity, PositionOp, matches_position_constraints,
-};
+pub use position::{PositionAxis, PositionConstraint, PositionEntity, PositionOp, matches_position_constraints};
 
 // Re-export EntityFilter for use in triggers
 pub use baras_types::{ChargeDirection, EntityFilter, MitigationType};
@@ -420,7 +418,9 @@ impl Trigger {
     /// Only affects trigger variants that support these filters.
     pub fn with_source_target(self, source: EntityFilter, target: EntityFilter) -> Self {
         match self {
-            Self::AbilityCast { abilities, position, .. } => Self::AbilityCast {
+            Self::AbilityCast {
+                abilities, position, ..
+            } => Self::AbilityCast {
                 abilities,
                 source,
                 target,
@@ -438,27 +438,43 @@ impl Trigger {
                 target,
                 position,
             },
-            Self::DamageTaken { abilities, mitigation, position, .. } => Self::DamageTaken {
+            Self::DamageTaken {
+                abilities,
+                mitigation,
+                position,
+                ..
+            } => Self::DamageTaken {
                 abilities,
                 source,
                 target,
                 mitigation,
                 position,
             },
-            Self::DamageDealt { abilities, mitigation, position, .. } => Self::DamageDealt {
+            Self::DamageDealt {
+                abilities,
+                mitigation,
+                position,
+                ..
+            } => Self::DamageDealt {
                 abilities,
                 source,
                 target,
                 mitigation,
                 position,
             },
-            Self::HealingTaken { abilities, position, .. } => Self::HealingTaken {
+            Self::HealingTaken {
+                abilities, position, ..
+            } => Self::HealingTaken {
                 abilities,
                 source,
                 target,
                 position,
             },
-            Self::ThreatModified { abilities, threat_value, .. } => Self::ThreatModified {
+            Self::ThreatModified {
+                abilities,
+                threat_value,
+                ..
+            } => Self::ThreatModified {
                 abilities,
                 source,
                 target,
@@ -478,14 +494,9 @@ impl Trigger {
         match self {
             Self::AbilityCast { abilities, .. } => {
                 // Require explicit selectors - empty list matches nothing
-                !abilities.is_empty()
-                    && abilities
-                        .iter()
-                        .any(|s| s.matches(ability_id, ability_name))
+                !abilities.is_empty() && abilities.iter().any(|s| s.matches(ability_id, ability_name))
             }
-            Self::AnyOf { conditions } => conditions
-                .iter()
-                .any(|c| c.matches_ability(ability_id, ability_name)),
+            Self::AnyOf { conditions } => conditions.iter().any(|c| c.matches_ability(ability_id, ability_name)),
             _ => false,
         }
     }
@@ -522,24 +533,20 @@ impl Trigger {
     ///
     /// `defense_type_id` is 0 for a normal hit. When the trigger has a non-empty
     /// `mitigation` list, the event only matches if its defense type is in that list.
-    pub fn matches_damage_taken(
-        &self,
-        ability_id: u64,
-        ability_name: Option<&str>,
-        defense_type_id: i64,
-    ) -> bool {
+    pub fn matches_damage_taken(&self, ability_id: u64, ability_name: Option<&str>, defense_type_id: i64) -> bool {
         match self {
-            Self::DamageTaken { abilities, mitigation, .. }
-            | Self::DamageDealt { abilities, mitigation, .. } => {
+            Self::DamageTaken {
+                abilities, mitigation, ..
+            }
+            | Self::DamageDealt {
+                abilities, mitigation, ..
+            } => {
                 // Empty abilities = any ability; otherwise must match one selector
-                if !abilities.is_empty()
-                    && !abilities.iter().any(|s| s.matches(ability_id, ability_name))
-                {
+                if !abilities.is_empty() && !abilities.iter().any(|s| s.matches(ability_id, ability_name)) {
                     return false;
                 }
                 // Empty mitigation list = any hit result
-                mitigation.is_empty()
-                    || mitigation.iter().any(|m| m.defense_type_id() == defense_type_id)
+                mitigation.is_empty() || mitigation.iter().any(|m| m.defense_type_id() == defense_type_id)
             }
             Self::AnyOf { conditions } => conditions
                 .iter()
@@ -552,10 +559,7 @@ impl Trigger {
     pub fn matches_healing_taken(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
         match self {
             Self::HealingTaken { abilities, .. } => {
-                !abilities.is_empty()
-                    && abilities
-                        .iter()
-                        .any(|s| s.matches(ability_id, ability_name))
+                !abilities.is_empty() && abilities.iter().any(|s| s.matches(ability_id, ability_name))
             }
             Self::AnyOf { conditions } => conditions
                 .iter()
@@ -566,16 +570,14 @@ impl Trigger {
 
     /// Check if trigger matches a threat modification event.
     /// Empty `abilities` matches any ability. `threat_value` filters by exact value when set.
-    pub fn matches_threat_modified(
-        &self,
-        ability_id: u64,
-        ability_name: Option<&str>,
-        value: f32,
-    ) -> bool {
+    pub fn matches_threat_modified(&self, ability_id: u64, ability_name: Option<&str>, value: f32) -> bool {
         match self {
-            Self::ThreatModified { abilities, threat_value, .. } => {
-                let ability_ok = abilities.is_empty()
-                    || abilities.iter().any(|s| s.matches(ability_id, ability_name));
+            Self::ThreatModified {
+                abilities,
+                threat_value,
+                ..
+            } => {
+                let ability_ok = abilities.is_empty() || abilities.iter().any(|s| s.matches(ability_id, ability_name));
                 let value_ok = threat_value.is_none_or(|v| (v - value).abs() < 0.5);
                 ability_ok && value_ok
             }
@@ -597,10 +599,7 @@ impl Trigger {
         new_hp: f32,
     ) -> bool {
         match self {
-            Self::BossHpBelow {
-                hp_percent,
-                selector,
-            } => {
+            Self::BossHpBelow { hp_percent, selector } => {
                 // Check HP threshold crossing
                 let crossed = old_hp > *hp_percent && new_hp <= *hp_percent + 0.01;
                 if !crossed {
@@ -633,10 +632,7 @@ impl Trigger {
         new_hp: f32,
     ) -> bool {
         match self {
-            Self::BossHpAbove {
-                hp_percent,
-                selector,
-            } => {
+            Self::BossHpAbove { hp_percent, selector } => {
                 // Check HP threshold crossing
                 let crossed = old_hp < *hp_percent && new_hp >= *hp_percent - 0.01;
                 if !crossed {
@@ -659,12 +655,7 @@ impl Trigger {
     }
 
     /// Check if trigger matches NPC first appearing.
-    pub fn matches_npc_appears(
-        &self,
-        entities: &[EntityDefinition],
-        npc_id: i64,
-        entity_name: &str,
-    ) -> bool {
+    pub fn matches_npc_appears(&self, entities: &[EntityDefinition], npc_id: i64, entity_name: &str) -> bool {
         match self {
             Self::NpcAppears { selector, .. } => {
                 // Require explicit filter for NPC appears
@@ -682,12 +673,7 @@ impl Trigger {
     }
 
     /// Check if trigger matches entity death.
-    pub fn matches_entity_death(
-        &self,
-        entities: &[EntityDefinition],
-        npc_id: i64,
-        entity_name: &str,
-    ) -> bool {
+    pub fn matches_entity_death(&self, entities: &[EntityDefinition], npc_id: i64, entity_name: &str) -> bool {
         match self {
             Self::EntityDeath { selector, .. } => {
                 // Empty selector = any death
@@ -720,9 +706,7 @@ impl Trigger {
             Self::PhaseEntered {
                 phase_id: trigger_phase,
             } => trigger_phase == phase_id,
-            Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.matches_phase_entered(phase_id))
-            }
+            Self::AnyOf { conditions } => conditions.iter().any(|c| c.matches_phase_entered(phase_id)),
             _ => false,
         }
     }
@@ -733,9 +717,7 @@ impl Trigger {
             Self::PhaseEnded {
                 phase_id: trigger_phase,
             } => trigger_phase == phase_id,
-            Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.matches_phase_ended(phase_id))
-            }
+            Self::AnyOf { conditions } => conditions.iter().any(|c| c.matches_phase_ended(phase_id)),
             _ => false,
         }
     }
@@ -745,12 +727,7 @@ impl Trigger {
     /// Fires when `new_value` equals the target value and `old_value` was
     /// different — i.e., the counter just arrived at that value, regardless
     /// of whether it got there via increment or decrement.
-    pub fn matches_counter_reaches(
-        &self,
-        counter_id: &str,
-        old_value: u32,
-        new_value: u32,
-    ) -> bool {
+    pub fn matches_counter_reaches(&self, counter_id: &str, old_value: u32, new_value: u32) -> bool {
         match self {
             Self::CounterReaches {
                 counter_id: trigger_counter,
@@ -769,9 +746,7 @@ impl Trigger {
             Self::CounterChanges {
                 counter_id: trigger_counter,
             } => trigger_counter == counter_id,
-            Self::AnyOf { conditions } => conditions
-                .iter()
-                .any(|c| c.matches_counter_changes(counter_id)),
+            Self::AnyOf { conditions } => conditions.iter().any(|c| c.matches_counter_changes(counter_id)),
             _ => false,
         }
     }
@@ -786,9 +761,7 @@ impl Trigger {
     ) -> bool {
         match self {
             Self::ChargesChanged { effects, direction } => {
-                if !effects.is_empty()
-                    && !effects.iter().any(|s| s.matches(effect_id, effect_name))
-                {
+                if !effects.is_empty() && !effects.iter().any(|s| s.matches(effect_id, effect_name)) {
                     return false;
                 }
                 match direction {
@@ -798,9 +771,9 @@ impl Trigger {
                     None => true,
                 }
             }
-            Self::AnyOf { conditions } => conditions.iter().any(|c| {
-                c.matches_charges_changed(effect_id, effect_name, old_charges, new_charges)
-            }),
+            Self::AnyOf { conditions } => conditions
+                .iter()
+                .any(|c| c.matches_charges_changed(effect_id, effect_name, old_charges, new_charges)),
             _ => false,
         }
     }
@@ -835,9 +808,7 @@ impl Trigger {
     pub fn is_time_elapsed_met(&self, combat_secs: f32) -> bool {
         match self {
             Self::TimeElapsed { secs } => combat_secs >= *secs,
-            Self::AnyOf { conditions } => conditions
-                .iter()
-                .any(|c| c.is_time_elapsed_met(combat_secs)),
+            Self::AnyOf { conditions } => conditions.iter().any(|c| c.is_time_elapsed_met(combat_secs)),
             _ => false,
         }
     }
@@ -850,9 +821,7 @@ impl Trigger {
         match self {
             Self::CombatStart => combat_secs >= 0.0,
             Self::TimeElapsed { secs } => combat_secs >= *secs,
-            Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.is_combat_time_met(combat_secs))
-            }
+            Self::AnyOf { conditions } => conditions.iter().any(|c| c.is_combat_time_met(combat_secs)),
             _ => false,
         }
     }
@@ -873,9 +842,7 @@ impl Trigger {
     pub fn matches_time_elapsed(&self, old_secs: f32, new_secs: f32) -> bool {
         match self {
             Self::TimeElapsed { secs } => old_secs < *secs && new_secs >= *secs,
-            Self::AnyOf { conditions } => conditions
-                .iter()
-                .any(|c| c.matches_time_elapsed(old_secs, new_secs)),
+            Self::AnyOf { conditions } => conditions.iter().any(|c| c.matches_time_elapsed(old_secs, new_secs)),
             _ => false,
         }
     }
@@ -883,12 +850,8 @@ impl Trigger {
     /// Check if trigger matches a timer expiring.
     pub fn matches_timer_expires(&self, timer_id: &str) -> bool {
         match self {
-            Self::TimerExpires {
-                timer_id: trigger_id,
-            } => trigger_id == timer_id,
-            Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.matches_timer_expires(timer_id))
-            }
+            Self::TimerExpires { timer_id: trigger_id } => trigger_id == timer_id,
+            Self::AnyOf { conditions } => conditions.iter().any(|c| c.matches_timer_expires(timer_id)),
             _ => false,
         }
     }
@@ -896,12 +859,8 @@ impl Trigger {
     /// Check if trigger matches a timer starting.
     pub fn matches_timer_started(&self, timer_id: &str) -> bool {
         match self {
-            Self::TimerStarted {
-                timer_id: trigger_id,
-            } => trigger_id == timer_id,
-            Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.matches_timer_started(timer_id))
-            }
+            Self::TimerStarted { timer_id: trigger_id } => trigger_id == timer_id,
+            Self::AnyOf { conditions } => conditions.iter().any(|c| c.matches_timer_started(timer_id)),
             _ => false,
         }
     }
@@ -909,12 +868,8 @@ impl Trigger {
     /// Check if trigger matches a timer being canceled.
     pub fn matches_timer_canceled(&self, timer_id: &str) -> bool {
         match self {
-            Self::TimerCanceled {
-                timer_id: trigger_id,
-            } => trigger_id == timer_id,
-            Self::AnyOf { conditions } => conditions
-                .iter()
-                .any(|c| c.matches_timer_canceled(timer_id)),
+            Self::TimerCanceled { timer_id: trigger_id } => trigger_id == timer_id,
+            Self::AnyOf { conditions } => conditions.iter().any(|c| c.matches_timer_canceled(timer_id)),
             _ => false,
         }
     }
@@ -955,9 +910,7 @@ impl Trigger {
             Self::SelfChargesChanged { .. } => Some("self_charges_changed"),
             Self::ResourceSpent { .. } => Some("resource_spent"),
             Self::KillingBlow => Some("killing_blow"),
-            Self::AnyOf { conditions } => conditions
-                .iter()
-                .find_map(|c| c.contains_unsupported_for_shields()),
+            Self::AnyOf { conditions } => conditions.iter().find_map(|c| c.contains_unsupported_for_shields()),
             _ => None,
         }
     }
@@ -992,9 +945,7 @@ impl Trigger {
             Self::SelfChargesChanged { .. } => Some("self_charges_changed"),
             Self::ResourceSpent { .. } => Some("resource_spent"),
             Self::KillingBlow => Some("killing_blow"),
-            Self::AnyOf { conditions } => conditions
-                .iter()
-                .find_map(|c| c.contains_unsupported_for_victory()),
+            Self::AnyOf { conditions } => conditions.iter().find_map(|c| c.contains_unsupported_for_victory()),
             _ => None,
         }
     }
@@ -1003,9 +954,7 @@ impl Trigger {
     /// Returns TimerExpires, TimerStarted, and TimerCanceled timer_id values.
     pub fn collect_timer_refs(&self, out: &mut HashSet<String>) {
         match self {
-            Self::TimerExpires { timer_id }
-            | Self::TimerStarted { timer_id }
-            | Self::TimerCanceled { timer_id } => {
+            Self::TimerExpires { timer_id } | Self::TimerStarted { timer_id } | Self::TimerCanceled { timer_id } => {
                 out.insert(timer_id.clone());
             }
             Self::AnyOf { conditions } => {
@@ -1054,10 +1003,7 @@ mod tests {
     #[test]
     fn serde_mixed_selectors() {
         let trigger = Trigger::EffectApplied {
-            effects: vec![
-                EffectSelector::Id(100),
-                EffectSelector::Name("Burn".to_string()),
-            ],
+            effects: vec![EffectSelector::Id(100), EffectSelector::Name("Burn".to_string())],
             source: EntityFilter::Any,
             target: EntityFilter::Any,
             position: vec![],

@@ -14,8 +14,8 @@ mod normalize_tests;
 
 pub use candidates::{CandidateSet, PlayerCandidate};
 pub use matching::{
-    CandidateScore, Contribution, HEALTH_RESCUE_FLOOR, MatchConfig, RowAssignment, RowDecision,
-    RowObservation, Rejection, assign_rows, assign_rows_explained, name_similarity,
+    CandidateScore, Contribution, HEALTH_RESCUE_FLOOR, MatchConfig, Rejection, RowAssignment, RowDecision,
+    RowObservation, assign_rows, assign_rows_explained, name_similarity,
 };
 pub use normalize::{edit_distance, identified_len, normalize, normalize_ocr, similarity};
 

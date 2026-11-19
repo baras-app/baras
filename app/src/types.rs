@@ -19,6 +19,7 @@ pub use baras_types::{
     BossHealthConfig,
     ChallengeColumns,
     ChallengeLayout,
+    ChargeDirection,
     ClassColorConfig,
     ClassIconMode,
     Color,
@@ -26,17 +27,17 @@ pub use baras_types::{
     CooldownTrackerConfig,
     DataTab,
     DotTrackerConfig,
-    MirrorAbility,
-    ChargeDirection,
+    EffectFilters,
     EffectModifier,
     EffectSelector,
     EffectStackConfig,
     EffectsAConfig,
-    EffectFilters,
     EntityFilter,
     EntitySelector,
     IconPosition,
+    MAX_PROFILES,
     MainTab,
+    MirrorAbility,
     MitigationType,
     OverlayAppearanceConfig,
     OverlaySettings,
@@ -60,7 +61,6 @@ pub use baras_types::{
     UiSessionState,
     UsageSortColumn,
     ViewMode,
-    MAX_PROFILES,
     WEB_OVERLAY_URL,
 };
 
@@ -502,9 +502,7 @@ fn default_timer_display_targets() -> Vec<TimerDisplayTarget> {
 /// (legacy `display_target = "timers_a"`) or an array
 /// (`display_targets = ["timers_a", "ability_queue"]`).
 /// `None` values are filtered out so explicit `"none"` / `[]` = no overlay display.
-fn deserialize_timer_display_targets<'de, D>(
-    deserializer: D,
-) -> Result<Vec<TimerDisplayTarget>, D::Error>
+fn deserialize_timer_display_targets<'de, D>(deserializer: D) -> Result<Vec<TimerDisplayTarget>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -1359,4 +1357,3 @@ pub struct EffectImportPreview {
     pub effects_unchanged: usize,
     pub errors: Vec<String>,
 }
-

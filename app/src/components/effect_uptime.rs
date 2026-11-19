@@ -31,13 +31,17 @@ pub fn EffectUptimeView(
     // shown as the target's timeline with that effect emphasised)
     let mut picked_target = use_signal(|| None::<String>);
     let mut picked_effect = use_signal(|| None::<i64>);
-    let selector = selected_source.clone().map(|n| selected_source_id.map_or(n, |id| format!("id:{id}")));
+    let selector = selected_source
+        .clone()
+        .map(|n| selected_source_id.map_or(n, |id| format!("id:{id}")));
 
-    let cells = use_resource(use_reactive!(|(encounter_idx, time_range, duration_secs, selector)| async move {
-        let source = selector?;
-        let tr = (time_range.end > 0.0).then_some(time_range);
-        api::query_effect_uptime_by_target(encounter_idx, &source, tr.as_ref(), duration_secs).await
-    }));
+    let cells = use_resource(use_reactive!(
+        |(encounter_idx, time_range, duration_secs, selector)| async move {
+            let source = selector?;
+            let tr = (time_range.end > 0.0).then_some(time_range);
+            api::query_effect_uptime_by_target(encounter_idx, &source, tr.as_ref(), duration_secs).await
+        }
+    ));
 
     let Some(source) = selected_source else {
         return rsx! { div { class: "uptime-empty", "Pick a source in the sidebar to see the effects it applied" } };
@@ -76,7 +80,11 @@ pub fn EffectUptimeView(
         _ => 1,
     };
     rows.sort_by(|a, b| rank(a).cmp(&rank(b)).then(a.0.cmp(b.0)));
-    let cell = |target: &str, effect: i64| visible.iter().find(|c| c.target_name == target && c.effect_id == effect);
+    let cell = |target: &str, effect: i64| {
+        visible
+            .iter()
+            .find(|c| c.target_name == target && c.effect_id == effect)
+    };
     let picked = picked_target();
     let picked_col = picked_effect().filter(|_| picked.is_none());
     let timeline: Vec<EffectUptimeCell> = visible
@@ -89,7 +97,12 @@ pub fn EffectUptimeView(
         })
         .map(|c| (*c).clone())
         .collect();
-    let effect_name = |e: i64| effects.iter().find(|x| x.0 == e).map_or_else(String::new, |x| x.1.to_string());
+    let effect_name = |e: i64| {
+        effects
+            .iter()
+            .find(|x| x.0 == e)
+            .map_or_else(String::new, |x| x.1.to_string())
+    };
     // (title prefix, subject) of the timeline
     let subject = match (&picked, picked_effect()) {
         (Some(t), Some(e)) => Some(("Timeline of", format!("{} on {t}", effect_name(e)))),
@@ -97,7 +110,11 @@ pub fn EffectUptimeView(
         (None, Some(e)) => Some(("Timeline of", effect_name(e))),
         _ => None,
     };
-    let (range_start, range_end) = if time_range.end > 0.0 { (time_range.start, time_range.end) } else { (0.0, duration_secs) };
+    let (range_start, range_end) = if time_range.end > 0.0 {
+        (time_range.start, time_range.end)
+    } else {
+        (0.0, duration_secs)
+    };
 
     rsx! {
         div { class: "uptime-view",

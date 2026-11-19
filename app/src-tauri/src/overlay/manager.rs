@@ -5,20 +5,17 @@
 
 use baras_core::context::{OverlayPositionConfig, OverlaySettings};
 use baras_overlay::{
-    platform, DotTrackerConfig, NotesConfig,
-    OverlayConfigUpdate, OverlayData, RaidGridLayout, RaidOverlayConfig,
+    DotTrackerConfig, NotesConfig, OverlayConfigUpdate, OverlayData, RaidGridLayout, RaidOverlayConfig, platform,
 };
 use std::time::Duration;
 
 use super::metrics::create_entries_for_type;
 use super::spawn::{
-    ability_cast_config, cooldown_config, create_ability_cast_overlay, create_ability_queue_overlay, create_alerts_overlay,
-    create_boss_health_overlay, create_challenges_overlay, create_combat_time_overlay,
-    create_cooldowns_overlay, create_dot_tracker_overlay, create_effects_overlay,
-    create_enemy_frames_overlay,
-    create_metric_overlay, create_notes_overlay, create_operation_timer_overlay,
-    create_personal_overlay, create_raid_overlay, create_timers_a_overlay,
-    create_timers_b_overlay, effects_ab_config,
+    ability_cast_config, cooldown_config, create_ability_cast_overlay, create_ability_queue_overlay,
+    create_alerts_overlay, create_boss_health_overlay, create_challenges_overlay, create_combat_time_overlay,
+    create_cooldowns_overlay, create_dot_tracker_overlay, create_effects_overlay, create_enemy_frames_overlay,
+    create_metric_overlay, create_notes_overlay, create_operation_timer_overlay, create_personal_overlay,
+    create_raid_overlay, create_timers_a_overlay, create_timers_b_overlay, effects_ab_config,
 };
 use super::state::{OverlayCommand, OverlayHandle, PositionEvent};
 use super::types::{MetricType, OverlayType};
@@ -106,19 +103,11 @@ impl OverlayManager {
             }
             OverlayType::Cooldowns => {
                 let cooldowns_config = settings.cooldown_tracker.clone();
-                create_cooldowns_overlay(
-                    kind,
-                    position,
-                    cooldowns_config,
-                )?
+                create_cooldowns_overlay(kind, position, cooldowns_config)?
             }
             OverlayType::CooldownsB => {
                 let cooldowns_config = settings.cooldown_tracker_b.clone();
-                create_cooldowns_overlay(
-                    kind,
-                    position,
-                    cooldowns_config,
-                )?
+                create_cooldowns_overlay(kind, position, cooldowns_config)?
             }
             OverlayType::DotTracker => {
                 let dot_config = settings.dot_tracker.clone();
@@ -132,16 +121,10 @@ impl OverlayManager {
                 let ct_config = settings.combat_time.clone();
                 create_combat_time_overlay(position, ct_config)?
             }
-            OverlayType::AbilityCast => create_ability_cast_overlay(
-                position,
-                &settings.ability_cast,
-            )?,
+            OverlayType::AbilityCast => create_ability_cast_overlay(position, &settings.ability_cast)?,
             OverlayType::OperationTimer => {
                 let ot_config = settings.operation_timer.clone();
-                create_operation_timer_overlay(
-                    position,
-                    ot_config,
-                )?
+                create_operation_timer_overlay(position, ot_config)?
             }
             OverlayType::AbilityQueue => {
                 let aq_config = settings.ability_queue.clone();
@@ -149,11 +132,7 @@ impl OverlayManager {
             }
             OverlayType::EnemyFrames => {
                 let ef_config = settings.enemy_frames.clone();
-                create_enemy_frames_overlay(
-                    position,
-                    ef_config,
-                    settings.class_colors.clone(),
-                )?
+                create_enemy_frames_overlay(position, ef_config, settings.class_colors.clone())?
             }
         };
 
@@ -222,10 +201,7 @@ impl OverlayManager {
                     return;
                 }
                 let entries = if metric_type == MetricType::IncomingDamage {
-                    super::metrics::create_incoming_damage_entries(
-                        &data.incoming_damage,
-                        &data.metrics,
-                    )
+                    super::metrics::create_incoming_damage_entries(&data.incoming_damage, &data.metrics)
                 } else {
                     create_entries_for_type(
                         metric_type,
@@ -239,36 +215,29 @@ impl OverlayManager {
                             entries,
                             // Warzones hide cumulative totals, but Incoming Damage's
                             // total is the round total — keep it
-                            hide_totals: data.is_warzone
-                                && metric_type != MetricType::IncomingDamage,
+                            hide_totals: data.is_warzone && metric_type != MetricType::IncomingDamage,
                         },
                     )))
                     .await;
             }
             OverlayType::Personal => {
                 if let Some(stats) = data.to_personal_stats() {
-                    let _ = tx
-                        .send(OverlayCommand::UpdateData(OverlayData::Personal(stats)))
-                        .await;
+                    let _ = tx.send(OverlayCommand::UpdateData(OverlayData::Personal(stats))).await;
                 }
             }
             OverlayType::Challenges => {
                 if let Some(challenges) = &data.challenges {
                     let _ = tx
-                        .send(OverlayCommand::UpdateData(OverlayData::Challenges(
-                            challenges.clone(),
-                        )))
+                        .send(OverlayCommand::UpdateData(OverlayData::Challenges(challenges.clone())))
                         .await;
                 }
             }
             OverlayType::CombatTime => {
                 use baras_overlay::CombatTimeData;
                 let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::CombatTime(
-                        CombatTimeData {
-                            encounter_time_secs: data.encounter_time_secs,
-                        },
-                    )))
+                    .send(OverlayCommand::UpdateData(OverlayData::CombatTime(CombatTimeData {
+                        encounter_time_secs: data.encounter_time_secs,
+                    })))
                     .await;
             }
             OverlayType::OperationTimer => {
@@ -314,9 +283,7 @@ impl OverlayManager {
     // ─────────────────────────────────────────────────────────────────────────
 
     /// Query position from overlay and convert to config-relative coordinates.
-    pub async fn query_position(
-        tx: &tokio::sync::mpsc::Sender<OverlayCommand>,
-    ) -> Option<PositionEvent> {
+    pub async fn query_position(tx: &tokio::sync::mpsc::Sender<OverlayCommand>) -> Option<PositionEvent> {
         let (pos_tx, pos_rx) = tokio::sync::oneshot::channel();
         let _ = tx.send(OverlayCommand::GetPosition(pos_tx)).await;
         pos_rx.await.ok()
@@ -334,16 +301,10 @@ impl OverlayManager {
     }
 
     /// Flush all running overlay positions into config (for profile save).
-    pub async fn flush_positions(
-        state: &SharedOverlayState,
-        config: &mut baras_core::context::AppConfig,
-    ) {
+    pub async fn flush_positions(state: &SharedOverlayState, config: &mut baras_core::context::AppConfig) {
         let overlays: Vec<_> = {
             let Ok(s) = state.lock() else { return };
-            s.all_overlays()
-                .into_iter()
-                .map(|(k, tx)| (k, tx.clone()))
-                .collect()
+            s.all_overlays().into_iter().map(|(k, tx)| (k, tx.clone())).collect()
         };
 
         for (kind, tx) in overlays {
@@ -437,11 +398,7 @@ impl OverlayManager {
             }
             OverlayType::Challenges => {
                 let challenge_config = settings.challenge_overlay.clone();
-                OverlayConfigUpdate::Challenge(
-                    challenge_config,
-                    eu,
-                    settings.class_icon_mode,
-                )
+                OverlayConfigUpdate::Challenge(challenge_config, eu, settings.class_icon_mode)
             }
             OverlayType::Alerts => {
                 let alerts_config = settings.alerts_overlay.clone();
@@ -508,9 +465,7 @@ impl OverlayManager {
                 };
                 OverlayConfigUpdate::CombatTime(ct_config, eu)
             }
-            OverlayType::AbilityCast => OverlayConfigUpdate::AbilityCast(
-                ability_cast_config(&settings.ability_cast),
-            ),
+            OverlayType::AbilityCast => OverlayConfigUpdate::AbilityCast(ability_cast_config(&settings.ability_cast)),
             OverlayType::OperationTimer => {
                 use baras_overlay::OperationTimerConfig;
                 let cfg = &settings.operation_timer;
@@ -520,9 +475,7 @@ impl OverlayManager {
                     font_color: cfg.font_color,
                     dynamic_background: cfg.dynamic_background,
                 };
-                OverlayConfigUpdate::OperationTimer(
-                    ot_config,
-                )
+                OverlayConfigUpdate::OperationTimer(ot_config)
             }
             OverlayType::AbilityQueue => {
                 use baras_overlay::AbilityQueueConfig;
@@ -556,11 +509,7 @@ impl OverlayManager {
     /// Updates config and spawns overlay if global visibility is on.
     /// Respects auto-hide: if any auto-hide condition is active, the overlay is
     /// enabled in config but NOT spawned (it will appear when auto-hide clears).
-    pub async fn show(
-        kind: OverlayType,
-        state: &SharedOverlayState,
-        service: &ServiceHandle,
-    ) -> Result<bool, String> {
+    pub async fn show(kind: OverlayType, state: &SharedOverlayState, service: &ServiceHandle) -> Result<bool, String> {
         // Update enabled state in config
         let mut config = service.config().await;
         config.overlay_settings.set_enabled(kind.config_key(), true);
@@ -606,8 +555,7 @@ impl OverlayManager {
         };
 
         // Send config update so overlay gets current settings (e.g., european_number_format)
-        let config_update =
-            Self::create_config_update(kind, &config.overlay_settings, config.european_number_format);
+        let config_update = Self::create_config_update(kind, &config.overlay_settings, config.european_number_format);
         let _ = tx.send(OverlayCommand::UpdateConfig(config_update)).await;
 
         // Sync move mode
@@ -619,11 +567,12 @@ impl OverlayManager {
 
         // For Notes overlay, send current notes immediately
         if matches!(kind, OverlayType::Notes)
-            && let Some(notes_data) = service.get_current_notes().await {
-                let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::Notes(notes_data)))
-                    .await;
-            }
+            && let Some(notes_data) = service.get_current_notes().await
+        {
+            let _ = tx
+                .send(OverlayCommand::UpdateData(OverlayData::Notes(notes_data)))
+                .await;
+        }
 
         // Save position if needed
         if needs_monitor_save {
@@ -638,11 +587,7 @@ impl OverlayManager {
 
     /// Forget an overlay's saved position so it returns to its default spot.
     /// Defaults apply at spawn, so a running overlay is torn down and respawned.
-    pub async fn reset_position(
-        key: &str,
-        state: &SharedOverlayState,
-        service: &ServiceHandle,
-    ) -> Result<(), String> {
+    pub async fn reset_position(key: &str, state: &SharedOverlayState, service: &ServiceHandle) -> Result<(), String> {
         let kind = Self::all_overlay_types()
             .into_iter()
             .find(|t| t.config_key() == key)
@@ -659,16 +604,10 @@ impl OverlayManager {
     }
 
     /// Hide a single overlay (disable + shutdown if running).
-    pub async fn hide(
-        kind: OverlayType,
-        state: &SharedOverlayState,
-        service: &ServiceHandle,
-    ) -> Result<bool, String> {
+    pub async fn hide(kind: OverlayType, state: &SharedOverlayState, service: &ServiceHandle) -> Result<bool, String> {
         // Update enabled state in config
         let mut config = service.config().await;
-        config
-            .overlay_settings
-            .set_enabled(kind.config_key(), false);
+        config.overlay_settings.set_enabled(kind.config_key(), false);
         service.update_config(config).await?;
 
         // Remove and shutdown if running
@@ -678,14 +617,14 @@ impl OverlayManager {
                 s.rearrange_mode = false;
                 service.set_rearrange_mode(false);
             }
-            
+
             // Check if the other timer overlay is still running (for edge case handling)
             let other_timer_running = match kind {
                 OverlayType::TimersA => s.is_running(OverlayType::TimersB),
                 OverlayType::TimersB => s.is_running(OverlayType::TimersA),
                 _ => false,
             };
-            
+
             (s.remove(kind), other_timer_running)
         };
 
@@ -708,10 +647,7 @@ impl OverlayManager {
     /// Always records intent (overlays_visible=true) in config, but if auto-hide
     /// is active the overlays are not actually spawned — they will appear when
     /// auto-hide clears via temporary_show_all().
-    pub async fn show_all(
-        state: &SharedOverlayState,
-        service: &ServiceHandle,
-    ) -> Result<Vec<MetricType>, String> {
+    pub async fn show_all(state: &SharedOverlayState, service: &ServiceHandle) -> Result<Vec<MetricType>, String> {
         // Update visibility in config (always — this records user intent)
         let mut config = service.config().await;
         config.overlay_settings.overlays_visible = true;
@@ -792,11 +728,13 @@ impl OverlayManager {
 
             // For Notes overlay, send current notes immediately
             if matches!(kind, OverlayType::Notes)
-                && let Some(notes_data) = service.get_current_notes().await {
-                    let _ = spawn_result.0
-                        .send(OverlayCommand::UpdateData(OverlayData::Notes(notes_data)))
-                        .await;
-                }
+                && let Some(notes_data) = service.get_current_notes().await
+            {
+                let _ = spawn_result
+                    .0
+                    .send(OverlayCommand::UpdateData(OverlayData::Notes(notes_data)))
+                    .await;
+            }
 
             // Track for position saving
             if spawn_result.1 {
@@ -821,10 +759,7 @@ impl OverlayManager {
     }
 
     /// Hide all running overlays.
-    pub async fn hide_all(
-        state: &SharedOverlayState,
-        service: &ServiceHandle,
-    ) -> Result<bool, String> {
+    pub async fn hide_all(state: &SharedOverlayState, service: &ServiceHandle) -> Result<bool, String> {
         // Update visibility in config
         let mut config = service.config().await;
         config.overlay_settings.overlays_visible = false;
@@ -851,10 +786,7 @@ impl OverlayManager {
 
     /// Temporarily hide all overlays (does NOT persist to config).
     /// Used for auto-hide during conversations.
-    pub async fn temporary_hide_all(
-        state: &SharedOverlayState,
-        service: &ServiceHandle,
-    ) -> Result<bool, String> {
+    pub async fn temporary_hide_all(state: &SharedOverlayState, service: &ServiceHandle) -> Result<bool, String> {
         // Drain and shutdown all overlays (no config update)
         let handles = {
             let mut s = state.lock().map_err(|e| e.to_string())?;
@@ -874,10 +806,7 @@ impl OverlayManager {
     /// Restore overlays after an auto-hide condition clears (does NOT modify config).
     /// Only respawns overlays if no auto-hide condition remains active and
     /// global visibility is still enabled in config.
-    pub async fn temporary_show_all(
-        state: &SharedOverlayState,
-        service: &ServiceHandle,
-    ) -> Result<(), String> {
+    pub async fn temporary_show_all(state: &SharedOverlayState, service: &ServiceHandle) -> Result<(), String> {
         let config = service.config().await;
 
         // Only restore if global visibility is still enabled in config
@@ -950,11 +879,12 @@ impl OverlayManager {
 
             // For Notes overlay, send current notes immediately
             if matches!(kind, OverlayType::Notes)
-                && let Some(notes_data) = service.get_current_notes().await {
-                    let _ = spawn_result
-                        .send(OverlayCommand::UpdateData(OverlayData::Notes(notes_data)))
-                        .await;
-                }
+                && let Some(notes_data) = service.get_current_notes().await
+            {
+                let _ = spawn_result
+                    .send(OverlayCommand::UpdateData(OverlayData::Notes(notes_data)))
+                    .await;
+            }
 
             // Update overlay status flag
             service.set_overlay_active(key, true);
@@ -965,10 +895,7 @@ impl OverlayManager {
 
     /// Toggle move mode for all overlays.
     /// Returns the new move mode state.
-    pub async fn toggle_move_mode(
-        state: &SharedOverlayState,
-        service: &ServiceHandle,
-    ) -> Result<bool, String> {
+    pub async fn toggle_move_mode(state: &SharedOverlayState, service: &ServiceHandle) -> Result<bool, String> {
         let (txs, new_mode, raid_tx, was_rearranging) = {
             let mut s = state.lock().map_err(|e| e.to_string())?;
             if !s.any_running() {
@@ -1065,10 +992,7 @@ impl OverlayManager {
     }
 
     /// Toggle raid rearrange mode.
-    pub async fn toggle_rearrange(
-        state: &SharedOverlayState,
-        service: &ServiceHandle,
-    ) -> Result<bool, String> {
+    pub async fn toggle_rearrange(state: &SharedOverlayState, service: &ServiceHandle) -> Result<bool, String> {
         let (raid_tx, new_mode) = {
             let mut s = state.lock().map_err(|e| e.to_string())?;
             if !s.is_raid_running() {
@@ -1166,9 +1090,7 @@ impl OverlayManager {
 
         // Special case: Raid overlay always recreates to handle grid size changes
         let raid_enabled = settings.enabled.get("raid").copied().unwrap_or(false);
-        let raid_handle = {
-            state.lock().ok().and_then(|mut s| s.remove(OverlayType::Raid))
-        };
+        let raid_handle = { state.lock().ok().and_then(|mut s| s.remove(OverlayType::Raid)) };
 
         // Properly shut down the old Raid overlay before spawning a new one.
         // shutdown_no_position joins the thread, guaranteeing the OS window is
@@ -1185,8 +1107,7 @@ impl OverlayManager {
         // spawn() is called inside the lock scope so the is_running check and insert
         // are atomic — prevents temporary_show_all from racing in and also spawning
         // a Raid window in the gap between spawn() and insert().
-        let raid_respawned = if raid_enabled && globally_visible && !service.shared.auto_hide.is_auto_hidden()
-        {
+        let raid_respawned = if raid_enabled && globally_visible && !service.shared.auto_hide.is_auto_hidden() {
             match state.lock() {
                 Ok(mut s) => match Self::spawn(OverlayType::Raid, settings) {
                     Ok(result) => {
@@ -1210,10 +1131,7 @@ impl OverlayManager {
         // Update config for all running overlays
         let overlays: Vec<_> = {
             let s = state.lock().map_err(|e| e.to_string())?;
-            s.all_overlays()
-                .into_iter()
-                .map(|(k, tx)| (k, tx.clone()))
-                .collect()
+            s.all_overlays().into_iter().map(|(k, tx)| (k, tx.clone())).collect()
         };
 
         // Get monitors once for position resolution
@@ -1224,19 +1142,14 @@ impl OverlayManager {
             if let Some(pos) = settings.positions.get(kind.config_key()) {
                 // Convert relative position to absolute screen coordinates
                 // Positions are stored relative to their target monitor
-                let (abs_x, abs_y) = platform::resolve_absolute_position(
-                    pos.x,
-                    pos.y,
-                    pos.monitor_id.as_deref(),
-                    &monitors,
-                );
+                let (abs_x, abs_y) =
+                    platform::resolve_absolute_position(pos.x, pos.y, pos.monitor_id.as_deref(), &monitors);
                 let _ = tx.send(OverlayCommand::SetPosition(abs_x, abs_y)).await;
                 let _ = tx.send(OverlayCommand::SetSize(pos.width, pos.height)).await;
             }
 
             // Send config update
-            let config_update =
-                Self::create_config_update(kind, settings, config.european_number_format);
+            let config_update = Self::create_config_update(kind, settings, config.european_number_format);
             let _ = tx.send(OverlayCommand::UpdateConfig(config_update)).await;
             for cmd in Self::frame_commands(kind, settings) {
                 let _ = tx.send(cmd).await;
@@ -1250,11 +1163,12 @@ impl OverlayManager {
                 Self::send_initial_data(kind, &tx, combat_data.as_ref()).await;
 
                 if matches!(kind, OverlayType::Notes)
-                    && let Some(notes_data) = service.get_current_notes().await {
-                        let _ = tx
-                            .send(OverlayCommand::UpdateData(OverlayData::Notes(notes_data)))
-                            .await;
-                    }
+                    && let Some(notes_data) = service.get_current_notes().await
+                {
+                    let _ = tx
+                        .send(OverlayCommand::UpdateData(OverlayData::Notes(notes_data)))
+                        .await;
+                }
             }
         }
 

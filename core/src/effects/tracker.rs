@@ -96,11 +96,7 @@ impl DefinitionSet {
 
     /// Add definitions. If `overwrite` is true, replaces existing definitions with same ID.
     /// Returns IDs of duplicates that were encountered (skipped if !overwrite, replaced if overwrite).
-    pub fn add_definitions(
-        &mut self,
-        definitions: Vec<EffectDefinition>,
-        overwrite: bool,
-    ) -> Vec<String> {
+    pub fn add_definitions(&mut self, definitions: Vec<EffectDefinition>, overwrite: bool) -> Vec<String> {
         let mut duplicates = Vec::new();
         for def in definitions {
             if self.effects.contains_key(&def.id) {
@@ -161,7 +157,10 @@ impl DefinitionSet {
         for refresh in &def.refresh_abilities {
             match refresh.ability() {
                 AbilitySelector::Id(id) => {
-                    self.refresh_ability_id_index.entry(*id).or_default().push(def.id.clone());
+                    self.refresh_ability_id_index
+                        .entry(*id)
+                        .or_default()
+                        .push(def.id.clone());
                     if def.is_aoe_refresh {
                         self.aoe_refresh_ability_ids.insert(*id);
                     }
@@ -214,73 +213,71 @@ impl DefinitionSet {
     }
 
     /// Find effect definitions matching a game effect ID or name (O(1) indexed lookup)
-    pub fn find_matching(
-        &self,
-        effect_id: u64,
-        effect_name: Option<&str>,
-    ) -> Vec<&EffectDefinition> {
+    pub fn find_matching(&self, effect_id: u64, effect_name: Option<&str>) -> Vec<&EffectDefinition> {
         let mut results = Vec::new();
         let mut seen: HashSet<&str> = HashSet::new();
 
         if let Some(def_ids) = self.effect_id_index.get(&effect_id) {
             for def_id in def_ids {
                 if let Some(def) = self.effects.get(def_id)
-                    && def.enabled {
-                        seen.insert(def_id);
-                        results.push(def);
-                    }
+                    && def.enabled
+                {
+                    seen.insert(def_id);
+                    results.push(def);
+                }
             }
         }
 
         if let Some(name) = effect_name
-            && let Some(def_ids) = self.effect_name_index.get(&name.to_lowercase()) {
-                for def_id in def_ids {
-                    if seen.contains(def_id.as_str()) {
-                        continue;
-                    }
-                    if let Some(def) = self.effects.get(def_id)
-                        && def.enabled {
-                            seen.insert(def_id);
-                            results.push(def);
-                        }
+            && let Some(def_ids) = self.effect_name_index.get(&name.to_lowercase())
+        {
+            for def_id in def_ids {
+                if seen.contains(def_id.as_str()) {
+                    continue;
+                }
+                if let Some(def) = self.effects.get(def_id)
+                    && def.enabled
+                {
+                    seen.insert(def_id);
+                    results.push(def);
                 }
             }
+        }
 
         results
     }
 
     /// Find effect definitions matching an ability cast trigger (O(1) indexed lookup)
-    pub fn find_ability_cast_matching(
-        &self,
-        ability_id: u64,
-        ability_name: Option<&str>,
-    ) -> Vec<&EffectDefinition> {
+    pub fn find_ability_cast_matching(&self, ability_id: u64, ability_name: Option<&str>) -> Vec<&EffectDefinition> {
         let mut results = Vec::new();
         let mut seen: HashSet<&str> = HashSet::new();
 
         if let Some(def_ids) = self.ability_id_index.get(&ability_id) {
             for def_id in def_ids {
                 if let Some(def) = self.effects.get(def_id)
-                    && def.enabled {
-                        seen.insert(def_id);
-                        results.push(def);
-                    }
+                    && def.enabled
+                {
+                    seen.insert(def_id);
+                    results.push(def);
+                }
             }
         }
 
         if let Some(name) = ability_name
-            && let Some(def_ids) = self.ability_name_index.get(&name.to_lowercase()) {
-                for def_id in def_ids {
-                    if seen.contains(def_id.as_str()) {
-                        continue;
-                    }
-                    if let Some(def) = self.effects.get(def_id)
-                        && def.enabled {
-                            seen.insert(def_id);
-                            results.push(def);
-                        }
+            && let Some(def_ids) = self.ability_name_index.get(&name.to_lowercase())
+        {
+            for def_id in def_ids {
+                if seen.contains(def_id.as_str()) {
+                    continue;
+                }
+                if let Some(def) = self.effects.get(def_id)
+                    && def.enabled
+                {
+                    seen.insert(def_id);
+                    results.push(def);
                 }
             }
+        }
 
         results
     }
@@ -293,25 +290,28 @@ impl DefinitionSet {
         if let Some(def_ids) = self.refresh_ability_id_index.get(&ability_id) {
             for def_id in def_ids {
                 if let Some(def) = self.effects.get(def_id)
-                    && def.enabled {
-                        seen.insert(def_id);
-                        results.push(def);
-                    }
+                    && def.enabled
+                {
+                    seen.insert(def_id);
+                    results.push(def);
+                }
             }
         }
 
         if let Some(name) = ability_name
-            && let Some(def_ids) = self.refresh_ability_name_index.get(&name.to_lowercase()) {
-                for def_id in def_ids {
-                    if seen.contains(def_id.as_str()) {
-                        continue;
-                    }
-                    if let Some(def) = self.effects.get(def_id)
-                        && def.enabled {
-                            results.push(def);
-                        }
+            && let Some(def_ids) = self.refresh_ability_name_index.get(&name.to_lowercase())
+        {
+            for def_id in def_ids {
+                if seen.contains(def_id.as_str()) {
+                    continue;
+                }
+                if let Some(def) = self.effects.get(def_id)
+                    && def.enabled
+                {
+                    results.push(def);
                 }
             }
+        }
 
         results
     }
@@ -320,9 +320,10 @@ impl DefinitionSet {
     pub fn has_refreshable_by(&self, ability_id: u64) -> bool {
         self.refresh_ability_id_index
             .get(&ability_id)
-            .map(|ids| ids.iter().any(|id| {
-                self.effects.get(id).map(|def| def.enabled).unwrap_or(false)
-            }))
+            .map(|ids| {
+                ids.iter()
+                    .any(|id| self.effects.get(id).map(|def| def.enabled).unwrap_or(false))
+            })
             .unwrap_or(false)
     }
 
@@ -547,7 +548,7 @@ impl EffectTracker {
             audio_enabled: def.audio.enabled,
             audio_file: def.audio.file.clone(),
             icon_ability_id: def.icon_ability_id,
-                    remaining_secs: None,
+            remaining_secs: None,
         }
     }
 
@@ -574,8 +575,16 @@ impl EffectTracker {
     /// A modifier's ICD in seconds, alacrity-scaled if the modifier opts in.
     fn effective_icd(&self, modifier: &baras_types::EffectModifier, at: NaiveDateTime) -> Option<f32> {
         let icd = modifier.icd_secs?;
-        let alacrity = if modifier.icd_affected_by_alacrity { self.total_alacrity(at) } else { 0.0 };
-        Some(if alacrity > 0.0 { icd / (1.0 + alacrity / 100.0) } else { icd })
+        let alacrity = if modifier.icd_affected_by_alacrity {
+            self.total_alacrity(at)
+        } else {
+            0.0
+        };
+        Some(if alacrity > 0.0 {
+            icd / (1.0 + alacrity / 100.0)
+        } else {
+            icd
+        })
     }
 
     /// Calculate effective duration for a definition, applying alacrity and bias if configured
@@ -618,9 +627,9 @@ impl EffectTracker {
         group_ids: &[&str],
         target_id: i64,
     ) -> Option<&'a mut ActiveEffect> {
-        active_effects.values_mut().find(|e| {
-            e.target_entity_id == target_id && group_ids.iter().any(|id| *id == e.definition_id)
-        })
+        active_effects
+            .values_mut()
+            .find(|e| e.target_entity_id == target_id && group_ids.iter().any(|id| *id == e.definition_id))
     }
 
     /// Handle signals with explicit local player ID from session cache
@@ -678,8 +687,7 @@ impl EffectTracker {
 
                 // Audio properties
                 effect.countdown_start = def.audio.countdown_start;
-                effect.countdown_voice =
-                    def.audio.countdown_voice.clone().unwrap_or_default();
+                effect.countdown_voice = def.audio.countdown_voice.clone().unwrap_or_default();
                 effect.audio_file = def.audio.file.clone();
                 effect.audio_offset = def.audio.offset;
                 effect.audio_enabled = def.audio.enabled;
@@ -740,7 +748,11 @@ impl EffectTracker {
             (Some(gt), Some(inst)) => {
                 let interp = gt + chrono::Duration::milliseconds(inst.elapsed().as_millis() as i64);
                 // Never move the anchor backward
-                if event_timestamp > interp { event_timestamp } else { interp }
+                if event_timestamp > interp {
+                    event_timestamp
+                } else {
+                    interp
+                }
             }
             _ => event_timestamp,
         };
@@ -765,38 +777,36 @@ impl EffectTracker {
             .filter(move |e| e.target_entity_id == target_id)
     }
 
-
-
     // ─────────────────────────────────────────────────────────────────────────────
     // Categorized Output Methods (by DisplayTarget)
     // ─────────────────────────────────────────────────────────────────────────────
 
     /// Get effects destined for raid frames overlay (HOTs on group members)
     pub fn raid_frame_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
-        self.active_effects
-            .values()
-            .filter(|e| e.display_targets.contains(&DisplayTarget::RaidFrames) && e.removed_at.is_none() && !e.timer_expired)
+        self.active_effects.values().filter(|e| {
+            e.display_targets.contains(&DisplayTarget::RaidFrames) && e.removed_at.is_none() && !e.timer_expired
+        })
     }
 
     /// Get effects destined for Effects A overlay
     pub fn effects_a(&self) -> impl Iterator<Item = &ActiveEffect> {
-        self.active_effects
-            .values()
-            .filter(|e| e.display_targets.contains(&DisplayTarget::EffectsA) && e.removed_at.is_none() && !e.timer_expired)
+        self.active_effects.values().filter(|e| {
+            e.display_targets.contains(&DisplayTarget::EffectsA) && e.removed_at.is_none() && !e.timer_expired
+        })
     }
 
     /// Get effects destined for Effects B overlay
     pub fn effects_b(&self) -> impl Iterator<Item = &ActiveEffect> {
-        self.active_effects
-            .values()
-            .filter(|e| e.display_targets.contains(&DisplayTarget::EffectsB) && e.removed_at.is_none() && !e.timer_expired)
+        self.active_effects.values().filter(|e| {
+            e.display_targets.contains(&DisplayTarget::EffectsB) && e.removed_at.is_none() && !e.timer_expired
+        })
     }
 
     /// Get effects destined for Effects C overlay
     pub fn effects_c(&self) -> impl Iterator<Item = &ActiveEffect> {
-        self.active_effects
-            .values()
-            .filter(|e| e.display_targets.contains(&DisplayTarget::EffectsC) && e.removed_at.is_none() && !e.timer_expired)
+        self.active_effects.values().filter(|e| {
+            e.display_targets.contains(&DisplayTarget::EffectsC) && e.removed_at.is_none() && !e.timer_expired
+        })
     }
 
     /// Definitions flagged for uptime tracking on the given overlay target.
@@ -815,8 +825,7 @@ impl EffectTracker {
                     && def.track_uptime
                     && def.displays_on(target)
                     && (def.disciplines.is_empty() || def.disciplines.contains(discipline))
-                    && (!def.track_uptime_after_first
-                        || self.uptime_last_icons.contains_key(&def.id))
+                    && (!def.track_uptime_after_first || self.uptime_last_icons.contains_key(&def.id))
             })
             .collect();
         // Stable pin order regardless of HashMap iteration
@@ -873,28 +882,27 @@ impl EffectTracker {
 
     /// Get effects destined for cooldown tracker
     pub fn cooldown_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
-        self.active_effects
-            .values()
-            .filter(|e| e.display_targets.contains(&DisplayTarget::Cooldowns) && e.removed_at.is_none() && !e.timer_expired)
+        self.active_effects.values().filter(|e| {
+            e.display_targets.contains(&DisplayTarget::Cooldowns) && e.removed_at.is_none() && !e.timer_expired
+        })
     }
 
     /// Get effects destined for cooldown tracker B
     pub fn cooldown_b_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
-        self.active_effects
-            .values()
-            .filter(|e| e.display_targets.contains(&DisplayTarget::CooldownsB) && e.removed_at.is_none() && !e.timer_expired)
+        self.active_effects.values().filter(|e| {
+            e.display_targets.contains(&DisplayTarget::CooldownsB) && e.removed_at.is_none() && !e.timer_expired
+        })
     }
 
     /// Get effects destined for DOT tracker, grouped by target entity
     pub fn dot_tracker_effects(&self) -> std::collections::HashMap<i64, Vec<&ActiveEffect>> {
-        let mut by_target: std::collections::HashMap<i64, Vec<&ActiveEffect>> =
-            std::collections::HashMap::new();
+        let mut by_target: std::collections::HashMap<i64, Vec<&ActiveEffect>> = std::collections::HashMap::new();
         for effect in self.active_effects.values() {
-            if effect.removed_at.is_none() && !effect.timer_expired && effect.display_targets.contains(&DisplayTarget::DotTracker) {
-                by_target
-                    .entry(effect.target_entity_id)
-                    .or_default()
-                    .push(effect);
+            if effect.removed_at.is_none()
+                && !effect.timer_expired
+                && effect.display_targets.contains(&DisplayTarget::DotTracker)
+            {
+                by_target.entry(effect.target_entity_id).or_default().push(effect);
             }
         }
         by_target
@@ -903,17 +911,13 @@ impl EffectTracker {
     /// Get effects destined for the boss HP overlay, grouped by target entity id.
     /// Keyed by entity id (not name) so two NPCs sharing a name don't share icons.
     pub fn boss_health_effects_by_target_id(&self) -> std::collections::HashMap<i64, Vec<&ActiveEffect>> {
-        let mut by_target: std::collections::HashMap<i64, Vec<&ActiveEffect>> =
-            std::collections::HashMap::new();
+        let mut by_target: std::collections::HashMap<i64, Vec<&ActiveEffect>> = std::collections::HashMap::new();
         for effect in self.active_effects.values() {
             if effect.removed_at.is_none()
                 && !effect.timer_expired
                 && effect.display_targets.contains(&DisplayTarget::BossHealth)
             {
-                by_target
-                    .entry(effect.target_entity_id)
-                    .or_default()
-                    .push(effect);
+                by_target.entry(effect.target_entity_id).or_default().push(effect);
             }
         }
         by_target
@@ -921,9 +925,9 @@ impl EffectTracker {
 
     /// Get effects destined for generic effects overlay (legacy)
     pub fn effects_overlay_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
-        self.active_effects
-            .values()
-            .filter(|e| e.display_targets.contains(&DisplayTarget::EffectsOverlay) && e.removed_at.is_none() && !e.timer_expired)
+        self.active_effects.values().filter(|e| {
+            e.display_targets.contains(&DisplayTarget::EffectsOverlay) && e.removed_at.is_none() && !e.timer_expired
+        })
     }
 
     /// Drain the queue of targets for raid frame registration attempts.
@@ -987,9 +991,7 @@ impl EffectTracker {
 
                 // After grace period, hard-remove (GC on next retain pass)
                 if let Some(expires_at) = effect.expires_at {
-                    let since_expiry_ms = interp_time
-                        .signed_duration_since(expires_at)
-                        .num_milliseconds();
+                    let since_expiry_ms = interp_time.signed_duration_since(expires_at).num_milliseconds();
                     if since_expiry_ms > TIMER_EXPIRY_GRACE_MS {
                         effect.mark_removed();
                     }
@@ -1077,10 +1079,7 @@ impl EffectTracker {
                 continue;
             }
 
-            let raw_name = def
-                .alert_text
-                .as_deref()
-                .unwrap_or(&def.name);
+            let raw_name = def.alert_text.as_deref().unwrap_or(&def.name);
             let formatted = format_effect_alert(raw_name, effect.source_name, effect.target_name, effect.stacks);
             let text = format!("{} ({:.1})", formatted, remaining_base);
             self.fired_alerts.push(FiredAlert {
@@ -1098,8 +1097,7 @@ impl EffectTracker {
         }
 
         // Remove effects that have been marked removed (immediate, no fade delay)
-        self.active_effects
-            .retain(|_, effect| effect.removed_at.is_none());
+        self.active_effects.retain(|_, effect| effect.removed_at.is_none());
     }
 
     /// Handle effect application signal
@@ -1150,9 +1148,7 @@ impl EffectTracker {
         let effect_name_str = crate::context::resolve(effect_name);
 
         // Find matching definitions (only those that trigger on EffectApplied)
-        let all_matches = self
-            .definitions
-            .find_matching(effect_id as u64, Some(effect_name_str));
+        let all_matches = self.definitions.find_matching(effect_id as u64, Some(effect_name_str));
 
         // Ids of single-instance defs sharing this game effect (e.g. kolto_shell
         // + kolto_shell_others) — the source-agnostic lookup group used below.
@@ -1176,7 +1172,13 @@ impl EffectTracker {
         for def in matching_defs {
             // Instant alerts: fire and skip — no ActiveEffect created
             if def.is_alert {
-                pending_alerts.push(Self::build_instant_alert(def, timestamp, source_name, target_name, charges.unwrap_or(1)));
+                pending_alerts.push(Self::build_instant_alert(
+                    def,
+                    timestamp,
+                    source_name,
+                    target_name,
+                    charges.unwrap_or(1),
+                ));
                 continue;
             }
 
@@ -1190,11 +1192,8 @@ impl EffectTracker {
             // Source-agnostic lookup across the def group, in both directions
             // (local over other's AND other's over local).
             if def.single_instance_per_target
-                && let Some(existing) = Self::find_single_instance_effect(
-                    &mut self.active_effects,
-                    &single_instance_ids,
-                    target_id,
-                )
+                && let Some(existing) =
+                    Self::find_single_instance_effect(&mut self.active_effects, &single_instance_ids, target_id)
                 && existing.removed_at.is_none()
             {
                 existing.refresh(timestamp, duration);
@@ -1274,7 +1273,7 @@ impl EffectTracker {
                         audio_enabled: false,
                         audio_file: None,
                         icon_ability_id: def.icon_ability_id,
-                    remaining_secs: None,
+                        remaining_secs: None,
                     });
                 }
             } else {
@@ -1333,7 +1332,7 @@ impl EffectTracker {
                         audio_enabled: false,
                         audio_file: None,
                         icon_ability_id: def.icon_ability_id,
-                    remaining_secs: None,
+                        remaining_secs: None,
                     });
                 }
             }
@@ -1346,10 +1345,7 @@ impl EffectTracker {
         // was created or refreshed — a tracked cooldown/buff (e.g. a stim
         // re-applied at zone-in) must not claim a slot. Only players belong on
         // raid frames (not companions or NPCs)
-        if should_register
-            && is_from_local
-            && target_entity_type == EntityType::Player
-        {
+        if should_register && is_from_local && target_entity_type == EntityType::Player {
             self.new_targets.push(NewTargetInfo {
                 entity_id: target_id,
                 name: target_name,
@@ -1400,15 +1396,13 @@ impl EffectTracker {
 
         // Prepare source filter context
         let local_player_id = self.local_player_id;
-        let current_target_id =
-            local_player_id.and_then(|id| self.current_targets.get(&id).map(|(tid, _, _)| *tid));
+        let current_target_id = local_player_id.and_then(|id| self.current_targets.get(&id).map(|(tid, _, _)| *tid));
         let boss_ids = get_boss_ids(encounter);
         let entities = get_entities(encounter);
         let pvp_factions = encounter.and_then(|e| e.pvp_faction_context());
 
         // In PvP, only classified teammates may claim raid-frame slots.
-        let can_register =
-            is_player && Self::can_register_target(local_player_id, source_id, target_id, encounter);
+        let can_register = is_player && Self::can_register_target(local_player_id, source_id, target_id, encounter);
 
         // Collect matching definitions with all info needed for creation
         struct RefreshableEffect {
@@ -1519,9 +1513,8 @@ impl EffectTracker {
                     min_stacks: refresh_ability.min_stacks(),
                     refresh_scope: def.refresh_scope,
                     single_instance_per_target: def.single_instance_per_target,
-                    defer_to_first_damage: refresh_ability.refresh_on_first_damage(
-                        def.display_targets.contains(&DisplayTarget::DotTracker),
-                    ),
+                    defer_to_first_damage: refresh_ability
+                        .refresh_on_first_damage(def.display_targets.contains(&DisplayTarget::DotTracker)),
                 })
             })
             .collect();
@@ -1554,13 +1547,8 @@ impl EffectTracker {
             // the raid frames. The true instance is created by the next
             // ApplyEffect (fresh cast) or ModifyCharges (untracked instance).
             if def.single_instance_per_target {
-                let group_ids: Vec<&str> =
-                    single_instance_ids.iter().map(String::as_str).collect();
-                let existing = Self::find_single_instance_effect(
-                    &mut self.active_effects,
-                    &group_ids,
-                    target_id,
-                );
+                let group_ids: Vec<&str> = single_instance_ids.iter().map(String::as_str).collect();
+                let existing = Self::find_single_instance_effect(&mut self.active_effects, &group_ids, target_id);
                 if let Some(effect) = existing.filter(|e| e.removed_at.is_none()) {
                     if let Some(min_stacks) = def.min_stacks
                         && effect.stacks < min_stacks
@@ -1584,9 +1572,7 @@ impl EffectTracker {
             // Handles self-cast abilities (e.g. Dark Ward) where target resolution
             // resolves to the combat target but the effect is keyed to the caster.
             // Only for NPC targets — player targets are intentional (e.g. heals).
-            let fallback_key = if target_id != source_id
-                && target_entity_type != EntityType::Player
-            {
+            let fallback_key = if target_id != source_id && target_entity_type != EntityType::Player {
                 Some(EffectKey::for_scope(&def.id, def.refresh_scope, source_id, source_id))
             } else {
                 None
@@ -1610,9 +1596,10 @@ impl EffectTracker {
 
                 // Check min_stacks condition if specified
                 if let Some(min_stacks) = def.min_stacks
-                    && effect.stacks < min_stacks {
-                        continue; // Skip refresh - not enough stacks
-                    }
+                    && effect.stacks < min_stacks
+                {
+                    continue; // Skip refresh - not enough stacks
+                }
 
                 // Existing effect - refresh duration
                 effect.refresh(timestamp, def.duration);
@@ -1703,12 +1690,7 @@ impl EffectTracker {
     ///   false-refreshing. Only damage within ±10ms of the primary target hit refreshes.
     /// - Immediate (`aoe_refresh_immediate = true`): any damage from the ability
     ///   after activation refreshes the target directly.
-    fn handle_damage_for_aoe_refresh(
-        &mut self,
-        ability_id: i64,
-        target_id: i64,
-        timestamp: NaiveDateTime,
-    ) {
+    fn handle_damage_for_aoe_refresh(&mut self, ability_id: i64, target_id: i64, timestamp: NaiveDateTime) {
         // Timeout for pending state (2 seconds - longer than any grenade travel time)
         const PENDING_TIMEOUT_MS: i64 = 2000;
         // Window for collecting additional targets after anchor (±10ms)
@@ -1718,9 +1700,7 @@ impl EffectTracker {
         if let Some(ref mut collecting) = self.aoe_collecting
             && collecting.ability_id == ability_id
         {
-            let diff_ms = (timestamp - collecting.anchor_timestamp)
-                .num_milliseconds()
-                .abs();
+            let diff_ms = (timestamp - collecting.anchor_timestamp).num_milliseconds().abs();
             if diff_ms <= COLLECT_WINDOW_MS {
                 // Within window - add target if not already collected
                 if !collecting.targets.contains(&target_id) {
@@ -1770,19 +1750,19 @@ impl EffectTracker {
     /// Immediately refresh effects with `aoe_refresh_immediate` on the damaged target.
     /// These effects have no ongoing ticks that could cause false refreshes,
     /// so any damage from the ability after activation is a valid refresh trigger.
-    fn refresh_aoe_immediate(
-        &mut self,
-        ability_id: i64,
-        source_id: i64,
-        target_id: i64,
-        timestamp: NaiveDateTime,
-    ) {
+    fn refresh_aoe_immediate(&mut self, ability_id: i64, source_id: i64, target_id: i64, timestamp: NaiveDateTime) {
         let refreshable: Vec<_> = self
             .definitions
             .find_refreshable_by(ability_id as u64, None)
             .into_iter()
             .filter(|def| def.aoe_refresh_immediate)
-            .map(|def| (def.id.clone(), def.refresh_scope, self.effective_duration(def, timestamp)))
+            .map(|def| {
+                (
+                    def.id.clone(),
+                    def.refresh_scope,
+                    self.effective_duration(def, timestamp),
+                )
+            })
             .collect();
 
         for (def_id, scope, duration) in &refreshable {
@@ -1806,7 +1786,13 @@ impl EffectTracker {
             .find_refreshable_by(collecting.ability_id as u64, None)
             .into_iter()
             .filter(|def| !def.aoe_refresh_immediate)
-            .map(|def| (def.id.clone(), def.refresh_scope, self.effective_duration(def, collecting.anchor_timestamp)))
+            .map(|def| {
+                (
+                    def.id.clone(),
+                    def.refresh_scope,
+                    self.effective_duration(def, collecting.anchor_timestamp),
+                )
+            })
             .collect();
 
         for target_id in collecting.targets {
@@ -1824,12 +1810,7 @@ impl EffectTracker {
     /// When a refresh ability is cast for a DotTracker effect, the refresh is deferred
     /// until the next damage event from that ability lands. This confirms which target
     /// was actually hit and refreshes the DOT on that specific target only.
-    fn handle_damage_for_dot_refresh(
-        &mut self,
-        ability_id: i64,
-        target_id: i64,
-        timestamp: NaiveDateTime,
-    ) {
+    fn handle_damage_for_dot_refresh(&mut self, ability_id: i64, target_id: i64, timestamp: NaiveDateTime) {
         const PENDING_TIMEOUT_MS: i64 = 2000;
 
         let Some(ref pending) = self.pending_dot_refresh else {
@@ -1876,15 +1857,22 @@ impl EffectTracker {
                 def.find_refresh_ability(ability_id as u64, None)
                     .is_some_and(|ra| ra.refresh_on_first_damage(is_dot_tracker))
             })
-            .map(|def| (def.id.clone(), def.refresh_scope, self.effective_duration(def, timestamp)))
+            .map(|def| {
+                (
+                    def.id.clone(),
+                    def.refresh_scope,
+                    self.effective_duration(def, timestamp),
+                )
+            })
             .collect();
 
         for (def_id, scope, duration) in &refreshable_def_ids {
             let key = EffectKey::for_scope(def_id, *scope, source_id, target_id);
             if let Some(effect) = self.active_effects.get_mut(&key)
-                && effect.removed_at.is_none() {
-                    effect.refresh(timestamp, *duration);
-                }
+                && effect.removed_at.is_none()
+            {
+                effect.refresh(timestamp, *duration);
+            }
         }
     }
 
@@ -1944,8 +1932,7 @@ impl EffectTracker {
 
         let entities = get_entities(encounter);
         let pvp_factions = encounter.and_then(|e| e.pvp_faction_context());
-        let current_target_id =
-            local_player_id.and_then(|id| self.current_targets.get(&id).map(|(tid, _, _)| *tid));
+        let current_target_id = local_player_id.and_then(|id| self.current_targets.get(&id).map(|(tid, _, _)| *tid));
         for def in matching_defs {
             // Only process AbilityCast triggers here (index also contains DamageTaken/HealingTaken)
             if !def.is_ability_cast_trigger() {
@@ -1975,17 +1962,14 @@ impl EffectTracker {
                 continue;
             }
 
-            if !self.matches_entity_disciplines(
-                &def.source_disciplines,
-                source_info.id,
-                source_info.entity_type,
-            ) {
+            if !self.matches_entity_disciplines(&def.source_disciplines, source_info.id, source_info.entity_type) {
                 continue;
             }
 
             // Instant alerts: fire and skip — no ActiveEffect created
             if def.is_alert {
-                self.fired_alerts.push(Self::build_instant_alert(def, timestamp, source_name, target_name, 1));
+                self.fired_alerts
+                    .push(Self::build_instant_alert(def, timestamp, source_name, target_name, 1));
                 continue;
             }
 
@@ -2043,7 +2027,7 @@ impl EffectTracker {
                         audio_enabled: false,
                         audio_file: None,
                         icon_ability_id: def.icon_ability_id,
-                    remaining_secs: None,
+                        remaining_secs: None,
                     });
                 }
             } else {
@@ -2092,7 +2076,7 @@ impl EffectTracker {
                         audio_enabled: false,
                         audio_file: None,
                         icon_ability_id: def.icon_ability_id,
-                    remaining_secs: None,
+                        remaining_secs: None,
                     });
                 }
             }
@@ -2155,7 +2139,8 @@ impl EffectTracker {
 
             // Instant alerts: fire and skip — no ActiveEffect created
             if def.is_alert {
-                self.fired_alerts.push(Self::build_instant_alert(def, timestamp, source_name, target_name, 1));
+                self.fired_alerts
+                    .push(Self::build_instant_alert(def, timestamp, source_name, target_name, 1));
                 continue;
             }
 
@@ -2186,7 +2171,7 @@ impl EffectTracker {
                         audio_enabled: false,
                         audio_file: None,
                         icon_ability_id: def.icon_ability_id,
-                    remaining_secs: None,
+                        remaining_secs: None,
                     });
                 }
             } else {
@@ -2233,7 +2218,7 @@ impl EffectTracker {
                         audio_enabled: false,
                         audio_file: None,
                         icon_ability_id: def.icon_ability_id,
-                    remaining_secs: None,
+                        remaining_secs: None,
                     });
                 }
             }
@@ -2312,11 +2297,7 @@ impl EffectTracker {
                 let matched = if self.active_effects.contains_key(&key) {
                     self.active_effects.get_mut(&key)
                 } else if def.single_instance_per_target {
-                    Self::find_single_instance_effect(
-                        &mut self.active_effects,
-                        &single_instance_ids,
-                        target_id,
-                    )
+                    Self::find_single_instance_effect(&mut self.active_effects, &single_instance_ids, target_id)
                 } else {
                     None
                 };
@@ -2337,12 +2318,12 @@ impl EffectTracker {
                         }
                     }
                 }
-            } else if def.is_effect_removed_trigger()
-                && self.matches_filters(def, source_info, target_info, encounter)
+            } else if def.is_effect_removed_trigger() && self.matches_filters(def, source_info, target_info, encounter)
             {
                 // Instant alerts: fire and skip — no ActiveEffect created
                 if def.is_alert {
-                    self.fired_alerts.push(Self::build_instant_alert(def, timestamp, source_name, target_name, 1));
+                    self.fired_alerts
+                        .push(Self::build_instant_alert(def, timestamp, source_name, target_name, 1));
                     continue;
                 }
 
@@ -2391,7 +2372,7 @@ impl EffectTracker {
                         audio_enabled: false,
                         audio_file: None,
                         icon_ability_id: def.icon_ability_id,
-                    remaining_secs: None,
+                        remaining_secs: None,
                     });
                 }
             }
@@ -2465,19 +2446,18 @@ impl EffectTracker {
             // Calculate duration before borrowing active_effects mutably.
             // Needed for the blanket is_refreshed_on_modify refresh AND for
             // refill_duration modifiers (which refill without is_refreshed_on_modify).
-            let needs_duration =
-                def.is_refreshed_on_modify || def.modifiers.iter().any(|m| m.refill_duration);
-            let duration = if needs_duration { self.effective_duration(def, timestamp) } else { None };
+            let needs_duration = def.is_refreshed_on_modify || def.modifiers.iter().any(|m| m.refill_duration);
+            let duration = if needs_duration {
+                self.effective_duration(def, timestamp)
+            } else {
+                None
+            };
             let icds: Vec<Option<f32>> = def.modifiers.iter().map(|m| self.effective_icd(m, timestamp)).collect();
 
             if let Some(effect) = if self.active_effects.contains_key(&key) {
                 self.active_effects.get_mut(&key)
             } else if def.single_instance_per_target {
-                Self::find_single_instance_effect(
-                    &mut self.active_effects,
-                    &single_instance_ids,
-                    target_id,
-                )
+                Self::find_single_instance_effect(&mut self.active_effects, &single_instance_ids, target_id)
             } else {
                 None
             } {
@@ -2485,7 +2465,9 @@ impl EffectTracker {
                 effect.set_stacks(charges);
 
                 // Refresh duration on ModifyCharges if is_refreshed_on_modify is set.
-                if def.is_refreshed_on_modify && let Some(dur) = duration {
+                if def.is_refreshed_on_modify
+                    && let Some(dur) = duration
+                {
                     effect.refresh_duration(timestamp, dur);
                 }
 
@@ -2498,7 +2480,8 @@ impl EffectTracker {
                         if !super::modifier_match::matches_self_charges(&modifier.trigger, old_stacks, charges) {
                             continue;
                         }
-                        if !effect.modifier_icd_ready(mod_idx, icds[mod_idx], modifier.icd_from_application, timestamp) {
+                        if !effect.modifier_icd_ready(mod_idx, icds[mod_idx], modifier.icd_from_application, timestamp)
+                        {
                             continue;
                         }
                         effect.modifier_last_proc[mod_idx] = Some(timestamp);
@@ -2519,9 +2502,8 @@ impl EffectTracker {
                                     continue;
                                 }
                             } else if modifier.adjust_duration_secs != 0.0 {
-                                let delta = chrono::Duration::milliseconds(
-                                    (modifier.adjust_duration_secs * 1000.0) as i64,
-                                );
+                                let delta =
+                                    chrono::Duration::milliseconds((modifier.adjust_duration_secs * 1000.0) as i64);
                                 expires + delta
                             } else {
                                 continue;
@@ -2631,9 +2613,11 @@ impl EffectTracker {
 
         for (key, effect) in self.active_effects.iter_mut() {
             if !outside_combat_ids.contains(key.definition_id.as_str())
-                && effect.mark_removed() && !effect.timer_expired {
-                    self.ticking_count = self.ticking_count.saturating_sub(1);
-                }
+                && effect.mark_removed()
+                && !effect.timer_expired
+            {
+                self.ticking_count = self.ticking_count.saturating_sub(1);
+            }
         }
     }
 
@@ -2694,8 +2678,7 @@ impl EffectTracker {
 
         // Get local player ID from self, boss entity IDs from encounter
         let local_player_id = self.local_player_id;
-        let current_target_id =
-            local_player_id.and_then(|id| self.current_targets.get(&id).map(|(tid, _, _)| *tid));
+        let current_target_id = local_player_id.and_then(|id| self.current_targets.get(&id).map(|(tid, _, _)| *tid));
         let boss_ids = get_boss_ids(encounter);
 
         let entities = get_entities(encounter);
@@ -2729,20 +2712,31 @@ impl EffectTracker {
     // ═══════════════════════════════════════════════════════════════════════════
 
     fn evaluate_modifiers(&mut self, signals: &[GameSignal]) {
-
         // Seed last_seen_charges from EffectApplied so first ChargesChanged has a baseline
         for s in signals {
-            if let GameSignal::EffectApplied { effect_id, target_id, charges, .. } = s
+            if let GameSignal::EffectApplied {
+                effect_id,
+                target_id,
+                charges,
+                ..
+            } = s
                 && let Some(c) = charges
-                    && *c > 0 {
-                        self.last_seen_charges.entry((*effect_id, *target_id)).or_insert(*c);
-                    }
+                && *c > 0
+            {
+                self.last_seen_charges.entry((*effect_id, *target_id)).or_insert(*c);
+            }
         }
 
         // Snapshot old charges for direction comparison, then update to new values
         let mut charge_snapshots: Vec<((i64, i64), u8, u8)> = Vec::new();
         for s in signals {
-            if let GameSignal::EffectChargesChanged { effect_id, target_id, charges, .. } = s {
+            if let GameSignal::EffectChargesChanged {
+                effect_id,
+                target_id,
+                charges,
+                ..
+            } = s
+            {
                 let key = (*effect_id, *target_id);
                 let old = self.last_seen_charges.get(&key).copied().unwrap_or(*charges);
                 charge_snapshots.push((key, old, *charges));
@@ -2779,16 +2773,19 @@ impl EffectTracker {
                 );
 
                 for hit in hits {
-                    adjustments.push((key.clone(), ModifierAdjustment {
-                        mod_idx,
-                        at: hit.at,
-                        adjust_duration_secs: modifier.adjust_duration_secs * hit.scale,
-                        refill_duration: modifier.refill_duration,
-                        icd_secs: self.effective_icd(modifier, hit.at),
-                        icd_from_application: modifier.icd_from_application,
-                        max_duration_secs: modifier.max_duration_secs,
-                        cancel: modifier.cancel,
-                    }));
+                    adjustments.push((
+                        key.clone(),
+                        ModifierAdjustment {
+                            mod_idx,
+                            at: hit.at,
+                            adjust_duration_secs: modifier.adjust_duration_secs * hit.scale,
+                            refill_duration: modifier.refill_duration,
+                            icd_secs: self.effective_icd(modifier, hit.at),
+                            icd_from_application: modifier.icd_from_application,
+                            max_duration_secs: modifier.max_duration_secs,
+                            cancel: modifier.cancel,
+                        },
+                    ));
                 }
             }
         }
@@ -2797,21 +2794,26 @@ impl EffectTracker {
         for (key, adj) in adjustments {
             // Pre-compute effective duration for refill before mutable borrow
             let refill_dur = if adj.refill_duration {
-                self.definitions.effects.get(&key.definition_id)
+                self.definitions
+                    .effects
+                    .get(&key.definition_id)
                     .and_then(|d| self.effective_duration(d, adj.at))
             } else {
                 None
             };
 
-            let Some(effect) = self.active_effects.get_mut(&key) else { continue };
+            let Some(effect) = self.active_effects.get_mut(&key) else {
+                continue;
+            };
             // Removed by an earlier hit in this batch (cancel), or genuinely
             // expired in log time before this hit — nothing to modify.
-            if effect.removed_at.is_some()
-                || (effect.timer_expired && effect.expires_at.is_some_and(|e| e < adj.at))
-            {
+            if effect.removed_at.is_some() || (effect.timer_expired && effect.expires_at.is_some_and(|e| e < adj.at)) {
                 continue;
             }
-            let modifier_count = self.definitions.effects.get(&key.definition_id)
+            let modifier_count = self
+                .definitions
+                .effects
+                .get(&key.definition_id)
                 .map(|d| d.modifiers.len())
                 .unwrap_or(0);
             effect.ensure_modifier_icd(modifier_count);
@@ -2897,11 +2899,7 @@ struct ModifierAdjustment {
 }
 
 impl SignalHandler for EffectTracker {
-    fn handle_signals(
-        &mut self,
-        signals: &[GameSignal],
-        encounter: Option<&crate::encounter::CombatEncounter>,
-    ) {
+    fn handle_signals(&mut self, signals: &[GameSignal], encounter: Option<&crate::encounter::CombatEncounter>) {
         for signal in signals {
             self.handle_signal(signal, encounter);
         }
@@ -2916,19 +2914,16 @@ impl SignalHandler for EffectTracker {
         // This ensures secondary targets have time to arrive across multiple batches,
         // while still finalizing promptly once the window has elapsed.
         if let Some(ref collecting) = self.aoe_collecting
-            && let Some(current_time) = self.current_game_time {
-                let elapsed_ms = (current_time - collecting.anchor_timestamp).num_milliseconds();
-                if elapsed_ms > 10 {
-                    self.finalize_aoe_refresh();
-                }
+            && let Some(current_time) = self.current_game_time
+        {
+            let elapsed_ms = (current_time - collecting.anchor_timestamp).num_milliseconds();
+            if elapsed_ms > 10 {
+                self.finalize_aoe_refresh();
             }
+        }
     }
 
-    fn handle_signal(
-        &mut self,
-        signal: &GameSignal,
-        encounter: Option<&crate::encounter::CombatEncounter>,
-    ) {
+    fn handle_signal(&mut self, signal: &GameSignal, encounter: Option<&crate::encounter::CombatEncounter>) {
         match signal {
             GameSignal::EffectApplied {
                 effect_id,

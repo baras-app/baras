@@ -6,16 +6,14 @@
 use crate::components::editor_sort::{ENCOUNTER_SORT_AZ, SortToggle, apply_rank, use_stable_rank};
 use dioxus::prelude::*;
 
-use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
-use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
 use crate::api;
-use crate::types::{
-    BossWithPath, ChallengeColumns, ChallengeDefinition, ChallengeMetric, EncounterItem,
-};
+use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
+use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
+use crate::types::{BossWithPath, ChallengeColumns, ChallengeDefinition, ChallengeMetric, EncounterItem};
 
+use super::InlineNameCreator;
 use super::challenge_form::ChallengeEditForm;
 use super::tabs::EncounterData;
-use super::InlineNameCreator;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Challenges Tab
@@ -49,7 +47,10 @@ pub fn ChallengesTab(
     // Extract challenges from BossWithPath
     let challenges = boss_with_path.boss.challenges.clone();
     // A–Z when toggled; renaming leaves the row in place
-    let rank = use_stable_rank(challenges.iter().map(|x| (x.id.as_str(), x.name.as_str())), ENCOUNTER_SORT_AZ());
+    let rank = use_stable_rank(
+        challenges.iter().map(|x| (x.id.as_str(), x.name.as_str())),
+        ENCOUNTER_SORT_AZ(),
+    );
     let mut sorted_challenges = challenges.clone();
     apply_rank(&mut sorted_challenges, &rank.read(), |x| &x.id);
     let origin_of = |id: &str| {
@@ -161,9 +162,7 @@ fn ChallengeRow(
 
     // Origin classification
     let is_builtin = boss_with_path.builtin_challenge_ids.contains(&challenge.id);
-    let is_modified = boss_with_path
-        .modified_challenge_ids
-        .contains(&challenge.id);
+    let is_modified = boss_with_path.modified_challenge_ids.contains(&challenge.id);
 
     // Clones for enable toggle closure
     let challenge_for_enable = challenge.clone();
@@ -294,11 +293,7 @@ fn ChallengeRow(
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[component]
-pub fn IdChipEditor(
-    ids: Vec<u64>,
-    placeholder: &'static str,
-    on_change: EventHandler<Vec<u64>>,
-) -> Element {
+pub fn IdChipEditor(ids: Vec<u64>, placeholder: &'static str, on_change: EventHandler<Vec<u64>>) -> Element {
     let mut new_input = use_signal(String::new);
     let ids_for_keydown = ids.clone();
     let ids_for_click = ids.clone();

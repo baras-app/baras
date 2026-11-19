@@ -15,7 +15,11 @@ pub fn ChallengesTab(draft: SettingsDraft, actions: Element) -> Element {
     let horizontal = matches!(cfg.layout, ChallengeLayout::Horizontal);
     let direction = if horizontal { "horizontal" } else { "vertical" }.to_string();
     let stack_from = if cfg.stack_from_end { "end" } else { "start" }.to_string();
-    let stack_options = if horizontal { vec![("start", "Left"), ("end", "Right")] } else { vec![("start", "Top"), ("end", "Bottom")] };
+    let stack_options = if horizontal {
+        vec![("start", "Left"), ("end", "Right")]
+    } else {
+        vec![("start", "Top"), ("end", "Bottom")]
+    };
 
     rsx! {
         div { class: "settings-section",

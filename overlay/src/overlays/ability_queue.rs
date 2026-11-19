@@ -9,7 +9,7 @@ use super::{AbilityQueueData, Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
 use crate::utils::{color_from_rgba, shared_scaled_icons};
-use crate::widgets::{colors, ProgressBar};
+use crate::widgets::{ProgressBar, colors};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration
@@ -112,19 +112,19 @@ pub struct AbilityQueueOverlay {
 }
 
 impl AbilityQueueOverlay {
-    pub fn new(
-        window_config: OverlayConfig,
-        config: AbilityQueueConfig,
-    ) -> Result<Self, PlatformError> {
+    pub fn new(window_config: OverlayConfig, config: AbilityQueueConfig) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
         frame.set_label("Ability Queue");
-        Ok(Self { frame, config, data: AbilityQueueData::default() })
+        Ok(Self {
+            frame,
+            config,
+            data: AbilityQueueData::default(),
+        })
     }
 
     pub fn set_config(&mut self, config: AbilityQueueConfig) {
         self.config = config;
     }
-
 
     pub fn set_data(&mut self, data: AbilityQueueData) {
         let bar_height = self.frame.scaled(BASE_BAR_HEIGHT);
@@ -132,8 +132,7 @@ impl AbilityQueueOverlay {
         for entry in &data.entries {
             if let (Some(ability_id), Some(icon_arc)) = (entry.icon_ability_id, &entry.icon) {
                 let (src_w, src_h, ref src_data) = **icon_arc;
-                let _ = shared_scaled_icons()
-                    .get_or_scale(ability_id, icon_size, src_data, src_w, src_h);
+                let _ = shared_scaled_icons().get_or_scale(ability_id, icon_size, src_data, src_w, src_h);
             }
         }
         self.data = data;
@@ -167,9 +166,18 @@ impl AbilityQueueOverlay {
             let (tw, _) = self.frame.measure_text_styled(text, font_size, true, false);
             let tx = padding + (content_width - tw).max(0.0) / 2.0;
             let ty = y + gcd_h / 2.0 + font_size / 3.0;
-            self.frame.draw_text_with_glow(text, tx, ty, font_size, font_color, true, false);
+            self.frame
+                .draw_text_with_glow(text, tx, ty, font_size, font_color, true, false);
         }
-        draw_bar_border(&mut self.frame, padding, y, content_width, gcd_h, bar_radius, GCD_BORDER);
+        draw_bar_border(
+            &mut self.frame,
+            padding,
+            y,
+            content_width,
+            gcd_h,
+            bar_radius,
+            GCD_BORDER,
+        );
         y += gcd_h + gcd_gap;
 
         // Static "Next:" row — centered horizontally within the content area.
@@ -182,8 +190,17 @@ impl AbilityQueueOverlay {
             let total_w = label_w + gap + name_w;
             let start_x = padding + (content_width - total_w).max(0.0) / 2.0;
             let text_y = y + bar_h / 2.0 + font_size / 3.0;
-            self.frame.draw_text_with_glow(label, start_x, text_y, font_size, font_color, true, false);
-            self.frame.draw_text_with_glow(name, start_x + label_w + gap, text_y, font_size, font_color, true, false);
+            self.frame
+                .draw_text_with_glow(label, start_x, text_y, font_size, font_color, true, false);
+            self.frame.draw_text_with_glow(
+                name,
+                start_x + label_w + gap,
+                text_y,
+                font_size,
+                font_color,
+                true,
+                false,
+            );
         }
         y += bar_h + entry_spacing;
 
@@ -210,7 +227,15 @@ impl AbilityQueueOverlay {
             .with_bold_text()
             .with_text_glow()
             .render(&mut self.frame, padding, y, content_width, bar_h, font_size, bar_radius);
-        draw_bar_border(&mut self.frame, padding, y, content_width, bar_h, bar_radius, READY_BORDER);
+        draw_bar_border(
+            &mut self.frame,
+            padding,
+            y,
+            content_width,
+            bar_h,
+            bar_radius,
+            READY_BORDER,
+        );
         y += bar_h + entry_spacing;
 
         ProgressBar::new("Low Priority", 0.55)
@@ -259,10 +284,10 @@ impl AbilityQueueOverlay {
             let pinned: Vec<_> = self.data.entries.iter().filter(|e| e.is_pinned).collect();
             let gcd_remaining = pinned.first().map(|e| e.remaining_secs).unwrap_or(0.0);
 
-            let mut regular: Vec<_> =
-                self.data.entries.iter().filter(|e| !e.is_pinned).collect();
+            let mut regular: Vec<_> = self.data.entries.iter().filter(|e| !e.is_pinned).collect();
             regular.sort_by(|x, y| {
-                y.queue_priority.cmp(&x.queue_priority)
+                y.queue_priority
+                    .cmp(&x.queue_priority)
                     .then_with(|| x.name.cmp(&y.name))
             });
 
@@ -275,9 +300,7 @@ impl AbilityQueueOverlay {
                 let mut i = 0;
                 while i < regular.len() {
                     let mut j = i + 1;
-                    while j < regular.len()
-                        && regular[j].queue_priority == regular[i].queue_priority
-                    {
+                    while j < regular.len() && regular[j].queue_priority == regular[i].queue_priority {
                         j += 1;
                     }
                     if j - i >= 2 {
@@ -299,11 +322,7 @@ impl AbilityQueueOverlay {
             // excluded entirely.
             let max_eligible_priority = regular
                 .iter()
-                .filter(|e| {
-                    !e.is_blocked
-                        && !e.hide_from_next
-                        && (e.is_queued || e.remaining_secs <= gcd_remaining)
-                })
+                .filter(|e| !e.is_blocked && !e.hide_from_next && (e.is_queued || e.remaining_secs <= gcd_remaining))
                 .map(|e| e.queue_priority)
                 .max();
 
@@ -311,7 +330,9 @@ impl AbilityQueueOverlay {
             let mut rendered = 0;
 
             for e in &pinned {
-                if rendered >= max { break; }
+                if rendered >= max {
+                    break;
+                }
                 rows.push(RenderRow {
                     kind: RowKind::Gcd,
                     name: "GCD".to_string(),
@@ -326,7 +347,9 @@ impl AbilityQueueOverlay {
                 rendered += 1;
             }
             for (idx, e) in regular.iter().enumerate() {
-                if rendered >= max { break; }
+                if rendered >= max {
+                    break;
+                }
                 let (right_text, progress) = if e.is_queued {
                     // Ready rows with a blocker active read "Blocked" instead
                     // of "READY" so the user knows why it isn't glowing gold.
@@ -335,19 +358,24 @@ impl AbilityQueueOverlay {
                 } else {
                     // `countdown_bar` inverts the fill direction: full at start,
                     // empty at expiry. Default stays the filling-up progress bar.
-                    let fill = if e.countdown_bar { 1.0 - e.progress() } else { e.progress() };
+                    let fill = if e.countdown_bar {
+                        1.0 - e.progress()
+                    } else {
+                        e.progress()
+                    };
                     (
                         baras_types::formatting::format_countdown(e.remaining_secs, "", "0:00", false),
                         fill,
                     )
                 };
-                let eligible = !e.is_blocked
-                    && !e.hide_from_next
-                    && (e.is_queued || e.remaining_secs <= gcd_remaining);
-                let highlighted =
-                    eligible && max_eligible_priority == Some(e.queue_priority);
+                let eligible = !e.is_blocked && !e.hide_from_next && (e.is_queued || e.remaining_secs <= gcd_remaining);
+                let highlighted = eligible && max_eligible_priority == Some(e.queue_priority);
                 rows.push(RenderRow {
-                    kind: if e.is_queued { RowKind::Ready } else { RowKind::Countdown },
+                    kind: if e.is_queued {
+                        RowKind::Ready
+                    } else {
+                        RowKind::Countdown
+                    },
                     name: e.name.clone(),
                     progress,
                     right_text,
@@ -374,12 +402,7 @@ impl AbilityQueueOverlay {
         let has_gcd_row = gcd_count > 0;
         let other_count = rows.len() - gcd_count;
         // group_ids are allocated contiguously from 0, so max+1 = count.
-        let num_groups = rows
-            .iter()
-            .filter_map(|r| r.group_id)
-            .max()
-            .map(|m| m + 1)
-            .unwrap_or(0);
+        let num_groups = rows.iter().filter_map(|r| r.group_id).max().map(|m| m + 1).unwrap_or(0);
         let group_vpad = self.frame.scaled(BASE_GROUP_VPAD);
         let group_inset = self.frame.scaled(BASE_GROUP_INSET);
         let content_height = if rows.is_empty() {
@@ -414,7 +437,15 @@ impl AbilityQueueOverlay {
         // Phantom GCD outline — keeps the GCD slot reserved so downstream rows
         // don't shift vertically when the GCD comes and goes between frames.
         if !has_gcd_row {
-            draw_bar_border(&mut self.frame, padding, y, content_width, gcd_h, bar_radius, GCD_BORDER);
+            draw_bar_border(
+                &mut self.frame,
+                padding,
+                y,
+                content_width,
+                gcd_h,
+                bar_radius,
+                GCD_BORDER,
+            );
             y += gcd_h + gcd_gap;
         }
 
@@ -434,8 +465,16 @@ impl AbilityQueueOverlay {
             // ability (or tied abilities) would fire on the next GCD resolution.
             if !is_gcd && !next_section_drawn {
                 self.draw_next_section(
-                    &rows, padding, y, bar_h, content_width, icon_size, icon_size_u32,
-                    icon_padding, font_size, font_color,
+                    &rows,
+                    padding,
+                    y,
+                    bar_h,
+                    content_width,
+                    icon_size,
+                    icon_size_u32,
+                    icon_padding,
+                    font_size,
+                    font_color,
                 );
                 y += bar_h + entry_spacing;
                 next_section_drawn = true;
@@ -443,10 +482,8 @@ impl AbilityQueueOverlay {
 
             // Detect group boundaries by comparing against immediate neighbours.
             // Ties are contiguous after sorting, so this is sufficient.
-            let first_in_group = row.group_id.is_some()
-                && (i == 0 || rows[i - 1].group_id != row.group_id);
-            let last_in_group = row.group_id.is_some()
-                && rows.get(i + 1).and_then(|r| r.group_id) != row.group_id;
+            let first_in_group = row.group_id.is_some() && (i == 0 || rows[i - 1].group_id != row.group_id);
+            let last_in_group = row.group_id.is_some() && rows.get(i + 1).and_then(|r| r.group_id) != row.group_id;
 
             // Opening a group: remember outline top edge and push the row down
             // by the vertical pad so the outline has breathing room above.
@@ -488,7 +525,8 @@ impl AbilityQueueOverlay {
                 let (tw, _) = self.frame.measure_text_styled(&text, font_size, true, false);
                 let tx = row_x + (row_w - tw).max(0.0) / 2.0;
                 let text_y = y + row_h / 2.0 + font_size / 3.0;
-                self.frame.draw_text_with_glow(&text, tx, text_y, font_size, font_color, true, false);
+                self.frame
+                    .draw_text_with_glow(&text, tx, text_y, font_size, font_color, true, false);
             } else {
                 let mut bar = ProgressBar::new(&row.name, row.progress)
                     .with_fill_color(fill_color)
@@ -521,32 +559,52 @@ impl AbilityQueueOverlay {
                 let icon_x = row_x + icon_padding;
                 let icon_y = y + icon_padding;
 
-                let icon_drawn = if let Some(scaled) =
-                    shared_scaled_icons().get(ability_id, icon_size_u32)
-                {
-                    self.frame.draw_image(&scaled, icon_size_u32, icon_size_u32, icon_x, icon_y, icon_size, icon_size);
+                let icon_drawn = if let Some(scaled) = shared_scaled_icons().get(ability_id, icon_size_u32) {
+                    self.frame.draw_image(
+                        &scaled,
+                        icon_size_u32,
+                        icon_size_u32,
+                        icon_x,
+                        icon_y,
+                        icon_size,
+                        icon_size,
+                    );
                     true
                 } else if let Some(entry) = self.data.entries.iter().find(|e| e.icon_ability_id == Some(ability_id)) {
                     if let Some(ref icon_arc) = entry.icon {
                         let (img_w, img_h, ref rgba) = **icon_arc;
-                        self.frame.draw_image(rgba, img_w, img_h, icon_x, icon_y, icon_size, icon_size);
+                        self.frame
+                            .draw_image(rgba, img_w, img_h, icon_x, icon_y, icon_size, icon_size);
                         true
-                    } else { false }
-                } else { false };
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                };
 
                 if icon_drawn {
                     let icon_radius = 2.0 * self.frame.scale_factor();
                     let glow_expand = 1.0 * self.frame.scale_factor();
                     let outer_glow = tiny_skia::Color::from_rgba(1.0, 1.0, 1.0, 0.25).unwrap();
                     self.frame.stroke_rounded_rect(
-                        icon_x - glow_expand, icon_y - glow_expand,
-                        icon_size + glow_expand * 2.0, icon_size + glow_expand * 2.0,
-                        icon_radius + glow_expand, 1.5 * self.frame.scale_factor(), outer_glow,
+                        icon_x - glow_expand,
+                        icon_y - glow_expand,
+                        icon_size + glow_expand * 2.0,
+                        icon_size + glow_expand * 2.0,
+                        icon_radius + glow_expand,
+                        1.5 * self.frame.scale_factor(),
+                        outer_glow,
                     );
                     let inner_border = tiny_skia::Color::from_rgba(1.0, 1.0, 1.0, 0.6).unwrap();
                     self.frame.stroke_rounded_rect(
-                        icon_x, icon_y, icon_size, icon_size,
-                        icon_radius, 1.0 * self.frame.scale_factor(), inner_border,
+                        icon_x,
+                        icon_y,
+                        icon_size,
+                        icon_size,
+                        icon_radius,
+                        1.0 * self.frame.scale_factor(),
+                        inner_border,
                     );
                 }
             }
@@ -558,8 +616,12 @@ impl AbilityQueueOverlay {
                 y += row_h + group_vpad;
                 draw_bar_border(
                     &mut self.frame,
-                    padding, group_top_y, content_width, y - group_top_y,
-                    bar_radius, GROUP_BORDER,
+                    padding,
+                    group_top_y,
+                    content_width,
+                    y - group_top_y,
+                    bar_radius,
+                    GROUP_BORDER,
                 );
                 if i + 1 < rows.len() {
                     y += entry_spacing;
@@ -574,8 +636,16 @@ impl AbilityQueueOverlay {
         if !next_section_drawn {
             let next_y = padding + gcd_h + gcd_gap;
             self.draw_next_section(
-                &rows, padding, next_y, bar_h, content_width, icon_size, icon_size_u32,
-                icon_padding, font_size, font_color,
+                &rows,
+                padding,
+                next_y,
+                bar_h,
+                content_width,
+                icon_size,
+                icon_size_u32,
+                icon_padding,
+                font_size,
+                font_color,
             );
         }
 
@@ -654,25 +724,33 @@ impl AbilityQueueOverlay {
 
         // ── Draw pass: start at the centered offset.
         let start_x = padding + (content_width - total_w).max(0.0) / 2.0;
-        self.frame.draw_text_with_glow(label, start_x, text_y, font_size, font_color, true, false);
+        self.frame
+            .draw_text_with_glow(label, start_x, text_y, font_size, font_color, true, false);
         let mut cursor_x = start_x + label_w + gap;
 
         if highlighted.is_empty() {
-            self.frame.draw_text_with_glow("—", cursor_x, text_y, font_size, font_color, false, false);
+            self.frame
+                .draw_text_with_glow("—", cursor_x, text_y, font_size, font_color, false, false);
             return;
         }
 
         for (idx, row) in highlighted.iter().enumerate() {
             if idx > 0 {
-                self.frame.draw_text_with_glow(sep_text, cursor_x, text_y, font_size, font_color, false, false);
+                self.frame
+                    .draw_text_with_glow(sep_text, cursor_x, text_y, font_size, font_color, false, false);
                 cursor_x += sep_w;
             }
 
             let drew_icon = if let Some(ability_id) = row.icon_ability_id {
                 if let Some(scaled) = shared_scaled_icons().get(ability_id, icon_size_u32) {
                     self.frame.draw_image(
-                        &scaled, icon_size_u32, icon_size_u32,
-                        cursor_x, ic_y, icon_size, icon_size,
+                        &scaled,
+                        icon_size_u32,
+                        icon_size_u32,
+                        cursor_x,
+                        ic_y,
+                        icon_size,
+                        icon_size,
                     );
                     cursor_x += icon_size;
                     true
@@ -691,17 +769,20 @@ impl AbilityQueueOverlay {
             if is_compact && drew_icon {
                 if let Some(initials) = ability_initials(&row.name) {
                     cursor_x += icon_padding;
-                    self.frame.draw_text_with_glow(&initials, cursor_x, text_y, font_size, font_color, true, false);
+                    self.frame
+                        .draw_text_with_glow(&initials, cursor_x, text_y, font_size, font_color, true, false);
                     let (init_w, _) = self.frame.measure_text_styled(&initials, font_size, true, false);
                     cursor_x += init_w;
                 }
             } else if !drew_icon {
-                self.frame.draw_text_with_glow(&row.name, cursor_x, text_y, font_size, font_color, true, false);
+                self.frame
+                    .draw_text_with_glow(&row.name, cursor_x, text_y, font_size, font_color, true, false);
                 let (name_w, _) = self.frame.measure_text_styled(&row.name, font_size, true, false);
                 cursor_x += name_w;
             } else {
                 cursor_x += icon_padding;
-                self.frame.draw_text_with_glow(&row.name, cursor_x, text_y, font_size, font_color, true, false);
+                self.frame
+                    .draw_text_with_glow(&row.name, cursor_x, text_y, font_size, font_color, true, false);
                 let (name_w, _) = self.frame.measure_text_styled(&row.name, font_size, true, false);
                 cursor_x += name_w;
             }
@@ -746,28 +827,20 @@ fn dim_color(color: tiny_skia::Color, alpha_mul: f32) -> tiny_skia::Color {
     .unwrap_or(color)
 }
 
-fn draw_bar_border(
-    frame: &mut OverlayFrame,
-    x: f32, y: f32, w: f32, h: f32,
-    radius: f32,
-    color: [u8; 4],
-) {
+fn draw_bar_border(frame: &mut OverlayFrame, x: f32, y: f32, w: f32, h: f32, radius: f32, color: [u8; 4]) {
     let c = tiny_skia::Color::from_rgba(
         color[0] as f32 / 255.0,
         color[1] as f32 / 255.0,
         color[2] as f32 / 255.0,
         color[3] as f32 / 255.0,
-    ).unwrap_or(tiny_skia::Color::WHITE);
+    )
+    .unwrap_or(tiny_skia::Color::WHITE);
     frame.stroke_rounded_rect(x, y, w, h, radius, 1.5 * frame.scale_factor(), c);
 }
 
 /// Layered gold glow marking the "next cast" row(s): outer halo, thick gold
 /// border, and a subtle inner tint. Drawn on top of the progress bar.
-fn draw_highlight_glow(
-    frame: &mut OverlayFrame,
-    x: f32, y: f32, w: f32, h: f32,
-    radius: f32,
-) {
+fn draw_highlight_glow(frame: &mut OverlayFrame, x: f32, y: f32, w: f32, h: f32, radius: f32) {
     let scale = frame.scale_factor();
 
     // Inner tint for glow depth
@@ -778,9 +851,13 @@ fn draw_highlight_glow(
     let expand = 2.0 * scale;
     let halo = color_from_rgba(NEXT_HALO);
     frame.stroke_rounded_rect(
-        x - expand, y - expand,
-        w + expand * 2.0, h + expand * 2.0,
-        radius + expand, 2.5 * scale, halo,
+        x - expand,
+        y - expand,
+        w + expand * 2.0,
+        h + expand * 2.0,
+        radius + expand,
+        2.5 * scale,
+        halo,
     );
 
     // Main gold border — thicker than the standard 1.5px stroke

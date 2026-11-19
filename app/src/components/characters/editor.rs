@@ -4,8 +4,7 @@
 use dioxus::prelude::*;
 
 use baras_types::characters::{
-    CHARACTER_NOTE_MAX, CLASSES, CREW_SKILLS, CharacterRecord, CharacterRow, Faction, Lockout, ManualLock,
-    OperationRef,
+    CHARACTER_NOTE_MAX, CLASSES, CREW_SKILLS, CharacterRecord, CharacterRow, Faction, Lockout, ManualLock, OperationRef,
 };
 
 use crate::api;
@@ -15,7 +14,11 @@ use super::lockouts::{tier_short, until};
 
 const SERVER_OPTIONS: &str = "character-server-options";
 const OPERATION_OPTIONS: &str = "character-operation-options";
-const TIERS: &[(&str, &str)] = &[("Story", "Story mode"), ("Veteran", "Veteran mode"), ("Master", "Master mode")];
+const TIERS: &[(&str, &str)] = &[
+    ("Story", "Story mode"),
+    ("Veteran", "Veteran mode"),
+    ("Master", "Master mode"),
+];
 
 /// What the editor opens on: a saved or discovered row, or nothing (new)
 #[derive(Clone, PartialEq)]
@@ -32,7 +35,11 @@ impl From<&CharacterRow> for EditTarget {
                 name: row.name.clone(),
                 server: row.server.clone(),
                 // Auto-derived classes stay auto until the user picks
-                classes: if row.classes_auto { Vec::new() } else { row.classes.iter().map(|c| c.name.clone()).collect() },
+                classes: if row.classes_auto {
+                    Vec::new()
+                } else {
+                    row.classes.iter().map(|c| c.name.clone()).collect()
+                },
                 crew_skills: row.crew_skills.clone(),
                 guild: row.guild.clone(),
                 faction: Some(row.faction).filter(|f| *f != Faction::Unknown),
@@ -101,7 +108,12 @@ pub fn CharacterEditor(
                 return;
             }
             let area_id = operations.iter().find(|o| o.name == operation).map_or(0, |o| o.area_id);
-            let lock = ManualLock { operation, area_id, tier: lock_tier.read().clone(), marked_ms: js_sys::Date::now() as i64 };
+            let lock = ManualLock {
+                operation,
+                area_id,
+                tier: lock_tier.read().clone(),
+                marked_ms: js_sys::Date::now() as i64,
+            };
             spawn(async move {
                 match api::add_manual_lock(&key, &lock).await {
                     Ok(true) => {

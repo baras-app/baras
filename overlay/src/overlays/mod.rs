@@ -18,8 +18,8 @@ mod combat_time;
 mod cooldowns;
 mod dot_tracker;
 mod effects;
-mod enemy_frames;
 mod effects_ab;
+mod enemy_frames;
 mod metric;
 mod metric_values;
 mod notes;
@@ -29,22 +29,19 @@ mod raid;
 mod timers;
 
 pub use ability_cast::{AbilityCastConfig, AbilityCastData, AbilityCastEntry, AbilityCastOverlay};
+pub use ability_queue::{AbilityQueueConfig, AbilityQueueOverlay};
 pub use alerts::{AlertEntry, AlertsData, AlertsOverlay};
 pub use boss_health::{BossEffectIcon, BossHealthData, BossHealthOverlay};
-pub use combat_time::{CombatTimeConfig, CombatTimeData, CombatTimeOverlay};
 pub use challenges::{ChallengeData, ChallengeEntry, ChallengeOverlay, PlayerContribution};
+pub use combat_time::{CombatTimeConfig, CombatTimeData, CombatTimeOverlay};
 pub use cooldowns::{CooldownConfig, CooldownData, CooldownEntry, CooldownOverlay};
 pub use dot_tracker::{DotEntry, DotTarget, DotTrackerConfig, DotTrackerData, DotTrackerOverlay};
-pub use enemy_frames::{
-    EnemyFrame, EnemyFramesConfig, EnemyFramesData, EnemyFramesOverlay,
-};
+pub use effects::{EffectEntry, EffectsData, EffectsOverlay};
+pub use effects_ab::{EffectABEntry, EffectsABConfig, EffectsABData, EffectsABOverlay, EffectsLayout};
+pub use enemy_frames::{EnemyFrame, EnemyFramesConfig, EnemyFramesData, EnemyFramesOverlay};
+pub use metric::{MetricData, MetricEntry, MetricOverlay};
 pub use notes::{NotesConfig, NotesData, NotesOverlay};
 pub use operation_timer::{OperationTimerConfig, OperationTimerData, OperationTimerOverlay};
-pub use effects::{EffectEntry, EffectsData, EffectsOverlay};
-pub use effects_ab::{
-    EffectABEntry, EffectsABConfig, EffectsABData, EffectsABOverlay, EffectsLayout,
-};
-pub use metric::{MetricData, MetricEntry, MetricOverlay};
 pub use personal::{PersonalOverlay, PersonalStats};
 pub use raid::{
     // Effect config bounds (for UI sliders, validation, etc.)
@@ -65,7 +62,6 @@ pub use raid::{
     SwapState,
     raid_slot_rects,
 };
-pub use ability_queue::{AbilityQueueConfig, AbilityQueueOverlay};
 pub use timers::{AbilityQueueData, AbilityQueueEntry, TimerData, TimerEntry, TimerOverlay};
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -95,8 +91,8 @@ pub enum RaidRegistryAction {
 
 use crate::frame::OverlayFrame;
 use baras_core::context::{
-    AlertsOverlayConfig, BossHealthConfig, ChallengeOverlayConfig, OverlayAppearanceConfig,
-    PersonalOverlayConfig, TimerOverlayConfig,
+    AlertsOverlayConfig, BossHealthConfig, ChallengeOverlayConfig, OverlayAppearanceConfig, PersonalOverlayConfig,
+    TimerOverlayConfig,
 };
 use baras_types::{ClassColorConfig, ClassIconMode};
 
@@ -158,7 +154,19 @@ pub enum OverlayData {
 #[derive(Debug, Clone)]
 pub enum OverlayConfigUpdate {
     /// Appearance config for metric overlays (+ show_empty, stack_bottom, scale, icon_mode, font_scale, dynamic_background, european, show_background_bar, class_colors, gradient_intensity)
-    Metric(OverlayAppearanceConfig, bool, bool, f32, ClassIconMode, f32, bool, bool, bool, ClassColorConfig, f32),
+    Metric(
+        OverlayAppearanceConfig,
+        bool,
+        bool,
+        f32,
+        ClassIconMode,
+        f32,
+        bool,
+        bool,
+        bool,
+        ClassColorConfig,
+        f32,
+    ),
     /// Config for personal overlay (+ european)
     Personal(PersonalOverlayConfig, bool),
     /// Config for raid overlay (+ european)
@@ -320,12 +328,7 @@ pub trait Overlay: 'static {
 
 /// Source/target annotation for personal overlays (Effects A/B/C, Cooldowns).
 /// Both → `Source → Target`; target only → `T: Target`; source only → `Source`.
-pub(crate) fn entity_label(
-    display_source: bool,
-    source: &str,
-    show_target: bool,
-    target: &str,
-) -> Option<String> {
+pub(crate) fn entity_label(display_source: bool, source: &str, show_target: bool, target: &str) -> Option<String> {
     let src = display_source && !source.is_empty();
     let tgt = show_target && !target.is_empty();
     match (src, tgt) {

@@ -37,7 +37,10 @@ pub fn MetricTab(draft: SettingsDraft, tab_key: String, actions: Element) -> Ele
     let (tab_max, tab_spacing, tab_custom_spacing, tab_reset) =
         (tab_key.clone(), tab_key.clone(), tab_key.clone(), tab_key.clone());
     let (tab_template, tab_preset) = (tab_key.clone(), tab_key.clone());
-    let preset = PRESETS.iter().find(|(t, _)| *t == a.template).map_or(CUSTOM, |(t, _)| *t);
+    let preset = PRESETS
+        .iter()
+        .find(|(t, _)| *t == a.template)
+        .map_or(CUSTOM, |(t, _)| *t);
     let tab_insert = tab_key.clone();
 
     rsx! {

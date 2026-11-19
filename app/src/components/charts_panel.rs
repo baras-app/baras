@@ -56,16 +56,12 @@ fn merge_effect_windows(mut windows: Vec<EffectWindow>) -> Vec<EffectWindow> {
 /// vertical lanes scaled to `y_scale` (burst max for rate charts, 100 for HP%).
 /// Returns an object with an (possibly empty) `data` array — an empty array
 /// clears any previous highlights when merged into an existing series.
-fn build_mark_area_object(
-    effect_windows: &[(i64, EffectWindow, &str)],
-    y_scale: f64,
-) -> js_sys::Object {
+fn build_mark_area_object(effect_windows: &[(i64, EffectWindow, &str)], y_scale: f64) -> js_sys::Object {
     let mark_area = js_sys::Object::new();
     let mark_data = js_sys::Array::new();
 
     let mut effect_order: Vec<i64> = Vec::new();
-    let mut grouped: std::collections::HashMap<i64, (Vec<EffectWindow>, &str)> =
-        std::collections::HashMap::new();
+    let mut grouped: std::collections::HashMap<i64, (Vec<EffectWindow>, &str)> = std::collections::HashMap::new();
     for (eid, window, win_color) in effect_windows.iter() {
         if !effect_order.contains(eid) {
             effect_order.push(*eid);
@@ -124,7 +120,11 @@ fn apply_effect_markareas(chart: &JsValue, effect_windows: &[(i64, EffectWindow,
 fn axis_tooltip() -> js_sys::Object {
     let tooltip = js_sys::Object::new();
     js_set(&tooltip, "trigger", &JsValue::from_str("axis"));
-    js_set(&tooltip, "backgroundColor", &JsValue::from_str(&css_var("--bg-elevated")));
+    js_set(
+        &tooltip,
+        "backgroundColor",
+        &JsValue::from_str(&css_var("--bg-elevated")),
+    );
     js_set(&tooltip, "borderColor", &JsValue::from_str(&css_var("--border-strong")));
     let text = js_sys::Object::new();
     js_set(&text, "color", &JsValue::from_str(&css_var("--text-primary")));
@@ -140,7 +140,9 @@ fn no_hover_emphasis(opt: &js_sys::Object) {
     let pointer = js_sys::Object::new();
     js_set(&pointer, "triggerEmphasis", &JsValue::FALSE);
     js_set(opt, "axisPointer", &pointer);
-    let Ok(series) = js_sys::Reflect::get(opt, &JsValue::from_str("series")) else { return };
+    let Ok(series) = js_sys::Reflect::get(opt, &JsValue::from_str("series")) else {
+        return;
+    };
     for s in js_sys::Array::from(&series).iter() {
         let emphasis = js_sys::Object::new();
         js_set(&emphasis, "disabled", &JsValue::TRUE);
@@ -266,10 +268,7 @@ fn build_time_series_option(
     let num_buckets = ((max_time_ms - min_time_ms) / bucket_ms + 1) as usize;
 
     // Create sparse lookup from data
-    let sparse: std::collections::HashMap<i64, f64> = data
-        .iter()
-        .map(|p| (p.bucket_start_ms, p.total_value))
-        .collect();
+    let sparse: std::collections::HashMap<i64, f64> = data.iter().map(|p| (p.bucket_start_ms, p.total_value)).collect();
 
     // Generate dense time series with 0s for missing buckets
     let mut dense_data: Vec<(f64, f64)> = Vec::with_capacity(num_buckets);
@@ -369,10 +368,8 @@ fn build_time_series_option(
     // Optional secondary series (e.g., EHPS alongside raw HPS)
     if let (Some(sec_data), Some(sec_color)) = (secondary_data, secondary_color) {
         // Build secondary sparse lookup
-        let sec_sparse: std::collections::HashMap<i64, f64> = sec_data
-            .iter()
-            .map(|p| (p.bucket_start_ms, p.total_value))
-            .collect();
+        let sec_sparse: std::collections::HashMap<i64, f64> =
+            sec_data.iter().map(|p| (p.bucket_start_ms, p.total_value)).collect();
 
         // Generate secondary average from the same time spine
         let mut sec_avg_data: Vec<(f64, f64)> = Vec::with_capacity(num_buckets);
@@ -493,7 +490,11 @@ fn build_hp_chart_option(
     js_set(&y_axis_left, "min", &JsValue::from_f64(0.0));
     js_set(&y_axis_left, "max", &JsValue::from_f64(100.0));
     let y_label_left = js_sys::Object::new();
-    js_set(&y_label_left, "color", &JsValue::from_str(&css_var_or("--lt-yellow", "#f1c40f")));
+    js_set(
+        &y_label_left,
+        "color",
+        &JsValue::from_str(&css_var_or("--lt-yellow", "#f1c40f")),
+    );
     js_set(&y_axis_left, "axisLabel", &y_label_left);
     let y_split_left = js_sys::Object::new();
     js_set(&y_split_left, "show", &JsValue::FALSE);
@@ -506,7 +507,11 @@ fn build_hp_chart_option(
     js_set(&y_axis_right, "name", &JsValue::from_str("EHT"));
     js_set(&y_axis_right, "position", &JsValue::from_str("right"));
     let y_label_right = js_sys::Object::new();
-    js_set(&y_label_right, "color", &JsValue::from_str(&css_var_or("--lt-green", "#2ecc71")));
+    js_set(
+        &y_label_right,
+        "color",
+        &JsValue::from_str(&css_var_or("--lt-green", "#2ecc71")),
+    );
     js_set(&y_axis_right, "axisLabel", &y_label_right);
     let y_split_right = js_sys::Object::new();
     js_set(&y_split_right, "show", &JsValue::FALSE);
@@ -560,11 +565,7 @@ fn build_hp_chart_option(
 
     // Gradient fill
     let area_style = js_sys::Object::new();
-    js_set(
-        &area_style,
-        "color",
-        &JsValue::from_str("rgba(241, 196, 15, 0.15)"),
-    );
+    js_set(&area_style, "color", &JsValue::from_str("rgba(241, 196, 15, 0.15)"));
     js_set(&series, "areaStyle", &area_style);
 
     // Data is already forward-filled by the backend query
@@ -591,10 +592,8 @@ fn build_hp_chart_option(
         let num_buckets = ((max_time_ms - min_time_ms) / bucket_ms + 1) as usize;
 
         // Build sparse lookup from EHT data
-        let eht_sparse: std::collections::HashMap<i64, f64> = eht
-            .iter()
-            .map(|p| (p.bucket_start_ms, p.total_value))
-            .collect();
+        let eht_sparse: std::collections::HashMap<i64, f64> =
+            eht.iter().map(|p| (p.bucket_start_ms, p.total_value)).collect();
 
         // Generate dense time series with 0s for missing buckets
         let mut eht_dense: Vec<(f64, f64)> = Vec::with_capacity(num_buckets);
@@ -623,11 +622,7 @@ fn build_hp_chart_option(
 
         // Subtle green area fill
         let eht_area_style = js_sys::Object::new();
-        js_set(
-            &eht_area_style,
-            "color",
-            &JsValue::from_str("rgba(46, 204, 113, 0.15)"),
-        );
+        js_set(&eht_area_style, "color", &JsValue::from_str("rgba(46, 204, 113, 0.15)"));
         js_set(&eht_series, "areaStyle", &eht_area_style);
 
         let eht_arr = js_sys::Array::new();
@@ -688,7 +683,7 @@ pub struct ChartsPanelProps {
 pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
     // Mirror time_range prop into a signal for reactivity
     let mut time_range_signal = use_signal(|| props.time_range);
-    
+
     // Mirror encounter_idx prop into a signal for reactivity
     let mut encounter_idx_signal = use_signal(|| props.encounter_idx);
 
@@ -819,16 +814,30 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
             .await;
 
             // Check epoch once after all fetches — discard if stale
-            if *load_epoch.read() != current_gen { return; }
+            if *load_epoch.read() != current_gen {
+                return;
+            }
 
             // Batch-write all signals without any .await between them so
             // Dioxus coalesces them into a single re-render
-            if let Some(data) = new_dps { dps_data.set(data); }
-            if let Some(data) = new_hps { hps_data.set(data); }
-            if let Some(data) = new_ehps { ehps_data.set(data); }
-            if let Some(data) = new_dtps { dtps_data.set(data); }
-            if let Some(data) = new_eht { eht_data.set(data); }
-            if let Some(data) = new_hp { hp_data.set(data); }
+            if let Some(data) = new_dps {
+                dps_data.set(data);
+            }
+            if let Some(data) = new_hps {
+                hps_data.set(data);
+            }
+            if let Some(data) = new_ehps {
+                ehps_data.set(data);
+            }
+            if let Some(data) = new_dtps {
+                dtps_data.set(data);
+            }
+            if let Some(data) = new_eht {
+                eht_data.set(data);
+            }
+            if let Some(data) = new_hp {
+                hp_data.set(data);
+            }
 
             loading.set(false);
         });
@@ -860,11 +869,8 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
             };
             let sf_opt = if sf == "all" { None } else { Some(sf.as_str()) };
 
-            if let Some(data) =
-                api::query_effect_uptime(idx, Some(&entity), tr_opt, duration, sf_opt).await
-            {
-                let (active, passive): (Vec<_>, Vec<_>) =
-                    data.into_iter().partition(|e| e.is_active);
+            if let Some(data) = api::query_effect_uptime(idx, Some(&entity), tr_opt, duration, sf_opt).await {
+                let (active, passive): (Vec<_>, Vec<_>) = data.into_iter().partition(|e| e.is_active);
                 active_effects.set(active);
                 passive_effects.set(passive);
             }
@@ -894,8 +900,7 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                 let mut all_windows = Vec::new();
                 for (eid, color) in effects {
                     if let Some(windows) =
-                        api::query_effect_windows(idx, eid, entity.as_deref(), tr_opt, duration, sf_opt)
-                            .await
+                        api::query_effect_windows(idx, eid, entity.as_deref(), tr_opt, duration, sf_opt).await
                     {
                         for w in windows {
                             all_windows.push((eid, w, color));
@@ -947,37 +952,66 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
             // Live: update in-place, no animation, no brush re-registration, no resize.
             // Brush handlers are already registered from the initial render;
             // re-registering would leak closures and cause a visual cursor reset flash.
-            if show_dps_val && !dps.is_empty()
-                && let Some(chart) = init_chart("chart-dps") {
-                    let option = build_time_series_option(
-                        &dps, None, "DPS", "#e74c3c", None,
-                        "rgba(231, 76, 60, 0.15)", &windows, "DPS", false,
-                    );
-                    set_chart_option(&chart, &option);
-                }
-            if show_hps_val && !hps.is_empty()
-                && let Some(chart) = init_chart("chart-hps") {
-                    let ehps_ref = if !ehps.is_empty() { Some(ehps.as_slice()) } else { None };
-                    let option = build_time_series_option(
-                        &hps, ehps_ref, "HPS", "#2ecc71", Some("#3498db"),
-                        "rgba(46, 204, 113, 0.15)", &windows, "HPS", false,
-                    );
-                    set_chart_option(&chart, &option);
-                }
-            if show_dtps_val && !dtps.is_empty()
-                && let Some(chart) = init_chart("chart-dtps") {
-                    let option = build_time_series_option(
-                        &dtps, None, "DTPS", "#e67e22", None,
-                        "rgba(230, 126, 34, 0.15)", &windows, "DTPS", false,
-                    );
-                    set_chart_option(&chart, &option);
-                }
-            if show_hp_val && !hp.is_empty()
-                && let Some(chart) = init_chart("chart-hp") {
-                    let eht_ref = if !eht.is_empty() { Some(eht.as_slice()) } else { None };
-                    let option = build_hp_chart_option(&hp, eht_ref, &windows, false);
-                    set_chart_option(&chart, &option);
-                }
+            if show_dps_val
+                && !dps.is_empty()
+                && let Some(chart) = init_chart("chart-dps")
+            {
+                let option = build_time_series_option(
+                    &dps,
+                    None,
+                    "DPS",
+                    "#e74c3c",
+                    None,
+                    "rgba(231, 76, 60, 0.15)",
+                    &windows,
+                    "DPS",
+                    false,
+                );
+                set_chart_option(&chart, &option);
+            }
+            if show_hps_val
+                && !hps.is_empty()
+                && let Some(chart) = init_chart("chart-hps")
+            {
+                let ehps_ref = if !ehps.is_empty() { Some(ehps.as_slice()) } else { None };
+                let option = build_time_series_option(
+                    &hps,
+                    ehps_ref,
+                    "HPS",
+                    "#2ecc71",
+                    Some("#3498db"),
+                    "rgba(46, 204, 113, 0.15)",
+                    &windows,
+                    "HPS",
+                    false,
+                );
+                set_chart_option(&chart, &option);
+            }
+            if show_dtps_val
+                && !dtps.is_empty()
+                && let Some(chart) = init_chart("chart-dtps")
+            {
+                let option = build_time_series_option(
+                    &dtps,
+                    None,
+                    "DTPS",
+                    "#e67e22",
+                    None,
+                    "rgba(230, 126, 34, 0.15)",
+                    &windows,
+                    "DTPS",
+                    false,
+                );
+                set_chart_option(&chart, &option);
+            }
+            if show_hp_val
+                && !hp.is_empty()
+                && let Some(chart) = init_chart("chart-hp")
+            {
+                let eht_ref = if !eht.is_empty() { Some(eht.as_slice()) } else { None };
+                let option = build_hp_chart_option(&hp, eht_ref, &windows, false);
+                set_chart_option(&chart, &option);
+            }
         } else {
             // Historical: wait for the DOM to lay out/paint (two frames), then init
             // + brush + resize. Two rAFs replace a fixed 150ms sleep.
@@ -985,46 +1019,74 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                 next_animation_frame().await;
                 next_animation_frame().await;
 
-                if show_dps_val && !dps.is_empty()
-                    && let Some(chart) = init_chart("chart-dps") {
-                        let option = build_time_series_option(
-                            &dps, None, "DPS", "#e74c3c", None,
-                            "rgba(231, 76, 60, 0.15)", &windows, "DPS", false,
-                        );
-                        set_chart_option(&chart, &option);
-                        register_brush_handler(&chart, brush_selection);
-                        activate_brush(&chart);
-                    }
-                if show_hps_val && !hps.is_empty()
-                    && let Some(chart) = init_chart("chart-hps") {
-                        let ehps_ref = if !ehps.is_empty() { Some(ehps.as_slice()) } else { None };
-                        let option = build_time_series_option(
-                            &hps, ehps_ref, "HPS", "#2ecc71", Some("#3498db"),
-                            "rgba(46, 204, 113, 0.15)", &windows, "HPS", false,
-                        );
-                        set_chart_option(&chart, &option);
-                        register_brush_handler(&chart, brush_selection);
-                        activate_brush(&chart);
-                    }
-                if show_dtps_val && !dtps.is_empty()
-                    && let Some(chart) = init_chart("chart-dtps") {
-                        let option = build_time_series_option(
-                            &dtps, None, "DTPS", "#e67e22", None,
-                            "rgba(230, 126, 34, 0.15)", &windows, "DTPS", false,
-                        );
-                        set_chart_option(&chart, &option);
-                        register_brush_handler(&chart, brush_selection);
-                        activate_brush(&chart);
-                    }
-                if show_hp_val && !hp.is_empty()
-                    && let Some(chart) = init_chart("chart-hp") {
-                        let eht_ref = if !eht.is_empty() { Some(eht.as_slice()) } else { None };
-                        let option = build_hp_chart_option(&hp, eht_ref, &windows, false);
-                        set_chart_option(&chart, &option);
-                        register_brush_handler(&chart, brush_selection);
-                        activate_brush(&chart);
-                    }
-
+                if show_dps_val
+                    && !dps.is_empty()
+                    && let Some(chart) = init_chart("chart-dps")
+                {
+                    let option = build_time_series_option(
+                        &dps,
+                        None,
+                        "DPS",
+                        "#e74c3c",
+                        None,
+                        "rgba(231, 76, 60, 0.15)",
+                        &windows,
+                        "DPS",
+                        false,
+                    );
+                    set_chart_option(&chart, &option);
+                    register_brush_handler(&chart, brush_selection);
+                    activate_brush(&chart);
+                }
+                if show_hps_val
+                    && !hps.is_empty()
+                    && let Some(chart) = init_chart("chart-hps")
+                {
+                    let ehps_ref = if !ehps.is_empty() { Some(ehps.as_slice()) } else { None };
+                    let option = build_time_series_option(
+                        &hps,
+                        ehps_ref,
+                        "HPS",
+                        "#2ecc71",
+                        Some("#3498db"),
+                        "rgba(46, 204, 113, 0.15)",
+                        &windows,
+                        "HPS",
+                        false,
+                    );
+                    set_chart_option(&chart, &option);
+                    register_brush_handler(&chart, brush_selection);
+                    activate_brush(&chart);
+                }
+                if show_dtps_val
+                    && !dtps.is_empty()
+                    && let Some(chart) = init_chart("chart-dtps")
+                {
+                    let option = build_time_series_option(
+                        &dtps,
+                        None,
+                        "DTPS",
+                        "#e67e22",
+                        None,
+                        "rgba(230, 126, 34, 0.15)",
+                        &windows,
+                        "DTPS",
+                        false,
+                    );
+                    set_chart_option(&chart, &option);
+                    register_brush_handler(&chart, brush_selection);
+                    activate_brush(&chart);
+                }
+                if show_hp_val
+                    && !hp.is_empty()
+                    && let Some(chart) = init_chart("chart-hp")
+                {
+                    let eht_ref = if !eht.is_empty() { Some(eht.as_slice()) } else { None };
+                    let option = build_hp_chart_option(&hp, eht_ref, &windows, false);
+                    set_chart_option(&chart, &option);
+                    register_brush_handler(&chart, brush_selection);
+                    activate_brush(&chart);
+                }
             });
         }
     });
@@ -1050,8 +1112,7 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
 
             // Rate charts: highlight lanes scale to the burst data's max. peek the
             // data signals so this effect only depends on the windows.
-            let max_of =
-                |d: &[TimeSeriesPoint]| d.iter().map(|p| p.total_value).fold(0.0_f64, f64::max);
+            let max_of = |d: &[TimeSeriesPoint]| d.iter().map(|p| p.total_value).fold(0.0_f64, f64::max);
             if show_dps_val && let Some(chart) = get_chart("chart-dps") {
                 apply_effect_markareas(&chart, &windows, max_of(&dps_data.peek()));
             }

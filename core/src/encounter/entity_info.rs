@@ -1,5 +1,5 @@
 use crate::combat_log::EntityType;
-use crate::context::{empty_istr, IStr};
+use crate::context::{IStr, empty_istr};
 use chrono::NaiveDateTime;
 
 #[derive(Debug, Clone)]

@@ -20,7 +20,9 @@ use baras_types::history::{
     CleanupCandidate, CleanupPlan, ContentTag, DeleteReport, InstanceVisit, LogCleanup, PullRow,
 };
 
-pub use archive::{ArchivedLog, Compressed, archive_dir, archived_log, archived_logs, commit, compress_log, restore, sweep_partial};
+pub use archive::{
+    ArchivedLog, Compressed, archive_dir, archived_log, archived_logs, commit, compress_log, restore, sweep_partial,
+};
 
 use crate::context::{DirectoryIndex, FileAreaEntry, FileAreaIndex, LogAreaCache, parse_log_filename};
 use crate::game_data::{Difficulty, is_pvp_area};
@@ -33,7 +35,10 @@ use crate::storage::data_dir;
 pub fn log_areas(scanned: Option<&FileAreaIndex>, visits: &[InstanceVisit]) -> Vec<FileAreaEntry> {
     let mut areas: Vec<FileAreaEntry> = scanned.map(|a| a.areas.clone()).unwrap_or_default();
     for v in visits {
-        if !areas.iter().any(|a| a.area_id == v.area_id && a.difficulty_id == v.difficulty_id) {
+        if !areas
+            .iter()
+            .any(|a| a.area_id == v.area_id && a.difficulty_id == v.difficulty_id)
+        {
             areas.push(FileAreaEntry {
                 area_id: v.area_id,
                 area_name: v.area_name.clone(),
@@ -56,7 +61,10 @@ pub fn content_tags(areas: &[FileAreaEntry], rows: &[PullRow]) -> Vec<ContentTag
     }
     // Pulls are only recorded for defined bosses and dummies, so a recorded
     // pull that is neither raid, flashpoint nor dummy is a world/lair boss
-    if rows.iter().any(|r| !r.is_operation && !r.is_flashpoint && r.operation != DUMMY_GROUP) {
+    if rows
+        .iter()
+        .any(|r| !r.is_operation && !r.is_flashpoint && r.operation != DUMMY_GROUP)
+    {
         tags.push(ContentTag::WorldBoss);
     }
     if tags.is_empty() {
@@ -161,7 +169,15 @@ pub fn plan(view: &LibraryView<'_>, rules: &LogCleanup, today: NaiveDate) -> Cle
         let area_index = view.areas.get(path);
         let areas = log_areas(area_index, view.pulls.visits_for(filename));
         let content = content_tags(&areas, view.pulls.rows_for(filename));
-        let Some(action) = retained_action(action, &content, area_index.is_some(), size, rules, age, &view.meta.retain) else {
+        let Some(action) = retained_action(
+            action,
+            &content,
+            area_index.is_some(),
+            size,
+            rules,
+            age,
+            &view.meta.retain,
+        ) else {
             out.kept += 1;
             return;
         };
@@ -190,7 +206,9 @@ pub fn plan(view: &LibraryView<'_>, rules: &LogCleanup, today: NaiveDate) -> Cle
         }
     }
     for a in view.archived {
-        let Some((date, _)) = parse_log_filename(&a.filename) else { continue };
+        let Some((date, _)) = parse_log_filename(&a.filename) else {
+            continue;
+        };
         let age = today.signed_duration_since(date).num_days();
         if rules.delete_after_days.is_some_and(|d| age > i64::from(d)) {
             consider(&a.path, &a.filename, date, a.compressed_size, Action::Delete, age);
@@ -217,8 +235,7 @@ impl LibraryMut<'_> {
         let filename = path.file_name()?.to_str()?;
         // An archived log is addressed by its archive path
         let filename = filename.strip_suffix(".zst").unwrap_or(filename);
-        (!(self.live.is_some_and(|l| l == path) || self.meta.is_favorite(filename)))
-            .then_some(filename)
+        (!(self.live.is_some_and(|l| l == path) || self.meta.is_favorite(filename))).then_some(filename)
     }
 
     /// Forget a log that has left the directory, keeping its history and notes.

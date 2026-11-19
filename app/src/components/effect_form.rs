@@ -16,7 +16,8 @@ use crate::api;
 use crate::components::editor_common::{FormCard, ItemActions, PreviewButton, preview_audio};
 use crate::components::form_fields::{CheckField, Field, NumberField, SubSection, TextField, TogglePill};
 use crate::types::{
-    AlertTrigger, DisplayTarget, EffectListItem, EntityFilter, RefreshAbility, RefreshScope, Trigger, effect_alert_label,
+    AlertTrigger, DisplayTarget, EffectListItem, EntityFilter, RefreshAbility, RefreshScope, Trigger,
+    effect_alert_label,
 };
 use crate::utils::parse_hex_color;
 
@@ -45,7 +46,12 @@ impl EffectTriggerType {
     }
 
     fn all() -> &'static [Self] {
-        &[Self::EffectBased, Self::AbilityCast, Self::DamageTaken, Self::HealingTaken]
+        &[
+            Self::EffectBased,
+            Self::AbilityCast,
+            Self::DamageTaken,
+            Self::HealingTaken,
+        ]
     }
 
     /// Determine trigger type from effect data
@@ -70,11 +76,18 @@ const REFRESH_HELP: &str = "Abilities that refresh this effect's duration. Per a
 
 /// Overlays drawn with personal icons (Effects A/B/C)
 fn on_effects_overlay(targets: &[DisplayTarget]) -> bool {
-    targets.iter().any(|t| matches!(t, DisplayTarget::EffectsA | DisplayTarget::EffectsB | DisplayTarget::EffectsC))
+    targets.iter().any(|t| {
+        matches!(
+            t,
+            DisplayTarget::EffectsA | DisplayTarget::EffectsB | DisplayTarget::EffectsC
+        )
+    })
 }
 
 fn on_cooldowns(targets: &[DisplayTarget]) -> bool {
-    targets.iter().any(|t| matches!(t, DisplayTarget::Cooldowns | DisplayTarget::CooldownsB))
+    targets
+        .iter()
+        .any(|t| matches!(t, DisplayTarget::Cooldowns | DisplayTarget::CooldownsB))
 }
 
 fn refresh_scope_label(scope: RefreshScope) -> &'static str {

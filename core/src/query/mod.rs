@@ -8,11 +8,11 @@ mod breakdown;
 mod column_helpers;
 mod combat_log;
 mod death_recap;
-mod search_parser;
 mod effects;
 pub mod error;
 mod overview;
 mod rotation;
+mod search_parser;
 mod time_series;
 mod timeline;
 mod uptime;
@@ -33,14 +33,12 @@ use column_helpers::*;
 
 // Re-export query types from shared types crate
 pub use baras_types::{
-    AbilityBreakdown, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow,
-    CombatLogSortColumn, DamageTakenSummary, DataTab, DeathRecap, DeathRecapDamageRow,
-    DeathRecapDamageSource, DeathRecapEffect, DeathRecapEvent, DeathRecapEventKind, DeathRecapHealRow,
-    DeathRecapHealSource, DeathRecapHpPoint,
+    AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow,
+    CombatLogSortColumn, DamageTakenSummary, DataTab, DeathRecap, DeathRecapDamageRow, DeathRecapDamageSource,
+    DeathRecapEffect, DeathRecapEvent, DeathRecapEventKind, DeathRecapHealRow, DeathRecapHealSource, DeathRecapHpPoint,
     DeathRecapKillingBlow, EffectChartData, EffectUptimeCell, EffectWindow, EncounterTimeline, EntityBreakdown,
     GcdSlot, GroupMetric, GroupTimeSeries, GroupedEntityNames, HpPoint, NpcHealthRow, PhaseSegment, PlayerDeath,
-    AbilityUsageRow, RaidOverviewRow, RotationAnalysis, RotationCycle, RotationEvent,
-    SortDirection, TimeRange, TimeSeriesPoint,
+    RaidOverviewRow, RotationAnalysis, RotationCycle, RotationEvent, SortDirection, TimeRange, TimeSeriesPoint,
 };
 
 /// Escape single quotes for SQL string literals (O'Brien -> O''Brien)
@@ -159,11 +157,7 @@ impl QueryContext {
 
         state
             .ctx
-            .register_parquet(
-                "events",
-                path.to_string_lossy().as_ref(),
-                ParquetReadOptions::default(),
-            )
+            .register_parquet("events", path.to_string_lossy().as_ref(), ParquetReadOptions::default())
             .await
             .map_err(|e| e.to_string())?;
 
@@ -211,8 +205,7 @@ impl QueryContext {
         }
 
         let _ = state.ctx.deregister_table("events");
-        let mem_table = MemTable::try_new(schema, vec![live.batches.clone()])
-            .map_err(|e| e.to_string())?;
+        let mem_table = MemTable::try_new(schema, vec![live.batches.clone()]).map_err(|e| e.to_string())?;
         state
             .ctx
             .register_table("events", Arc::new(mem_table))
@@ -248,9 +241,7 @@ pub struct QueryContextGuard<'a> {
 impl QueryContextGuard<'_> {
     /// Get an EncounterQuery for executing SQL
     pub fn query(&self) -> EncounterQuery<'_> {
-        EncounterQuery {
-            ctx: &self.guard.ctx,
-        }
+        EncounterQuery { ctx: &self.guard.ctx }
     }
 }
 
@@ -281,10 +272,7 @@ impl EncounterQuery<'_> {
                 let msg = e.to_string();
                 // Return empty results for missing table (common during startup or empty encounters)
                 // or missing fields (schema evolution - older parquet files may lack new columns)
-                if msg.contains("not found")
-                    || msg.contains("does not exist")
-                    || msg.contains("No field named")
-                {
+                if msg.contains("not found") || msg.contains("does not exist") || msg.contains("No field named") {
                     Ok(vec![])
                 } else {
                     Err(msg)

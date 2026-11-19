@@ -6,9 +6,7 @@
 
 use std::sync::Arc;
 
-use crate::overlay::{
-    MetricType, OverlayCommand, OverlayManager, OverlayType, SharedOverlayState, create_all_entries,
-};
+use crate::overlay::{MetricType, OverlayCommand, OverlayManager, OverlayType, SharedOverlayState, create_all_entries};
 use crate::service::{OverlayUpdate, ServiceHandle};
 use crate::state::SharedState;
 use baras_overlay::{OverlayData, RaidRegistryAction};
@@ -141,20 +139,11 @@ async fn process_registry_action(
 /// A detect press found no capture session. A permission saved by an earlier
 /// run is restored silently and the detection re-run; otherwise the main window
 /// asks. Nothing touches the portal before the first press.
-async fn request_capture_permission(
-    service_handle: &ServiceHandle,
-    overlay_state: &SharedOverlayState,
-) {
+async fn request_capture_permission(service_handle: &ServiceHandle, overlay_state: &SharedOverlayState) {
     use baras_overlay::capture;
 
-    if capture::portal_required()
-        && capture::has_portal_restore_token()
-        && capture::enable_portal().await.is_ok()
-    {
-        let raid_tx = overlay_state
-            .lock()
-            .ok()
-            .and_then(|state| state.get_raid_tx().cloned());
+    if capture::portal_required() && capture::has_portal_restore_token() && capture::enable_portal().await.is_ok() {
+        let raid_tx = overlay_state.lock().ok().and_then(|state| state.get_raid_tx().cloned());
         if let Some(tx) = raid_tx {
             let _ = tx.send(OverlayCommand::DetectRaidNames).await;
         }
@@ -166,9 +155,7 @@ async fn request_capture_permission(
         let _ = window.unminimize();
         let _ = window.set_focus();
     }
-    let _ = service_handle
-        .app_handle
-        .emit("screen-capture-permission-required", ());
+    let _ = service_handle.app_handle.emit("screen-capture-permission-required", ());
 }
 
 struct RaidOcrResult {
@@ -200,14 +187,8 @@ fn raid_row_lines(
     // that disagreed contributed nothing and says nothing.
     let support = |score: &CandidateScore| {
         let part = |label: &str, c: Option<Contribution>| {
-            c.map(|c| {
-                format!(
-                    ", {label} {:.2}{}",
-                    c.score,
-                    if c.counted { "" } else { " (ignored)" }
-                )
-            })
-            .unwrap_or_default()
+            c.map(|c| format!(", {label} {:.2}{}", c.score, if c.counted { "" } else { " (ignored)" }))
+                .unwrap_or_default()
         };
         format!("name {:.2}{}", score.name_score, part("hp", score.hp_value))
     };
@@ -242,7 +223,10 @@ fn raid_row_lines(
                     d.runner_up
                 ),
                 (None, None, reason) => {
-                    format!("{head} | unassigned: {}", reason.map_or("no candidates", |r| r.reason()))
+                    format!(
+                        "{head} | unassigned: {}",
+                        reason.map_or("no candidates", |r| r.reason())
+                    )
                 }
             }
         })
@@ -255,12 +239,7 @@ fn raid_row_lines(
 ///
 /// No names needs no advice — the user looking at the grid and the frames
 /// can see why on their own.
-fn raid_detection_message(
-    names: usize,
-    matched: usize,
-    pending: usize,
-    ambiguous: usize,
-) -> String {
+fn raid_detection_message(names: usize, matched: usize, pending: usize, ambiguous: usize) -> String {
     if names == 0 {
         // Saying the frames were kept is what makes the no-op legible:
         // without it, lingering assignments look like a bug.
@@ -269,9 +248,7 @@ fn raid_detection_message(
     let noun = if names == 1 { "name" } else { "names" };
     let mut message = format!("{names} {noun} detected. {matched} matched.");
     if pending > 0 {
-        message.push_str(&format!(
-            " {pending} pending player appearance in logs."
-        ));
+        message.push_str(&format!(" {pending} pending player appearance in logs."));
     }
     // The one outcome another read cannot fix.
     if ambiguous > 0 {
@@ -340,8 +317,7 @@ async fn detect_raid_names(
 
         // Health is read inside here, for the rows names could not settle.
         let match_started = std::time::Instant::now();
-        let (assignments, decisions) =
-            baras_raid_ocr::assign_with_health(&mut reading, &candidates, dump.as_mut());
+        let (assignments, decisions) = baras_raid_ocr::assign_with_health(&mut reading, &candidates, dump.as_mut());
         if let Some(dump) = dump {
             dump.finish();
         }
@@ -391,11 +367,7 @@ async fn detect_raid_names(
 
     if assignments.is_empty() && names.is_empty() {
         let elapsed_ms = started_at.elapsed().as_millis() as u64;
-        tracing::info!(
-            elapsed_ms,
-            candidate_count,
-            "Raid name detection read nothing"
-        );
+        tracing::info!(elapsed_ms, candidate_count, "Raid name detection read nothing");
         service_handle.set_ambiguous_slots(Vec::new()).await;
         // An empty pass must not wipe names an earlier pass left waiting, so
         // the registry is not touched.
@@ -414,9 +386,7 @@ async fn detect_raid_names(
     // Applied even with zero matches: a pass that read names is authoritative,
     // and inside it evicts registered players it no longer saw.
     let matched = assignments.len();
-    let _ = service_handle
-        .apply_raid_detection(assignments, &ambiguous)
-        .await;
+    let _ = service_handle.apply_raid_detection(assignments, &ambiguous).await;
     let (pending, _) = service_handle.apply_provisional_raid_detection(names).await;
     let elapsed_ms = started_at.elapsed().as_millis() as u64;
 
@@ -432,12 +402,7 @@ async fn detect_raid_names(
     let ambiguous_count = ambiguous.len();
     service_handle.set_ambiguous_slots(ambiguous).await;
 
-    let _ = result_tx.send(raid_detection_message(
-        names_read,
-        matched,
-        pending,
-        ambiguous_count,
-    ));
+    let _ = result_tx.send(raid_detection_message(names_read, matched, pending, ambiguous_count));
 }
 
 /// Process a single overlay update
@@ -486,8 +451,7 @@ async fn process_overlay_update(
                                 entries: entries.clone(),
                                 // Warzones hide cumulative totals, but Incoming Damage's
                                 // total is the round total — keep it
-                                hide_totals: data.is_warzone
-                                    && overlay_type != MetricType::IncomingDamage,
+                                hide_totals: data.is_warzone && overlay_type != MetricType::IncomingDamage,
                             },
                         )))
                         .await;
@@ -498,9 +462,7 @@ async fn process_overlay_update(
             if let Some(tx) = personal_tx
                 && let Some(stats) = data.to_personal_stats()
             {
-                let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::Personal(stats)))
-                    .await;
+                let _ = tx.send(OverlayCommand::UpdateData(OverlayData::Personal(stats))).await;
             }
 
             // Send challenges data to challenges overlay
@@ -518,9 +480,7 @@ async fn process_overlay_update(
             if let Some(tx) = challenges_tx {
                 let challenge_data = data.challenges.unwrap_or_default();
                 let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::Challenges(
-                        challenge_data,
-                    )))
+                    .send(OverlayCommand::UpdateData(OverlayData::Challenges(challenge_data)))
                     .await;
             }
 
@@ -571,7 +531,10 @@ async fn process_overlay_update(
 
             if let Some(tx) = raid_tx {
                 let _ = tx
-                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(shared, OverlayData::Raid(raid_data))))
+                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(
+                        shared,
+                        OverlayData::Raid(raid_data),
+                    )))
                     .await;
             }
         }
@@ -606,7 +569,10 @@ async fn process_overlay_update(
 
             if let Some(tx) = timer_tx {
                 let _ = tx
-                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(shared, OverlayData::TimersA(timer_data))))
+                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(
+                        shared,
+                        OverlayData::TimersA(timer_data),
+                    )))
                     .await;
             }
         }
@@ -622,7 +588,10 @@ async fn process_overlay_update(
 
             if let Some(tx) = timer_tx {
                 let _ = tx
-                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(shared, OverlayData::TimersB(timer_data))))
+                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(
+                        shared,
+                        OverlayData::TimersB(timer_data),
+                    )))
                     .await;
             }
         }
@@ -645,9 +614,9 @@ async fn process_overlay_update(
                     .into_iter()
                     .filter(|a| a.alert_text_enabled)
                     .map(|a| {
-                        let icon = a.icon_ability_id.and_then(|id| {
-                            icon_cache.and_then(|cache| cache.get_icon(id))
-                        });
+                        let icon = a
+                            .icon_ability_id
+                            .and_then(|id| icon_cache.and_then(|cache| cache.get_icon(id)));
                         AlertEntry {
                             id: Some(a.id),
                             text: a.text,
@@ -854,9 +823,7 @@ async fn process_overlay_update(
             }
             if let Some(tx) = timer_tx {
                 let _ = tx
-                    .send(OverlayCommand::UpdateData(
-                        OverlayData::OperationTimer(timer_data),
-                    ))
+                    .send(OverlayCommand::UpdateData(OverlayData::OperationTimer(timer_data)))
                     .await;
             }
         }
@@ -976,10 +943,7 @@ async fn process_overlay_update(
 
                 // Raid overlay
                 if let Some(tx) = state.get_raid_tx() {
-                    channels.push((
-                        tx.clone(),
-                        OverlayData::Raid(RaidFrameData { frames: vec![] }),
-                    ));
+                    channels.push((tx.clone(), OverlayData::Raid(RaidFrameData { frames: vec![] })));
                 }
 
                 // Boss health overlay
@@ -1053,10 +1017,7 @@ async fn process_overlay_update(
 
                 // Operation timer overlay (clear display, timer state lives in service)
                 if let Some(tx) = state.get_operation_timer_tx() {
-                    channels.push((
-                        tx.clone(),
-                        OverlayData::OperationTimer(Default::default()),
-                    ));
+                    channels.push((tx.clone(), OverlayData::OperationTimer(Default::default())));
                 }
 
                 // Ability queue overlay
@@ -1074,12 +1035,7 @@ async fn process_overlay_update(
         }
         OverlayUpdate::ConversationStarted => {
             // Check if auto-hide during conversations is enabled
-            let hide_enabled = shared
-                .config
-                .read()
-                .await
-                .overlay_settings
-                .hide_during_conversations;
+            let hide_enabled = shared.config.read().await.overlay_settings.hide_during_conversations;
             if !hide_enabled {
                 return;
             }
@@ -1101,9 +1057,7 @@ async fn process_overlay_update(
                 .and_then(|state| state.get_tx(OverlayType::EnemyFrames).cloned());
             if let Some(tx) = tx {
                 let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::EnemyFrames(
-                        Default::default(),
-                    )))
+                    .send(OverlayCommand::UpdateData(OverlayData::EnemyFrames(Default::default())))
                     .await;
             }
         }
@@ -1126,12 +1080,7 @@ async fn process_overlay_update(
             shared.auto_hide.set_session_not_live(!is_live);
 
             // Check if auto-hide when not live is enabled
-            let hide_enabled = shared
-                .config
-                .read()
-                .await
-                .overlay_settings
-                .hide_when_not_live;
+            let hide_enabled = shared.config.read().await.overlay_settings.hide_when_not_live;
             if !hide_enabled {
                 return;
             }
@@ -1142,8 +1091,7 @@ async fn process_overlay_update(
                 shared.auto_hide.set_not_live(true);
 
                 if !was_hidden {
-                    let _ =
-                        OverlayManager::temporary_hide_all(overlay_state, service_handle).await;
+                    let _ = OverlayManager::temporary_hide_all(overlay_state, service_handle).await;
                 }
             } else {
                 // Session is live again — but verify the session is truly live
@@ -1160,8 +1108,7 @@ async fn process_overlay_update(
                     return;
                 }
                 shared.auto_hide.set_not_live(false);
-                let _ =
-                    OverlayManager::temporary_show_all(overlay_state, service_handle).await;
+                let _ = OverlayManager::temporary_show_all(overlay_state, service_handle).await;
             }
             service_handle.emit_overlay_status_changed();
         }
@@ -1184,10 +1131,7 @@ mod raid_detection_message_tests {
     /// Nothing pending means nothing to wait for — the pending clause is omitted.
     #[test]
     fn a_full_match_omits_the_pending_count() {
-        assert_eq!(
-            raid_detection_message(4, 4, 0, 0),
-            "4 names detected. 4 matched."
-        );
+        assert_eq!(raid_detection_message(4, 4, 0, 0), "4 names detected. 4 matched.");
     }
 
     /// The user looking at the grid and the frames can see why on their own,

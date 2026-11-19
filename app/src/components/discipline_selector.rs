@@ -6,14 +6,73 @@ use super::multi_select::{Entry, MultiSelect};
 
 // All discipline display names grouped by class (Imp / Rep mirror pairs)
 pub(crate) const ALL_DISCIPLINES: &[(&str, &[&str])] = &[
-    ("Sorcerer / Sage", &["Lightning", "Madness", "Corruption", "Telekinetics", "Balance", "Seer"]),
-    ("Assassin / Shadow", &["Hatred", "Darkness", "Deception", "Infiltration", "Kinetic Combat", "Serenity"]),
-    ("Juggernaut / Guardian", &["Vengeance", "Immortal", "Rage", "Focus", "Vigilance", "Defense"]),
-    ("Marauder / Sentinel", &["Annihilation", "Carnage", "Fury", "Combat", "Watchman", "Concentration"]),
-    ("Mercenary / Commando", &["Arsenal", "Innovative Ordnance", "Bodyguard", "Gunnery", "Assault Specialist", "Combat Medic"]),
-    ("Powertech / Vanguard", &["Shield Tech", "Pyrotech", "Advanced Prototype", "Plasmatech", "Shield Specialist", "Tactics"]),
-    ("Operative / Scoundrel", &["Concealment", "Lethality", "Medicine", "Scrapper", "Ruffian", "Sawbones"]),
-    ("Sniper / Gunslinger", &["Marksmanship", "Engineering", "Virulence", "Sharpshooter", "Saboteur", "Dirty Fighting"]),
+    (
+        "Sorcerer / Sage",
+        &["Lightning", "Madness", "Corruption", "Telekinetics", "Balance", "Seer"],
+    ),
+    (
+        "Assassin / Shadow",
+        &[
+            "Hatred",
+            "Darkness",
+            "Deception",
+            "Infiltration",
+            "Kinetic Combat",
+            "Serenity",
+        ],
+    ),
+    (
+        "Juggernaut / Guardian",
+        &["Vengeance", "Immortal", "Rage", "Focus", "Vigilance", "Defense"],
+    ),
+    (
+        "Marauder / Sentinel",
+        &["Annihilation", "Carnage", "Fury", "Combat", "Watchman", "Concentration"],
+    ),
+    (
+        "Mercenary / Commando",
+        &[
+            "Arsenal",
+            "Innovative Ordnance",
+            "Bodyguard",
+            "Gunnery",
+            "Assault Specialist",
+            "Combat Medic",
+        ],
+    ),
+    (
+        "Powertech / Vanguard",
+        &[
+            "Shield Tech",
+            "Pyrotech",
+            "Advanced Prototype",
+            "Plasmatech",
+            "Shield Specialist",
+            "Tactics",
+        ],
+    ),
+    (
+        "Operative / Scoundrel",
+        &[
+            "Concealment",
+            "Lethality",
+            "Medicine",
+            "Scrapper",
+            "Ruffian",
+            "Sawbones",
+        ],
+    ),
+    (
+        "Sniper / Gunslinger",
+        &[
+            "Marksmanship",
+            "Engineering",
+            "Virulence",
+            "Sharpshooter",
+            "Saboteur",
+            "Dirty Fighting",
+        ],
+    ),
 ];
 
 /// Role display names selectable when `include_roles` is set
@@ -26,9 +85,11 @@ pub fn DisciplineSelector(
     selected: Vec<String>,
     on_change: EventHandler<Vec<String>>,
     /// Add a "Roles" group (Tank/Healer/DPS) above the discipline groups
-    #[props(default)] include_roles: bool,
+    #[props(default)]
+    include_roles: bool,
     /// Label shown when nothing is selected
-    #[props(default = "All disciplines")] empty_label: &'static str,
+    #[props(default = "All disciplines")]
+    empty_label: &'static str,
 ) -> Element {
     let roles = include_roles.then_some(("Roles", ALL_ROLES));
     let entries: Vec<Entry> = roles

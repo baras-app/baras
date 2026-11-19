@@ -16,9 +16,8 @@
 mod backfill;
 
 use arrow::array::{
-    ArrayBuilder, ArrayRef, BooleanBuilder, Float32Builder, Int32Builder, Int64Builder, ListArray,
-    StringBuilder, StructArray, TimestampMillisecondBuilder, UInt32Builder, UInt64Builder,
-    UInt8Builder,
+    ArrayBuilder, ArrayRef, BooleanBuilder, Float32Builder, Int32Builder, Int64Builder, ListArray, StringBuilder,
+    StructArray, TimestampMillisecondBuilder, UInt8Builder, UInt32Builder, UInt64Builder,
 };
 use arrow::buffer::{NullBuffer, OffsetBuffer};
 use arrow::datatypes::{DataType, Field, Fields, Schema, TimeUnit};
@@ -28,8 +27,8 @@ use baras_core::context::{parse_log_filename, resolve};
 use baras_core::dsl::{build_area_index, load_area_config, load_bosses_with_custom};
 use baras_core::game_data::defense_type;
 use baras_core::signal_processor::{
-    check_counter_signal_triggers, check_counter_timer_triggers, check_entity_phase_transitions,
-    check_timer_phase_transitions, EventProcessor, GameSignal, SignalHandler,
+    EventProcessor, GameSignal, SignalHandler, check_counter_signal_triggers, check_counter_timer_triggers,
+    check_entity_phase_transitions, check_timer_phase_transitions,
 };
 use baras_core::state::{ParseWorkerOutput, SessionCache};
 use baras_core::storage::encounter_filename;
@@ -185,15 +184,12 @@ impl FastEncounterWriter {
 
         // Source entity
         self.source_id.append_value(event.source_entity.log_id);
-        self.source_name
-            .append_value(resolve(event.source_entity.name));
-        self.source_class_id
-            .append_value(event.source_entity.class_id);
+        self.source_name.append_value(resolve(event.source_entity.name));
+        self.source_class_id.append_value(event.source_entity.class_id);
         self.source_entity_type
             .append_value(entity_type_str(&event.source_entity.entity_type));
         self.source_hp.append_value(event.source_entity.health.0);
-        self.source_max_hp
-            .append_value(event.source_entity.health.1);
+        self.source_max_hp.append_value(event.source_entity.health.1);
         let src_pos = event.source_entity.position;
         self.source_x.append_option(src_pos.map(|p| p.x));
         self.source_y.append_option(src_pos.map(|p| p.y));
@@ -202,15 +198,12 @@ impl FastEncounterWriter {
 
         // Target entity
         self.target_id.append_value(event.target_entity.log_id);
-        self.target_name
-            .append_value(resolve(event.target_entity.name));
-        self.target_class_id
-            .append_value(event.target_entity.class_id);
+        self.target_name.append_value(resolve(event.target_entity.name));
+        self.target_class_id.append_value(event.target_entity.class_id);
         self.target_entity_type
             .append_value(entity_type_str(&event.target_entity.entity_type));
         self.target_hp.append_value(event.target_entity.health.0);
-        self.target_max_hp
-            .append_value(event.target_entity.health.1);
+        self.target_max_hp.append_value(event.target_entity.health.1);
         let tgt_pos = event.target_entity.position;
         self.target_x.append_option(tgt_pos.map(|p| p.x));
         self.target_y.append_option(tgt_pos.map(|p| p.y));
@@ -223,11 +216,9 @@ impl FastEncounterWriter {
 
         // Effect
         self.effect_id.append_value(event.effect.effect_id);
-        self.effect_name
-            .append_value(resolve(event.effect.effect_name));
+        self.effect_name.append_value(resolve(event.effect.effect_name));
         self.effect_type_id.append_value(event.effect.type_id);
-        self.effect_type_name
-            .append_value(resolve(event.effect.type_name));
+        self.effect_type_name.append_value(resolve(event.effect.type_name));
 
         // Damage details
         self.dmg_amount.append_value(event.details.dmg_amount);
@@ -237,13 +228,11 @@ impl FastEncounterWriter {
         self.dmg_type.append_value(resolve(event.details.dmg_type));
         self.is_crit.append_value(event.details.is_crit);
         self.is_reflect.append_value(event.details.is_reflect);
-        self.defense_type_id
-            .append_value(event.details.defense_type_id);
+        self.defense_type_id.append_value(event.details.defense_type_id);
 
         // Healing details
         self.heal_amount.append_value(event.details.heal_amount);
-        self.heal_effective
-            .append_value(event.details.heal_effective);
+        self.heal_effective.append_value(event.details.heal_effective);
 
         // Other combat values
         self.threat.append_value(event.details.threat);
@@ -262,18 +251,11 @@ impl FastEncounterWriter {
         self.encounter_idx.append_value(encounter_idx);
         self.combat_time_secs.append_option(combat_time);
         self.phase_id.append_option(current_phase);
-        self.phase_name
-            .append_option(current_phase.and_then(|phase_id| {
-                boss_def.and_then(|def| {
-                    def.phases
-                        .iter()
-                        .find(|p| p.id == phase_id)
-                        .map(|p| p.name.as_str())
-                })
-            }));
+        self.phase_name.append_option(current_phase.and_then(|phase_id| {
+            boss_def.and_then(|def| def.phases.iter().find(|p| p.id == phase_id).map(|p| p.name.as_str()))
+        }));
         self.area_name.append_value(&cache.current_area.area_name);
-        self.boss_name
-            .append_option(boss_def.map(|d| d.name.as_str()));
+        self.boss_name.append_option(boss_def.map(|d| d.name.as_str()));
         self.difficulty
             .append_option(if cache.current_area.difficulty_name.is_empty() {
                 None
@@ -427,15 +409,10 @@ impl FastEncounterWriter {
     }
 
     /// Write a RecordBatch to a parquet file (can be called from any thread)
-    fn write_batch_to_file(
-        batch: RecordBatch,
-        path: PathBuf,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    fn write_batch_to_file(batch: RecordBatch, path: PathBuf) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let schema = batch.schema();
         let file = File::create(&path)?;
-        let props = WriterProperties::builder()
-            .set_compression(Compression::LZ4)
-            .build();
+        let props = WriterProperties::builder().set_compression(Compression::LZ4).build();
 
         let mut writer = ArrowWriter::try_new(file, schema, Some(props))?;
         writer.write(&batch)?;
@@ -445,11 +422,7 @@ impl FastEncounterWriter {
 
     fn build_schema() -> Arc<Schema> {
         Arc::new(Schema::new(vec![
-            Field::new(
-                "timestamp",
-                DataType::Timestamp(TimeUnit::Millisecond, None),
-                false,
-            ),
+            Field::new("timestamp", DataType::Timestamp(TimeUnit::Millisecond, None), false),
             Field::new("line_number", DataType::UInt64, false),
             Field::new("source_id", DataType::Int64, false),
             Field::new("source_name", DataType::Utf8, false),
@@ -536,19 +509,16 @@ fn init_logging() {
 
     // If BARAS_LOG_PATH is set, append to that file (shared with main app)
     if let Ok(path) = std::env::var("BARAS_LOG_PATH")
-        && let Ok(file) = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&path)
-        {
-            tracing_subscriber::fmt()
-                .with_env_filter(filter)
-                .with_target(true)
-                .with_ansi(false)
-                .with_writer(file)
-                .init();
-            return;
-        }
+        && let Ok(file) = std::fs::OpenOptions::new().create(true).append(true).open(&path)
+    {
+        tracing_subscriber::fmt()
+            .with_env_filter(filter)
+            .with_target(true)
+            .with_ansi(false)
+            .with_writer(file)
+            .init();
+        return;
+    }
 
     // Fallback to stderr
     tracing_subscriber::fmt()
@@ -600,8 +570,7 @@ fn main() {
     }
 
     // User custom directory for definitions
-    let user_dir =
-        baras_core::paths::config_dir().map(|p| p.join("definitions").join("encounters"));
+    let user_dir = baras_core::paths::config_dir().map(|p| p.join("definitions").join("encounters"));
 
     // Build area index from both bundled and custom definitions (lightweight - only reads headers)
     // Custom definitions can override bundled ones (e.g., for new areas like flashpoints)
@@ -623,23 +592,20 @@ fn main() {
 
         // Index custom definitions (can add new areas or override bundled)
         if let Some(ref dir) = user_dir
-            && dir.exists() {
-                match build_area_index(dir) {
-                    Ok(custom_index) => {
-                        tracing::debug!(count = custom_index.len(), "Built custom area index");
-                        index.extend(custom_index);
-                    }
-                    Err(e) => {
-                        tracing::warn!(error = %e, "Failed to build custom area index");
-                    }
+            && dir.exists()
+        {
+            match build_area_index(dir) {
+                Ok(custom_index) => {
+                    tracing::debug!(count = custom_index.len(), "Built custom area index");
+                    index.extend(custom_index);
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "Failed to build custom area index");
                 }
             }
-
-        if index.is_empty() {
-            None
-        } else {
-            Some(index)
         }
+
+        if index.is_empty() { None } else { Some(index) }
     };
 
     let timer = std::time::Instant::now();
@@ -711,7 +677,9 @@ fn parse_file(
     // them from the previous log's history when it shows the same player
     // in the same instance
     let mut events = events;
-    if events.first().is_some_and(|e| e.effect.type_id != baras_core::game_data::effect_type_id::AREAENTERED)
+    if events
+        .first()
+        .is_some_and(|e| e.effect.type_id != baras_core::game_data::effect_type_id::AREAENTERED)
         && let Some(mut resume) = baras_core::history::AreaResume::for_log(file_path)
         && let Some(Ok(entry)) = events
             .iter()
@@ -719,7 +687,14 @@ fn parse_file(
             .find_map(|e| resume.entry_events(e))
     {
         let (line_number, timestamp) = (events[0].line_number, events[0].timestamp);
-        events.splice(0..0, entry.map(|e| CombatEvent { line_number, timestamp, ..e }));
+        events.splice(
+            0..0,
+            entry.map(|e| CombatEvent {
+                line_number,
+                timestamp,
+                ..e
+            }),
+        );
     }
 
     let event_count = events.len();
@@ -812,11 +787,7 @@ fn process_and_write_encounters(
                     tracing::info!(area_id, area_name = %entry.name, "Found matching area in index, loading definitions");
                     match load_bosses_with_custom(&entry.file_path, user_dir.as_deref()) {
                         Ok(bosses) => {
-                            tracing::info!(
-                                area_id,
-                                count = bosses.len(),
-                                "Loaded boss definitions for area"
-                            );
+                            tracing::info!(area_id, count = bosses.len(), "Loaded boss definitions for area");
                             needs_timer_snapshot = bosses.iter().any(|b| b.needs_timer_snapshot());
 
                             // Load only phase/counter-relevant timers into the TimerManager
@@ -849,7 +820,10 @@ fn process_and_write_encounters(
 
                             cache.load_boss_definitions(bosses, false);
                             // Region-based timer start, so timed runs are recorded in the history store
-                            let timer_start = load_area_config(&entry.file_path).ok().flatten().and_then(|a| a.timer_start);
+                            let timer_start = load_area_config(&entry.file_path)
+                                .ok()
+                                .flatten()
+                                .and_then(|a| a.timer_start);
                             cache.set_timer_start(area_id, timer_start);
                         }
                         Err(e) => {
@@ -945,17 +919,9 @@ fn process_and_write_encounters(
                         }
                         let slice = &new_signals[watermark..];
                         watermark = w;
-                        new_signals.extend(check_entity_phase_transitions(
-                            &mut cache,
-                            slice,
-                            event.timestamp,
-                        ));
+                        new_signals.extend(check_entity_phase_transitions(&mut cache, slice, event.timestamp));
                         let new_slice = &new_signals[watermark..];
-                        new_signals.extend(check_counter_signal_triggers(
-                            &mut cache,
-                            new_slice,
-                            event.timestamp,
-                        ));
+                        new_signals.extend(check_counter_signal_triggers(&mut cache, new_slice, event.timestamp));
                     }
                 }
 

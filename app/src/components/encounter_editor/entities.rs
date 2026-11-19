@@ -7,13 +7,13 @@
 use crate::components::editor_sort::{ENCOUNTER_SORT_AZ, SortToggle, apply_rank, use_stable_rank};
 use dioxus::prelude::*;
 
-use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
 use crate::api;
+use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
 use crate::types::{BossWithPath, EncounterItem, EntityDefinition};
 
+use super::InlineNameCreator;
 use super::entity_form::EntityEditForm;
 use super::tabs::EncounterData;
-use super::InlineNameCreator;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Entities Tab
@@ -46,7 +46,10 @@ pub fn EntitiesTab(
     // Extract entities from BossWithPath
     let entities = boss_with_path.boss.entities.clone();
     // A–Z when toggled; renaming leaves the row in place
-    let rank = use_stable_rank(entities.iter().map(|x| (x.name.as_str(), x.name.as_str())), ENCOUNTER_SORT_AZ());
+    let rank = use_stable_rank(
+        entities.iter().map(|x| (x.name.as_str(), x.name.as_str())),
+        ENCOUNTER_SORT_AZ(),
+    );
     let mut sorted_entities = entities.clone();
     apply_rank(&mut sorted_entities, &rank.read(), |x| &x.name);
 

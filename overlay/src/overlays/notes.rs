@@ -80,10 +80,7 @@ struct NotesLine {
 
 impl NotesOverlay {
     /// Create a new notes overlay
-    pub fn new(
-        window_config: OverlayConfig,
-        config: NotesConfig,
-    ) -> Result<Self, PlatformError> {
+    pub fn new(window_config: OverlayConfig, config: NotesConfig) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
         frame.set_label("Notes");
 
@@ -100,7 +97,6 @@ impl NotesOverlay {
     pub fn set_config(&mut self, config: NotesConfig) {
         self.config = config;
     }
-
 
     /// Set the notes data and parse it for rendering
     pub fn set_data(&mut self, data: NotesData) {
@@ -179,9 +175,7 @@ impl NotesOverlay {
             }
 
             // Check for bullet points (- item or * item, but not ** which is bold)
-            if trimmed.starts_with("- ")
-                || (trimmed.starts_with("* ") && !trimmed.starts_with("**"))
-            {
+            if trimmed.starts_with("- ") || (trimmed.starts_with("* ") && !trimmed.starts_with("**")) {
                 let content = trimmed[2..].trim();
                 let prefix = format!("  {} ", '\u{2022}');
                 let mut spans = vec![TextSpan {
@@ -416,11 +410,7 @@ impl NotesOverlay {
                 self.config.font_color
             };
 
-            let size = if line.is_header {
-                font_size * 1.05
-            } else {
-                font_size
-            };
+            let size = if line.is_header { font_size * 1.05 } else { font_size };
 
             // Render each span at incrementing x positions
             let mut x = padding;
@@ -432,20 +422,11 @@ impl NotesOverlay {
                 let use_bold = span.bold || line.is_header;
                 let use_italic = span.italic;
 
-                self.frame.draw_text_styled(
-                    &span.text,
-                    x,
-                    y,
-                    size,
-                    color_from_rgba(color),
-                    use_bold,
-                    use_italic,
-                );
+                self.frame
+                    .draw_text_styled(&span.text, x, y, size, color_from_rgba(color), use_bold, use_italic);
 
                 // Advance x position by the width of the rendered text (must match style used for drawing)
-                let (w, _) = self
-                    .frame
-                    .measure_text_styled(&span.text, size, use_bold, use_italic);
+                let (w, _) = self.frame.measure_text_styled(&span.text, size, use_bold, use_italic);
                 x += w;
             }
 
@@ -466,8 +447,7 @@ impl Overlay for NotesOverlay {
         if let OverlayData::Notes(notes_data) = data {
             let was_empty = self.data.text.is_empty();
             let is_empty = notes_data.text.is_empty();
-            let changed =
-                self.data.text != notes_data.text || self.data.boss_name != notes_data.boss_name;
+            let changed = self.data.text != notes_data.text || self.data.boss_name != notes_data.boss_name;
 
             if changed {
                 self.set_data(notes_data);

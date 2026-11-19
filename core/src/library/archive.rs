@@ -50,7 +50,13 @@ impl ArchivedLog {
         let filename = path.file_stem()?.to_str()?.to_owned();
         let meta = fs::metadata(&path).ok()?;
         let original_size = frame_content_size(&path);
-        Some(ArchivedLog { filename, compressed_size: meta.len(), original_size, mtime: mtime_secs(&meta), path })
+        Some(ArchivedLog {
+            filename,
+            compressed_size: meta.len(),
+            original_size,
+            mtime: mtime_secs(&meta),
+            path,
+        })
     }
 
     /// True when `header` was written from the log this archive holds: same
@@ -108,7 +114,9 @@ pub fn archived_logs() -> Vec<ArchivedLog> {
     let Ok(read) = fs::read_dir(dir) else {
         return Vec::new();
     };
-    read.flatten().filter_map(|e| ArchivedLog::from_path(e.path())).collect()
+    read.flatten()
+        .filter_map(|e| ArchivedLog::from_path(e.path()))
+        .collect()
 }
 
 /// A log compressed into the archive whose original is still in place.
@@ -129,7 +137,12 @@ pub fn compress_log(path: &Path) -> io::Result<Compressed> {
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "log has no filename"))?;
     let dest = archive_dir()?.join(format!("{filename}.{EXT}"));
     let (before, after) = compress(path, &dest)?;
-    Ok(Compressed { src: path.to_path_buf(), dest, before, after })
+    Ok(Compressed {
+        src: path.to_path_buf(),
+        dest,
+        before,
+        after,
+    })
 }
 
 /// Remove the original of a compressed log and move its index entries to

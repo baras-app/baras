@@ -10,14 +10,12 @@ use baras_core::context::{ChallengeColumns, ChallengeLayout, ChallengeOverlayCon
 use tiny_skia::Color;
 
 use super::{Overlay, OverlayConfigUpdate, OverlayData};
-use crate::class_icons::{
-    get_discipline_icon, get_role_colored_class_icon, get_white_class_icon, Role,
-};
+use crate::class_icons::{Role, get_discipline_icon, get_role_colored_class_icon, get_white_class_icon};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
 use crate::utils::{color_from_rgba, format_duration_short};
-use crate::widgets::{colors, Footer, Header, ProgressBar};
-use baras_types::{formatting, ClassIconMode};
+use crate::widgets::{Footer, Header, ProgressBar, colors};
+use baras_types::{ClassIconMode, formatting};
 
 /// Data for the challenges overlay
 #[derive(Debug, Clone, Default)]
@@ -125,10 +123,7 @@ pub struct ChallengeOverlay {
 }
 
 impl ChallengeOverlay {
-    pub fn new(
-        overlay_config: OverlayConfig,
-        config: ChallengeOverlayConfig,
-    ) -> Result<Self, PlatformError> {
+    pub fn new(overlay_config: OverlayConfig, config: ChallengeOverlayConfig) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(overlay_config, BASE_WIDTH, BASE_HEIGHT)?;
         frame.set_label("Challenges");
 
@@ -152,7 +147,6 @@ impl ChallengeOverlay {
     pub fn set_icon_mode(&mut self, mode: ClassIconMode) {
         self.icon_mode = mode;
     }
-
 
     /// Number of card slots the window is divided into: the reserved count
     /// when configured (0 = auto), growing only when more challenges than
@@ -200,7 +194,11 @@ impl ChallengeOverlay {
         // reserved slots sit while positioning the window.
         let enabled_challenges: Vec<ChallengeEntry> = if self.frame.is_in_move_mode() {
             let reserved = (self.config.visible_challenges as usize).min(8);
-            let n = if reserved > 0 { reserved } else { 2.min(max_display.max(1)) };
+            let n = if reserved > 0 {
+                reserved
+            } else {
+                2.min(max_display.max(1))
+            };
             sample_challenges(n)
         } else {
             self.data
@@ -236,9 +234,7 @@ impl ChallengeOverlay {
             // scaling up to fill the window.
             let content_height_est = match layout {
                 ChallengeLayout::Vertical => {
-                    slots as f32 * card_height_est
-                        + (slots.saturating_sub(1)) as f32 * card_spacing
-                        + padding * 2.0
+                    slots as f32 * card_height_est + (slots.saturating_sub(1)) as f32 * card_spacing + padding * 2.0
                 }
                 ChallengeLayout::Horizontal => card_height_est + padding * 2.0,
             };
@@ -246,11 +242,7 @@ impl ChallengeOverlay {
             // With reserved slots, allow more up-scaling than auto mode so a
             // card genuinely fills its 1/N share of the window instead of
             // stopping short and leaving whitespace.
-            let max_upscale = if self.config.visible_challenges > 0 {
-                2.5
-            } else {
-                1.8
-            };
+            let max_upscale = if self.config.visible_challenges > 0 { 2.5 } else { 1.8 };
             let content_scale = (height / content_height_est).clamp(0.8, max_upscale);
 
             // Fonts are additionally capped by card width: horizontal slots
@@ -260,13 +252,11 @@ impl ChallengeOverlay {
             let card_width = match layout {
                 ChallengeLayout::Vertical => width - padding * 2.0,
                 ChallengeLayout::Horizontal => {
-                    (width - padding * 2.0 - card_spacing * slots.saturating_sub(1) as f32)
-                        / slots as f32
+                    (width - padding * 2.0 - card_spacing * slots.saturating_sub(1) as f32) / slots as f32
                 }
             };
             let natural_width = (self.frame.scaled(BASE_WIDTH) - padding * 2.0).max(1.0);
-            let font_content_scale = content_scale
-                .min((card_width / natural_width * 1.5).max(0.5));
+            let font_content_scale = content_scale.min((card_width / natural_width * 1.5).max(0.5));
 
             bar_height *= content_scale;
             bar_spacing *= content_scale;
@@ -300,18 +290,14 @@ impl ChallengeOverlay {
 
         // Bottom-anchor the card group in vertical layout when stacking from
         // the end; clamp to the top when content overflows the window.
-        let content_y = if layout == ChallengeLayout::Vertical
-            && self.config.stack_from_end
-            && num_visible > 0
-        {
+        let content_y = if layout == ChallengeLayout::Vertical && self.config.stack_from_end && num_visible > 0 {
             (height - content_height).max(0.0)
         } else {
             0.0
         };
 
         if self.config.dynamic_background {
-            self.frame
-                .begin_frame_with_content_rect(content_y, content_height);
+            self.frame.begin_frame_with_content_rect(content_y, content_height);
         } else {
             self.frame.begin_frame();
         }
@@ -465,8 +451,7 @@ impl ChallengeOverlay {
 
         // Anchor the card group to the right edge when stacking from the end.
         let x_start = if self.config.stack_from_end {
-            let group_w = card_width * num_challenges as f32
-                + card_spacing * (num_challenges - 1) as f32;
+            let group_w = card_width * num_challenges as f32 + card_spacing * (num_challenges - 1) as f32;
             width - padding - group_w
         } else {
             padding
@@ -557,18 +542,12 @@ impl ChallengeOverlay {
         // available room (very narrow card), step the font size down until it
         // fits — this keeps long challenge names like "Extraneous Expulsion"
         // readable instead of clipping into the duration text.
-        let (display_title, display_font_size) =
-            self.fit_header_title(&challenge.name, title_max, header_font_size);
+        let (display_title, display_font_size) = self.fit_header_title(&challenge.name, title_max, header_font_size);
 
         let baseline_shift = (header_font_size - display_font_size) * 0.3;
         let display_y = title_y - baseline_shift;
-        self.frame.draw_text_glowed(
-            &display_title,
-            x,
-            display_y,
-            display_font_size,
-            font_color,
-        );
+        self.frame
+            .draw_text_glowed(&display_title, x, display_y, display_font_size, font_color);
 
         if let Some(s) = duration_str {
             self.frame
@@ -585,12 +564,7 @@ impl ChallengeOverlay {
 
     /// Fit a header title into `max_width` by truncation first, then by
     /// shrinking the font when truncation alone can't fit a meaningful prefix.
-    fn fit_header_title(
-        &mut self,
-        title: &str,
-        max_width: f32,
-        font_size: f32,
-    ) -> (String, f32) {
+    fn fit_header_title(&mut self, title: &str, max_width: f32, font_size: f32) -> (String, f32) {
         if max_width <= 0.0 {
             return (String::new(), font_size);
         }
@@ -665,9 +639,7 @@ impl ChallengeOverlay {
             let icon_name = match self.icon_mode {
                 ClassIconMode::None => None,
                 ClassIconMode::Class => player.class_icon.as_ref(),
-                ClassIconMode::Discipline => {
-                    player.discipline_icon.as_ref().or(player.class_icon.as_ref())
-                }
+                ClassIconMode::Discipline => player.discipline_icon.as_ref().or(player.class_icon.as_ref()),
             };
             let has_icon = icon_name.is_some();
 
@@ -724,15 +696,7 @@ impl ChallengeOverlay {
                 }
             }
 
-            bar.render(
-                &mut self.frame,
-                x,
-                y,
-                width,
-                bar_height,
-                font_size - 2.0,
-                bar_radius,
-            );
+            bar.render(&mut self.frame, x, y, width, bar_height, font_size - 2.0, bar_radius);
 
             // Draw class/discipline icon on top of the bar — same lookup
             // semantics as metric.rs: discipline icons are raw, class icons
@@ -779,11 +743,7 @@ impl ChallengeOverlay {
         font_color: Color,
     ) -> f32 {
         let total_sum: i64 = challenge.by_player.iter().map(|p| p.value).sum();
-        let total_per_sec: f32 = challenge
-            .by_player
-            .iter()
-            .filter_map(|p| p.per_second)
-            .sum();
+        let total_per_sec: f32 = challenge.by_player.iter().filter_map(|p| p.per_second).sum();
 
         // Use Footer widget for consistent alignment with metric overlays
         let eu = self.european_number_format;
@@ -812,8 +772,7 @@ impl ChallengeOverlay {
             }
             ChallengeColumns::PerSecondOnly => {
                 // Single column: just per_second
-                Footer::new(formatting::format_compact(total_per_sec as i64, eu))
-                    .with_color(font_color)
+                Footer::new(formatting::format_compact(total_per_sec as i64, eu)).with_color(font_color)
             }
             ChallengeColumns::PercentOnly => {
                 // Single column: 100%
@@ -931,8 +890,7 @@ impl Overlay for ChallengeOverlay {
     }
 
     fn update_config(&mut self, config: OverlayConfigUpdate) {
-        if let OverlayConfigUpdate::Challenge(challenge_config, european, icon_mode) = config
-        {
+        if let OverlayConfigUpdate::Challenge(challenge_config, european, icon_mode) = config {
             self.set_config(challenge_config);
             self.european_number_format = european;
             self.set_icon_mode(icon_mode);

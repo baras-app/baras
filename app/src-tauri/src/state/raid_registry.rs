@@ -116,8 +116,7 @@ impl RaidSlotRegistry {
                 player.discipline_id = Some(discipline_id);
             }
             None => {
-                self.pending_disciplines
-                    .insert(entity_id, (class_id, discipline_id));
+                self.pending_disciplines.insert(entity_id, (class_id, discipline_id));
             }
         }
     }
@@ -126,10 +125,7 @@ impl RaidSlotRegistry {
     ///
     /// A new reading replaces the old provisional set wholesale: a name that
     /// stopped appearing was a misread, or its player left.
-    pub fn assign_provisional_slots(
-        &mut self,
-        assignments: impl IntoIterator<Item = (u8, String)>,
-    ) {
+    pub fn assign_provisional_slots(&mut self, assignments: impl IntoIterator<Item = (u8, String)>) {
         for entry in &mut self.slots {
             if matches!(entry.occupant, Some(SlotOccupant::Provisional { .. })) {
                 entry.occupant = None;
@@ -147,23 +143,15 @@ impl RaidSlotRegistry {
             let name = name.trim();
             let normalized = baras_core::raid_detect::normalize_ocr(name);
             if slot as usize >= self.slots.len()
-                || matches!(
-                    self.slots[slot as usize].occupant,
-                    Some(SlotOccupant::Player(_))
-                )
-                || baras_core::raid_detect::identified_len(&normalized)
-                    < baras_core::raid_detect::MIN_OCR_NAME_CHARS
-                || registered
-                    .iter()
-                    .any(|log| name_match(&normalized, log).is_some())
+                || matches!(self.slots[slot as usize].occupant, Some(SlotOccupant::Player(_)))
+                || baras_core::raid_detect::identified_len(&normalized) < baras_core::raid_detect::MIN_OCR_NAME_CHARS
+                || registered.iter().any(|log| name_match(&normalized, log).is_some())
                 || !seen_slots.insert(slot)
                 || !seen_names.insert(normalized)
             {
                 continue;
             }
-            self.slots[slot as usize].occupant = Some(SlotOccupant::Provisional {
-                name: name.to_string(),
-            });
+            self.slots[slot as usize].occupant = Some(SlotOccupant::Provisional { name: name.to_string() });
         }
     }
 
@@ -174,12 +162,8 @@ impl RaidSlotRegistry {
     pub fn retain_players(&mut self, confirmed: &[i64]) {
         for entry in &mut self.slots {
             match entry.occupant.take() {
-                Some(SlotOccupant::Player(player))
-                    if !confirmed.contains(&player.entity_id) =>
-                {
-                    if let (Some(class_id), Some(discipline_id)) =
-                        (player.class_id, player.discipline_id)
-                    {
+                Some(SlotOccupant::Player(player)) if !confirmed.contains(&player.entity_id) => {
+                    if let (Some(class_id), Some(discipline_id)) = (player.class_id, player.discipline_id) {
                         self.pending_disciplines
                             .insert(player.entity_id, (class_id, discipline_id));
                     }
@@ -197,9 +181,7 @@ impl RaidSlotRegistry {
         let assignments: Vec<_> = assignments
             .into_iter()
             .filter(|(slot, entity_id, _)| {
-                (*slot as usize) < self.slots.len()
-                    && seen_slots.insert(*slot)
-                    && seen_entities.insert(*entity_id)
+                (*slot as usize) < self.slots.len() && seen_slots.insert(*slot) && seen_entities.insert(*entity_id)
             })
             .collect();
 
@@ -207,8 +189,7 @@ impl RaidSlotRegistry {
         let mut players = HashMap::new();
         for (_, entity_id, _) in &assignments {
             if let Some(slot) = self.slot_of(*entity_id)
-                && let Some(SlotOccupant::Player(player)) =
-                    self.slots[slot as usize].occupant.take()
+                && let Some(SlotOccupant::Player(player)) = self.slots[slot as usize].occupant.take()
             {
                 players.insert(*entity_id, player);
             }
@@ -216,10 +197,8 @@ impl RaidSlotRegistry {
 
         // Vacate the target slots; a displaced player keeps its discipline.
         for (slot, _, _) in &assignments {
-            if let Some(SlotOccupant::Player(displaced)) =
-                self.slots[*slot as usize].occupant.take()
-                && let (Some(class_id), Some(discipline_id)) =
-                    (displaced.class_id, displaced.discipline_id)
+            if let Some(SlotOccupant::Player(displaced)) = self.slots[*slot as usize].occupant.take()
+                && let (Some(class_id), Some(discipline_id)) = (displaced.class_id, displaced.discipline_id)
             {
                 self.pending_disciplines
                     .insert(displaced.entity_id, (class_id, discipline_id));
@@ -233,8 +212,7 @@ impl RaidSlotRegistry {
             player.name = name;
 
             if player.class_id.is_none()
-                && let Some((class_id, discipline_id)) =
-                    self.pending_disciplines.remove(&entity_id)
+                && let Some((class_id, discipline_id)) = self.pending_disciplines.remove(&entity_id)
             {
                 player.class_id = Some(class_id);
                 player.discipline_id = Some(discipline_id);
@@ -303,9 +281,7 @@ impl RaidSlotRegistry {
     }
 
     pub fn is_ambiguous(&self, slot: u8) -> bool {
-        self.slots
-            .get(slot as usize)
-            .is_some_and(|entry| entry.ambiguous)
+        self.slots.get(slot as usize).is_some_and(|entry| entry.ambiguous)
     }
 
     pub fn registered_len(&self) -> usize {
@@ -348,9 +324,7 @@ impl RaidSlotRegistry {
             .iter_mut()
             .enumerate()
             .filter_map(|(slot, entry)| match entry.occupant {
-                Some(SlotOccupant::Provisional { .. }) => {
-                    Some((slot as u8, entry.occupant.take().unwrap()))
-                }
+                Some(SlotOccupant::Provisional { .. }) => Some((slot as u8, entry.occupant.take().unwrap())),
                 _ => None,
             })
             .collect();
@@ -368,10 +342,9 @@ impl RaidSlotRegistry {
             }
         }
         for (old_slot, occupant) in provisional {
-            let slot = ((old_slot as usize) < self.slots.len()
-                && self.slots[old_slot as usize].occupant.is_none())
-            .then_some(old_slot)
-            .or_else(|| self.first_free_slot());
+            let slot = ((old_slot as usize) < self.slots.len() && self.slots[old_slot as usize].occupant.is_none())
+                .then_some(old_slot)
+                .or_else(|| self.first_free_slot());
             match slot {
                 Some(slot) => self.slots[slot as usize].occupant = Some(occupant),
                 None => removed_count += 1,
@@ -507,11 +480,7 @@ mod tests {
         let mut registry = RaidSlotRegistry::new(4);
         registry.try_register(42, "Alpha".into());
 
-        registry.assign_provisional_slots([
-            (0, "Wrong".into()),
-            (1, "Alpha".into()),
-            (2, "Bravo".into()),
-        ]);
+        registry.assign_provisional_slots([(0, "Wrong".into()), (1, "Alpha".into()), (2, "Bravo".into())]);
 
         assert_eq!(registry.get_player(0).map(|p| p.entity_id), Some(42));
         assert_eq!(registry.get_provisional(0), None);
@@ -522,11 +491,7 @@ mod tests {
     #[test]
     fn partial_log_match_keeps_the_unresolved_names_for_the_next_combat() {
         let mut registry = RaidSlotRegistry::new(4);
-        registry.assign_provisional_slots([
-            (0, "Alpha".into()),
-            (1, "Bravo".into()),
-            (2, "Charlie".into()),
-        ]);
+        registry.assign_provisional_slots([(0, "Alpha".into()), (1, "Bravo".into()), (2, "Charlie".into())]);
 
         registry.assign_slots([(0, 42, "Alpha".into())]);
 

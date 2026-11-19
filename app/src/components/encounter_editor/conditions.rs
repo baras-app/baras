@@ -244,11 +244,7 @@ fn CompositeConditionEditor(
         _ => return rsx! { span { "Invalid composite" } },
     };
 
-    let label = if is_all_of {
-        "ALL OF (AND)"
-    } else {
-        "ANY OF (OR)"
-    };
+    let label = if is_all_of { "ALL OF (AND)" } else { "ANY OF (OR)" };
     let css_class = if is_all_of {
         "composite-condition--all-of"
     } else {

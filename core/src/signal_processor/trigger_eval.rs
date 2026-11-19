@@ -55,20 +55,12 @@ impl FilterContext<'_> {
 /// Trigger types that require different evaluation contexts (CombatEvent or
 /// timer IDs) return false here and must be checked via `check_event_trigger()`
 /// or `check_timer_trigger()` respectively.
-pub fn check_signal_trigger(
-    trigger: &Trigger,
-    signals: &[GameSignal],
-    filter_ctx: &FilterContext,
-) -> bool {
+pub fn check_signal_trigger(trigger: &Trigger, signals: &[GameSignal], filter_ctx: &FilterContext) -> bool {
     match trigger {
         // ─── Combat State ──────────────────────────────────────────────────
-        Trigger::CombatStart => signals
-            .iter()
-            .any(|s| matches!(s, GameSignal::CombatStarted { .. })),
+        Trigger::CombatStart => signals.iter().any(|s| matches!(s, GameSignal::CombatStarted { .. })),
 
-        Trigger::CombatEnd => signals
-            .iter()
-            .any(|s| matches!(s, GameSignal::CombatEnded { .. })),
+        Trigger::CombatEnd => signals.iter().any(|s| matches!(s, GameSignal::CombatEnded { .. })),
 
         // ─── HP Thresholds ─────────────────────────────────────────────────
         Trigger::BossHpBelow { .. } => signals.iter().any(|s| {
@@ -172,9 +164,7 @@ pub fn check_signal_trigger(
                 if trigger.matches_phase_ended(phase_id))
         }),
 
-        Trigger::AnyPhaseChange => signals
-            .iter()
-            .any(|s| matches!(s, GameSignal::PhaseChanged { .. })),
+        Trigger::AnyPhaseChange => signals.iter().any(|s| matches!(s, GameSignal::PhaseChanged { .. })),
 
         // ─── Counter Events ────────────────────────────────────────────────
         Trigger::CounterReaches { .. } => signals.iter().any(|s| {
@@ -218,11 +208,7 @@ pub fn check_signal_trigger(
             {
                 let ability_name_str = crate::context::resolve(*ability_name);
 
-                if !trigger.matches_damage_taken(
-                    *ability_id as u64,
-                    Some(ability_name_str),
-                    *defense_type_id,
-                ) {
+                if !trigger.matches_damage_taken(*ability_id as u64, Some(ability_name_str), *defense_type_id) {
                     return false;
                 }
 
@@ -383,14 +369,10 @@ pub fn check_signal_trigger(
         }),
 
         // ─── Timer triggers (handled by check_timer_trigger, not signals) ──
-        Trigger::TimerExpires { .. }
-        | Trigger::TimerStarted { .. }
-        | Trigger::TimerCanceled { .. } => false,
+        Trigger::TimerExpires { .. } | Trigger::TimerStarted { .. } | Trigger::TimerCanceled { .. } => false,
 
         // ─── Event-based triggers (handled by check_event_trigger, not signals)
-        Trigger::EffectApplied { .. }
-        | Trigger::EffectRemoved { .. }
-        | Trigger::TargetSet { .. } => false,
+        Trigger::EffectApplied { .. } | Trigger::EffectRemoved { .. } | Trigger::TargetSet { .. } => false,
 
         // ─── Modifier-only triggers (handled by EffectTracker) ────────────
         Trigger::ChargesChanged { .. }
@@ -399,14 +381,10 @@ pub fn check_signal_trigger(
         | Trigger::KillingBlow => false,
 
         // ─── Not signal-based ──────────────────────────────────────────────
-        Trigger::TimeElapsed { .. }
-        | Trigger::Manual
-        | Trigger::Never => false,
+        Trigger::TimeElapsed { .. } | Trigger::Manual | Trigger::Never => false,
 
         // ─── Composition ───────────────────────────────────────────────────
-        Trigger::AnyOf { conditions } => conditions
-            .iter()
-            .any(|c| check_signal_trigger(c, signals, filter_ctx)),
+        Trigger::AnyOf { conditions } => conditions.iter().any(|c| check_signal_trigger(c, signals, filter_ctx)),
     }
 }
 
@@ -422,11 +400,7 @@ pub fn check_signal_trigger(
 ///
 /// EffectRemoved matches only the effect being removed, never the action that
 /// removed it, so phases/counters/victory agree with the signal-based timer path.
-pub fn check_event_trigger(
-    trigger: &Trigger,
-    event: &CombatEvent,
-    filter_ctx: Option<&FilterContext>,
-) -> bool {
+pub fn check_event_trigger(trigger: &Trigger, event: &CombatEvent, filter_ctx: Option<&FilterContext>) -> bool {
     // Handle AnyOf composition first — recurse into each sub-condition so that
     // source/target filters on inner triggers are checked correctly.
     // This must be checked before the type-specific branches below, because
@@ -434,9 +408,7 @@ pub fn check_event_trigger(
     // subsequent check_event_filters would use AnyOf's own filters (None),
     // silently bypassing source/target constraints on inner conditions.
     if let Trigger::AnyOf { conditions } = trigger {
-        return conditions
-            .iter()
-            .any(|c| check_event_trigger(c, event, filter_ctx));
+        return conditions.iter().any(|c| check_event_trigger(c, event, filter_ctx));
     }
 
     // Check AbilityCast triggers from raw event.
@@ -445,9 +417,7 @@ pub fn check_event_trigger(
     if event.effect.effect_id == crate::game_data::effect_id::ABILITYACTIVATE {
         let action_id = event.action.action_id as u64;
         let action_name = crate::context::resolve(event.action.name);
-        if trigger.matches_ability(action_id, Some(action_name))
-            && check_event_filters(trigger, event, filter_ctx)
-        {
+        if trigger.matches_ability(action_id, Some(action_name)) && check_event_filters(trigger, event, filter_ctx) {
             return true;
         }
     }
@@ -469,9 +439,7 @@ pub fn check_event_trigger(
     if event.effect.type_id == effect_type_id::APPLYEFFECT {
         let eff_id = event.effect.effect_id as u64;
         let eff_name = crate::context::resolve(event.effect.effect_name);
-        if trigger.matches_effect_applied(eff_id, Some(eff_name))
-            && check_event_filters(trigger, event, filter_ctx)
-        {
+        if trigger.matches_effect_applied(eff_id, Some(eff_name)) && check_event_filters(trigger, event, filter_ctx) {
             return true;
         }
     }
@@ -502,9 +470,7 @@ pub fn check_event_trigger(
     if event.effect.type_id == effect_type_id::REMOVEEFFECT {
         let eff_id = event.effect.effect_id as u64;
         let eff_name = crate::context::resolve(event.effect.effect_name);
-        if trigger.matches_effect_removed(eff_id, Some(eff_name))
-            && check_event_filters(trigger, event, filter_ctx)
-        {
+        if trigger.matches_effect_removed(eff_id, Some(eff_name)) && check_event_filters(trigger, event, filter_ctx) {
             return true;
         }
     }
@@ -514,11 +480,7 @@ pub fn check_event_trigger(
 
 /// Check source/target filters for an event-based trigger.
 /// Returns true (passes) if no filter context is available (backward compat).
-fn check_event_filters(
-    trigger: &Trigger,
-    event: &CombatEvent,
-    filter_ctx: Option<&FilterContext>,
-) -> bool {
+fn check_event_filters(trigger: &Trigger, event: &CombatEvent, filter_ctx: Option<&FilterContext>) -> bool {
     // Position constraints read straight off the event; they apply even
     // without a filter context.
     if !crate::dsl::triggers::matches_position_constraints(
@@ -569,9 +531,9 @@ pub fn check_timer_trigger(
         Trigger::TimerExpires { timer_id } => expired_timer_ids.contains(timer_id),
         Trigger::TimerStarted { timer_id } => started_timer_ids.contains(timer_id),
         Trigger::TimerCanceled { timer_id } => canceled_timer_ids.contains(timer_id),
-        Trigger::AnyOf { conditions } => conditions.iter().any(|c| {
-            check_timer_trigger(c, expired_timer_ids, started_timer_ids, canceled_timer_ids)
-        }),
+        Trigger::AnyOf { conditions } => conditions
+            .iter()
+            .any(|c| check_timer_trigger(c, expired_timer_ids, started_timer_ids, canceled_timer_ids)),
         _ => false,
     }
 }

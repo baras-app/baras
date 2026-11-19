@@ -51,11 +51,7 @@ impl DataTab {
 
     /// Returns the value column to query (dmg_amount or heal_amount)
     pub fn value_column(&self) -> &'static str {
-        if self.is_healing() {
-            "heal_amount"
-        } else {
-            "dmg_amount"
-        }
+        if self.is_healing() { "heal_amount" } else { "dmg_amount" }
     }
 
     /// Returns the display label for the rate column (DPS, HPS, DTPS, HTPS)
@@ -880,9 +876,7 @@ impl EffectSelector {
     pub fn matches(&self, id: u64, name: Option<&str>) -> bool {
         match self {
             Self::Id(expected) => *expected == id,
-            Self::Name(expected) => name
-                .map(|n| n.eq_ignore_ascii_case(expected))
-                .unwrap_or(false),
+            Self::Name(expected) => name.map(|n| n.eq_ignore_ascii_case(expected)).unwrap_or(false),
         }
     }
 }
@@ -916,9 +910,7 @@ impl AbilitySelector {
     pub fn matches(&self, id: u64, name: Option<&str>) -> bool {
         match self {
             Self::Id(expected) => *expected == id,
-            Self::Name(expected) => name
-                .map(|n| n.eq_ignore_ascii_case(expected))
-                .unwrap_or(false),
+            Self::Name(expected) => name.map(|n| n.eq_ignore_ascii_case(expected)).unwrap_or(false),
         }
     }
 }
@@ -1022,7 +1014,9 @@ impl RefreshAbility {
     pub fn ignore_immune_resist(&self) -> bool {
         match self {
             Self::Simple(_) => false,
-            Self::Conditional { ignore_immune_resist, .. } => *ignore_immune_resist,
+            Self::Conditional {
+                ignore_immune_resist, ..
+            } => *ignore_immune_resist,
         }
     }
 
@@ -1346,12 +1340,23 @@ pub enum PositionAxis {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "op")]
 pub enum PositionOp {
-    Gt { value: f32 },
-    Gte { value: f32 },
-    Lt { value: f32 },
-    Lte { value: f32 },
+    Gt {
+        value: f32,
+    },
+    Gte {
+        value: f32,
+    },
+    Lt {
+        value: f32,
+    },
+    Lte {
+        value: f32,
+    },
     /// Inclusive on both ends.
-    Between { min: f32, max: f32 },
+    Between {
+        min: f32,
+        max: f32,
+    },
 }
 
 /// A single position constraint on a trigger.
@@ -1882,14 +1887,30 @@ pub struct ClassColorConfig {
     pub sniper_gunslinger: Color,
 }
 
-fn default_class_color_sorcerer() -> Color { [128, 64, 192, 255] }   // violet
-fn default_class_color_assassin() -> Color { [90, 48, 128, 255] }    // dark purple
-fn default_class_color_juggernaut() -> Color { [192, 48, 48, 255] }  // crimson
-fn default_class_color_marauder() -> Color { [208, 80, 32, 255] }    // red-orange
-fn default_class_color_mercenary() -> Color { [64, 128, 64, 255] }   // green
-fn default_class_color_powertech() -> Color { [192, 104, 32, 255] }  // orange
-fn default_class_color_operative() -> Color { [96, 120, 48, 255] }   // olive
-fn default_class_color_sniper() -> Color { [192, 160, 32, 255] }     // gold
+fn default_class_color_sorcerer() -> Color {
+    [128, 64, 192, 255]
+} // violet
+fn default_class_color_assassin() -> Color {
+    [90, 48, 128, 255]
+} // dark purple
+fn default_class_color_juggernaut() -> Color {
+    [192, 48, 48, 255]
+} // crimson
+fn default_class_color_marauder() -> Color {
+    [208, 80, 32, 255]
+} // red-orange
+fn default_class_color_mercenary() -> Color {
+    [64, 128, 64, 255]
+} // green
+fn default_class_color_powertech() -> Color {
+    [192, 104, 32, 255]
+} // orange
+fn default_class_color_operative() -> Color {
+    [96, 120, 48, 255]
+} // olive
+fn default_class_color_sniper() -> Color {
+    [192, 160, 32, 255]
+} // gold
 
 impl Default for ClassColorConfig {
     fn default() -> Self {
@@ -2189,14 +2210,11 @@ impl PersonalStat {
             | Self::EncounterCount
             | Self::ClassDiscipline => PersonalStatCategory::Info,
 
-            Self::DamageGroup | Self::BossDamageGroup | Self::DamageCritPct => {
-                PersonalStatCategory::Damage
-            }
+            Self::DamageGroup | Self::BossDamageGroup | Self::DamageCritPct => PersonalStatCategory::Damage,
 
-            Self::HealingGroup
-            | Self::HealingAdvanced
-            | Self::HealPctGroup
-            | Self::HealingTakenGroup => PersonalStatCategory::Healing,
+            Self::HealingGroup | Self::HealingAdvanced | Self::HealPctGroup | Self::HealingTakenGroup => {
+                PersonalStatCategory::Healing
+            }
 
             Self::MitigationGroup => PersonalStatCategory::Mitigation,
 
@@ -2214,11 +2232,9 @@ impl PersonalStat {
             Self::Dps | Self::EDps | Self::BossDps | Self::TotalDamage | Self::BossDamage => {
                 PersonalStatCategory::Damage
             }
-            Self::Hps
-            | Self::EHps
-            | Self::TotalHealing
-            | Self::HealCritPct
-            | Self::EffectiveHealPct => PersonalStatCategory::Healing,
+            Self::Hps | Self::EHps | Self::TotalHealing | Self::HealCritPct | Self::EffectiveHealPct => {
+                PersonalStatCategory::Healing
+            }
             Self::Dtps => PersonalStatCategory::Mitigation,
             Self::Tps | Self::TotalThreat => PersonalStatCategory::Threat,
             Self::Phase | Self::PhaseTime => PersonalStatCategory::Info,
@@ -3238,8 +3254,12 @@ pub struct AbilityQueueOverlayConfig {
     pub dynamic_background: bool,
 }
 
-fn default_max_display() -> u8 { 12 }
-fn default_gcd_color() -> Color { [120, 200, 255, 255] }
+fn default_max_display() -> u8 {
+    12
+}
+fn default_gcd_color() -> Color {
+    [120, 200, 255, 255]
+}
 
 impl Default for AbilityQueueOverlayConfig {
     fn default() -> Self {
@@ -3531,10 +3551,7 @@ impl Default for OverlaySettings {
 
 impl OverlaySettings {
     pub fn get_position(&self, overlay_type: &str) -> OverlayPositionConfig {
-        self.positions
-            .get(overlay_type)
-            .cloned()
-            .unwrap_or_default()
+        self.positions.get(overlay_type).cloned().unwrap_or_default()
     }
 
     pub fn set_position(&mut self, overlay_type: &str, config: OverlayPositionConfig) {
@@ -3542,10 +3559,7 @@ impl OverlaySettings {
     }
 
     pub fn get_appearance(&self, overlay_type: &str) -> OverlayAppearanceConfig {
-        self.appearances
-            .get(overlay_type)
-            .cloned()
-            .unwrap_or_default()
+        self.appearances.get(overlay_type).cloned().unwrap_or_default()
     }
 
     pub fn set_appearance(&mut self, overlay_type: &str, config: OverlayAppearanceConfig) {
@@ -3558,7 +3572,11 @@ impl OverlaySettings {
     /// Idempotent: the legacy fields are consumed and never written back.
     pub fn migrate_legacy(&mut self) {
         let spacing = self.metric_bar_spacing;
-        for a in self.appearances.values_mut().chain(self.default_appearances.values_mut()) {
+        for a in self
+            .appearances
+            .values_mut()
+            .chain(self.default_appearances.values_mut())
+        {
             if let Some(legacy) = a.legacy_bar_spacing.take()
                 && legacy != spacing
             {
@@ -3578,7 +3596,16 @@ impl OverlaySettings {
 
         /// Metric overlays that shared `metric_opacity`
         const METRIC_KEYS: [&str; 11] = [
-            "dps", "edps", "bossdps", "hps", "ehps", "abs", "dtps", "tps", "apm", "interrupts",
+            "dps",
+            "edps",
+            "bossdps",
+            "hps",
+            "ehps",
+            "abs",
+            "dtps",
+            "tps",
+            "apm",
+            "interrupts",
             "incoming_damage",
         ];
         // The raid and legacy effects overlays never drew this background
@@ -4101,8 +4128,7 @@ impl EntityFilter {
 
 /// Global UI session state that persists across tab switches (in-memory only).
 /// Lives in the App component and flows down via props/signals.
-#[derive(Debug, Clone, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct UiSessionState {
     /// Currently active main tab
     pub active_tab: MainTab,
@@ -4125,7 +4151,6 @@ pub struct UiSessionState {
     /// Use European number formatting (swap `.` and `,`)
     pub european_number_format: bool,
 }
-
 
 impl UiSessionState {
     /// Reset session-specific state when opening a new file.
@@ -4308,13 +4333,9 @@ impl CombatLogSortColumn {
             CombatLogSortColumn::Type => "effect_type_id",
             CombatLogSortColumn::Ability => "ability_name",
             CombatLogSortColumn::Effect => "effect_name",
-            CombatLogSortColumn::Value => {
-                "COALESCE(dmg_effective, 0) + COALESCE(heal_effective, 0)"
-            }
+            CombatLogSortColumn::Value => "COALESCE(dmg_effective, 0) + COALESCE(heal_effective, 0)",
             CombatLogSortColumn::Absorbed => "COALESCE(dmg_absorbed, 0)",
-            CombatLogSortColumn::Overheal => {
-                "GREATEST(COALESCE(heal_amount, 0) - COALESCE(heal_effective, 0), 0)"
-            }
+            CombatLogSortColumn::Overheal => "GREATEST(COALESCE(heal_amount, 0) - COALESCE(heal_effective, 0), 0)",
             CombatLogSortColumn::Threat => "COALESCE(threat, 0.0)",
         }
     }
@@ -4571,15 +4592,9 @@ mod tests {
         println!("Parsed array: {:?}", parsed.refresh_abilities);
 
         // First entry: Simple
-        assert!(matches!(
-            parsed.refresh_abilities[0],
-            RefreshAbility::Simple(_)
-        ));
+        assert!(matches!(parsed.refresh_abilities[0], RefreshAbility::Simple(_)));
         assert_eq!(parsed.refresh_abilities[0].min_stacks(), None);
-        assert_eq!(
-            parsed.refresh_abilities[0].trigger(),
-            RefreshTrigger::Activation
-        );
+        assert_eq!(parsed.refresh_abilities[0].trigger(), RefreshTrigger::Activation);
 
         // Second entry: Conditional with min_stacks = 2, trigger = heal
         assert!(matches!(
