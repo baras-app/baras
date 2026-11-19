@@ -1,11 +1,12 @@
-//! Operations sub-tab: a rail of recent runs and areas, the selected area's
-//! run table, and the recap of the run picked from either.
+//! Operations sub-tab: a rail of areas, the clears summary with the newest
+//! runs, the selected area's run table, and the recap of a picked run.
 
 use dioxus::prelude::*;
 
 use baras_types::history::{BackfillEvent, PullFilter, RunSummary};
 
 use super::Backfill;
+use super::clears::{ClearsTable, summarize};
 use super::overview::short_ts;
 use super::scroll::{save_scroll, use_restore_scroll};
 use super::toolbar::HistoryToolbar;
@@ -28,12 +29,12 @@ pub struct OperationsProps {
 }
 
 /// Rail key: (filename, first pull start_ms)
-type RunKey = (String, i64);
+pub(super) type RunKey = (String, i64);
 
-/// Runs listed under "Recent" at the top of the rail
-const RECENT: usize = 6;
+/// Runs listed under "Recent runs" beside the clears summary
+const RECENT: usize = 20;
 
-fn key_of(r: &RunSummary) -> RunKey {
+pub(super) fn key_of(r: &RunSummary) -> RunKey {
     (r.filename.clone(), r.start_ms)
 }
 
@@ -83,69 +84,6 @@ fn effective(selected: Option<RunKey>, runs: &[&RunSummary]) -> Option<RunKey> {
     selected.filter(|k| runs.iter().any(|r| key_of(r) == *k))
 }
 
-/// One run in the rail; `show_operation` names the operation (Recent list)
-#[component]
-fn RunItem(run: RunSummary, selected: bool, on_pick: EventHandler<RunKey>, #[props(default)] show_operation: bool) -> Element {
-    let r = &run;
-    let key = key_of(r);
-    let date = r.started.get(..10).unwrap_or(&r.started);
-    rsx! {
-        div {
-            class: if selected { "sidebar-encounter-item run-item selected" } else { "sidebar-encounter-item run-item" },
-            onclick: move |_| on_pick.call(key.clone()),
-            if show_operation {
-                div { class: "run-item-op", "{r.operation}" }
-            }
-            div { class: "encounter-main",
-                span { class: "encounter-name run-who",
-                    if let Some(icon) = r.role_icon.as_deref().and_then(get_role_icon) {
-                        img { class: "role-icon", src: *icon, alt: "" }
-                    }
-                    if let Some(icon) = r.discipline_icon.as_deref().and_then(get_class_icon) {
-                        img { class: "discipline-icon", src: *icon, alt: "" }
-                    }
-                    span { title: "{r.discipline.clone().unwrap_or_default()}", "{r.character}" }
-                }
-                span { class: "{tier_class(&r.tier)}", {tier_label(&r.tier, r.group_size, &r.difficulty)} }
-            }
-            div { class: "run-item-meta",
-                span { "{date}" }
-                span { "·" }
-                span {
-                    class: if r.timer.achieved == Some(true) { "run-time ok" } else { "run-time" },
-                    title: if r.cleared { "Time to the final kill" } else { "Time to the last pull" },
-                    {fmt_secs(r.timer.elapsed_secs)}
-                }
-                // Outcome sits at the right edge, under the tier badge. A full
-                // clear replaces the kill count; partial runs show how far they got
-                span { class: "run-outcome",
-                    if r.hidden {
-                        span { class: "run-badge", title: "Hidden run", i { class: "fa-solid fa-eye-slash" } }
-                    }
-                    // A missed timer shows nothing; only the achievement is worth a badge
-                    if r.timer.achieved == Some(true) {
-                        span { class: "run-badge timer-ok", title: "Timed run achieved", i { class: "fa-solid fa-stopwatch" } }
-                    }
-                    if r.cleared {
-                        span { class: "run-badge cleared", title: "Every boss killed", i { class: "fa-solid fa-check" } " Clear" }
-                    } else {
-                        span { class: "run-badge", title: "kills / bosses",
-                            if r.bosses_total > 0 { "{r.kills}/{r.bosses_total}" } else { "{r.kills} kills" }
-                        }
-                    }
-                }
-            }
-            if !r.tags.is_empty() {
-                div { class: "run-item-meta",
-                    for t in r.tags.iter() {
-                        span { class: "run-tag small", "{t}" }
-                    }
-                }
-            }
-        }
-    }
-}
-
 /// Column the area's run table is sorted by
 #[derive(Clone, Copy, PartialEq)]
 enum RunSort {
@@ -156,9 +94,10 @@ enum RunSort {
     Time,
 }
 
-/// Every run of one area under the filters; a row opens the run's recap
+/// The runs of one area under the filters, or the newest across all of them
+/// (`show_operation` names each row's operation); a row opens the run's recap
 #[component]
-fn RunTable(operation: String, runs: Vec<RunSummary>, on_pick: EventHandler<RunKey>) -> Element {
+fn RunTable(operation: String, runs: Vec<RunSummary>, on_pick: EventHandler<RunKey>, #[props(default)] show_operation: bool) -> Element {
     let mut sort = use_signal(|| (RunSort::Date, true));
     let (key, desc) = *sort.read();
     let mut rows: Vec<&RunSummary> = runs.iter().collect();
@@ -182,8 +121,10 @@ fn RunTable(operation: String, runs: Vec<RunSummary>, on_pick: EventHandler<RunK
         div { class: "pull-history-header",
             div { class: "pull-history-title",
                 h3 { "{operation}" }
-                span { class: "pull-history-operation", "{runs.len()} runs" }
-                span { class: "pull-history-operation", "· Click a row to view its details" }
+                if !show_operation {
+                    span { class: "pull-history-operation", "{runs.len()} runs ·" }
+                }
+                span { class: "pull-history-operation", "Click a row to view its details" }
             }
         }
         div { class: "pull-history-table-wrap",
@@ -191,6 +132,9 @@ fn RunTable(operation: String, runs: Vec<RunSummary>, on_pick: EventHandler<RunK
                 thead {
                     tr {
                         th { class: sort_class(RunSort::Date), onclick: move |_| on_sort(RunSort::Date), "Date" }
+                        if show_operation {
+                            th { "Operation" }
+                        }
                         th { "Character" }
                         th { "Difficulty" }
                         th { class: sort_class(RunSort::Result), onclick: move |_| on_sort(RunSort::Result), "Result" }
@@ -210,6 +154,9 @@ fn RunTable(operation: String, runs: Vec<RunSummary>, on_pick: EventHandler<RunK
                                     class: if r.hidden { "run-row pull-hidden" } else { "run-row" },
                                     onclick: move |_| on_pick.call(pick.clone()),
                                     td { {short_ts(&r.started)} }
+                                    if show_operation {
+                                        td { "{r.operation}" }
+                                    }
                                     td {
                                         span { class: "pull-discipline", title: "{r.discipline.clone().unwrap_or_default()}",
                                             if let Some(icon) = r.role_icon.as_deref().and_then(get_role_icon) {
@@ -263,8 +210,6 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
     let mut search = use_signal(|| props.state.read().history.run_search.clone());
     // The area whose run table fills the main pane while no run is open
     let mut area = use_signal(|| props.state.read().history.run_area.clone());
-    // The newest runs across every operation, folded until asked for
-    let mut recent_open = use_signal(|| false);
     let mut state = props.state;
     use_effect(move || {
         let mut s = state.write();
@@ -319,6 +264,8 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
         }
     });
     let known_tags = tags.to_vec();
+    // The clears summary fills the main pane while no area or run is open
+    let summary_open = current_area.is_none() && (open_area.is_none() || area_runs.is_empty());
     // Operations / Flashpoints, each split by operation
     let groups: Vec<(usize, Vec<(&str, Vec<&RunSummary>)>)> = (0..super::CONTENT_GROUPS.len())
         .map(|g| {
@@ -373,21 +320,16 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
                                 p { class: "hint", "Widen the filters, or re-scan your logs from the Logs tab." }
                             }
                         }
-                        if !visible.is_empty() && query.is_empty() {
-                            {
-                                let chevron = if *recent_open.read() { "fa-chevron-down" } else { "fa-chevron-right" };
-                                rsx! {
-                                    div { class: "sidebar-section-header run-recent-header", onclick: move |_| recent_open.toggle(),
-                                        i { class: "fa-solid {chevron} collapse-icon" }
-                                        span { class: "section-area", i { class: "fa-solid fa-clock-rotate-left" } " Recent" }
-                                        span { class: "section-count", "{visible.len().min(RECENT)}" }
-                                    }
-                                    if *recent_open.read() {
-                                        for r in visible.iter().take(RECENT) {
-                                            RunItem { run: (*r).clone(), selected: current.as_ref() == Some(&key_of(r)), on_pick: move |k| selected.set(Some(k)), show_operation: true }
-                                        }
-                                    }
-                                }
+                        if !visible.is_empty() {
+                            button {
+                                class: if summary_open { "run-summary-btn active" } else { "run-summary-btn" },
+                                title: "Clears per operation and the newest runs",
+                                onclick: move |_| {
+                                    area.set(None);
+                                    selected.set(None);
+                                },
+                                i { class: "fa-solid fa-table-list" }
+                                "Clears summary"
                             }
                         }
                         for (g, ops) in groups.iter() {
@@ -446,10 +388,37 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
                         },
                     }
                 } else if let Some(op) = open_area.filter(|_| !area_runs.is_empty()) {
+                    div { class: "run-back",
+                        button {
+                            class: "btn btn-sm btn-ghost",
+                            title: "Back to the clears summary",
+                            onclick: move |_| area.set(None),
+                            i { class: "fa-solid fa-chevron-left" }
+                            " Return to Summary"
+                        }
+                    }
                     RunTable { operation: op, runs: area_runs, on_pick: move |k| selected.set(Some(k)) }
+                } else if !visible.is_empty() {
+                    div { class: "clears-dash",
+                        div { class: "clears-col",
+                            ClearsTable {
+                                rows: summarize(&visible),
+                                on_area: move |op| area.set(Some(op)),
+                                on_pick: move |k| selected.set(Some(k)),
+                            }
+                        }
+                        div { class: "clears-col recent",
+                            RunTable {
+                                operation: "Recent runs",
+                                runs: visible.iter().take(RECENT).map(|r| (*r).clone()).collect::<Vec<_>>(),
+                                show_operation: true,
+                                on_pick: move |k| selected.set(Some(k)),
+                            }
+                        }
+                    }
                 } else if !loading {
                     div { class: "sidebar-empty",
-                        p { "Select an operation or a recent run" }
+                        p { "No runs under these filters" }
                     }
                 }
             }
