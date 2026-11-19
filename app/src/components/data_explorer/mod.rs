@@ -113,6 +113,20 @@ async fn load_actor_entities(idx: Option<u32>, tr: Option<&TimeRange>) -> (Vec<E
     (result, dmg_map)
 }
 
+/// View tabs in display order
+const VIEW_TABS: [(ViewMode, &str); 10] = [
+    (ViewMode::Overview, "Overview"),
+    (ViewMode::Charts, "Charts"),
+    (ViewMode::Detailed(DataTab::Damage), "Damage"),
+    (ViewMode::Detailed(DataTab::Healing), "Healing"),
+    (ViewMode::Detailed(DataTab::DamageTaken), "Damage Taken"),
+    (ViewMode::Detailed(DataTab::HealingTaken), "Healing Taken"),
+    (ViewMode::CombatLog, "Combat Log"),
+    (ViewMode::Usage, "Ability Usage"),
+    (ViewMode::Rotation, "Rotation"),
+    (ViewMode::Uptime, "Effect Uptime"),
+];
+
 #[component]
 pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
     // Encounter selection state
@@ -1813,55 +1827,17 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
 
                     // Data tab selector (Overview, Damage, Healing, Damage Taken, Healing Taken, Charts)
                     div { class: "data-tab-selector",
-                        button {
-                            class: if matches!(view_mode(), ViewMode::Overview) { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| view_mode.set(ViewMode::Overview),
-                            "Overview"
-                        }
-                        button {
-                            class: if matches!(view_mode(), ViewMode::Charts) { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| view_mode.set(ViewMode::Charts),
-                            "Charts"
-                        }
-                        button {
-                            class: if matches!(view_mode(), ViewMode::Detailed(DataTab::Damage)) { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| view_mode.set(ViewMode::Detailed(DataTab::Damage)),
-                            "Damage"
-                        }
-                        button {
-                            class: if matches!(view_mode(), ViewMode::Detailed(DataTab::Healing)) { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| view_mode.set(ViewMode::Detailed(DataTab::Healing)),
-                            "Healing"
-                        }
-                        button {
-                            class: if matches!(view_mode(), ViewMode::Detailed(DataTab::DamageTaken)) { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| view_mode.set(ViewMode::Detailed(DataTab::DamageTaken)),
-                            "Damage Taken"
-                        }
-                        button {
-                            class: if matches!(view_mode(), ViewMode::Detailed(DataTab::HealingTaken)) { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| view_mode.set(ViewMode::Detailed(DataTab::HealingTaken)),
-                            "Healing Taken"
-                        }
-                        button {
-                            class: if matches!(view_mode(), ViewMode::CombatLog) { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| { death_target_filter.set(None); view_mode.set(ViewMode::CombatLog); },
-                            "Combat Log"
-                        }
-                        button {
-                            class: if matches!(view_mode(), ViewMode::Usage) { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| view_mode.set(ViewMode::Usage),
-                            "Ability Usage"
-                        }
-                        button {
-                            class: if matches!(view_mode(), ViewMode::Rotation) { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| view_mode.set(ViewMode::Rotation),
-                            "Rotation"
-                        }
-                        button {
-                            class: if matches!(view_mode(), ViewMode::Uptime) { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| view_mode.set(ViewMode::Uptime),
-                            "Effect Uptime"
+                        for (mode, label) in VIEW_TABS {
+                            button {
+                                class: if view_mode() == mode { "data-tab active" } else { "data-tab" },
+                                onclick: move |_| {
+                                    if mode == ViewMode::CombatLog {
+                                        death_target_filter.set(None);
+                                    }
+                                    view_mode.set(mode);
+                                },
+                                "{label}"
+                            }
                         }
                         button {
                             class: "tab-fullscreen-btn",
