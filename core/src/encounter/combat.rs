@@ -785,47 +785,7 @@ impl CombatEncounter {
 
     /// Evaluate a single state condition against current encounter state.
     pub fn evaluate_condition(&self, condition: &crate::dsl::Condition) -> bool {
-        use crate::dsl::Condition;
-        match condition {
-            Condition::PhaseActive { phase_ids } => self.is_in_any_phase(phase_ids),
-
-            Condition::CounterCompare {
-                counter_id,
-                operator,
-                value,
-            } => {
-                let current = self.get_counter(counter_id);
-                operator.evaluate(current, *value)
-            }
-
-            Condition::CounterCompareCounter {
-                counter_id,
-                operator,
-                other_counter_id,
-            } => {
-                let left = self.get_counter(counter_id);
-                let right = self.get_counter(other_counter_id);
-                operator.evaluate(left, right)
-            }
-
-            Condition::TimerTimeRemaining {
-                timer_id,
-                operator,
-                value,
-            } => {
-                // If the timer is not active, the condition is always false
-                match self.timer_remaining.get(timer_id) {
-                    Some(&remaining) => operator.evaluate_f32(remaining, *value),
-                    None => false,
-                }
-            }
-
-            Condition::AllOf { conditions } => conditions.iter().all(|c| self.evaluate_condition(c)),
-
-            Condition::AnyOf { conditions } => conditions.iter().any(|c| self.evaluate_condition(c)),
-
-            Condition::Not { condition } => !self.evaluate_condition(condition),
-        }
+        self.evaluate_condition_with_timer_snapshot(condition, &self.timer_remaining)
     }
 
     /// Evaluate a single condition using an overridden timer_remaining snapshot.
@@ -899,24 +859,12 @@ impl CombatEncounter {
         phases: &[String],
         counter_condition: Option<&CounterCondition>,
     ) -> bool {
-        // Check new-style conditions
-        if !conditions.iter().all(|c| self.evaluate_condition(c)) {
-            return false;
-        }
-
-        // Check legacy phases
-        if !phases.is_empty() && !self.is_in_any_phase(phases) {
-            return false;
-        }
-
-        // Check legacy counter condition
-        if let Some(cond) = counter_condition
-            && !self.check_counter_condition(cond)
-        {
-            return false;
-        }
-
-        true
+        self.evaluate_merged_conditions_with_timer_snapshot(
+            conditions,
+            phases,
+            counter_condition,
+            &self.timer_remaining,
+        )
     }
 
     /// Evaluate merged conditions with an overridden timer_remaining snapshot.

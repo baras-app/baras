@@ -9,11 +9,51 @@
 use chrono::NaiveDateTime;
 
 use crate::combat_log::CombatEvent;
-use crate::dsl::Trigger;
+use crate::dsl::{CounterDefinition, Trigger};
 use crate::state::SessionCache;
 
 use super::GameSignal;
 use super::trigger_eval::{self, FilterContext};
+
+/// A matched phase start: (phase being left, new phase id, boss id, counters to reset, counter definitions)
+type Transition = (Option<String>, String, String, Vec<String>, Vec<CounterDefinition>);
+
+/// Enter the matched phase and build its signals. A `PhaseEndTriggered` for the
+/// phase being left is skipped when `current_signals` already holds one.
+fn apply_transition(
+    cache: &mut SessionCache,
+    (old_phase, new_phase_id, boss_id, resets, counter_defs): Transition,
+    timestamp: NaiveDateTime,
+    current_signals: &[GameSignal],
+) -> Vec<GameSignal> {
+    let Some(enc) = cache.current_encounter_mut() else {
+        tracing::error!("BUG: encounter disappeared during a phase transition");
+        return Vec::new();
+    };
+    enc.set_phase(&new_phase_id, timestamp);
+    enc.reset_counters_to_initial(&resets, &counter_defs);
+    enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
+
+    let mut signals = Vec::new();
+    if let Some(ref ended) = old_phase {
+        let already_emitted = current_signals
+            .iter()
+            .any(|s| matches!(s, GameSignal::PhaseEndTriggered { phase_id, .. } if phase_id == ended));
+        if !already_emitted {
+            signals.push(GameSignal::PhaseEndTriggered {
+                phase_id: ended.clone(),
+                timestamp,
+            });
+        }
+    }
+    signals.push(GameSignal::PhaseChanged {
+        boss_id,
+        old_phase,
+        new_phase: new_phase_id,
+        timestamp,
+    });
+    signals
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Phase Transition Checks
@@ -74,33 +114,10 @@ pub fn check_hp_phase_transitions(
         found
     };
 
-    // Second pass: mutate if we found a match
-    if let Some((old_phase, new_phase_id, boss_id, resets, counter_defs)) = match_data {
-        let Some(enc) = cache.current_encounter_mut() else {
-            tracing::error!("BUG: encounter disappeared mid-function in check_hp_phase_transitions");
-            return Vec::new();
-        };
-        enc.set_phase(&new_phase_id, timestamp);
-        enc.reset_counters_to_initial(&resets, &counter_defs);
-        enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
-
-        let mut signals = Vec::new();
-        if let Some(ref ended) = old_phase {
-            signals.push(GameSignal::PhaseEndTriggered {
-                phase_id: ended.clone(),
-                timestamp,
-            });
-        }
-        signals.push(GameSignal::PhaseChanged {
-            boss_id,
-            old_phase,
-            new_phase: new_phase_id,
-            timestamp,
-        });
-        return signals;
+    match match_data {
+        Some(transition) => apply_transition(cache, transition, timestamp, &[]),
+        None => Vec::new(),
     }
-
-    Vec::new()
 }
 
 /// Check for phase transitions based on ability/effect events.
@@ -177,38 +194,10 @@ pub fn check_ability_phase_transitions(
         found
     };
 
-    // Second pass: mutate if we found a match
-    if let Some((old_phase, new_phase_id, boss_id, resets, counter_defs)) = match_data {
-        let Some(enc) = cache.current_encounter_mut() else {
-            tracing::error!("BUG: encounter disappeared mid-function in check_ability_phase_transitions");
-            return Vec::new();
-        };
-        enc.set_phase(&new_phase_id, event.timestamp);
-        enc.reset_counters_to_initial(&resets, &counter_defs);
-        enc.challenge_tracker.set_phase(&new_phase_id, event.timestamp);
-
-        let mut signals = Vec::new();
-        if let Some(ref ended) = old_phase {
-            let already_emitted = current_signals
-                .iter()
-                .any(|s| matches!(s, GameSignal::PhaseEndTriggered { phase_id, .. } if phase_id == ended));
-            if !already_emitted {
-                signals.push(GameSignal::PhaseEndTriggered {
-                    phase_id: ended.clone(),
-                    timestamp: event.timestamp,
-                });
-            }
-        }
-        signals.push(GameSignal::PhaseChanged {
-            boss_id,
-            old_phase,
-            new_phase: new_phase_id,
-            timestamp: event.timestamp,
-        });
-        return signals;
+    match match_data {
+        Some(transition) => apply_transition(cache, transition, event.timestamp, current_signals),
+        None => Vec::new(),
     }
-
-    Vec::new()
 }
 
 /// Check for phase transitions based on entity signals (NpcAppears, EntityDeath, etc.).
@@ -282,38 +271,10 @@ pub fn check_entity_phase_transitions(
         found
     };
 
-    // Second pass: mutate if we found a match
-    if let Some((old_phase, new_phase_id, boss_id, resets, counter_defs)) = match_data {
-        let Some(enc) = cache.current_encounter_mut() else {
-            tracing::error!("BUG: encounter disappeared mid-function in check_entity_phase_transitions");
-            return Vec::new();
-        };
-        enc.set_phase(&new_phase_id, timestamp);
-        enc.reset_counters_to_initial(&resets, &counter_defs);
-        enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
-
-        let mut signals = Vec::new();
-        if let Some(ref ended) = old_phase {
-            let already_emitted = current_signals
-                .iter()
-                .any(|s| matches!(s, GameSignal::PhaseEndTriggered { phase_id, .. } if phase_id == ended));
-            if !already_emitted {
-                signals.push(GameSignal::PhaseEndTriggered {
-                    phase_id: ended.clone(),
-                    timestamp,
-                });
-            }
-        }
-        signals.push(GameSignal::PhaseChanged {
-            boss_id,
-            old_phase,
-            new_phase: new_phase_id,
-            timestamp,
-        });
-        return signals;
+    match match_data {
+        Some(transition) => apply_transition(cache, transition, timestamp, current_signals),
+        None => Vec::new(),
     }
-
-    Vec::new()
 }
 
 /// Check for phase transitions based on combat time (TimeElapsed triggers).
@@ -392,33 +353,10 @@ pub fn check_time_phase_transitions(cache: &mut SessionCache, timestamp: NaiveDa
         found
     };
 
-    // Third pass: mutate if we found a match
-    if let Some((old_phase, new_phase_id, boss_id, resets, counter_defs)) = match_data {
-        let Some(enc) = cache.current_encounter_mut() else {
-            tracing::error!("BUG: encounter disappeared mid-function in check_time_phase_transitions");
-            return Vec::new();
-        };
-        enc.set_phase(&new_phase_id, timestamp);
-        enc.reset_counters_to_initial(&resets, &counter_defs);
-        enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
-
-        let mut signals = Vec::new();
-        if let Some(ref ended) = old_phase {
-            signals.push(GameSignal::PhaseEndTriggered {
-                phase_id: ended.clone(),
-                timestamp,
-            });
-        }
-        signals.push(GameSignal::PhaseChanged {
-            boss_id,
-            old_phase,
-            new_phase: new_phase_id,
-            timestamp,
-        });
-        return signals;
+    match match_data {
+        Some(transition) => apply_transition(cache, transition, timestamp, &[]),
+        None => Vec::new(),
     }
-
-    Vec::new()
 }
 
 /// Check for phase transitions triggered by timer events (expires/starts).
@@ -489,27 +427,8 @@ pub fn check_timer_phase_transitions(
         found
     };
 
-    if let Some((old_phase, new_phase_id, boss_id, resets, counter_defs)) = start_match {
-        let Some(enc) = cache.current_encounter_mut() else {
-            tracing::error!("BUG: encounter disappeared mid-function in check_timer_phase_transitions");
-            return Vec::new();
-        };
-        enc.set_phase(&new_phase_id, timestamp);
-        enc.reset_counters_to_initial(&resets, &counter_defs);
-        enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
-
-        if let Some(ref ended) = old_phase {
-            all_signals.push(GameSignal::PhaseEndTriggered {
-                phase_id: ended.clone(),
-                timestamp,
-            });
-        }
-        all_signals.push(GameSignal::PhaseChanged {
-            boss_id,
-            old_phase,
-            new_phase: new_phase_id,
-            timestamp,
-        });
+    if let Some(transition) = start_match {
+        all_signals.extend(apply_transition(cache, transition, timestamp, &[]));
     }
 
     // Check current phase's end trigger against timer events
