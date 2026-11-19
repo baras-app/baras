@@ -156,7 +156,7 @@ pub fn RunDetailView(
         div { class: "pull-history-header",
             div { class: "pull-history-title",
                 h3 { "{run.operation}" }
-                span { class: "{tier_class(&run.tier)}", {tier_label(run)} }
+                span { class: "{tier_class(&run.tier)}", {tier_label(&run.tier, run.group_size, &run.difficulty)} }
                 span { class: "pull-history-operation", "{date} · {run.character}" }
                 if !run.server.is_empty() || !run.game_version.is_empty() {
                     span { class: "pull-history-operation", title: "Server · game patch at the time",

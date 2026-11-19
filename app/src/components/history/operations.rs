@@ -48,9 +48,9 @@ pub(super) fn tier_class(tier: &str) -> &'static str {
 }
 
 /// "Master 8" / "8-man" when the tier is unknown
-pub(super) fn tier_label(r: &RunSummary) -> String {
-    match (r.tier.as_str(), r.group_size) {
-        ("", 0) => r.difficulty.clone(),
+pub(super) fn tier_label(tier: &str, size: u8, raw: &str) -> String {
+    match (tier, size) {
+        ("", 0) => raw.to_string(),
         ("", n) => format!("{n}-man"),
         (t, 0) => t.to_string(),
         (t, n) => format!("{t} {n}"),
@@ -106,7 +106,7 @@ fn RunItem(run: RunSummary, selected: bool, on_pick: EventHandler<RunKey>, #[pro
                     }
                     span { title: "{r.discipline.clone().unwrap_or_default()}", "{r.character}" }
                 }
-                span { class: "{tier_class(&r.tier)}", {tier_label(r)} }
+                span { class: "{tier_class(&r.tier)}", {tier_label(&r.tier, r.group_size, &r.difficulty)} }
             }
             div { class: "run-item-meta",
                 span { "{date}" }
@@ -221,7 +221,7 @@ fn RunTable(operation: String, runs: Vec<RunSummary>, on_pick: EventHandler<RunK
                                             "{r.character}"
                                         }
                                     }
-                                    td { span { class: "{tier_class(&r.tier)}", {tier_label(r)} } }
+                                    td { span { class: "{tier_class(&r.tier)}", {tier_label(&r.tier, r.group_size, &r.difficulty)} } }
                                     td {
                                         if r.cleared {
                                             span { class: "run-badge cleared", title: "Every boss killed", i { class: "fa-solid fa-check" } " Clear" }

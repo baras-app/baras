@@ -4,9 +4,10 @@
 use dioxus::prelude::*;
 
 use baras_types::formatting;
-use baras_types::history::{BossNode, PullEnd, PullFilter, PullRow, PullSortKey as SortKey};
+use baras_types::history::{BossNode, PullEnd, PullFilter, PullRow, PullSortKey as SortKey, difficulty_parts};
 
 use super::Backfill;
+use super::operations::{tier_class, tier_label};
 use super::scroll::{save_scroll, use_paged, use_restore_scroll};
 use super::charts::{ChartPick, PullCharts};
 use super::toolbar::{HistoryToolbar, SubsetChips};
@@ -325,7 +326,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                     th { "Result" }
                                     th { "Phase" }
                                     th { class: sort_class(SortKey::Duration), onclick: move |_| on_sort(SortKey::Duration), "Duration" }
-                                    th { "Deaths" }
+                                    th { "Difficulty" }
                                     th { "Character" }
                                     th { "Discipline" }
                                     th { class: sort_class(SortKey::Dps), onclick: move |_| on_sort(SortKey::Dps), "DPS" }
@@ -349,7 +350,12 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                                 }
                                                 td { {row.phase.clone().unwrap_or_else(|| "-".into())} }
                                                 td { {formatting::format_duration(row.duration_seconds)} }
-                                                td { "{row.deaths}" }
+                                                td {
+                                                    {
+                                                        let (tier, size) = difficulty_parts(&row.difficulty);
+                                                        rsx! { span { class: "{tier_class(tier)}", {tier_label(tier, size, &row.difficulty)} } }
+                                                    }
+                                                }
                                                 td { "{row.character}" }
                                                 td {
                                                     span { class: "pull-discipline",
