@@ -249,349 +249,306 @@ impl CombatService {
             Err(e) => Err(std::io::Error::other(e)),
         };
 
-        match output {
-            Ok(output) if output.status.success() => {
-                // Parse JSON result from subprocess
-                let json_result = String::from_utf8(output.stdout)
-                    .map_err(|e| format!("Invalid UTF-8: {}", e))
-                    .and_then(|result| {
-                        serde_json::from_str::<ParseWorkerOutput>(&result).map_err(|e| {
-                            format!("JSON parse error: {} (input: {})", e, &result[..result.len().min(500)])
-                        })
-                    });
+        let parsed = match output {
+            Ok(output) if output.status.success() => String::from_utf8(output.stdout)
+                .map_err(|e| format!("Invalid UTF-8: {}", e))
+                .and_then(|result| {
+                    serde_json::from_str::<ParseWorkerOutput>(&result)
+                        .map_err(|e| format!("JSON parse error: {} (input: {})", e, &result[..result.len().min(500)]))
+                }),
+            Ok(output) => Err(format!(
+                "Subprocess failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )),
+            Err(e) => Err(format!("Failed to spawn subprocess: {}", e)),
+        };
 
-                match json_result {
-                    Ok(parse_result) => {
-                        let mut session_guard = session.write().await;
+        match parsed {
+            Ok(parse_result) => {
+                let mut session_guard = session.write().await;
 
-                        // CRITICAL: Restore byte/line positions for live-tailing to work
-                        session_guard.current_byte = Some(parse_result.end_pos);
-                        session_guard.current_line = Some(parse_result.line_count);
+                // CRITICAL: Restore byte/line positions for live-tailing to work
+                session_guard.current_byte = Some(parse_result.end_pos);
+                session_guard.current_line = Some(parse_result.line_count);
 
-                        // Import session state from subprocess using shared IPC contract
-                        let mut player_context = None;
-                        if let Some(cache) = &mut session_guard.session_cache {
-                            // Restore player, area, disciplines, and encounter history
-                            let generation_count = cache.restore_from_worker_output(&parse_result);
+                // Import session state from subprocess using shared IPC contract
+                let mut player_context = None;
+                if let Some(cache) = &mut session_guard.session_cache {
+                    // Restore player, area, disciplines, and encounter history
+                    let generation_count = cache.restore_from_worker_output(&parse_result);
 
-                            debug!(
-                                area_id = parse_result.area.area_id,
-                                area_name = %parse_result.area.area_name,
-                                difficulty_id = parse_result.area.difficulty_id,
-                                generation = generation_count,
-                                "Imported state from subprocess"
-                            );
+                    debug!(
+                        area_id = parse_result.area.area_id,
+                        area_name = %parse_result.area.area_name,
+                        difficulty_id = parse_result.area.difficulty_id,
+                        generation = generation_count,
+                        "Imported state from subprocess"
+                    );
 
-                            // Sync current_area_id from subprocess so timer definition reloads work
-                            if parse_result.area.area_id != 0 {
-                                self.shared
-                                    .current_area_id
-                                    .store(parse_result.area.area_id, Ordering::SeqCst);
-                            }
+                    // Sync current_area_id from subprocess so timer definition reloads work
+                    if parse_result.area.area_id != 0 {
+                        self.shared
+                            .current_area_id
+                            .store(parse_result.area.area_id, Ordering::SeqCst);
+                    }
 
-                            // Capture player context before releasing cache borrow.
-                            // discipline_id comes from player_disciplines (not cache.player,
-                            // which doesn't have it after worker restore)
-                            if cache.player_initialized {
-                                let disc_id = cache
-                                    .player_disciplines
-                                    .get(&cache.player.id)
-                                    .map(|p| p.discipline_id)
-                                    .unwrap_or(0);
-                                player_context = Some((cache.player.id, disc_id));
-                            }
+                    // Capture player context before releasing cache borrow.
+                    // discipline_id comes from player_disciplines (not cache.player,
+                    // which doesn't have it after worker restore)
+                    if cache.player_initialized {
+                        let disc_id = cache
+                            .player_disciplines
+                            .get(&cache.player.id)
+                            .map(|p| p.discipline_id)
+                            .unwrap_or(0);
+                        player_context = Some((cache.player.id, disc_id));
+                    }
 
-                            // Check if there's an incomplete encounter (parquet file exists but no summary)
-                            // If so, we'll continue with that encounter ID instead of creating a new one
-                            let incomplete_encounter_exists = {
-                                let incomplete_parquet = encounters_dir.join(baras_core::storage::encounter_filename(
-                                    parse_result.encounter_count as u32,
-                                ));
-                                incomplete_parquet.exists()
-                            };
+                    // Check if there's an incomplete encounter (parquet file exists but no summary)
+                    // If so, we'll continue with that encounter ID instead of creating a new one
+                    let incomplete_encounter_exists = {
+                        let incomplete_parquet = encounters_dir.join(baras_core::storage::encounter_filename(
+                            parse_result.encounter_count as u32,
+                        ));
+                        incomplete_parquet.exists()
+                    };
 
-                            if incomplete_encounter_exists {
-                                // There's an incomplete encounter written to parquet
-                                // Continue with the same encounter ID but increment next_encounter_id
-                                // so the next encounter after this one has the correct ID
-                                cache.set_next_encounter_id(parse_result.encounter_count as u64 + 1);
+                    if incomplete_encounter_exists {
+                        // There's an incomplete encounter written to parquet
+                        // Continue with the same encounter ID but increment next_encounter_id
+                        // so the next encounter after this one has the correct ID
+                        cache.set_next_encounter_id(parse_result.encounter_count as u64 + 1);
 
-                                // Don't call push_new_encounter() - we'll continue accumulating
-                                // to the existing encounter (ID 0) and it will be written with the correct ID
-                                // Update the current encounter's area context
-                                let difficulty = Difficulty::from_difficulty_id(cache.current_area.difficulty_id);
-                                let area_id = if cache.current_area.area_id != 0 {
-                                    Some(cache.current_area.area_id)
-                                } else {
-                                    None
-                                };
-                                let area_name = if cache.current_area.area_name.is_empty() {
-                                    None
-                                } else {
-                                    Some(cache.current_area.area_name.clone())
-                                };
-                                let area_entered_line = cache.current_area.entered_at_line;
-
-                                if let Some(enc) = cache.current_encounter_mut() {
-                                    enc.id = parse_result.encounter_count as u64;
-                                    enc.set_difficulty(difficulty);
-                                    enc.set_area(area_id, area_name, area_entered_line);
-                                }
-                            } else {
-                                // All encounters were finalized
-                                // Set next ID to continue from where subprocess left off
-                                cache.set_next_encounter_id(parse_result.encounter_count as u64);
-
-                                // Create fresh encounter with correct area context
-                                cache.push_new_encounter();
-                            }
-                        }
-
-                        // Sync player context to effect tracker and shared state so
-                        // discipline-scoped effects and profile auto-switching work
-                        // immediately (handler missed historical signals from subprocess)
-                        if let Some((player_id, discipline_id)) = player_context {
-                            if let Some(tracker) = session_guard.effect_tracker()
-                                && let Ok(mut tracker) = tracker.lock()
-                            {
-                                tracker.set_player_context(player_id, discipline_id);
-                            }
-                            self.shared.last_player_id.store(player_id, Ordering::SeqCst);
-                            if let Some(discipline) = Discipline::from_guid(discipline_id) {
-                                let role = discipline.role();
-                                self.shared.last_player_role.store(role.to_u8(), Ordering::SeqCst);
-                                // Apply role-based profile now: the DisciplineChanged signal
-                                // that normally drives auto-switching was consumed by the
-                                // subprocess, so a role change while the app was closed would
-                                // otherwise keep the wrong profile until the next area
-                                // transition. Idempotent (skips if already active) and gated
-                                // on is_live_tailing, so historical opens never switch.
-                                let _ = self.cmd_tx.try_send(ServiceCommand::AutoSwitchProfile {
-                                    role_name: format!("{role:?}"),
-                                });
-                            }
-                        }
-
-                        // Enable live parquet writing (continues from where subprocess left off)
-                        session_guard.enable_live_parquet(encounters_dir.clone(), parse_result.encounter_count as u32);
-
-                        // Load boss definitions for initial area (before releasing lock)
-                        if parse_result.area.area_id != 0
-                            && let Some(bosses) = self.load_area_definitions(parse_result.area.area_id)
-                        {
-                            // Send notes to overlay
-                            self.send_notes_from_bosses(&bosses);
-                            session_guard.load_boss_definitions(bosses, false);
-                        }
-
-                        session_guard.finalize_session();
-                        session_guard.sync_timer_context();
-
-                        // Historical opens: the worker rewinds end_pos so live
-                        // tailing can replay an encounter left open at EOF
-                        // (e.g. logged out mid-warzone). Live mode wants that
-                        // replay; a historical file must not tick like live
-                        // combat, so consume the tail here and close the
-                        // encounter at its last event.
-                        if !self.shared.is_live_tailing.load(Ordering::SeqCst) {
-                            let session_date = session_guard.game_session_date.unwrap_or_default();
-                            match reader.read_log_file_streaming_from(
-                                session_date,
-                                parse_result.end_pos,
-                                parse_result.line_count,
-                                |event| session_guard.process_event(event),
-                            ) {
-                                Ok((eof_pos, next_line, event_count)) => {
-                                    session_guard.current_byte = Some(eof_pos);
-                                    session_guard.current_line = Some(next_line);
-                                    if event_count > 0 {
-                                        info!(event_count, "Consumed handoff tail for historical open");
-                                    }
-                                }
-                                Err(e) => {
-                                    warn!(error = %e, "Failed to consume handoff tail");
-                                }
-                            }
-                            session_guard.finalize_open_encounter();
-                        }
-
-                        // Record this log's pulls for the Historical tab
-                        if let Some(history) = history::build_pull_history(&session_guard) {
-                            history::save_in_background(history, self.app_handle.clone());
-                        }
-
-                        // Check if we're starting mid-encounter (live mode only)
-                        // This enables overlays to display data immediately when app starts during combat
-                        let mid_combat_startup = if !self.shared.is_live_tailing.load(Ordering::SeqCst) {
-                            false
-                        } else if let Some(cache) = &session_guard.session_cache {
-                            if let Some(enc) = cache.current_encounter() {
-                                use baras_core::encounter::EncounterState;
-                                if enc.state == EncounterState::InCombat {
-                                    info!(
-                                        encounter_id = enc.id,
-                                        "Detected mid-combat startup - will enable overlays"
-                                    );
-                                    true
-                                } else {
-                                    false
-                                }
-                            } else {
-                                false
-                            }
+                        // Don't call push_new_encounter() - we'll continue accumulating
+                        // to the existing encounter (ID 0) and it will be written with the correct ID
+                        // Update the current encounter's area context
+                        let difficulty = Difficulty::from_difficulty_id(cache.current_area.difficulty_id);
+                        let area_id = if cache.current_area.area_id != 0 {
+                            Some(cache.current_area.area_id)
                         } else {
-                            false
+                            None
                         };
+                        let area_name = if cache.current_area.area_name.is_empty() {
+                            None
+                        } else {
+                            Some(cache.current_area.area_name.clone())
+                        };
+                        let area_entered_line = cache.current_area.entered_at_line;
 
-                        drop(session_guard);
+                        if let Some(enc) = cache.current_encounter_mut() {
+                            enc.id = parse_result.encounter_count as u64;
+                            enc.set_difficulty(difficulty);
+                            enc.set_area(area_id, area_name, area_entered_line);
+                        }
+                    } else {
+                        // All encounters were finalized
+                        // Set next ID to continue from where subprocess left off
+                        cache.set_next_encounter_id(parse_result.encounter_count as u64);
 
-                        info!(
-                            event_count = parse_result.event_count,
-                            encounter_count = parse_result.encounter_count,
-                            elapsed_ms = parse_result.elapsed_ms,
-                            "Subprocess parse completed"
-                        );
+                        // Create fresh encounter with correct area context
+                        cache.push_new_encounter();
+                    }
+                }
 
-                        // Requirement 5: Backfill the operation timer when resuming live
-                        // mode mid-area so the timer immediately reflects how long the
-                        // player has been in the instance.
-                        //
-                        // - Flashpoints / PvP: timer starts from area entry time.
-                        // - Operations: timer starts from the first boss pull time
-                        //   (using the earliest encounter start in parse_result.encounters).
-                        //
-                        // Only fires when in live tailing mode and the timer isn't already
-                        // running (handles the app restart / reconnect case).
-                        if self.shared.is_live_tailing.load(Ordering::SeqCst) {
-                            let area_id = parse_result.area.area_id;
-                            let area_kind = AreaKind::from_area_id(area_id);
-                            let timer_already_running = self.shared.operation_timer.lock().unwrap().is_running();
+                // Sync player context to effect tracker and shared state so
+                // discipline-scoped effects and profile auto-switching work
+                // immediately (handler missed historical signals from subprocess)
+                if let Some((player_id, discipline_id)) = player_context {
+                    if let Some(tracker) = session_guard.effect_tracker()
+                        && let Ok(mut tracker) = tracker.lock()
+                    {
+                        tracker.set_player_context(player_id, discipline_id);
+                    }
+                    self.shared.last_player_id.store(player_id, Ordering::SeqCst);
+                    if let Some(discipline) = Discipline::from_guid(discipline_id) {
+                        let role = discipline.role();
+                        self.shared.last_player_role.store(role.to_u8(), Ordering::SeqCst);
+                        // Apply role-based profile now: the DisciplineChanged signal
+                        // that normally drives auto-switching was consumed by the
+                        // subprocess, so a role change while the app was closed would
+                        // otherwise keep the wrong profile until the next area
+                        // transition. Idempotent (skips if already active) and gated
+                        // on is_live_tailing, so historical opens never switch.
+                        let _ = self.cmd_tx.try_send(ServiceCommand::AutoSwitchProfile {
+                            role_name: format!("{role:?}"),
+                        });
+                    }
+                }
 
-                            if !timer_already_running {
-                                const MAX_BACKFILL_SECS: u64 = 4 * 3600; // 4-hour cap
+                // Enable live parquet writing (continues from where subprocess left off)
+                session_guard.enable_live_parquet(encounters_dir.clone(), parse_result.encounter_count as u32);
 
-                                match area_kind {
-                                    AreaKind::Flashpoint | AreaKind::PvP => {
-                                        // Use area entry timestamp for backfill
-                                        if let Some(entered_at) = parse_result.area.entered_at {
-                                            let now = chrono::Local::now().naive_local();
-                                            let elapsed = now.signed_duration_since(entered_at);
-                                            let elapsed_secs = elapsed.num_seconds().max(0) as u64;
-                                            let capped = elapsed_secs.min(MAX_BACKFILL_SECS);
-                                            let mut timer = self.shared.operation_timer.lock().unwrap();
-                                            if !timer.manually_stopped {
-                                                info!(
-                                                    area_kind = ?area_kind,
-                                                    elapsed_secs = capped,
-                                                    "Backfilling operation timer from area entry"
-                                                );
-                                                timer.start_with_offset(capped);
-                                                drop(timer);
-                                                self.emit_operation_timer_tick();
-                                            }
-                                        }
-                                    }
-                                    AreaKind::Operation => {
-                                        // The clock of the instance being played (a
-                                        // reset earlier in the log starts another): its
-                                        // start line crossing, else its first boss pull
-                                        let entered = parse_result
-                                            .encounters
-                                            .last()
-                                            .and_then(|s| s.instance_entered.as_deref());
-                                        let earliest_start = parse_result
-                                            .timer_starts
-                                            .iter()
-                                            .filter(|t| {
-                                                t.area_id == area_id && entered.is_some_and(|e| t.time.as_str() >= e)
-                                            })
-                                            .map(|t| &t.time)
-                                            .chain(
-                                                parse_result
-                                                    .encounters
-                                                    .iter()
-                                                    .filter(|s| {
-                                                        s.encounter_type == PhaseType::Raid
-                                                            && s.instance_entered.as_deref() == entered
-                                                    })
-                                                    .filter_map(|s| s.start_time.as_ref()),
-                                            )
-                                            .filter_map(|t| {
-                                                chrono::NaiveDateTime::parse_from_str(t, "%Y-%m-%dT%H:%M:%S").ok()
-                                            })
-                                            .min();
+                // Load boss definitions for initial area (before releasing lock)
+                if parse_result.area.area_id != 0
+                    && let Some(bosses) = self.load_area_definitions(parse_result.area.area_id)
+                {
+                    // Send notes to overlay
+                    self.send_notes_from_bosses(&bosses);
+                    session_guard.load_boss_definitions(bosses, false);
+                }
 
-                                        if let Some(first_pull) = earliest_start {
-                                            let now = chrono::Local::now().naive_local();
-                                            let elapsed = now.signed_duration_since(first_pull);
-                                            let elapsed_secs = elapsed.num_seconds().max(0) as u64;
-                                            let capped = elapsed_secs.min(MAX_BACKFILL_SECS);
-                                            let mut timer = self.shared.operation_timer.lock().unwrap();
-                                            if !timer.manually_stopped {
-                                                info!(
-                                                    elapsed_secs = capped,
-                                                    "Backfilling operation timer from the run start"
-                                                );
-                                                timer.start_with_offset(capped);
-                                                drop(timer);
-                                                self.emit_operation_timer_tick();
-                                            }
-                                        }
-                                    }
-                                    AreaKind::Other => {}
-                                }
+                session_guard.finalize_session();
+                session_guard.sync_timer_context();
+
+                // Historical opens: the worker rewinds end_pos so live
+                // tailing can replay an encounter left open at EOF
+                // (e.g. logged out mid-warzone). Live mode wants that
+                // replay; a historical file must not tick like live
+                // combat, so consume the tail here and close the
+                // encounter at its last event.
+                if !self.shared.is_live_tailing.load(Ordering::SeqCst) {
+                    let session_date = session_guard.game_session_date.unwrap_or_default();
+                    match reader.read_log_file_streaming_from(
+                        session_date,
+                        parse_result.end_pos,
+                        parse_result.line_count,
+                        |event| session_guard.process_event(event),
+                    ) {
+                        Ok((eof_pos, next_line, event_count)) => {
+                            session_guard.current_byte = Some(eof_pos);
+                            session_guard.current_line = Some(next_line);
+                            if event_count > 0 {
+                                info!(event_count, "Consumed handoff tail for historical open");
                             }
                         }
-
-                        // If we detected mid-combat startup, set in_combat BEFORE emitting event
-                        // This ensures frontend gets correct state when it fetches session info
-                        if mid_combat_startup {
-                            self.shared.in_combat.store(true, std::sync::atomic::Ordering::SeqCst);
-                            let _ = trigger_tx.try_send(MetricsTrigger::CombatStarted);
-                            let _ = session_event_tx.send(SessionEvent::CombatStarted);
+                        Err(e) => {
+                            warn!(error = %e, "Failed to consume handoff tail");
                         }
                     }
-                    Err(e) => {
-                        error!(error = %e, "Subprocess output parse failed");
-                        let in_combat = fallback_streaming_parse(
-                            &reader,
-                            &session,
-                            encounters_dir.clone(),
-                            self.shared.is_live_tailing.load(Ordering::SeqCst),
-                        )
-                        .await;
-                        if in_combat {
-                            self.shared.in_combat.store(true, std::sync::atomic::Ordering::SeqCst);
-                            let _ = trigger_tx.try_send(MetricsTrigger::CombatStarted);
-                            let _ = session_event_tx.send(SessionEvent::CombatStarted);
-                            info!("Detected mid-combat startup (fallback parse)");
+                    session_guard.finalize_open_encounter();
+                }
+
+                // Record this log's pulls for the Historical tab
+                if let Some(history) = history::build_pull_history(&session_guard) {
+                    history::save_in_background(history, self.app_handle.clone());
+                }
+
+                // Check if we're starting mid-encounter (live mode only)
+                // This enables overlays to display data immediately when app starts during combat
+                let mid_combat_startup = if !self.shared.is_live_tailing.load(Ordering::SeqCst) {
+                    false
+                } else if let Some(cache) = &session_guard.session_cache {
+                    if let Some(enc) = cache.current_encounter() {
+                        use baras_core::encounter::EncounterState;
+                        if enc.state == EncounterState::InCombat {
+                            info!(
+                                encounter_id = enc.id,
+                                "Detected mid-combat startup - will enable overlays"
+                            );
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                };
+
+                drop(session_guard);
+
+                info!(
+                    event_count = parse_result.event_count,
+                    encounter_count = parse_result.encounter_count,
+                    elapsed_ms = parse_result.elapsed_ms,
+                    "Subprocess parse completed"
+                );
+
+                // Requirement 5: Backfill the operation timer when resuming live
+                // mode mid-area so the timer immediately reflects how long the
+                // player has been in the instance.
+                //
+                // - Flashpoints / PvP: timer starts from area entry time.
+                // - Operations: timer starts from the first boss pull time
+                //   (using the earliest encounter start in parse_result.encounters).
+                //
+                // Only fires when in live tailing mode and the timer isn't already
+                // running (handles the app restart / reconnect case).
+                if self.shared.is_live_tailing.load(Ordering::SeqCst) {
+                    let area_id = parse_result.area.area_id;
+                    let area_kind = AreaKind::from_area_id(area_id);
+                    let timer_already_running = self.shared.operation_timer.lock().unwrap().is_running();
+
+                    if !timer_already_running {
+                        const MAX_BACKFILL_SECS: u64 = 4 * 3600; // 4-hour cap
+
+                        match area_kind {
+                            AreaKind::Flashpoint | AreaKind::PvP => {
+                                // Use area entry timestamp for backfill
+                                if let Some(entered_at) = parse_result.area.entered_at {
+                                    let now = chrono::Local::now().naive_local();
+                                    let elapsed = now.signed_duration_since(entered_at);
+                                    let elapsed_secs = elapsed.num_seconds().max(0) as u64;
+                                    let capped = elapsed_secs.min(MAX_BACKFILL_SECS);
+                                    let mut timer = self.shared.operation_timer.lock().unwrap();
+                                    if !timer.manually_stopped {
+                                        info!(
+                                            area_kind = ?area_kind,
+                                            elapsed_secs = capped,
+                                            "Backfilling operation timer from area entry"
+                                        );
+                                        timer.start_with_offset(capped);
+                                        drop(timer);
+                                        self.emit_operation_timer_tick();
+                                    }
+                                }
+                            }
+                            AreaKind::Operation => {
+                                // The clock of the instance being played (a
+                                // reset earlier in the log starts another): its
+                                // start line crossing, else its first boss pull
+                                let entered = parse_result
+                                    .encounters
+                                    .last()
+                                    .and_then(|s| s.instance_entered.as_deref());
+                                let earliest_start = parse_result
+                                    .timer_starts
+                                    .iter()
+                                    .filter(|t| t.area_id == area_id && entered.is_some_and(|e| t.time.as_str() >= e))
+                                    .map(|t| &t.time)
+                                    .chain(
+                                        parse_result
+                                            .encounters
+                                            .iter()
+                                            .filter(|s| {
+                                                s.encounter_type == PhaseType::Raid
+                                                    && s.instance_entered.as_deref() == entered
+                                            })
+                                            .filter_map(|s| s.start_time.as_ref()),
+                                    )
+                                    .filter_map(|t| chrono::NaiveDateTime::parse_from_str(t, "%Y-%m-%dT%H:%M:%S").ok())
+                                    .min();
+
+                                if let Some(first_pull) = earliest_start {
+                                    let now = chrono::Local::now().naive_local();
+                                    let elapsed = now.signed_duration_since(first_pull);
+                                    let elapsed_secs = elapsed.num_seconds().max(0) as u64;
+                                    let capped = elapsed_secs.min(MAX_BACKFILL_SECS);
+                                    let mut timer = self.shared.operation_timer.lock().unwrap();
+                                    if !timer.manually_stopped {
+                                        info!(elapsed_secs = capped, "Backfilling operation timer from the run start");
+                                        timer.start_with_offset(capped);
+                                        drop(timer);
+                                        self.emit_operation_timer_tick();
+                                    }
+                                }
+                            }
+                            AreaKind::Other => {}
                         }
                     }
                 }
-            }
-            Ok(output) => {
-                error!(
-                    stderr = %String::from_utf8_lossy(&output.stderr),
-                    "Subprocess failed"
-                );
-                // Fallback to streaming parse in main process
-                let in_combat = fallback_streaming_parse(
-                    &reader,
-                    &session,
-                    encounters_dir.clone(),
-                    self.shared.is_live_tailing.load(Ordering::SeqCst),
-                )
-                .await;
-                if in_combat {
+
+                // If we detected mid-combat startup, set in_combat BEFORE emitting event
+                // This ensures frontend gets correct state when it fetches session info
+                if mid_combat_startup {
                     self.shared.in_combat.store(true, std::sync::atomic::Ordering::SeqCst);
                     let _ = trigger_tx.try_send(MetricsTrigger::CombatStarted);
                     let _ = session_event_tx.send(SessionEvent::CombatStarted);
-                    info!("Detected mid-combat startup (fallback parse)");
                 }
             }
             Err(e) => {
-                error!(error = %e, "Failed to spawn subprocess");
-                // Fallback to streaming parse in main process
+                error!(error = %e, "Parse worker failed, falling back to in-process parse");
                 let in_combat = fallback_streaming_parse(
                     &reader,
                     &session,
