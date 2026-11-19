@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use crate::api;
 use crate::components::{ToastSeverity, use_toast};
-use crate::types::{MAX_PROFILES, MetricType, OverlaySettings};
+use crate::types::{MAX_PROFILES, OverlaySettings};
 
 #[component]
 pub fn ProfilesSection(
@@ -13,9 +13,7 @@ pub fn ProfilesSection(
     mut profile_names: Signal<Vec<String>>,
     mut active_profile: Signal<Option<String>>,
     mut profile_dirty: Signal<bool>,
-    mut metric_overlays_enabled: Signal<HashMap<MetricType, bool>>,
-    mut personal_enabled: Signal<bool>,
-    mut raid_enabled: Signal<bool>,
+    mut overlays_enabled: Signal<std::collections::HashSet<String>>,
     mut overlays_visible: Signal<bool>,
 ) -> Element {
     let mut new_profile_name = use_signal(String::new);
@@ -101,14 +99,8 @@ pub fn ProfilesSection(
                                                                     settings.set(config.overlay_settings);
                                                                 }
                                                                 if let Some(status) = api::get_overlay_status().await {
-                                                                    let new_map: HashMap<MetricType, bool> = MetricType::all()
-                                                                        .iter()
-                                                                        .map(|ot| (*ot, status.enabled.contains(&ot.config_key().to_string())))
-                                                                        .collect();
-                                                                    metric_overlays_enabled.set(new_map);
-                                                                    personal_enabled.set(status.personal_enabled);
-                                                                    raid_enabled.set(status.raid_enabled);
                                                                     overlays_visible.set(status.overlays_visible);
+                                                                    overlays_enabled.set(status.enabled);
                                                                 }
                                                             }
                                                         });

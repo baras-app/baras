@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use dioxus::prelude::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
@@ -22,7 +22,10 @@ use crate::types::{
 
 mod helpers;
 
-use helpers::{add_parsely_guild, apply_status, is_linux, is_macos, save_parsely_guild_fields, set_light_theme};
+use helpers::{
+    OVERLAY_CATEGORIES, add_parsely_guild, apply_status, is_linux, is_macos, save_parsely_guild_fields,
+    set_light_theme, set_overlay_enabled,
+};
 
 static CSS: Asset = asset!("/assets/styles.css");
 static DATA_EXPLORER_CSS: Asset = asset!("/assets/data-explorer.css");
@@ -44,31 +47,8 @@ pub fn App() -> Element {
     let mut parsely_upload = use_parsely_upload();
 
     // Overlay state
-    let mut metric_overlays_enabled = use_signal(|| {
-        MetricType::all()
-            .iter()
-            .map(|ot| (*ot, false))
-            .collect::<HashMap<_, _>>()
-    });
-    let mut personal_enabled = use_signal(|| false);
-    let mut raid_enabled = use_signal(|| false);
-    let mut boss_health_enabled = use_signal(|| false);
-    let mut timers_enabled = use_signal(|| false);
-    let mut timers_b_enabled = use_signal(|| false);
-    let mut challenges_enabled = use_signal(|| false);
-    let mut alerts_enabled = use_signal(|| false);
-    let mut effects_a_enabled = use_signal(|| false);
-    let mut effects_b_enabled = use_signal(|| false);
-    let mut effects_c_enabled = use_signal(|| false);
-    let mut cooldowns_enabled = use_signal(|| false);
-    let mut cooldowns_b_enabled = use_signal(|| false);
-    let mut dot_tracker_enabled = use_signal(|| false);
-    let mut enemy_frames_enabled = use_signal(|| false);
-    let mut notes_enabled = use_signal(|| false);
-    let mut combat_time_enabled = use_signal(|| false);
-    let mut operation_timer_enabled = use_signal(|| false);
-    let mut ability_queue_enabled = use_signal(|| false);
-    let mut ability_cast_enabled = use_signal(|| false);
+    // Config keys of the enabled overlays
+    let mut overlays_enabled = use_signal(HashSet::<String>::new);
     // Operation timer state from Tauri events
     let mut op_timer_secs = use_signal(|| 0u64);
     let mut op_timer_running = use_signal(|| false);
@@ -251,27 +231,8 @@ pub fn App() -> Element {
 
         if let Some(status) = api::get_overlay_status().await {
             apply_status(
-                &status,
-                &mut metric_overlays_enabled,
-                &mut personal_enabled,
-                &mut raid_enabled,
-                &mut boss_health_enabled,
-                &mut timers_enabled,
-                &mut timers_b_enabled,
-                &mut challenges_enabled,
-                &mut alerts_enabled,
-                &mut effects_a_enabled,
-                &mut effects_b_enabled,
-                &mut effects_c_enabled,
-                &mut cooldowns_enabled,
-                &mut cooldowns_b_enabled,
-                &mut dot_tracker_enabled,
-                &mut notes_enabled,
-                &mut combat_time_enabled,
-                &mut operation_timer_enabled,
-                &mut ability_queue_enabled,
-                &mut enemy_frames_enabled,
-                &mut ability_cast_enabled,
+                status,
+                &mut overlays_enabled,
                 &mut overlays_visible,
                 &mut move_mode,
                 &mut rearrange_mode,
@@ -372,27 +333,8 @@ pub fn App() -> Element {
                 api::refresh_overlay_settings().await;
                 if let Some(status) = api::get_overlay_status().await {
                     apply_status(
-                        &status,
-                        &mut metric_overlays_enabled,
-                        &mut personal_enabled,
-                        &mut raid_enabled,
-                        &mut boss_health_enabled,
-                        &mut timers_enabled,
-                        &mut timers_b_enabled,
-                        &mut challenges_enabled,
-                        &mut alerts_enabled,
-                        &mut effects_a_enabled,
-                        &mut effects_b_enabled,
-                        &mut effects_c_enabled,
-                        &mut cooldowns_enabled,
-                        &mut cooldowns_b_enabled,
-                        &mut dot_tracker_enabled,
-                        &mut notes_enabled,
-                        &mut combat_time_enabled,
-                        &mut operation_timer_enabled,
-                        &mut ability_queue_enabled,
-                        &mut enemy_frames_enabled,
-                        &mut ability_cast_enabled,
+                        status,
+                        &mut overlays_enabled,
                         &mut overlays_visible,
                         &mut move_mode,
                         &mut rearrange_mode,
@@ -625,46 +567,16 @@ pub fn App() -> Element {
     // Computed Values
     // ─────────────────────────────────────────────────────────────────────────
 
-    let enabled_map = metric_overlays_enabled();
-    let personal_on = personal_enabled();
-    let raid_on = raid_enabled();
-    let boss_health_on = boss_health_enabled();
-    let timers_on = timers_enabled();
-    let timers_b_on = timers_b_enabled();
-    let challenges_on = challenges_enabled();
-    let alerts_on = alerts_enabled();
-    let effects_a_on = effects_a_enabled();
-    let effects_b_on = effects_b_enabled();
-    let effects_c_on = effects_c_enabled();
-    let cooldowns_on = cooldowns_enabled();
-    let cooldowns_b_on = cooldowns_b_enabled();
-    let dot_tracker_on = dot_tracker_enabled();
-    let notes_on = notes_enabled();
-    let combat_time_on = combat_time_enabled();
-    let operation_timer_on = operation_timer_enabled();
-    let ability_queue_on = ability_queue_enabled();
-    let enemy_frames_on = enemy_frames_enabled();
-    let ability_cast_on = ability_cast_enabled();
-    let any_enabled = enabled_map.values().any(|&v| v)
-        || personal_on
-        || raid_on
-        || boss_health_on
-        || timers_on
-        || timers_b_on
-        || challenges_on
-        || alerts_on
-        || effects_a_on
-        || effects_b_on
-        || effects_c_on
-        || cooldowns_on
-        || cooldowns_b_on
-        || dot_tracker_on
-        || notes_on
-        || combat_time_on
-        || operation_timer_on
-        || ability_queue_on
-        || enemy_frames_on
-        || ability_cast_on;
+    let enabled_set = overlays_enabled();
+    let is_on = |key: &str| enabled_set.contains(key);
+    let raid_on = is_on("raid");
+    let pvp_metrics = MetricType::pvp();
+    let any_enabled = OVERLAY_CATEGORIES
+        .iter()
+        .flat_map(|(_, defs)| defs.iter())
+        .any(|d| is_on(d.key))
+        || MetricType::all().iter().any(|m| is_on(m.config_key()))
+        || is_on("enemy_frames");
     let is_visible = overlays_visible();
     let is_move_mode = move_mode();
     let is_rearrange = rearrange_mode();
@@ -701,39 +613,13 @@ pub fn App() -> Element {
     });
 
     // Enabled counts for the category card headers on the Overlays page
-    let count_on = |flags: &[bool]| flags.iter().filter(|on| **on).count();
-    let general_on = count_on(&[
-        personal_on,
-        raid_on,
-        alerts_on,
-        combat_time_on,
-        operation_timer_on,
-        ability_cast_on,
-    ]);
-    let encounter_on = count_on(&[
-        boss_health_on,
-        challenges_on,
-        timers_on,
-        timers_b_on,
-        notes_on,
-        ability_queue_on,
-    ]);
-    let effects_on = count_on(&[
-        effects_a_on,
-        effects_b_on,
-        effects_c_on,
-        cooldowns_on,
-        cooldowns_b_on,
-        dot_tracker_on,
-    ]);
-    let pvp_metrics = MetricType::pvp();
-    let metric_on = |m: &MetricType| enabled_map.get(m).copied().unwrap_or(false);
     let metrics_on = MetricType::all()
         .iter()
-        .filter(|m| !pvp_metrics.contains(m) && metric_on(m))
+        .filter(|m| !pvp_metrics.contains(m) && is_on(m.config_key()))
         .count();
     let metrics_total = MetricType::all().len() - pvp_metrics.len();
-    let pvp_on = usize::from(enemy_frames_on) + pvp_metrics.iter().filter(|m| metric_on(m)).count();
+    let enemy_frames_on = is_on("enemy_frames");
+    let pvp_on = usize::from(enemy_frames_on) + pvp_metrics.iter().filter(|m| is_on(m.config_key())).count();
     let pvp_total = 1 + pvp_metrics.len();
 
     // Session status chip actions (shared by every session bar variant)
@@ -1006,14 +892,7 @@ pub fn App() -> Element {
                                                 }
                                                 profile_dirty.set(false);
                                                 if let Some(status) = api::get_overlay_status().await {
-                                                    apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
-                                                        &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,
-                                                        &mut timers_b_enabled, &mut challenges_enabled, &mut alerts_enabled,
-                                                        &mut effects_a_enabled, &mut effects_b_enabled, &mut effects_c_enabled,
-                                                        &mut cooldowns_enabled, &mut cooldowns_b_enabled, &mut dot_tracker_enabled, &mut notes_enabled,
-                                                        &mut combat_time_enabled, &mut operation_timer_enabled,
-                                                        &mut ability_queue_enabled, &mut enemy_frames_enabled, &mut ability_cast_enabled,
-                                                        &mut overlays_visible, &mut move_mode, &mut rearrange_mode, &mut auto_hidden);
+                                                    apply_status(status, &mut overlays_enabled, &mut overlays_visible, &mut move_mode, &mut rearrange_mode, &mut auto_hidden);
                                                 }
                                             }
                                         });
@@ -1108,7 +987,7 @@ pub fn App() -> Element {
                                             player_discipline: session_info().and_then(|s| s.player_discipline),
                                         }
                                         OpTimerControl { op_timer_secs, op_timer_running, live: live_tailing }
-                                        if notes_enabled() {
+                                        if is_on("notes") {
                                             BossNotesMenu { area_bosses, selected_boss_id }
                                         }
 
@@ -1288,298 +1167,40 @@ pub fn App() -> Element {
 
                         // Overlay categories in columns
                         div { class: "overlay-categories",
-                            div { class: "overlay-category",
-                                div { class: "category-header",
-                                    h4 { class: "category-title", "General" }
-                                    span { class: "category-count", "{general_on} of 6" }
-                                }
-                                div { class: "category-buttons",
-                                    OverlayToggle {
-                                        label: "Personal Stats",
-                                        icon: "fa-solid fa-chart-bar",
-                                        title: "Shows your personal combat statistics",
-                                        active: personal_on,
-                                        tab_key: "personal",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::Personal, personal_on).await {
-                                                personal_enabled.set(!personal_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
+                            for (category, defs) in OVERLAY_CATEGORIES {
+                                div { class: "overlay-category",
+                                    div { class: "category-header",
+                                        h4 { class: "category-title", "{category}" }
+                                        span { class: "category-count",
+                                            "{defs.iter().filter(|d| is_on(d.key)).count()} of {defs.len()}"
+                                        }
                                     }
-                                    OverlayToggle {
-                                        label: "Raid Frames",
-                                        icon: "fa-solid fa-users",
-                                        title: "Displays party/raid member health bars with effect tracking",
-                                        active: raid_on,
-                                        tab_key: "raid",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::Raid, raid_on).await {
-                                                raid_enabled.set(!raid_on);
-                                                if raid_on { rearrange_mode.set(false); }
-                                                profile_dirty.set(api::is_profile_dirty().await);
+                                    div { class: "category-buttons",
+                                        for def in defs {
+                                            {
+                                                let (kind, key) = (def.kind, def.key);
+                                                let on = is_on(key);
+                                                rsx! {
+                                                    OverlayToggle {
+                                                        key: "{key}",
+                                                        label: def.label,
+                                                        icon: def.icon,
+                                                        title: def.title,
+                                                        active: on,
+                                                        tab_key: def.has_settings.then_some(key),
+                                                        on_toggle: move |_| { spawn(async move {
+                                                            if api::toggle_overlay(kind, on).await {
+                                                                set_overlay_enabled(&mut overlays_enabled, key, !on);
+                                                                if on && key == "raid" { rearrange_mode.set(false); }
+                                                                profile_dirty.set(api::is_profile_dirty().await);
+                                                            }
+                                                        }); },
+                                                        on_settings: open_overlay_settings,
+                                                        drawer_overlay: drawer_overlay.clone(),
+                                                    }
+                                                }
                                             }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Alerts",
-                                        icon: "fa-solid fa-bell",
-                                        title: "Shows combat alerts and notifications",
-                                        active: alerts_on,
-                                        tab_key: "alerts",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::Alerts, alerts_on).await {
-                                                alerts_enabled.set(!alerts_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Combat Time",
-                                        icon: "fa-solid fa-stopwatch",
-                                        title: "Displays the current encounter combat time",
-                                        active: combat_time_on,
-                                        tab_key: "combat_time",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::CombatTime, combat_time_on).await {
-                                                combat_time_enabled.set(!combat_time_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Op Timer",
-                                        icon: "fa-solid fa-hourglass-half",
-                                        title: "Displays a persistent timer for the entire operation run",
-                                        active: operation_timer_on,
-                                        tab_key: "operation_timer",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::OperationTimer, operation_timer_on).await {
-                                                operation_timer_enabled.set(!operation_timer_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Abilities Cast",
-                                        icon: "fa-solid fa-list-ol",
-                                        title: "Lists the abilities you recently cast",
-                                        active: ability_cast_on,
-                                        tab_key: "ability_cast",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::AbilityCast, ability_cast_on).await {
-                                                ability_cast_enabled.set(!ability_cast_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                }
-                            }
-                            div { class: "overlay-category",
-                                div { class: "category-header",
-                                    h4 { class: "category-title", "Encounter" }
-                                    span { class: "category-count", "{encounter_on} of 6" }
-                                }
-                                div { class: "category-buttons",
-                                    OverlayToggle {
-                                        label: "Boss Health",
-                                        icon: "fa-solid fa-heart-pulse",
-                                        title: "Shows boss health bars and cast timers",
-                                        active: boss_health_on,
-                                        tab_key: "boss_health",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::BossHealth, boss_health_on).await {
-                                                boss_health_enabled.set(!boss_health_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Challenges",
-                                        icon: "fa-solid fa-trophy",
-                                        title: "Tracks raid challenge objectives and progress",
-                                        active: challenges_on,
-                                        tab_key: "challenges",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::Challenges, challenges_on).await {
-                                                challenges_enabled.set(!challenges_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Timers A",
-                                        icon: "fa-solid fa-clock",
-                                        title: "Displays encounter-specific timers and phase markers (Group A)",
-                                        active: timers_on,
-                                        tab_key: "timers_a",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::TimersA, timers_on).await {
-                                                timers_enabled.set(!timers_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Timers B",
-                                        icon: "fa-solid fa-clock",
-                                        title: "Displays encounter-specific timers and phase markers (Group B)",
-                                        active: timers_b_on,
-                                        tab_key: "timers_b",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::TimersB, timers_b_on).await {
-                                                timers_b_enabled.set(!timers_b_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Notes",
-                                        icon: "fa-solid fa-note-sticky",
-                                        title: "Displays encounter notes written in the Encounter Editor",
-                                        active: notes_on,
-                                        tab_key: "notes",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::Notes, notes_on).await {
-                                                notes_enabled.set(!notes_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Ability Queue",
-                                        icon: "fa-solid fa-layer-group",
-                                        title: "Displays GCD bar, queued/ready abilities, and active ability countdowns",
-                                        active: ability_queue_on,
-                                        tab_key: None,
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::AbilityQueue, ability_queue_on).await {
-                                                ability_queue_enabled.set(!ability_queue_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                }
-                            }
-                            div { class: "overlay-category",
-                                div { class: "category-header",
-                                    h4 { class: "category-title", "Effects" }
-                                    span { class: "category-count", "{effects_on} of 6" }
-                                }
-                                div { class: "category-buttons",
-                                    OverlayToggle {
-                                        label: "Effects A",
-                                        icon: "fa-solid fa-bolt",
-                                        title: "Displays tracked buffs and effects (Group A)",
-                                        active: effects_a_on,
-                                        tab_key: "effects_a",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::EffectsA, effects_a_on).await {
-                                                effects_a_enabled.set(!effects_a_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Effects B",
-                                        icon: "fa-solid fa-bolt",
-                                        title: "Displays tracked buffs and effects (Group B)",
-                                        active: effects_b_on,
-                                        tab_key: "effects_b",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::EffectsB, effects_b_on).await {
-                                                effects_b_enabled.set(!effects_b_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Effects C",
-                                        icon: "fa-solid fa-bolt",
-                                        title: "Displays tracked buffs and effects (Group C)",
-                                        active: effects_c_on,
-                                        tab_key: "effects_c",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::EffectsC, effects_c_on).await {
-                                                effects_c_enabled.set(!effects_c_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Cooldowns A",
-                                        icon: "fa-solid fa-rotate",
-                                        title: "Tracks ability cooldowns (Group A)",
-                                        active: cooldowns_on,
-                                        tab_key: "cooldowns",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::Cooldowns, cooldowns_on).await {
-                                                cooldowns_enabled.set(!cooldowns_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Cooldowns B",
-                                        icon: "fa-solid fa-rotate",
-                                        title: "Tracks ability cooldowns (Group B)",
-                                        active: cooldowns_b_on,
-                                        tab_key: "cooldowns_b",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::CooldownsB, cooldowns_b_on).await {
-                                                cooldowns_b_enabled.set(!cooldowns_b_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "DOT Tracker",
-                                        icon: "fa-solid fa-fire",
-                                        title: "Tracks damage-over-time effects on targets",
-                                        active: dot_tracker_on,
-                                        tab_key: "dot_tracker",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::DotTracker, dot_tracker_on).await {
-                                                dot_tracker_enabled.set(!dot_tracker_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
+                                        }
                                     }
                                 }
                             }
@@ -1592,20 +1213,18 @@ pub fn App() -> Element {
                                     for mt in MetricType::all().iter().filter(|mt| !MetricType::pvp().contains(mt)) {
                                         {
                                             let ot = *mt;
-                                            let is_on = enabled_map.get(&ot).copied().unwrap_or(false);
+                                            let on = is_on(ot.config_key());
                                             rsx! {
                                                 OverlayToggle {
                                                     key: "{ot.config_key()}",
                                                     label: ot.label(),
                                                     icon: ot.icon_class(),
                                                     title: "",
-                                                    active: is_on,
+                                                    active: on,
                                                     tab_key: ot.config_key(),
                                                     on_toggle: move |_| { spawn(async move {
-                                                        if api::toggle_overlay(OverlayType::Metric(ot), is_on).await {
-                                                            let mut map = metric_overlays_enabled();
-                                                            map.insert(ot, !is_on);
-                                                            metric_overlays_enabled.set(map);
+                                                        if api::toggle_overlay(OverlayType::Metric(ot), on).await {
+                                                            set_overlay_enabled(&mut overlays_enabled, ot.config_key(), !on);
                                                             profile_dirty.set(api::is_profile_dirty().await);
                                                         }
                                                     }); },
@@ -1631,7 +1250,7 @@ pub fn App() -> Element {
                                         tab_key: "enemy_frames",
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::EnemyFrames, enemy_frames_on).await {
-                                                enemy_frames_enabled.set(!enemy_frames_on);
+                                                set_overlay_enabled(&mut overlays_enabled, "enemy_frames", !enemy_frames_on);
                                                 profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
@@ -1641,20 +1260,18 @@ pub fn App() -> Element {
                                     for mt in MetricType::pvp() {
                                         {
                                             let ot = *mt;
-                                            let is_on = enabled_map.get(&ot).copied().unwrap_or(false);
+                                            let on = is_on(ot.config_key());
                                             rsx! {
                                                 OverlayToggle {
                                                     key: "{ot.config_key()}",
                                                     label: ot.label(),
                                                     icon: ot.icon_class(),
                                                     title: "Show your DTPS over the past 20 seconds by source. Optionally enable total DTPS by source for the entire fight",
-                                                    active: is_on,
+                                                    active: on,
                                                     tab_key: ot.config_key(),
                                                     on_toggle: move |_| { spawn(async move {
-                                                        if api::toggle_overlay(OverlayType::Metric(ot), is_on).await {
-                                                            let mut map = metric_overlays_enabled();
-                                                            map.insert(ot, !is_on);
-                                                            metric_overlays_enabled.set(map);
+                                                        if api::toggle_overlay(OverlayType::Metric(ot), on).await {
+                                                            set_overlay_enabled(&mut overlays_enabled, ot.config_key(), !on);
                                                             profile_dirty.set(api::is_profile_dirty().await);
                                                         }
                                                     }); },
@@ -2286,9 +1903,7 @@ pub fn App() -> Element {
                     selected_tab: selected_overlay_tab,
                     profile_names: profile_names,
                     active_profile: active_profile,
-                    metric_overlays_enabled: metric_overlays_enabled,
-                    personal_enabled: personal_enabled,
-                    raid_enabled: raid_enabled,
+                    overlays_enabled,
                     overlays_visible: overlays_visible,
                     profile_dirty: profile_dirty,
                     section: settings_section,

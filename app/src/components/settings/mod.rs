@@ -26,7 +26,6 @@ mod timers;
 mod widgets;
 
 use dioxus::prelude::*;
-use std::collections::HashMap;
 
 use crate::api;
 use crate::components::profile_unsaved::{OVERLAY_DRAFT_DIRTY, OVERLAY_SAVE_REQUEST};
@@ -130,9 +129,7 @@ pub fn SettingsPanel(
     selected_tab: Signal<String>,
     profile_names: Signal<Vec<String>>,
     active_profile: Signal<Option<String>>,
-    metric_overlays_enabled: Signal<HashMap<MetricType, bool>>,
-    personal_enabled: Signal<bool>,
-    raid_enabled: Signal<bool>,
+    overlays_enabled: Signal<std::collections::HashSet<String>>,
     overlays_visible: Signal<bool>,
     profile_dirty: Signal<bool>,
     /// Which top tab shows; lifted so a control-panel gear can switch to Overlays
@@ -268,9 +265,7 @@ pub fn SettingsPanel(
                 profile_names,
                 active_profile,
                 profile_dirty,
-                metric_overlays_enabled,
-                personal_enabled,
-                raid_enabled,
+                overlays_enabled,
                 overlays_visible,
             }
         },

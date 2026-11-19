@@ -1,11 +1,11 @@
 //! Free helper functions used by the App shell.
 
 use dioxus::prelude::*;
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 use crate::api;
 use crate::components::{ToastSeverity, use_toast};
-use crate::types::{MetricType, OverlayStatus};
+use crate::types::{OverlayStatus, OverlayType};
 
 /// WASM cannot cfg on the host OS, so ask the webview instead.
 pub(super) fn is_macos() -> bool {
@@ -85,60 +85,86 @@ pub(super) fn add_parsely_guild(
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-#[allow(clippy::too_many_arguments)]
 pub(super) fn apply_status(
-    status: &OverlayStatus,
-    metric_overlays_enabled: &mut Signal<HashMap<MetricType, bool>>,
-    personal_enabled: &mut Signal<bool>,
-    raid_enabled: &mut Signal<bool>,
-    boss_health_enabled: &mut Signal<bool>,
-    timers_enabled: &mut Signal<bool>,
-    timers_b_enabled: &mut Signal<bool>,
-    challenges_enabled: &mut Signal<bool>,
-    alerts_enabled: &mut Signal<bool>,
-    effects_a_enabled: &mut Signal<bool>,
-    effects_b_enabled: &mut Signal<bool>,
-    effects_c_enabled: &mut Signal<bool>,
-    cooldowns_enabled: &mut Signal<bool>,
-    cooldowns_b_enabled: &mut Signal<bool>,
-    dot_tracker_enabled: &mut Signal<bool>,
-    notes_enabled: &mut Signal<bool>,
-    combat_time_enabled: &mut Signal<bool>,
-    operation_timer_enabled: &mut Signal<bool>,
-    ability_queue_enabled: &mut Signal<bool>,
-    enemy_frames_enabled: &mut Signal<bool>,
-    ability_cast_enabled: &mut Signal<bool>,
+    status: OverlayStatus,
+    overlays_enabled: &mut Signal<HashSet<String>>,
     overlays_visible: &mut Signal<bool>,
     move_mode: &mut Signal<bool>,
     rearrange_mode: &mut Signal<bool>,
     auto_hidden: &mut Signal<bool>,
 ) {
-    let map: HashMap<MetricType, bool> = MetricType::all()
-        .iter()
-        .map(|ot| (*ot, status.enabled.contains(&ot.config_key().to_string())))
-        .collect();
-    metric_overlays_enabled.set(map);
-    personal_enabled.set(status.personal_enabled);
-    raid_enabled.set(status.raid_enabled);
-    boss_health_enabled.set(status.boss_health_enabled);
-    timers_enabled.set(status.timers_enabled);
-    timers_b_enabled.set(status.timers_b_enabled);
-    challenges_enabled.set(status.challenges_enabled);
-    alerts_enabled.set(status.alerts_enabled);
-    effects_a_enabled.set(status.effects_a_enabled);
-    effects_b_enabled.set(status.effects_b_enabled);
-    effects_c_enabled.set(status.effects_c_enabled);
-    cooldowns_enabled.set(status.cooldowns_enabled);
-    cooldowns_b_enabled.set(status.cooldowns_b_enabled);
-    dot_tracker_enabled.set(status.dot_tracker_enabled);
-    notes_enabled.set(status.notes_enabled);
-    combat_time_enabled.set(status.combat_time_enabled);
-    operation_timer_enabled.set(status.operation_timer_enabled);
-    ability_queue_enabled.set(status.ability_queue_enabled);
-    enemy_frames_enabled.set(status.enemy_frames_enabled);
-    ability_cast_enabled.set(status.ability_cast_enabled);
     overlays_visible.set(status.overlays_visible);
     move_mode.set(status.move_mode);
     rearrange_mode.set(status.rearrange_mode);
     auto_hidden.set(status.auto_hidden);
+    overlays_enabled.set(status.enabled);
 }
+
+pub(super) fn set_overlay_enabled(overlays_enabled: &mut Signal<HashSet<String>>, key: &str, on: bool) {
+    let mut set = overlays_enabled.write();
+    if on {
+        set.insert(key.to_string());
+    } else {
+        set.remove(key);
+    }
+}
+
+/// One toggle on the Overlays page
+pub(super) struct OverlayDef {
+    pub kind: OverlayType,
+    /// Config key; also the settings tab unless `has_settings` is false
+    pub key: &'static str,
+    pub label: &'static str,
+    pub icon: &'static str,
+    pub title: &'static str,
+    pub has_settings: bool,
+}
+
+const fn overlay(
+    kind: OverlayType,
+    key: &'static str,
+    label: &'static str,
+    icon: &'static str,
+    title: &'static str,
+) -> OverlayDef {
+    OverlayDef {
+        kind,
+        key,
+        label,
+        icon,
+        title,
+        has_settings: true,
+    }
+}
+
+/// The hand-arranged overlay categories; Metrics and PvP are built from `MetricType`
+#[rustfmt::skip]
+pub(super) const OVERLAY_CATEGORIES: [(&str, &[OverlayDef]); 3] = [
+    ("General", &[
+        overlay(OverlayType::Personal, "personal", "Personal Stats", "fa-solid fa-chart-bar", "Shows your personal combat statistics"),
+        overlay(OverlayType::Raid, "raid", "Raid Frames", "fa-solid fa-users", "Displays party/raid member health bars with effect tracking"),
+        overlay(OverlayType::Alerts, "alerts", "Alerts", "fa-solid fa-bell", "Shows combat alerts and notifications"),
+        overlay(OverlayType::CombatTime, "combat_time", "Combat Time", "fa-solid fa-stopwatch", "Displays the current encounter combat time"),
+        overlay(OverlayType::OperationTimer, "operation_timer", "Op Timer", "fa-solid fa-hourglass-half", "Displays a persistent timer for the entire operation run"),
+        overlay(OverlayType::AbilityCast, "ability_cast", "Abilities Cast", "fa-solid fa-list-ol", "Lists the abilities you recently cast"),
+    ]),
+    ("Encounter", &[
+        overlay(OverlayType::BossHealth, "boss_health", "Boss Health", "fa-solid fa-heart-pulse", "Shows boss health bars and cast timers"),
+        overlay(OverlayType::Challenges, "challenges", "Challenges", "fa-solid fa-trophy", "Tracks raid challenge objectives and progress"),
+        overlay(OverlayType::TimersA, "timers_a", "Timers A", "fa-solid fa-clock", "Displays encounter-specific timers and phase markers (Group A)"),
+        overlay(OverlayType::TimersB, "timers_b", "Timers B", "fa-solid fa-clock", "Displays encounter-specific timers and phase markers (Group B)"),
+        overlay(OverlayType::Notes, "notes", "Notes", "fa-solid fa-note-sticky", "Displays encounter notes written in the Encounter Editor"),
+        OverlayDef {
+            has_settings: false,
+            ..overlay(OverlayType::AbilityQueue, "ability_queue", "Ability Queue", "fa-solid fa-layer-group", "Displays GCD bar, queued/ready abilities, and active ability countdowns")
+        },
+    ]),
+    ("Effects", &[
+        overlay(OverlayType::EffectsA, "effects_a", "Effects A", "fa-solid fa-bolt", "Displays tracked buffs and effects (Group A)"),
+        overlay(OverlayType::EffectsB, "effects_b", "Effects B", "fa-solid fa-bolt", "Displays tracked buffs and effects (Group B)"),
+        overlay(OverlayType::EffectsC, "effects_c", "Effects C", "fa-solid fa-bolt", "Displays tracked buffs and effects (Group C)"),
+        overlay(OverlayType::Cooldowns, "cooldowns", "Cooldowns A", "fa-solid fa-rotate", "Tracks ability cooldowns (Group A)"),
+        overlay(OverlayType::CooldownsB, "cooldowns_b", "Cooldowns B", "fa-solid fa-rotate", "Tracks ability cooldowns (Group B)"),
+        overlay(OverlayType::DotTracker, "dot_tracker", "DOT Tracker", "fa-solid fa-fire", "Tracks damage-over-time effects on targets"),
+    ]),
+];

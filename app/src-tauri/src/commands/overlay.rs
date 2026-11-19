@@ -15,46 +15,8 @@ use baras_core::context::OverlaySettings;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct OverlayStatusResponse {
-    pub running: Vec<MetricType>,
-    pub enabled: Vec<MetricType>,
-    pub personal_running: bool,
-    pub personal_enabled: bool,
-    pub raid_running: bool,
-    pub raid_enabled: bool,
-    pub boss_health_running: bool,
-    pub boss_health_enabled: bool,
-    pub timers_running: bool,
-    pub timers_enabled: bool,
-    pub timers_b_running: bool,
-    pub timers_b_enabled: bool,
-    pub challenges_running: bool,
-    pub challenges_enabled: bool,
-    pub alerts_running: bool,
-    pub alerts_enabled: bool,
-    pub effects_a_running: bool,
-    pub effects_a_enabled: bool,
-    pub effects_b_running: bool,
-    pub effects_b_enabled: bool,
-    pub effects_c_running: bool,
-    pub effects_c_enabled: bool,
-    pub cooldowns_running: bool,
-    pub cooldowns_enabled: bool,
-    pub cooldowns_b_running: bool,
-    pub cooldowns_b_enabled: bool,
-    pub dot_tracker_running: bool,
-    pub dot_tracker_enabled: bool,
-    pub notes_running: bool,
-    pub notes_enabled: bool,
-    pub combat_time_running: bool,
-    pub combat_time_enabled: bool,
-    pub operation_timer_running: bool,
-    pub operation_timer_enabled: bool,
-    pub ability_queue_running: bool,
-    pub ability_queue_enabled: bool,
-    pub enemy_frames_running: bool,
-    pub enemy_frames_enabled: bool,
-    pub ability_cast_running: bool,
-    pub ability_cast_enabled: bool,
+    /// Config keys of every enabled overlay
+    pub enabled: Vec<String>,
     pub overlays_visible: bool,
     pub move_mode: bool,
     pub rearrange_mode: bool,
@@ -200,126 +162,13 @@ pub async fn get_overlay_status(
     state: State<'_, SharedOverlayState>,
     service: State<'_, ServiceHandle>,
 ) -> Result<OverlayStatusResponse, String> {
-    let (
-        running_metric_types,
-        personal_running,
-        raid_running,
-        boss_health_running,
-        timers_running,
-        timers_b_running,
-        challenges_running,
-        alerts_running,
-        effects_a_running,
-        effects_b_running,
-        effects_c_running,
-        cooldowns_running,
-        cooldowns_b_running,
-        dot_tracker_running,
-        notes_running,
-        combat_time_running,
-        operation_timer_running,
-        ability_queue_running,
-        enemy_frames_running,
-        ability_cast_running,
-        move_mode,
-        rearrange_mode,
-    ) = {
+    let (move_mode, rearrange_mode) = {
         let s = state.lock().map_err(|e| e.to_string())?;
-        (
-            s.running_metric_types(),
-            s.is_personal_running(),
-            s.is_raid_running(),
-            s.is_boss_health_running(),
-            s.is_running(OverlayType::TimersA),
-            s.is_running(OverlayType::TimersB),
-            s.is_challenges_running(),
-            s.is_running(OverlayType::Alerts),
-            s.is_running(OverlayType::EffectsA),
-            s.is_running(OverlayType::EffectsB),
-            s.is_running(OverlayType::EffectsC),
-            s.is_running(OverlayType::Cooldowns),
-            s.is_running(OverlayType::CooldownsB),
-            s.is_running(OverlayType::DotTracker),
-            s.is_running(OverlayType::Notes),
-            s.is_combat_time_running(),
-            s.is_operation_timer_running(),
-            s.is_running(OverlayType::AbilityQueue),
-            s.is_running(OverlayType::EnemyFrames),
-            s.is_running(OverlayType::AbilityCast),
-            s.move_mode,
-            s.rearrange_mode,
-        )
+        (s.move_mode, s.rearrange_mode)
     };
-
     let config = service.config().await;
-    let enabled: Vec<MetricType> = config
-        .overlay_settings
-        .enabled_types()
-        .iter()
-        .filter_map(|key| MetricType::from_config_key(key))
-        .collect();
-
-    let personal_enabled = config.overlay_settings.is_enabled("personal");
-    let raid_enabled = config.overlay_settings.is_enabled("raid");
-    let boss_health_enabled = config.overlay_settings.is_enabled("boss_health");
-    let timers_enabled = config.overlay_settings.is_enabled("timers_a");
-    let timers_b_enabled = config.overlay_settings.is_enabled("timers_b");
-    let challenges_enabled = config.overlay_settings.is_enabled("challenges");
-    let alerts_enabled = config.overlay_settings.is_enabled("alerts");
-    let effects_a_enabled = config.overlay_settings.is_enabled("effects_a");
-    let effects_b_enabled = config.overlay_settings.is_enabled("effects_b");
-    let effects_c_enabled = config.overlay_settings.is_enabled("effects_c");
-    let cooldowns_enabled = config.overlay_settings.is_enabled("cooldowns");
-    let cooldowns_b_enabled = config.overlay_settings.is_enabled("cooldowns_b");
-    let dot_tracker_enabled = config.overlay_settings.is_enabled("dot_tracker");
-    let notes_enabled = config.overlay_settings.is_enabled("notes");
-    let combat_time_enabled = config.overlay_settings.is_enabled("combat_time");
-    let operation_timer_enabled = config.overlay_settings.is_enabled("operation_timer");
-    let ability_queue_enabled = config.overlay_settings.is_enabled("ability_queue");
-    let enemy_frames_enabled = config.overlay_settings.is_enabled("enemy_frames");
-    let ability_cast_enabled = config.overlay_settings.is_enabled("ability_cast");
-
     Ok(OverlayStatusResponse {
-        running: running_metric_types,
-        enabled,
-        personal_running,
-        personal_enabled,
-        raid_running,
-        raid_enabled,
-        boss_health_running,
-        boss_health_enabled,
-        timers_running,
-        timers_enabled,
-        timers_b_running,
-        timers_b_enabled,
-        challenges_running,
-        challenges_enabled,
-        alerts_running,
-        alerts_enabled,
-        effects_a_running,
-        effects_a_enabled,
-        effects_b_running,
-        effects_b_enabled,
-        effects_c_running,
-        effects_c_enabled,
-        cooldowns_running,
-        cooldowns_enabled,
-        cooldowns_b_running,
-        cooldowns_b_enabled,
-        dot_tracker_running,
-        dot_tracker_enabled,
-        notes_running,
-        notes_enabled,
-        combat_time_running,
-        combat_time_enabled,
-        operation_timer_running,
-        operation_timer_enabled,
-        ability_queue_running,
-        ability_queue_enabled,
-        enemy_frames_running,
-        enemy_frames_enabled,
-        ability_cast_running,
-        ability_cast_enabled,
+        enabled: config.overlay_settings.enabled_types(),
         overlays_visible: config.overlay_settings.overlays_visible,
         move_mode,
         rearrange_mode,
