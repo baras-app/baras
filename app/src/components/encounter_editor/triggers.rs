@@ -360,6 +360,61 @@ fn CompositeEditor(
     }
 }
 
+/// A handler that applies one field change to a copy of `trigger` and sends
+/// it on, leaving every other field as it was.
+fn edit<V: 'static>(
+    trigger: &TimerTrigger,
+    on_change: EventHandler<TimerTrigger>,
+    set: fn(&mut TimerTrigger, V),
+) -> impl FnMut(V) + 'static {
+    let trigger = trigger.clone();
+    move |value| {
+        let mut edited = trigger.clone();
+        set(&mut edited, value);
+        on_change.call(edited);
+    }
+}
+
+fn set_abilities(trigger: &mut TimerTrigger, value: Vec<AbilitySelector>) {
+    if let TimerTrigger::AbilityCast { abilities, .. }
+    | TimerTrigger::DamageTaken { abilities, .. }
+    | TimerTrigger::HealingTaken { abilities, .. }
+    | TimerTrigger::ThreatModified { abilities, .. } = trigger
+    {
+        *abilities = value;
+    }
+}
+
+fn set_effects(trigger: &mut TimerTrigger, value: Vec<EffectSelector>) {
+    if let TimerTrigger::EffectApplied { effects, .. } | TimerTrigger::EffectRemoved { effects, .. } = trigger {
+        *effects = value;
+    }
+}
+
+fn set_source(trigger: &mut TimerTrigger, value: EntityFilter) {
+    if let TimerTrigger::AbilityCast { source, .. }
+    | TimerTrigger::EffectApplied { source, .. }
+    | TimerTrigger::EffectRemoved { source, .. }
+    | TimerTrigger::DamageTaken { source, .. }
+    | TimerTrigger::HealingTaken { source, .. }
+    | TimerTrigger::ThreatModified { source, .. } = trigger
+    {
+        *source = value;
+    }
+}
+
+fn set_target(trigger: &mut TimerTrigger, value: EntityFilter) {
+    if let TimerTrigger::AbilityCast { target, .. }
+    | TimerTrigger::EffectApplied { target, .. }
+    | TimerTrigger::EffectRemoved { target, .. }
+    | TimerTrigger::DamageTaken { target, .. }
+    | TimerTrigger::HealingTaken { target, .. }
+    | TimerTrigger::ThreatModified { target, .. } = trigger
+    {
+        *target = value;
+    }
+}
+
 /// Editor for simple (non-composite) triggers
 #[component]
 pub fn SimpleTriggerEditor(
@@ -386,6 +441,23 @@ pub fn SimpleTriggerEditor(
         };
         raw_on_change.call(t)
     });
+
+    let source_target = |source: EntityFilter, target: EntityFilter| {
+        rsx! {
+            EntityFilterDropdown {
+                label: "Source",
+                value: source,
+                options: EntityFilter::source_options(),
+                on_change: edit(&trigger, on_change, set_source),
+            }
+            EntityFilterDropdown {
+                label: "Target",
+                value: target,
+                options: EntityFilter::target_options(),
+                on_change: edit(&trigger, on_change, set_target),
+            }
+        }
+    };
 
     rsx! {
         div { class: "flex-col gap-xs",
@@ -457,276 +529,47 @@ pub fn SimpleTriggerEditor(
                     | TimerTrigger::AnyPhaseChange
                     | TimerTrigger::Never
                     | TimerTrigger::Manual => rsx! {},
-                    TimerTrigger::AbilityCast { abilities, source, target, .. } => {
-                        let source_for_abilities = source.clone();
-                        let target_for_abilities = target.clone();
-                        let abilities_for_source = abilities.clone();
-                        let target_for_source = target.clone();
-                        let abilities_for_target = abilities.clone();
-                        let source_for_target = source.clone();
-                        rsx! {
-                            AbilitySelectorEditor {
-                                label: "Abilities",
-                                selectors: abilities,
-                                on_change: move |sels| on_change.call(TimerTrigger::AbilityCast {
-                                    abilities: sels,
-                                    source: source_for_abilities.clone(),
-                                    target: target_for_abilities.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Source",
-                                value: source,
-                                options: EntityFilter::source_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::AbilityCast {
-                                    abilities: abilities_for_source.clone(),
-                                    source: f,
-                                    target: target_for_source.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Target",
-                                value: target,
-                                options: EntityFilter::target_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::AbilityCast {
-                                    abilities: abilities_for_target.clone(),
-                                    source: source_for_target.clone(),
-                                    target: f,
-                                    position: vec![],
-                                })
-                            }
+                    TimerTrigger::AbilityCast { abilities, source, target, .. }
+                    | TimerTrigger::HealingTaken { abilities, source, target, .. } => rsx! {
+                        AbilitySelectorEditor {
+                            label: "Abilities",
+                            selectors: abilities,
+                            on_change: edit(&trigger, on_change, set_abilities),
+                        }
+                        {source_target(source, target)}
+                    },
+                    TimerTrigger::EffectApplied { effects, source, target, .. }
+                    | TimerTrigger::EffectRemoved { effects, source, target, .. } => rsx! {
+                        EffectSelectorEditor {
+                            label: "Effects",
+                            selectors: effects,
+                            on_change: edit(&trigger, on_change, set_effects),
+                        }
+                        {source_target(source, target)}
+                    },
+                    TimerTrigger::DamageTaken { abilities, source, target, mitigation, .. } => rsx! {
+                        AbilitySelectorEditor {
+                            label: "Abilities (empty = any)",
+                            selectors: abilities,
+                            on_change: edit(&trigger, on_change, set_abilities),
+                        }
+                        {source_target(source, target)}
+                        MitigationTypeEditor {
+                            selected: mitigation,
+                            on_change: edit(&trigger, on_change, |t, m| {
+                                if let TimerTrigger::DamageTaken { mitigation, .. } = t {
+                                    *mitigation = m;
+                                }
+                            }),
                         }
                     },
-                    TimerTrigger::EffectApplied { effects, source, target, .. } => {
-                        let source_for_effects = source.clone();
-                        let target_for_effects = target.clone();
-                        let effects_for_source = effects.clone();
-                        let target_for_source = target.clone();
-                        let effects_for_target = effects.clone();
-                        let source_for_target = source.clone();
-                        rsx! {
-                            EffectSelectorEditor {
-                                label: "Effects",
-                                selectors: effects,
-                                on_change: move |sels| on_change.call(TimerTrigger::EffectApplied {
-                                    effects: sels,
-                                    source: source_for_effects.clone(),
-                                    target: target_for_effects.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Source",
-                                value: source,
-                                options: EntityFilter::source_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::EffectApplied {
-                                    effects: effects_for_source.clone(),
-                                    source: f,
-                                    target: target_for_source.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Target",
-                                value: target,
-                                options: EntityFilter::target_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::EffectApplied {
-                                    effects: effects_for_target.clone(),
-                                    source: source_for_target.clone(),
-                                    target: f,
-                                    position: vec![],
-                                })
-                            }
+                    TimerTrigger::ThreatModified { abilities, source, target, .. } => rsx! {
+                        AbilitySelectorEditor {
+                            label: "Abilities (empty = any)",
+                            selectors: abilities,
+                            on_change: edit(&trigger, on_change, set_abilities),
                         }
-                    },
-                    TimerTrigger::EffectRemoved { effects, source, target, .. } => {
-                        let source_for_effects = source.clone();
-                        let target_for_effects = target.clone();
-                        let effects_for_source = effects.clone();
-                        let target_for_source = target.clone();
-                        let effects_for_target = effects.clone();
-                        let source_for_target = source.clone();
-                        rsx! {
-                            EffectSelectorEditor {
-                                label: "Effects",
-                                selectors: effects,
-                                on_change: move |sels| on_change.call(TimerTrigger::EffectRemoved {
-                                    effects: sels,
-                                    source: source_for_effects.clone(),
-                                    target: target_for_effects.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Source",
-                                value: source,
-                                options: EntityFilter::source_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::EffectRemoved {
-                                    effects: effects_for_source.clone(),
-                                    source: f,
-                                    target: target_for_source.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Target",
-                                value: target,
-                                options: EntityFilter::target_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::EffectRemoved {
-                                    effects: effects_for_target.clone(),
-                                    source: source_for_target.clone(),
-                                    target: f,
-                                    position: vec![],
-                                })
-                            }
-                        }
-                    },
-                    TimerTrigger::DamageTaken { abilities, source, target, mitigation, .. } => {
-                        let source_for_abilities = source.clone();
-                        let target_for_abilities = target.clone();
-                        let mitigation_for_abilities = mitigation.clone();
-                        let abilities_for_source = abilities.clone();
-                        let target_for_source = target.clone();
-                        let mitigation_for_source = mitigation.clone();
-                        let abilities_for_target = abilities.clone();
-                        let source_for_target = source.clone();
-                        let mitigation_for_target = mitigation.clone();
-                        let abilities_for_mitigation = abilities.clone();
-                        let source_for_mitigation = source.clone();
-                        let target_for_mitigation = target.clone();
-                        rsx! {
-                            AbilitySelectorEditor {
-                                label: "Abilities (empty = any)",
-                                selectors: abilities,
-                                on_change: move |sels| on_change.call(TimerTrigger::DamageTaken {
-                                    abilities: sels,
-                                    source: source_for_abilities.clone(),
-                                    target: target_for_abilities.clone(),
-                                    mitigation: mitigation_for_abilities.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Source",
-                                value: source,
-                                options: EntityFilter::source_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::DamageTaken {
-                                    abilities: abilities_for_source.clone(),
-                                    source: f,
-                                    target: target_for_source.clone(),
-                                    mitigation: mitigation_for_source.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Target",
-                                value: target,
-                                options: EntityFilter::target_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::DamageTaken {
-                                    abilities: abilities_for_target.clone(),
-                                    source: source_for_target.clone(),
-                                    target: f,
-                                    mitigation: mitigation_for_target.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            MitigationTypeEditor {
-                                selected: mitigation,
-                                on_change: move |m| on_change.call(TimerTrigger::DamageTaken {
-                                    abilities: abilities_for_mitigation.clone(),
-                                    source: source_for_mitigation.clone(),
-                                    target: target_for_mitigation.clone(),
-                                    mitigation: m,
-                                    position: vec![],
-                                })
-                            }
-                        }
-                    },
-                    TimerTrigger::HealingTaken { abilities, source, target, .. } => {
-                        let source_for_abilities = source.clone();
-                        let target_for_abilities = target.clone();
-                        let abilities_for_source = abilities.clone();
-                        let target_for_source = target.clone();
-                        let abilities_for_target = abilities.clone();
-                        let source_for_target = source.clone();
-                        rsx! {
-                            AbilitySelectorEditor {
-                                label: "Abilities",
-                                selectors: abilities,
-                                on_change: move |sels| on_change.call(TimerTrigger::HealingTaken {
-                                    abilities: sels,
-                                    source: source_for_abilities.clone(),
-                                    target: target_for_abilities.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Source",
-                                value: source,
-                                options: EntityFilter::source_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::HealingTaken {
-                                    abilities: abilities_for_source.clone(),
-                                    source: f,
-                                    target: target_for_source.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Target",
-                                value: target,
-                                options: EntityFilter::target_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::HealingTaken {
-                                    abilities: abilities_for_target.clone(),
-                                    source: source_for_target.clone(),
-                                    target: f,
-                                    position: vec![],
-                                })
-                            }
-                        }
-                    },
-                    TimerTrigger::ThreatModified { abilities, source, target, threat_value } => {
-                        let source_for_abilities = source.clone();
-                        let target_for_abilities = target.clone();
-                        let abilities_for_source = abilities.clone();
-                        let target_for_source = target.clone();
-                        let abilities_for_target = abilities.clone();
-                        let source_for_target = source.clone();
-                        rsx! {
-                            AbilitySelectorEditor {
-                                label: "Abilities (empty = any)",
-                                selectors: abilities,
-                                on_change: move |sels| on_change.call(TimerTrigger::ThreatModified {
-                                    abilities: sels,
-                                    source: source_for_abilities.clone(),
-                                    target: target_for_abilities.clone(),
-                                    threat_value,
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Source",
-                                value: source,
-                                options: EntityFilter::source_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::ThreatModified {
-                                    abilities: abilities_for_source.clone(),
-                                    source: f,
-                                    target: target_for_source.clone(),
-                                    threat_value,
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Target",
-                                value: target,
-                                options: EntityFilter::target_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::ThreatModified {
-                                    abilities: abilities_for_target.clone(),
-                                    source: source_for_target.clone(),
-                                    target: f,
-                                    threat_value,
-                                })
-                            }
-                        }
+                        {source_target(source, target)}
                     },
                     TimerTrigger::TimerExpires { timer_id } => {
                         let available_timers = encounter_data.timer_ids();
