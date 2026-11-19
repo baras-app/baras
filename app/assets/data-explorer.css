@@ -1134,18 +1134,29 @@
   border-radius: 0;
 }
 
+/* Scrolls as a whole only once the lists inside are down to their minimums */
 .death-recap-body {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
 .recap-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-xs) var(--space-sm);
   margin-bottom: var(--space-sm);
+}
+
+.recap-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-left: auto;
 }
 
 .recap-header h3 {
@@ -1175,7 +1186,6 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-right: auto;
 }
 
 .recap-nav .btn {
@@ -1221,8 +1231,9 @@
   gap: var(--space-sm);
 }
 
-/* In the drawer nothing scrolls but the ledger: it takes the height left over,
-   so the footer button stays in view at any drawer size */
+/* In the drawer the effects and the ledger are sized to their rows and give
+   up height together when it runs short, each scrolling inside. At their
+   minimums the content overflows and the body scrolls instead. */
 .death-recap-body .recap-content {
   flex: 1;
   min-height: 0;
@@ -1232,14 +1243,17 @@
   flex-shrink: 0;
 }
 
-/* Sized to its rows; shrinks (and scrolls) only when the drawer is too short */
+.death-recap-body .recap-content > .recap-effects-wrap,
 .death-recap-body .recap-content > .recap-ledger-wrap {
   flex: 0 1 auto;
-  min-height: 6em;
   display: flex;
   flex-direction: column;
 }
+.death-recap-body .recap-content > .recap-effects-wrap { min-height: 9em; }
+.death-recap-body .recap-content > .recap-effects-wrap.few { flex-shrink: 0; min-height: 0; }
+.death-recap-body .recap-content > .recap-ledger-wrap { min-height: 12em; }
 
+.death-recap-body .recap-effects,
 .death-recap-body .recap-ledger {
   flex: 0 1 auto;
   min-height: 0;
@@ -1616,16 +1630,6 @@
   color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: 10px;
-}
-
-.recap-footer {
-  flex-shrink: 0;
-  margin-top: var(--space-sm);
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-  justify-content: flex-end;
-  align-items: center;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

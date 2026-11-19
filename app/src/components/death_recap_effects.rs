@@ -39,7 +39,8 @@ pub fn RecapEffects(effects: Vec<DeathRecapEffect>, window_start: f32, death_tim
     let shown = if both_sides { side() } else { None };
 
     rsx! {
-        div { class: "recap-effects-wrap",
+        // A short list keeps its natural height: the minimum would pad it
+        div { class: if effects.len() < 4 { "recap-effects-wrap few" } else { "recap-effects-wrap" },
             div { class: "recap-ledger-head",
                 h5 { "Effects on Player" }
                 if both_sides {
