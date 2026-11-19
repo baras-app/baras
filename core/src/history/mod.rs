@@ -38,9 +38,8 @@ pub const DUMMY_GROUP: &str = "Training Dummy";
 
 /// `~/.config/baras/history/` (created on demand)
 pub fn history_dir() -> std::io::Result<PathBuf> {
-    let dir = dirs::config_dir()
+    let dir = crate::paths::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("baras")
         .join("history");
     std::fs::create_dir_all(&dir)?;
     Ok(dir)

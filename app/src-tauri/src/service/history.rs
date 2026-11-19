@@ -125,7 +125,7 @@ pub async fn run_backfill(shared: Arc<SharedState>, app: AppHandle, stale_only: 
     if stale_only {
         cmd.arg("--stale-only");
     }
-    if let Some(log_path) = dirs::config_dir().map(|p| p.join("baras").join("baras.log")) {
+    if let Some(log_path) = baras_core::paths::config_dir().map(|p| p.join("baras.log")) {
         cmd.env("BARAS_LOG_PATH", log_path);
     }
     cmd.stdout(std::process::Stdio::piped())

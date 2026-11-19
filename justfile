@@ -1,10 +1,29 @@
 default:
   @just --list
 
-# Run the app with hot-reload (the app finds the parse-worker next to its own exe in target/debug)
+# Development copies keep their config, history and caches here, apart from the installed app's
+dev_config := env("BARAS_DEV_CONFIG_DIR", config_directory() / "baras-dev")
+
+# Run the app with hot-reload against the dev config directory (the app finds the parse-worker next to its own exe in target/debug)
 dev:
   cargo build -p baras-parse-worker && \
+  cd app && BARAS_CONFIG_DIR="{{dev_config}}" DEBUG_LOGGING=1 cargo tauri dev 2>&1 | tee /tmp/baras.log
+
+# Same as `dev`, but on the installed app's own config directory
+dev-live:
+  cargo build -p baras-parse-worker && \
   cd app && DEBUG_LOGGING=1 cargo tauri dev 2>&1 | tee /tmp/baras.log
+
+# Copy the installed app's settings, definitions and characters into the dev config directory (not its history, parsed data or logs)
+dev-seed:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  src="{{config_directory()}}/baras"
+  mkdir -p "{{dev_config}}"
+  for item in config.toml characters.json library.json timer_preferences.toml definitions sounds models; do
+    [[ -e "$src/$item" ]] && cp -r "$src/$item" "{{dev_config}}/"
+  done
+  echo "✓ Seeded {{dev_config}} from $src"
 
 # Type-check the backend and the WASM frontend
 check:

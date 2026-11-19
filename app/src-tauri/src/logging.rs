@@ -28,8 +28,8 @@ pub fn init() -> Option<tracing_appender::non_blocking::WorkerGuard> {
     let debug_logging = std::env::var("DEBUG_LOGGING").is_ok();
 
     // Get config directory: ~/.config/baras on Linux, %APPDATA%/baras on Windows
-    let log_dir = match dirs::config_dir() {
-        Some(config) => config.join("baras"),
+    let log_dir = match baras_core::paths::config_dir() {
+        Some(dir) => dir,
         None => {
             // Fallback: stdout-only logging
             init_stdout_only(debug_logging);

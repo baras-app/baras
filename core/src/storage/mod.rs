@@ -15,9 +15,8 @@ use std::path::PathBuf;
 /// Get the data storage directory for parquet files.
 /// Creates `~/.config/baras/data/` (or equivalent on Windows/Mac) if it doesn't exist.
 pub fn data_dir() -> std::io::Result<PathBuf> {
-    let base = dirs::config_dir()
+    let base = crate::paths::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("baras")
         .join("data");
 
     std::fs::create_dir_all(&base)?;

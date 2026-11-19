@@ -116,8 +116,8 @@ pub async fn preview_sound(
 
     let volume = handle.config().await.audio.volume;
 
-    let user_sounds_dir = dirs::config_dir()
-        .map(|p| p.join("baras").join("sounds"))
+    let user_sounds_dir = baras_core::paths::config_dir()
+        .map(|p| p.join("sounds"))
         .unwrap_or_else(|| PathBuf::from("."));
     let bundled_root = resolve_bundled_definitions_dir(&app);
 
@@ -167,8 +167,8 @@ pub async fn list_sound_files(app: tauri::AppHandle) -> Result<Vec<SoundCategory
     }
 
     let bundled_root = resolve_bundled_definitions_dir(&app);
-    let user_sounds_dir = dirs::config_dir()
-        .map(|p| p.join("baras").join("sounds"))
+    let user_sounds_dir = baras_core::paths::config_dir()
+        .map(|p| p.join("sounds"))
         .unwrap_or_else(|| PathBuf::from("."));
 
     let mut general = BTreeSet::new();

@@ -718,7 +718,7 @@ impl ServiceHandle {
                     .path()
                     .resolve("definitions/encounters", tauri::path::BaseDirectory::Resource)
                     .ok();
-                let user = dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"));
+                let user = baras_core::paths::config_dir().map(|p| p.join("definitions").join("encounters"));
                 Arc::new(baras_core::history::AreaCatalog::load(bundled.as_deref(), user.as_deref()))
             })
             .clone()

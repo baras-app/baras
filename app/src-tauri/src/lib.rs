@@ -133,8 +133,10 @@ pub fn run() {
     let mut builder = tauri::Builder::default();
 
     // Single instance plugin - must be registered FIRST to catch duplicate launches early
+    // A redirected config directory is a development copy: let it run beside
+    // the installed one instead of handing focus to it.
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
-    {
+    if !baras_core::paths::is_overridden() {
         builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             // Focus existing window when second instance attempts to launch
             if let Some(window) = app.get_webview_window("main") {

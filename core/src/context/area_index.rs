@@ -319,7 +319,7 @@ fn parse_area_entered_line(line: &str) -> Option<FileAreaEntry> {
 
 /// Get the default cache file path
 pub fn default_cache_path() -> Option<PathBuf> {
-    dirs::config_dir().map(|p| p.join("baras").join("area_cache.json"))
+    crate::paths::config_dir().map(|p| p.join("area_cache.json"))
 }
 
 #[cfg(test)]

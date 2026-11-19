@@ -243,7 +243,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // User custom definitions directory (overlays + standalone encounters)
     let user_dir =
-        dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"));
+        baras_core::paths::config_dir().map(|p| p.join("definitions").join("encounters"));
 
     // Load bundled definitions, merging with user custom overlays per-file
     let mut all_bosses: Vec<BossEncounterDefinition> = Vec::new();

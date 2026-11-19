@@ -242,7 +242,7 @@ impl EffectListItem {
 
 /// Get the user effects config file path
 fn get_user_effects_path() -> Option<PathBuf> {
-    dirs::config_dir().map(|p| p.join("baras").join("definitions").join("effects.toml"))
+    baras_core::paths::config_dir().map(|p| p.join("definitions").join("effects.toml"))
 }
 
 /// Get the bundled effects directory

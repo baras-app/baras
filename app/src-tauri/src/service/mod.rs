@@ -995,8 +995,8 @@ impl CombatService {
         let shared = Arc::new(SharedState::new(config, directory_index));
 
         // Spawn the audio service (shares audio settings with config)
-        let user_sounds_dir = dirs::config_dir()
-            .map(|p| p.join("baras").join("sounds"))
+        let user_sounds_dir = baras_core::paths::config_dir()
+            .map(|p| p.join("sounds"))
             .unwrap_or_else(|| PathBuf::from("."));
         let bundled_definitions_dir = crate::audio::resolve_bundled_definitions_dir(&app_handle);
         let audio_service = AudioService::new(
@@ -1059,7 +1059,7 @@ impl CombatService {
 
         // Custom definitions: user's config directory
         let custom_dir =
-            dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"));
+            baras_core::paths::config_dir().map(|p| p.join("definitions").join("encounters"));
 
         let mut index = baras_core::boss::AreaIndex::new();
 
@@ -1257,7 +1257,7 @@ impl CombatService {
         let entry = self.area_index.get(&area_id)?;
 
         // User custom directory for overlay files
-        let user_dir = dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"));
+        let user_dir = baras_core::paths::config_dir().map(|p| p.join("definitions").join("encounters"));
 
         match load_bosses_with_custom(&entry.file_path, user_dir.as_deref()) {
             Ok(bosses) => Some(bosses),
@@ -1313,7 +1313,7 @@ impl CombatService {
 
     /// Get the path to the timer preferences file
     fn timer_preferences_path() -> Option<std::path::PathBuf> {
-        dirs::config_dir().map(|p| p.join("baras").join("timer_preferences.toml"))
+        baras_core::paths::config_dir().map(|p| p.join("timer_preferences.toml"))
     }
 
     /// Initialize the icon cache for ability icons
@@ -1367,13 +1367,13 @@ impl CombatService {
 
     /// Get the user effects config file path
     fn get_user_effects_path() -> Option<PathBuf> {
-        dirs::config_dir().map(|p| p.join("baras").join("definitions").join("effects.toml"))
+        baras_core::paths::config_dir().map(|p| p.join("definitions").join("effects.toml"))
     }
 
     /// Clean up old user effects directory structure (pre-delta architecture)
     fn cleanup_old_effects_dir() {
         let Some(old_dir) =
-            dirs::config_dir().map(|p| p.join("baras").join("definitions").join("effects"))
+            baras_core::paths::config_dir().map(|p| p.join("definitions").join("effects"))
         else {
             return;
         };
@@ -2168,7 +2168,7 @@ impl CombatService {
         // Set up sync definition loader for AreaEntered events (fixes race condition)
         let area_index = self.area_index.clone();
         let user_encounters_dir =
-            dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"));
+            baras_core::paths::config_dir().map(|p| p.join("definitions").join("encounters"));
         let loader: baras_core::context::DefinitionLoader = Box::new(move |area_id: i64| {
             use baras_core::boss::load_bosses_with_custom;
             area_index.get(&area_id).and_then(|entry| {
@@ -2265,7 +2265,7 @@ impl CombatService {
         }
 
         // Pass log path so subprocess writes to same log file
-        if let Some(log_path) = dirs::config_dir().map(|p| p.join("baras").join("baras.log")) {
+        if let Some(log_path) = baras_core::paths::config_dir().map(|p| p.join("baras.log")) {
             cmd.env("BARAS_LOG_PATH", &log_path);
         }
 

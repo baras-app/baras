@@ -109,7 +109,7 @@ impl EncounterItem {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 pub(crate) fn get_user_encounters_dir() -> Option<PathBuf> {
-    dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"))
+    baras_core::paths::config_dir().map(|p| p.join("definitions").join("encounters"))
 }
 
 pub(crate) fn get_bundled_encounters_dir(app_handle: &AppHandle) -> Option<PathBuf> {
@@ -499,7 +499,7 @@ fn save_item_to_custom_file(
 // ═══════════════════════════════════════════════════════════════════════════════
 
 fn timer_preferences_path() -> Option<PathBuf> {
-    dirs::config_dir().map(|p| p.join("baras").join("timer_preferences.toml"))
+    baras_core::paths::config_dir().map(|p| p.join("timer_preferences.toml"))
 }
 
 fn load_timer_preferences() -> TimerPreferences {

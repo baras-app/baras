@@ -267,7 +267,7 @@ impl DirectoryIndex {
 
     /// Default path for the directory index cache file.
     pub fn default_cache_path() -> Option<PathBuf> {
-        dirs::config_dir().map(|p| p.join("baras").join("directory_cache.json"))
+        crate::paths::config_dir().map(|p| p.join("directory_cache.json"))
     }
 
     pub fn create_entry(&mut self, path: &Path) -> Option<LogFileMetaData> {

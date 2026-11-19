@@ -16,7 +16,7 @@ use crate::analysis::{Band, BandKind, PreparedCrop};
 
 /// Root of the dump tree: `<config>/baras/ocr-debug/`.
 fn dump_root() -> Option<PathBuf> {
-    dirs::config_dir().map(|d| d.join("baras").join("ocr-debug"))
+    baras_core::paths::config_dir().map(|d| d.join("ocr-debug"))
 }
 
 /// Where dumps are written: `<config>/baras/ocr-debug/<timestamp>/`.

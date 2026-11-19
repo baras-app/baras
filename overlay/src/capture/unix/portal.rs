@@ -41,7 +41,7 @@ fn state() -> &'static Mutex<PortalState> {
 }
 
 fn token_path() -> Option<PathBuf> {
-    dirs::config_dir().map(|path| path.join("baras").join("screen-capture-token"))
+    baras_core::paths::config_dir().map(|path| path.join("screen-capture-token"))
 }
 
 pub fn has_restore_token() -> bool {
