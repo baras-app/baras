@@ -408,6 +408,16 @@ async fn detect_raid_names(
     let _ = result_tx.send(raid_detection_message(names_read, matched, pending, ambiguous_count));
 }
 
+/// Forward data to one overlay if it is running, with any running preview merged in
+async fn send_data(overlay_state: &SharedOverlayState, shared: &SharedState, kind: OverlayType, data: OverlayData) {
+    let tx = overlay_state.lock().ok().and_then(|state| state.get_tx(kind).cloned());
+    if let Some(tx) = tx {
+        let _ = tx
+            .send(OverlayCommand::UpdateData(crate::preview::with_preview(shared, data)))
+            .await;
+    }
+}
+
 /// Process a single overlay update
 async fn process_overlay_update(
     overlay_state: &SharedOverlayState,
@@ -523,80 +533,34 @@ async fn process_overlay_update(
             }
         }
         OverlayUpdate::EffectsUpdated(raid_data) => {
-            // Send raid frame data to raid overlay
-            let raid_tx = {
-                let state = match overlay_state.lock() {
-                    Ok(s) => s,
-                    Err(_) => return,
-                };
-                state.get_tx(OverlayType::Raid).cloned()
-            };
-
-            if let Some(tx) = raid_tx {
-                let _ = tx
-                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(
-                        shared,
-                        OverlayData::Raid(raid_data),
-                    )))
-                    .await;
-            }
+            send_data(overlay_state, shared, OverlayType::Raid, OverlayData::Raid(raid_data)).await;
         }
         OverlayUpdate::BossHealthUpdated(boss_data) => {
-            // Send boss health data to boss health overlay
-            let boss_tx = {
-                let state = match overlay_state.lock() {
-                    Ok(s) => s,
-                    Err(_) => return,
-                };
-                state.get_tx(OverlayType::BossHealth).cloned()
-            };
-
-            if let Some(tx) = boss_tx {
-                let _ = tx
-                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(
-                        shared,
-                        OverlayData::BossHealth(boss_data),
-                    )))
-                    .await;
-            }
+            send_data(
+                overlay_state,
+                shared,
+                OverlayType::BossHealth,
+                OverlayData::BossHealth(boss_data),
+            )
+            .await;
         }
         OverlayUpdate::TimersAUpdated(timer_data) => {
-            // Send timer A data to Timers A overlay
-            let timer_tx = {
-                let state = match overlay_state.lock() {
-                    Ok(s) => s,
-                    Err(_) => return,
-                };
-                state.get_tx(OverlayType::TimersA).cloned()
-            };
-
-            if let Some(tx) = timer_tx {
-                let _ = tx
-                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(
-                        shared,
-                        OverlayData::TimersA(timer_data),
-                    )))
-                    .await;
-            }
+            send_data(
+                overlay_state,
+                shared,
+                OverlayType::TimersA,
+                OverlayData::TimersA(timer_data),
+            )
+            .await;
         }
         OverlayUpdate::TimersBUpdated(timer_data) => {
-            // Send timer B data to Timers B overlay
-            let timer_tx = {
-                let state = match overlay_state.lock() {
-                    Ok(s) => s,
-                    Err(_) => return,
-                };
-                state.get_tx(OverlayType::TimersB).cloned()
-            };
-
-            if let Some(tx) = timer_tx {
-                let _ = tx
-                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(
-                        shared,
-                        OverlayData::TimersB(timer_data),
-                    )))
-                    .await;
-            }
+            send_data(
+                overlay_state,
+                shared,
+                OverlayType::TimersB,
+                OverlayData::TimersB(timer_data),
+            )
+            .await;
         }
         OverlayUpdate::AlertsFired(fired_alerts) => {
             // Convert FiredAlert to AlertEntry and send to alerts overlay
@@ -679,127 +643,67 @@ async fn process_overlay_update(
             }
         }
         OverlayUpdate::EffectsAUpdated(effects_data) => {
-            let tx = {
-                let state = match overlay_state.lock() {
-                    Ok(s) => s,
-                    Err(_) => return,
-                };
-                state.get_tx(OverlayType::EffectsA).cloned()
-            };
-
-            if let Some(tx) = tx {
-                let _ = tx
-                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(
-                        shared,
-                        OverlayData::EffectsA(effects_data),
-                    )))
-                    .await;
-            }
+            send_data(
+                overlay_state,
+                shared,
+                OverlayType::EffectsA,
+                OverlayData::EffectsA(effects_data),
+            )
+            .await;
         }
         OverlayUpdate::EffectsBUpdated(effects_data) => {
-            let tx = {
-                let state = match overlay_state.lock() {
-                    Ok(s) => s,
-                    Err(_) => return,
-                };
-                state.get_tx(OverlayType::EffectsB).cloned()
-            };
-
-            if let Some(tx) = tx {
-                let _ = tx
-                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(
-                        shared,
-                        OverlayData::EffectsB(effects_data),
-                    )))
-                    .await;
-            }
+            send_data(
+                overlay_state,
+                shared,
+                OverlayType::EffectsB,
+                OverlayData::EffectsB(effects_data),
+            )
+            .await;
         }
         OverlayUpdate::EffectsCUpdated(effects_data) => {
-            let tx = {
-                let state = match overlay_state.lock() {
-                    Ok(s) => s,
-                    Err(_) => return,
-                };
-                state.get_tx(OverlayType::EffectsC).cloned()
-            };
-
-            if let Some(tx) = tx {
-                let _ = tx
-                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(
-                        shared,
-                        OverlayData::EffectsC(effects_data),
-                    )))
-                    .await;
-            }
+            send_data(
+                overlay_state,
+                shared,
+                OverlayType::EffectsC,
+                OverlayData::EffectsC(effects_data),
+            )
+            .await;
         }
         OverlayUpdate::CooldownsUpdated(cooldowns_data) => {
-            let tx = {
-                let state = match overlay_state.lock() {
-                    Ok(s) => s,
-                    Err(_) => return,
-                };
-                state.get_tx(OverlayType::Cooldowns).cloned()
-            };
-
-            if let Some(tx) = tx {
-                let _ = tx
-                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(
-                        shared,
-                        OverlayData::Cooldowns(cooldowns_data),
-                    )))
-                    .await;
-            }
+            send_data(
+                overlay_state,
+                shared,
+                OverlayType::Cooldowns,
+                OverlayData::Cooldowns(cooldowns_data),
+            )
+            .await;
         }
         OverlayUpdate::CooldownsBUpdated(cooldowns_data) => {
-            let tx = {
-                let state = match overlay_state.lock() {
-                    Ok(s) => s,
-                    Err(_) => return,
-                };
-                state.get_tx(OverlayType::CooldownsB).cloned()
-            };
-
-            if let Some(tx) = tx {
-                let _ = tx
-                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(
-                        shared,
-                        OverlayData::CooldownsB(cooldowns_data),
-                    )))
-                    .await;
-            }
+            send_data(
+                overlay_state,
+                shared,
+                OverlayType::CooldownsB,
+                OverlayData::CooldownsB(cooldowns_data),
+            )
+            .await;
         }
         OverlayUpdate::DotTrackerUpdated(dot_data) => {
-            let tx = {
-                let state = match overlay_state.lock() {
-                    Ok(s) => s,
-                    Err(_) => return,
-                };
-                state.get_tx(OverlayType::DotTracker).cloned()
-            };
-
-            if let Some(tx) = tx {
-                let _ = tx
-                    .send(OverlayCommand::UpdateData(crate::preview::with_preview(
-                        shared,
-                        OverlayData::DotTracker(dot_data),
-                    )))
-                    .await;
-            }
+            send_data(
+                overlay_state,
+                shared,
+                OverlayType::DotTracker,
+                OverlayData::DotTracker(dot_data),
+            )
+            .await;
         }
         OverlayUpdate::NotesUpdated(notes_data) => {
-            let tx = {
-                let state = match overlay_state.lock() {
-                    Ok(s) => s,
-                    Err(_) => return,
-                };
-                state.get_tx(OverlayType::Notes).cloned()
-            };
-
-            if let Some(tx) = tx {
-                let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::Notes(notes_data)))
-                    .await;
-            }
+            send_data(
+                overlay_state,
+                shared,
+                OverlayType::Notes,
+                OverlayData::Notes(notes_data),
+            )
+            .await;
         }
         OverlayUpdate::OperationTimerUpdated(timer_data) => {
             // Personal overlay shows elapsed time as its "Op Time" row
@@ -828,19 +732,13 @@ async fn process_overlay_update(
             }
         }
         OverlayUpdate::AbilityQueueUpdated(data) => {
-            // Route to ability queue overlay when it exists (wired in Phase 4)
-            let tx = {
-                let state = match overlay_state.lock() {
-                    Ok(s) => s,
-                    Err(_) => return,
-                };
-                state.get_tx(OverlayType::AbilityQueue).cloned()
-            };
-            if let Some(tx) = tx {
-                let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::AbilityQueue(data)))
-                    .await;
-            }
+            send_data(
+                overlay_state,
+                shared,
+                OverlayType::AbilityQueue,
+                OverlayData::AbilityQueue(data),
+            )
+            .await;
         }
         OverlayUpdate::CombatStarted => {
             // Safety fallback: combat starting lifts ALL auto-hide conditions immediately,
