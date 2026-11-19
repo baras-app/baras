@@ -475,6 +475,28 @@ pub struct DeathRecapHpPoint {
     pub hp_pct: f32,
 }
 
+/// An effect that was on the player during the recap window, per source.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DeathRecapEffect {
+    pub effect_id: i64,
+    pub effect_name: String,
+    /// For the icon; 0 when no apply was logged (up since before combat)
+    pub ability_id: i64,
+    pub source_name: String,
+    /// Applied by something other than a player or companion
+    pub from_npc: bool,
+    /// Last logged stack count; 1 for effects that do not stack
+    pub stacks: i32,
+    /// (start, end) in combat seconds, chronological. A start before the
+    /// recap window is kept as logged; an end never passes the death.
+    pub windows: Vec<(f32, f32)>,
+    /// (time, stacks) at each change, from the last one before the recap
+    /// window on. Empty for effects that never stacked.
+    #[serde(default)]
+    pub stack_changes: Vec<(f32, i32)>,
+    pub active_at_death: bool,
+}
+
 /// Full recap of a single player death.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DeathRecap {
@@ -498,6 +520,10 @@ pub struct DeathRecap {
     pub healing_rows: Vec<DeathRecapHealSource>,
     /// Chronological ledger of meaningful events in the final seconds
     pub events: Vec<DeathRecapEvent>,
+    /// Effects on the player in the window: enemy-applied first, then those
+    /// still up at the death, then by start
+    #[serde(default)]
+    pub effects: Vec<DeathRecapEffect>,
 }
 
 /// Final health state of an NPC in an encounter.

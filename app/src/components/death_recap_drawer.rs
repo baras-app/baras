@@ -3,7 +3,8 @@
 //! Slides in from the right when a death is picked in the Overview tab's
 //! tracker; the page beside it stays usable, so another death can be picked. Loads lazily via
 //! `query_death_recap` and renders a header verdict, HP sparkline, damage
-//! taken / healing received tables, and a condensed event ledger.
+//! taken / healing received tables, the effects on the player, and a
+//! condensed event ledger.
 
 use baras_types::{DeathRecapDamageSource, DeathRecapEvent, DeathRecapHealSource, formatting};
 use dioxus::prelude::*;
@@ -204,6 +205,14 @@ fn RecapBody(recap: DeathRecap, european: bool) -> Element {
             div { class: "recap-tables",
                 DamageTakenTable { rows: r.damage_rows.clone(), european: eu }
                 HealingReceivedTable { rows: r.healing_rows.clone(), european: eu }
+            }
+
+            // Effects on the player, on the sparkline's time axis
+            super::death_recap_effects::RecapEffects {
+                effects: r.effects.clone(),
+                window_start: r.window_start_secs,
+                death_time: r.death_time_secs,
+                european: eu,
             }
 
             // Event ledger — final events with running HP%
@@ -578,7 +587,7 @@ fn recap_nav(deaths: &[PlayerDeath], name: &str, time: f32, on_select: EventHand
 
 /// The ability's icon, or the event-kind glyph while loading / when it has none
 #[component]
-fn LedgerIcon(ability_id: i64, icon: &'static str, icon_class: &'static str) -> Element {
+pub(super) fn LedgerIcon(ability_id: i64, icon: &'static str, icon_class: &'static str) -> Element {
     let (url, _) = use_icon_url((ability_id != 0).then(|| display_id(ability_id) as u64));
     rsx! {
         if let Some(url) = url() {

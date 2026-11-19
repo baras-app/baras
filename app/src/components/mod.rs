@@ -11,6 +11,7 @@ pub mod combat_log;
 pub mod contributors_modal;
 pub mod data_explorer;
 pub mod death_recap_drawer;
+mod death_recap_effects;
 pub mod echarts;
 pub mod editor_common;
 pub mod dt_summary;
