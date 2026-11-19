@@ -164,6 +164,9 @@ pub enum Trigger {
         /// Who received the threat change (default: any)
         #[serde(default = "EntityFilter::default_any")]
         target: EntityFilter,
+        /// Exact threat value to match (None = any)
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        threat_value: Option<f32>,
     },
 
     // ─── HP Thresholds [TPC] ───────────────────────────────────────────────

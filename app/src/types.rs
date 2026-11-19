@@ -379,6 +379,10 @@ pub struct AudioConfig {
     #[serde(default)]
     pub countdown_voice: Option<String>,
 
+    /// Alert overlay text; not editable here, carried so a save keeps it
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub alert_text: Option<String>,
+
     /// Defer the "becomes next cast" cue until GCD remaining ≤ this value.
     /// Only meaningful when used as a timer's `queue_next_audio`.
     #[serde(default, skip_serializing_if = "Option::is_none")]

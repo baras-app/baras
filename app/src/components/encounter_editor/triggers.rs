@@ -401,7 +401,7 @@ pub fn SimpleTriggerEditor(
                         "effect_removed" => TimerTrigger::EffectRemoved { effects: vec![], source: EntityFilter::default(), target: EntityFilter::default(), position: vec![] },
                         "damage_taken" => TimerTrigger::DamageTaken { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default(), mitigation: vec![], position: vec![] },
                         "healing_taken" => TimerTrigger::HealingTaken { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default(), position: vec![] },
-                        "threat_modified" => TimerTrigger::ThreatModified { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
+                        "threat_modified" => TimerTrigger::ThreatModified { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default(), threat_value: None },
                         "timer_expires" => TimerTrigger::TimerExpires { timer_id: String::new() },
                         "timer_started" => TimerTrigger::TimerStarted { timer_id: String::new() },
                         "timer_canceled" => TimerTrigger::TimerCanceled { timer_id: String::new() },
@@ -686,7 +686,7 @@ pub fn SimpleTriggerEditor(
                             }
                         }
                     },
-                    TimerTrigger::ThreatModified { abilities, source, target } => {
+                    TimerTrigger::ThreatModified { abilities, source, target, threat_value } => {
                         let source_for_abilities = source.clone();
                         let target_for_abilities = target.clone();
                         let abilities_for_source = abilities.clone();
@@ -701,6 +701,7 @@ pub fn SimpleTriggerEditor(
                                     abilities: sels,
                                     source: source_for_abilities.clone(),
                                     target: target_for_abilities.clone(),
+                                    threat_value,
                                 })
                             }
                             EntityFilterDropdown {
@@ -711,6 +712,7 @@ pub fn SimpleTriggerEditor(
                                     abilities: abilities_for_source.clone(),
                                     source: f,
                                     target: target_for_source.clone(),
+                                    threat_value,
                                 })
                             }
                             EntityFilterDropdown {
@@ -721,6 +723,7 @@ pub fn SimpleTriggerEditor(
                                     abilities: abilities_for_target.clone(),
                                     source: source_for_target.clone(),
                                     target: f,
+                                    threat_value,
                                 })
                             }
                         }
