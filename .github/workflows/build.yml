@@ -213,6 +213,9 @@ jobs:
           args: ${{ matrix.target_args }}
           releaseId: ${{ needs.preflight.outputs.release_id }}
           includeUpdaterJson: false
+          # macOS runners intermittently fail dmg creation with "hdiutil:
+          # create failed - Resource busy"; the retry reuses the compiled app.
+          retryAttempts: 1
 
       # Ubuntu's libpipewire hardcodes Debian's SPA plugin directory
       # (/usr/lib/x86_64-linux-gnu/spa-0.2); bundled into the AppImage it

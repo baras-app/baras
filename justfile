@@ -30,9 +30,19 @@ check:
   cargo check -p app
   cd app && cargo check --target wasm32-unknown-unknown
 
+# Everything the Check workflow gates on: formatting, clippy with warnings as errors, and tests
+lint:
+  cargo fmt --all --check
+  cargo clippy --workspace --exclude app-ui --all-targets -- -D warnings
+  cd app && cargo clippy --target wasm32-unknown-unknown -- -D warnings
+
 # Same tests the Check workflow runs on pull requests
 test:
-  cargo test --locked -p baras-core -p baras-types
+  cargo test --locked --workspace --exclude app-ui
+
+# Delete build artifacts not touched in the last two weeks (target/ grows without bound otherwise)
+sweep:
+  cargo sweep --time 14
 
 # Build parse-worker and copy to binaries dir with platform-specific name
 build-parse-worker:
