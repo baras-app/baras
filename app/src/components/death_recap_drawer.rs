@@ -97,12 +97,25 @@ pub fn DeathRecapDrawer(props: DeathRecapDrawerProps) -> Element {
                         span { class: "recap-phase-chip", "{phase}" }
                     }
                 }
-                button {
-                    class: "btn btn-xs btn-ghost",
-                    title: "Close (Esc)",
-                    "data-esc-close": true,
-                    onclick: move |_| props.on_close.call(()),
-                    i { class: "fa-solid fa-xmark" }
+                // Wraps under the name as one group when the drawer is narrow
+                div { class: "recap-header-actions",
+                    {recap_nav(&props.deaths, &props.player_name, props.death_time_secs, props.on_select)}
+                    if let Some(start) = window_start {
+                        button {
+                            class: "btn btn-sm",
+                            title: "Open these seconds in the Combat Log",
+                            onclick: move |_| props.on_open_combat_log.call(start),
+                            i { class: "fa-solid fa-list" }
+                            " Log"
+                        }
+                    }
+                    button {
+                        class: "btn btn-xs btn-ghost",
+                        title: "Close (Esc)",
+                        "data-esc-close": true,
+                        onclick: move |_| props.on_close.call(()),
+                        i { class: "fa-solid fa-xmark" }
+                    }
                 }
             }
             div { class: "death-recap-body",
@@ -121,18 +134,6 @@ pub fn DeathRecapDrawer(props: DeathRecapDrawerProps) -> Element {
                                 european: eu,
                             }
                         },
-                    }
-                }
-            }
-            // Pinned below the body so the controls don't move between deaths
-            div { class: "recap-footer",
-                {recap_nav(&props.deaths, &props.player_name, props.death_time_secs, props.on_select)}
-                if let Some(start) = window_start {
-                    button {
-                        class: "btn",
-                        onclick: move |_| props.on_open_combat_log.call(start),
-                        i { class: "fa-solid fa-list" }
-                        " Open in Combat Log"
                     }
                 }
             }
@@ -529,7 +530,7 @@ fn event_row(ev: &DeathRecapEvent, death_time: f32, european: bool) -> Element {
     }
 }
 
-/// Footer navigation: `‹ 2/3 ›` steps through this player's deaths (hidden
+/// Header navigation: `‹ 2/3 ›` steps through this player's deaths (hidden
 /// for a single death); the outer buttons jump to the previous/next player by
 /// first death, so next walks a wipe in the order it happened
 fn recap_nav(deaths: &[PlayerDeath], name: &str, time: f32, on_select: EventHandler<PlayerDeath>) -> Element {
@@ -552,7 +553,7 @@ fn recap_nav(deaths: &[PlayerDeath], name: &str, time: f32, on_select: EventHand
         let target = target.cloned();
         rsx! {
             button {
-                class: "btn",
+                class: "btn btn-sm",
                 title: "{title}",
                 disabled: target.is_none(),
                 onclick: move |_| if let Some(d) = target.clone() { on_select.call(d) },
