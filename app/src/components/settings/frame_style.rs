@@ -78,7 +78,7 @@ pub fn FrameOverrideSection(draft: SettingsDraft, tab_key: Signal<String>) -> El
 
     rsx! {
         div { class: "settings-section",
-            details { class: "collapsible", open: true,
+            details { class: "collapsible",
                 summary { class: "collapsible-summary",
                     "Window Style"
                     if !o.is_empty() {
