@@ -572,14 +572,14 @@ impl CombatEncounter {
                             .filter(|m| {
                                 // Difficulty tier filter (empty = all)
                                 (m.difficulties.is_empty()
-                                    || self.difficulty.as_ref().map_or(true, |d| {
+                                    || self.difficulty.as_ref().is_none_or(|d| {
                                         m.difficulties
                                             .iter()
                                             .any(|key| d.matches_config_key(key))
                                     }))
                                 // Group size filter (None = all sizes)
-                                && m.group_size.map_or(true, |req_size| {
-                                    self.difficulty.map_or(true, |d| d.group_size() == req_size)
+                                && m.group_size.is_none_or(|req_size| {
+                                    self.difficulty.is_none_or(|d| d.group_size() == req_size)
                                 })
                                 // Encounter state conditions (empty = always shown)
                                 && self.evaluate_conditions(&m.conditions)
@@ -628,7 +628,7 @@ impl CombatEncounter {
             })
             .collect();
 
-        entries.sort_by(|a, b| a.first_seen_at.cmp(&b.first_seen_at));
+        entries.sort_by_key(|a| a.first_seen_at);
         entries
     }
 
@@ -931,11 +931,10 @@ impl CombatEncounter {
         }
 
         // Check legacy counter condition
-        if let Some(cond) = counter_condition {
-            if !self.check_counter_condition(cond) {
+        if let Some(cond) = counter_condition
+            && !self.check_counter_condition(cond) {
                 return false;
             }
-        }
 
         true
     }
@@ -966,11 +965,10 @@ impl CombatEncounter {
         }
 
         // Check legacy counter condition
-        if let Some(cond) = counter_condition {
-            if !self.check_counter_condition(cond) {
+        if let Some(cond) = counter_condition
+            && !self.check_counter_condition(cond) {
                 return false;
             }
-        }
 
         true
     }
@@ -1817,7 +1815,7 @@ impl CombatEncounter {
             })
             .collect();
 
-        stats.sort_by(|a, b| b.dps.cmp(&a.dps));
+        stats.sort_by_key(|x| std::cmp::Reverse(x.dps));
         Some(stats)
     }
 }

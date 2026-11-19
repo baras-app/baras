@@ -126,7 +126,7 @@ impl TimerPreferences {
         }
 
         let content =
-            toml::to_string_pretty(&cleaned).map_err(|e| PreferencesError::Serialize(e))?;
+            toml::to_string_pretty(&cleaned).map_err(PreferencesError::Serialize)?;
 
         std::fs::write(path, content).map_err(|e| PreferencesError::Io(path.to_path_buf(), e))
     }

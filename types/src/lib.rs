@@ -4102,6 +4102,7 @@ impl EntityFilter {
 /// Global UI session state that persists across tab switches (in-memory only).
 /// Lives in the App component and flows down via props/signals.
 #[derive(Debug, Clone, PartialEq)]
+#[derive(Default)]
 pub struct UiSessionState {
     /// Currently active main tab
     pub active_tab: MainTab,
@@ -4125,19 +4126,6 @@ pub struct UiSessionState {
     pub european_number_format: bool,
 }
 
-impl Default for UiSessionState {
-    fn default() -> Self {
-        Self {
-            active_tab: MainTab::default(),
-            data_explorer: DataExplorerState::default(),
-            combat_log: CombatLogSessionState::default(),
-            encounter_builder: EncounterBuilderState::default(),
-            effects_editor: EffectsEditorState::default(),
-            history: history::HistoryState::default(),
-            european_number_format: false,
-        }
-    }
-}
 
 impl UiSessionState {
     /// Reset session-specific state when opening a new file.
@@ -4196,24 +4184,6 @@ impl MainTab {
             MainTab::Characters => "characters",
             MainTab::PvpStats => "pvp_stats",
             MainTab::Settings => "settings",
-        }
-    }
-
-    /// Parse from string ID used in old code
-    pub fn from_str(s: &str) -> Self {
-        match s {
-            // "session" maps to DataExplorer for backwards compatibility
-            "session" | "explorer" => MainTab::DataExplorer,
-            "overlays" => MainTab::Overlays,
-            "timers" => MainTab::EncounterBuilder,
-            "effects" => MainTab::Effects,
-            "history" | "boss_stats" => MainTab::BossStats,
-            "raid_summaries" => MainTab::RaidSummaries,
-            "log_management" => MainTab::LogManagement,
-            "characters" => MainTab::Characters,
-            "pvp_stats" => MainTab::PvpStats,
-            "settings" => MainTab::Settings,
-            _ => MainTab::DataExplorer,
         }
     }
 }

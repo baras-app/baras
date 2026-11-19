@@ -224,30 +224,27 @@ impl DefinitionSet {
 
         if let Some(def_ids) = self.effect_id_index.get(&effect_id) {
             for def_id in def_ids {
-                if let Some(def) = self.effects.get(def_id) {
-                    if def.enabled {
+                if let Some(def) = self.effects.get(def_id)
+                    && def.enabled {
                         seen.insert(def_id);
                         results.push(def);
                     }
-                }
             }
         }
 
-        if let Some(name) = effect_name {
-            if let Some(def_ids) = self.effect_name_index.get(&name.to_lowercase()) {
+        if let Some(name) = effect_name
+            && let Some(def_ids) = self.effect_name_index.get(&name.to_lowercase()) {
                 for def_id in def_ids {
                     if seen.contains(def_id.as_str()) {
                         continue;
                     }
-                    if let Some(def) = self.effects.get(def_id) {
-                        if def.enabled {
+                    if let Some(def) = self.effects.get(def_id)
+                        && def.enabled {
                             seen.insert(def_id);
                             results.push(def);
                         }
-                    }
                 }
             }
-        }
 
         results
     }
@@ -263,30 +260,27 @@ impl DefinitionSet {
 
         if let Some(def_ids) = self.ability_id_index.get(&ability_id) {
             for def_id in def_ids {
-                if let Some(def) = self.effects.get(def_id) {
-                    if def.enabled {
+                if let Some(def) = self.effects.get(def_id)
+                    && def.enabled {
                         seen.insert(def_id);
                         results.push(def);
                     }
-                }
             }
         }
 
-        if let Some(name) = ability_name {
-            if let Some(def_ids) = self.ability_name_index.get(&name.to_lowercase()) {
+        if let Some(name) = ability_name
+            && let Some(def_ids) = self.ability_name_index.get(&name.to_lowercase()) {
                 for def_id in def_ids {
                     if seen.contains(def_id.as_str()) {
                         continue;
                     }
-                    if let Some(def) = self.effects.get(def_id) {
-                        if def.enabled {
+                    if let Some(def) = self.effects.get(def_id)
+                        && def.enabled {
                             seen.insert(def_id);
                             results.push(def);
                         }
-                    }
                 }
             }
-        }
 
         results
     }
@@ -298,29 +292,26 @@ impl DefinitionSet {
 
         if let Some(def_ids) = self.refresh_ability_id_index.get(&ability_id) {
             for def_id in def_ids {
-                if let Some(def) = self.effects.get(def_id) {
-                    if def.enabled {
+                if let Some(def) = self.effects.get(def_id)
+                    && def.enabled {
                         seen.insert(def_id);
                         results.push(def);
                     }
-                }
             }
         }
 
-        if let Some(name) = ability_name {
-            if let Some(def_ids) = self.refresh_ability_name_index.get(&name.to_lowercase()) {
+        if let Some(name) = ability_name
+            && let Some(def_ids) = self.refresh_ability_name_index.get(&name.to_lowercase()) {
                 for def_id in def_ids {
                     if seen.contains(def_id.as_str()) {
                         continue;
                     }
-                    if let Some(def) = self.effects.get(def_id) {
-                        if def.enabled {
+                    if let Some(def) = self.effects.get(def_id)
+                        && def.enabled {
                             results.push(def);
                         }
-                    }
                 }
             }
-        }
 
         results
     }
@@ -1618,11 +1609,10 @@ impl EffectTracker {
                 }
 
                 // Check min_stacks condition if specified
-                if let Some(min_stacks) = def.min_stacks {
-                    if effect.stacks < min_stacks {
+                if let Some(min_stacks) = def.min_stacks
+                    && effect.stacks < min_stacks {
                         continue; // Skip refresh - not enough stacks
                     }
-                }
 
                 // Existing effect - refresh duration
                 effect.refresh(timestamp, def.duration);
@@ -1891,11 +1881,10 @@ impl EffectTracker {
 
         for (def_id, scope, duration) in &refreshable_def_ids {
             let key = EffectKey::for_scope(def_id, *scope, source_id, target_id);
-            if let Some(effect) = self.active_effects.get_mut(&key) {
-                if effect.removed_at.is_none() {
+            if let Some(effect) = self.active_effects.get_mut(&key)
+                && effect.removed_at.is_none() {
                     effect.refresh(timestamp, *duration);
                 }
-            }
         }
     }
 
@@ -2641,11 +2630,10 @@ impl EffectTracker {
             .collect();
 
         for (key, effect) in self.active_effects.iter_mut() {
-            if !outside_combat_ids.contains(key.definition_id.as_str()) {
-                if effect.mark_removed() && !effect.timer_expired {
+            if !outside_combat_ids.contains(key.definition_id.as_str())
+                && effect.mark_removed() && !effect.timer_expired {
                     self.ticking_count = self.ticking_count.saturating_sub(1);
                 }
-            }
         }
     }
 
@@ -2744,13 +2732,11 @@ impl EffectTracker {
 
         // Seed last_seen_charges from EffectApplied so first ChargesChanged has a baseline
         for s in signals {
-            if let GameSignal::EffectApplied { effect_id, target_id, charges, .. } = s {
-                if let Some(c) = charges {
-                    if *c > 0 {
+            if let GameSignal::EffectApplied { effect_id, target_id, charges, .. } = s
+                && let Some(c) = charges
+                    && *c > 0 {
                         self.last_seen_charges.entry((*effect_id, *target_id)).or_insert(*c);
                     }
-                }
-            }
         }
 
         // Snapshot old charges for direction comparison, then update to new values
@@ -2929,14 +2915,13 @@ impl SignalHandler for EffectTracker {
         // Only finalize AoE collection if we're past the collection window (10ms).
         // This ensures secondary targets have time to arrive across multiple batches,
         // while still finalizing promptly once the window has elapsed.
-        if let Some(ref collecting) = self.aoe_collecting {
-            if let Some(current_time) = self.current_game_time {
+        if let Some(ref collecting) = self.aoe_collecting
+            && let Some(current_time) = self.current_game_time {
                 let elapsed_ms = (current_time - collecting.anchor_timestamp).num_milliseconds();
                 if elapsed_ms > 10 {
                     self.finalize_aoe_refresh();
                 }
             }
-        }
     }
 
     fn handle_signal(
@@ -3047,15 +3032,14 @@ impl SignalHandler for EffectTracker {
             GameSignal::CombatEnded { .. } => {
                 self.handle_combat_ended();
             }
-            GameSignal::AreaEntered { area_id, .. } => {
+            GameSignal::AreaEntered { area_id, .. }
                 // Instanced areas fire AreaEntered twice (plain + difficulty)
                 // around the game's effect restatement — only wipe on an
                 // actual area change.
-                if self.last_area_id != Some(*area_id) {
+                if self.last_area_id != Some(*area_id) => {
                     self.last_area_id = Some(*area_id);
                     self.handle_area_change();
                 }
-            }
             GameSignal::DisciplineChanged {
                 entity_id,
                 discipline_id,

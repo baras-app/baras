@@ -99,7 +99,7 @@ pub async fn install_update(app: AppHandle) -> Result<(), String> {
             let msg = e.to_string();
             // Emit failure event so frontend can show error and reset state
             let _ = app.emit("update-failed", &msg);
-            return Err(msg);
+            Err(msg)
         }
     }
 }

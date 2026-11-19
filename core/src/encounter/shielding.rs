@@ -67,7 +67,7 @@ impl CombatEncounter {
             .filter(|e| {
                 e.is_shield
                     && e.applied_at < timestamp
-                    && e.removed_at.map_or(true, |r| r >= timestamp)
+                    && e.removed_at.is_none_or(|r| r >= timestamp)
             })
             .min_by_key(|e| e.applied_at)
             .map(|e| ActiveShield {
@@ -137,7 +137,7 @@ impl CombatEncounter {
             .filter(|e| {
                 e.is_shield
                     && e.applied_at < timestamp
-                    && e.removed_at.map_or(true, |r| r >= timestamp)
+                    && e.removed_at.is_none_or(|r| r >= timestamp)
             })
             .collect();
 

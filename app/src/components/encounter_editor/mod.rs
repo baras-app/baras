@@ -269,15 +269,14 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                 areas.set(area_list.clone());
                 
                 // Restore selected area from persisted path
-                if let Some(ref path) = *selected_area_path.read() {
-                    if let Some(area) = area_list.iter().find(|a| &a.file_path == path) {
+                if let Some(ref path) = *selected_area_path.read()
+                    && let Some(area) = area_list.iter().find(|a| &a.file_path == path) {
                         selected_area.set(Some(area.clone()));
                         // Load bosses for the restored area
                         if let Some(boss_list) = api::fetch_area_bosses(&area.file_path).await {
                             bosses.set(boss_list);
                         }
                     }
-                }
             }
             loading_areas.set(false);
         });
@@ -558,11 +557,10 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                         match api::import_encounter_toml(&content, target.as_deref()).await {
                             Ok(()) => {
                                 // Reload bosses and area index
-                                if let Some(ref path) = target {
-                                    if let Some(b) = api::fetch_area_bosses(path).await {
+                                if let Some(ref path) = target
+                                    && let Some(b) = api::fetch_area_bosses(path).await {
                                         bosses.set(b);
                                     }
-                                }
                                 if let Some(a) = api::get_area_index().await {
                                     areas.set(a);
                                 }

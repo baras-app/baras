@@ -97,25 +97,20 @@ fn main() {
     };
 
     // Create overlays with show_effect_names enabled
-    let mut buffs_cfg = EffectsABConfig::default();
-    buffs_cfg.show_effect_names = true;
-    buffs_cfg.icon_size = 40;
+    let buffs_cfg = EffectsABConfig { show_effect_names: true, icon_size: 40, ..Default::default() };
 
-    let mut effects_bar_cfg = EffectsABConfig::default();
-    effects_bar_cfg.layout = EffectsLayout::Bar;
-    effects_bar_cfg.show_effect_names = true;
-    effects_bar_cfg.bar_gradient = true;
+    let effects_bar_cfg = EffectsABConfig {
+        layout: EffectsLayout::Bar,
+        show_effect_names: true,
+        bar_gradient: true,
+        ..Default::default()
+    };
 
-    let mut cooldowns_cfg = CooldownConfig::default();
-    cooldowns_cfg.show_ability_names = true;
-    cooldowns_cfg.icon_size = 36;
+    let cooldowns_cfg = CooldownConfig { show_ability_names: true, icon_size: 36, ..Default::default() };
 
-    let mut dots_cfg = DotTrackerConfig::default();
-    dots_cfg.icon_size = 24;
+    let dots_cfg = DotTrackerConfig { icon_size: 24, ..Default::default() };
 
-    let mut dots_bar_cfg = DotTrackerConfig::default();
-    dots_bar_cfg.layout_bar = true;
-    dots_bar_cfg.bar_gradient = true;
+    let dots_bar_cfg = DotTrackerConfig { layout_bar: true, bar_gradient: true, ..Default::default() };
 
     let mut buffs_overlay = EffectsABOverlay::new(buffs_config, buffs_cfg, "Effects A")
         .expect("Failed to create effects overlay");

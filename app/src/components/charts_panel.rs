@@ -687,14 +687,14 @@ pub struct ChartsPanelProps {
 #[component]
 pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
     // Mirror time_range prop into a signal for reactivity
-    let mut time_range_signal = use_signal(|| props.time_range.clone());
+    let mut time_range_signal = use_signal(|| props.time_range);
     
     // Mirror encounter_idx prop into a signal for reactivity
     let mut encounter_idx_signal = use_signal(|| props.encounter_idx);
 
     // Update signals when props change (runs on every render with new props)
     if *time_range_signal.read() != props.time_range {
-        time_range_signal.set(props.time_range.clone());
+        time_range_signal.set(props.time_range);
     }
     if *encounter_idx_signal.read() != props.encounter_idx {
         encounter_idx_signal.set(props.encounter_idx);
@@ -746,7 +746,7 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
 
     // Propagate brush selections to parent via on_time_range_change callback
     {
-        let on_change = props.on_time_range_change.clone();
+        let on_change = props.on_time_range_change;
         use_effect(move || {
             if let Some((start, end)) = *brush_selection.read() {
                 // The brush coords are in seconds (x-axis values).
@@ -776,7 +776,7 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
     // Load time series data when entity or time range changes
     use_effect(move || {
         let idx = encounter_idx_signal();
-        let tr = time_range_signal.read().clone();
+        let tr = *time_range_signal.read();
         let entity = selected_entity.read().clone();
 
         // Wait for entity auto-selection before loading
@@ -838,7 +838,7 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
     use_effect(move || {
         let idx = encounter_idx_signal();
         let duration = props.duration_secs;
-        let tr = time_range_signal.read().clone();
+        let tr = *time_range_signal.read();
         let entity = selected_entity.read().clone();
         let sf = source_filter.read().clone();
 
@@ -876,7 +876,7 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
     use_effect(move || {
         let idx = encounter_idx_signal();
         let duration = props.duration_secs;
-        let tr = time_range_signal.read().clone();
+        let tr = *time_range_signal.read();
         let effects = selected_effects.read().clone();
         let entity = selected_entity.read().clone();
         let sf = source_filter.read().clone();
@@ -947,17 +947,16 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
             // Live: update in-place, no animation, no brush re-registration, no resize.
             // Brush handlers are already registered from the initial render;
             // re-registering would leak closures and cause a visual cursor reset flash.
-            if show_dps_val && !dps.is_empty() {
-                if let Some(chart) = init_chart("chart-dps") {
+            if show_dps_val && !dps.is_empty()
+                && let Some(chart) = init_chart("chart-dps") {
                     let option = build_time_series_option(
                         &dps, None, "DPS", "#e74c3c", None,
                         "rgba(231, 76, 60, 0.15)", &windows, "DPS", false,
                     );
                     set_chart_option(&chart, &option);
                 }
-            }
-            if show_hps_val && !hps.is_empty() {
-                if let Some(chart) = init_chart("chart-hps") {
+            if show_hps_val && !hps.is_empty()
+                && let Some(chart) = init_chart("chart-hps") {
                     let ehps_ref = if !ehps.is_empty() { Some(ehps.as_slice()) } else { None };
                     let option = build_time_series_option(
                         &hps, ehps_ref, "HPS", "#2ecc71", Some("#3498db"),
@@ -965,23 +964,20 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                     );
                     set_chart_option(&chart, &option);
                 }
-            }
-            if show_dtps_val && !dtps.is_empty() {
-                if let Some(chart) = init_chart("chart-dtps") {
+            if show_dtps_val && !dtps.is_empty()
+                && let Some(chart) = init_chart("chart-dtps") {
                     let option = build_time_series_option(
                         &dtps, None, "DTPS", "#e67e22", None,
                         "rgba(230, 126, 34, 0.15)", &windows, "DTPS", false,
                     );
                     set_chart_option(&chart, &option);
                 }
-            }
-            if show_hp_val && !hp.is_empty() {
-                if let Some(chart) = init_chart("chart-hp") {
+            if show_hp_val && !hp.is_empty()
+                && let Some(chart) = init_chart("chart-hp") {
                     let eht_ref = if !eht.is_empty() { Some(eht.as_slice()) } else { None };
                     let option = build_hp_chart_option(&hp, eht_ref, &windows, false);
                     set_chart_option(&chart, &option);
                 }
-            }
         } else {
             // Historical: wait for the DOM to lay out/paint (two frames), then init
             // + brush + resize. Two rAFs replace a fixed 150ms sleep.
@@ -989,8 +985,8 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                 next_animation_frame().await;
                 next_animation_frame().await;
 
-                if show_dps_val && !dps.is_empty() {
-                    if let Some(chart) = init_chart("chart-dps") {
+                if show_dps_val && !dps.is_empty()
+                    && let Some(chart) = init_chart("chart-dps") {
                         let option = build_time_series_option(
                             &dps, None, "DPS", "#e74c3c", None,
                             "rgba(231, 76, 60, 0.15)", &windows, "DPS", false,
@@ -999,9 +995,8 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                         register_brush_handler(&chart, brush_selection);
                         activate_brush(&chart);
                     }
-                }
-                if show_hps_val && !hps.is_empty() {
-                    if let Some(chart) = init_chart("chart-hps") {
+                if show_hps_val && !hps.is_empty()
+                    && let Some(chart) = init_chart("chart-hps") {
                         let ehps_ref = if !ehps.is_empty() { Some(ehps.as_slice()) } else { None };
                         let option = build_time_series_option(
                             &hps, ehps_ref, "HPS", "#2ecc71", Some("#3498db"),
@@ -1011,9 +1006,8 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                         register_brush_handler(&chart, brush_selection);
                         activate_brush(&chart);
                     }
-                }
-                if show_dtps_val && !dtps.is_empty() {
-                    if let Some(chart) = init_chart("chart-dtps") {
+                if show_dtps_val && !dtps.is_empty()
+                    && let Some(chart) = init_chart("chart-dtps") {
                         let option = build_time_series_option(
                             &dtps, None, "DTPS", "#e67e22", None,
                             "rgba(230, 126, 34, 0.15)", &windows, "DTPS", false,
@@ -1022,16 +1016,14 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                         register_brush_handler(&chart, brush_selection);
                         activate_brush(&chart);
                     }
-                }
-                if show_hp_val && !hp.is_empty() {
-                    if let Some(chart) = init_chart("chart-hp") {
+                if show_hp_val && !hp.is_empty()
+                    && let Some(chart) = init_chart("chart-hp") {
                         let eht_ref = if !eht.is_empty() { Some(eht.as_slice()) } else { None };
                         let option = build_hp_chart_option(&hp, eht_ref, &windows, false);
                         set_chart_option(&chart, &option);
                         register_brush_handler(&chart, brush_selection);
                         activate_brush(&chart);
                     }
-                }
 
             });
         }

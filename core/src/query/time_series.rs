@@ -298,7 +298,7 @@ ORDER BY time_series.bucket_start_ms
             let hp_col = batch.column(2);
             let max_col = batch.column(3);
 
-            for i in 0..batch.num_rows() {
+            for (i, &bucket_start_ms) in buckets.iter().enumerate().take(batch.num_rows()) {
                 if !pct_col.is_null(i) {
                     // Extract values — columns may be f64/i32/i64 depending on cast
                     if let Some(a) = pct_col.as_any().downcast_ref::<Float64Array>() {
@@ -316,7 +316,7 @@ ORDER BY time_series.bucket_start_ms
                     }
                 }
                 results.push(HpPoint {
-                    bucket_start_ms: buckets[i],
+                    bucket_start_ms,
                     hp_pct: last_pct,
                     current_hp: last_hp,
                     max_hp: last_max,

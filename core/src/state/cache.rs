@@ -435,7 +435,7 @@ impl SessionCache {
     /// Returns true if the current encounter is in the PostCombat grace window state.
     /// Used to skip accumulation/time updates for events during the grace window.
     pub fn is_in_grace_window(&self) -> bool {
-        self.current_encounter().map_or(false, |enc| {
+        self.current_encounter().is_some_and(|enc| {
             matches!(enc.state, EncounterState::PostCombat { .. })
         })
     }
@@ -546,12 +546,11 @@ impl SessionCache {
         //   can be safely replaced (no active boss fight to disrupt)
         // NOT safe to update when encounter is InCombat/PostCombat with existing
         // definitions (e.g., player died and revived in another area mid-fight)
-        if let Some(enc) = self.current_encounter_mut() {
-            if force || enc.boss_definitions().is_empty() || enc.state == EncounterState::NotStarted
+        if let Some(enc) = self.current_encounter_mut()
+            && (force || enc.boss_definitions().is_empty() || enc.state == EncounterState::NotStarted)
             {
                 enc.load_boss_definitions(definitions);
             }
-        }
     }
 
     /// Try to detect which boss encounter is active based on an NPC class ID.

@@ -181,12 +181,11 @@ impl Dispatch<ZxdgOutputV1, u32> for MonitorEnumState {
                 info.xdg_logical_width = width;
                 info.xdg_logical_height = height;
             }
-            zxdg_output_v1::Event::Name { name: output_name } => {
+            zxdg_output_v1::Event::Name { name: output_name }
                 // xdg-output name is more reliable than wl_output name
-                if !output_name.is_empty() {
+                if !output_name.is_empty() => {
                     info.connector_name = output_name;
                 }
-            }
             zxdg_output_v1::Event::Description { description } => {
                 // Human-readable description with EDID info (e.g., "LG ULTRAWIDE (HDMI-A-1)")
                 info.description = description;
@@ -1639,14 +1638,13 @@ impl Dispatch<WlPointer, ()> for WaylandState {
                     }
                 }
             }
-            wl_pointer::Event::Leave { .. } => {
+            wl_pointer::Event::Leave { .. }
                 // Only reset corner state if not actively resizing
                 // (during resize, keep grip visible)
-                if !state.is_resizing {
+                if !state.is_resizing => {
                     state.in_resize_corner = false;
                 }
                 // Don't cancel drag/resize on leave - user might move fast
-            }
             _ => {}
         }
     }
@@ -1728,12 +1726,11 @@ impl Dispatch<ZxdgOutputV1, u32> for WaylandState {
                 info.xdg_logical_width = width;
                 info.xdg_logical_height = height;
             }
-            zxdg_output_v1::Event::Name { name: output_name } => {
+            zxdg_output_v1::Event::Name { name: output_name }
                 // xdg-output name is more reliable than wl_output name
-                if !output_name.is_empty() {
+                if !output_name.is_empty() => {
                     info.connector_name = output_name;
                 }
-            }
             zxdg_output_v1::Event::Description { description } => {
                 // Human-readable description with EDID info (e.g., "LG ULTRAWIDE (HDMI-A-1)")
                 info.description = description;

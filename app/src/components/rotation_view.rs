@@ -33,7 +33,7 @@ pub fn RotationView(props: RotationViewProps) -> Element {
     let format_number = move |value: f64| formatting::format_compact_f64(value, eu);
     let format_pct = move |count: i64, total: i64| formatting::format_pct_ratio(count, total, eu);
 
-    let mut available_abilities = use_signal(|| Vec::<(i64, String)>::new());
+    let mut available_abilities = use_signal(Vec::<(i64, String)>::new);
     let mut selected_anchor = props.selected_anchor;
     let mut rotation = use_signal(|| None::<RotationAnalysis>);
     let mut loading = use_signal(|| false);
@@ -49,9 +49,9 @@ pub fn RotationView(props: RotationViewProps) -> Element {
     }
 
     // Track time_range so effects react to phase/time filter changes
-    let mut tracked_time_range = use_signal(|| props.time_range.clone());
+    let mut tracked_time_range = use_signal(|| props.time_range);
     if *tracked_time_range.read() != props.time_range {
-        tracked_time_range.set(props.time_range.clone());
+        tracked_time_range.set(props.time_range);
     }
 
     // Flag: user has clicked Create (reset on source/anchor change)

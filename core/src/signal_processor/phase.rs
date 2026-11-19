@@ -364,7 +364,7 @@ pub fn check_time_phase_transitions(
         let Some(enc) = cache.current_encounter_mut() else {
             return Vec::new();
         };
-        if !matches!(enc.state, crate::encounter::EncounterState::InCombat { .. }) {
+        if !matches!(enc.state, crate::encounter::EncounterState::InCombat) {
             return Vec::new();
         }
         enc.update_combat_time(timestamp)

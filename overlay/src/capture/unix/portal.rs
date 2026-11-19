@@ -272,8 +272,7 @@ fn run_stream(
             if id == pw::spa::param::ParamType::Format.as_raw()
                 && let Some(param) = param
                 && data.format.parse(param).is_ok()
-            {
-                if !data.format_logged {
+                && !data.format_logged {
                     let size = data.format.size();
                     let frame_mib =
                         f64::from(size.width) * f64::from(size.height) * 4.0 / (1024.0 * 1024.0);
@@ -288,7 +287,6 @@ fn run_stream(
                     );
                     data.format_logged = true;
                 }
-            }
         })
         .process(|stream, data| {
             if data
@@ -400,13 +398,12 @@ fn run_stream(
         *slot = Some(request);
         drop(slot);
         let _guard = thread_loop.lock();
-        if let Err(error) = stream.set_active(true) {
-            if let Some(request) = pending.lock().unwrap_or_else(|p| p.into_inner()).take() {
+        if let Err(error) = stream.set_active(true)
+            && let Some(request) = pending.lock().unwrap_or_else(|p| p.into_inner()).take() {
                 let _ = request
                     .reply
                     .send(Err(CaptureError::Failed(error.to_string())));
             }
-        }
     }
     thread_loop.stop();
     Ok(())

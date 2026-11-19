@@ -584,15 +584,14 @@ impl MetricOverlay {
             }
 
             // Add split visualization if split data is available
-            if let Some(split_val) = entry.split_value {
-                if entry.value > 0 {
+            if let Some(split_val) = entry.split_value
+                && entry.value > 0 {
                     let split_fraction = (split_val as f32 / entry.value as f32).clamp(0.0, 1.0);
                     bar = bar.with_split(split_fraction);
                     if let Some(color) = entry.split_color {
                         bar = bar.with_split_color(color);
                     }
                 }
-            }
 
             let eu = self.european_number_format;
             let value = |var| entry_value(var, entry, rate_sum, eu);

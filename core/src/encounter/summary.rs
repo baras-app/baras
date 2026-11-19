@@ -229,19 +229,17 @@ impl EncounterHistory {
         for summary in encounters_to_count {
             if let Some(ref boss_name) = summary.boss_name {
                 // Extract count from "Boss Name - N" format
-                if let Some(count_str) = summary.display_name.rsplit(" - ").next() {
-                    if let Ok(count) = count_str.parse::<u32>() {
+                if let Some(count_str) = summary.display_name.rsplit(" - ").next()
+                    && let Ok(count) = count_str.parse::<u32>() {
                         let current = self.boss_pull_counts.get(boss_name).copied().unwrap_or(0);
                         self.boss_pull_counts.insert(boss_name.clone(), current.max(count));
                     }
-                }
             } else {
                 // Trash encounter - extract count from "Type N" format
-                if let Some(count_str) = summary.display_name.rsplit(' ').next() {
-                    if let Ok(count) = count_str.parse::<u32>() {
+                if let Some(count_str) = summary.display_name.rsplit(' ').next()
+                    && let Ok(count) = count_str.parse::<u32>() {
                         self.trash_pull_count = self.trash_pull_count.max(count);
                     }
-                }
             }
         }
     }
@@ -543,7 +541,7 @@ pub fn create_encounter_summary(
             })
         })
         .collect();
-    incoming_damage.sort_by(|a, b| b.total.cmp(&a.total));
+    incoming_damage.sort_by_key(|x| std::cmp::Reverse(x.total));
 
     // Use encounter's stored difficulty (falls back to cache if not set)
     let difficulty = encounter.difficulty_name.clone()
@@ -611,7 +609,7 @@ pub fn create_encounter_summary(
                     }
                 })
                 .collect();
-            by_player.sort_by(|a, b| b.value.cmp(&a.value));
+            by_player.sort_by_key(|x| std::cmp::Reverse(x.value));
 
             ChallengeSummary {
                 name: val.name,

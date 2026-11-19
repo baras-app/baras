@@ -535,8 +535,8 @@ fn init_logging() {
         .from_env_lossy();
 
     // If BARAS_LOG_PATH is set, append to that file (shared with main app)
-    if let Ok(path) = std::env::var("BARAS_LOG_PATH") {
-        if let Ok(file) = std::fs::OpenOptions::new()
+    if let Ok(path) = std::env::var("BARAS_LOG_PATH")
+        && let Ok(file) = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
             .open(&path)
@@ -549,7 +549,6 @@ fn init_logging() {
                 .init();
             return;
         }
-    }
 
     // Fallback to stderr
     tracing_subscriber::fmt()
@@ -623,8 +622,8 @@ fn main() {
         }
 
         // Index custom definitions (can add new areas or override bundled)
-        if let Some(ref dir) = user_dir {
-            if dir.exists() {
+        if let Some(ref dir) = user_dir
+            && dir.exists() {
                 match build_area_index(dir) {
                     Ok(custom_index) => {
                         tracing::debug!(count = custom_index.len(), "Built custom area index");
@@ -635,7 +634,6 @@ fn main() {
                     }
                 }
             }
-        }
 
         if index.is_empty() {
             None

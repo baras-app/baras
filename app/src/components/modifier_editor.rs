@@ -224,7 +224,7 @@ pub fn ModifierListEditor(props: ModifierListEditorProps) -> Element {
                     title: "Add modifier",
                     onclick: {
                         let modifiers = modifiers.clone();
-                        let on_change = props.on_change.clone();
+                        let on_change = props.on_change;
                         move |_| {
                             let mut mods = modifiers.clone();
                             mods.push(EffectModifier {
@@ -258,7 +258,7 @@ pub fn ModifierListEditor(props: ModifierListEditorProps) -> Element {
             }
             for (idx, modifier) in modifiers.iter().enumerate() {
                 {
-                    let on_change = props.on_change.clone();
+                    let on_change = props.on_change;
                     let all_modifiers = modifiers.clone();
                     rsx! {
                         SingleModifierEditor {
@@ -267,7 +267,6 @@ pub fn ModifierListEditor(props: ModifierListEditorProps) -> Element {
                             index: idx,
                             on_update: {
                                 let all_modifiers = all_modifiers.clone();
-                                let on_change = on_change.clone();
                                 move |updated: EffectModifier| {
                                     let mut mods = all_modifiers.clone();
                                     mods[idx] = updated;
@@ -276,7 +275,6 @@ pub fn ModifierListEditor(props: ModifierListEditorProps) -> Element {
                             },
                             on_remove: {
                                 let all_modifiers = all_modifiers.clone();
-                                let on_change = on_change.clone();
                                 move |_| {
                                     let mut mods = all_modifiers.clone();
                                     mods.remove(idx);
@@ -318,7 +316,7 @@ fn SingleModifierEditor(props: SingleModifierEditorProps) -> Element {
                     options: ModifierTriggerType::all(),
                     on_change: {
                         let modifier = modifier.clone();
-                        let on_update = props.on_update.clone();
+                        let on_update = props.on_update;
                         move |t: Trigger| {
                             let mut m = modifier.clone();
                             m.trigger = t;
@@ -330,7 +328,7 @@ fn SingleModifierEditor(props: SingleModifierEditorProps) -> Element {
                     class: "btn btn-xs btn-danger",
                     title: "Remove modifier",
                     onclick: {
-                        let on_remove = props.on_remove.clone();
+                        let on_remove = props.on_remove;
                         move |_| on_remove.call(())
                     },
                     i { class: "fa-solid fa-trash" }

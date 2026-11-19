@@ -449,11 +449,11 @@ impl EventProcessor {
                     EntityType::Player => enc
                         .players
                         .get(&event.target_entity.log_id)
-                        .map_or(false, |p| p.is_dead),
+                        .is_some_and(|p| p.is_dead),
                     EntityType::Npc | EntityType::Companion => enc
                         .npcs
                         .get(&event.target_entity.log_id)
-                        .map_or(false, |n| n.is_dead),
+                        .is_some_and(|n| n.is_dead),
                     _ => false,
                 })
                 .unwrap_or(false);
@@ -489,7 +489,7 @@ impl EventProcessor {
             if is_local_player {
                 let battle_rez_pending = cache
                     .current_encounter()
-                    .map_or(false, |enc| enc.battle_rez_pending);
+                    .is_some_and(|enc| enc.battle_rez_pending);
 
                 if let Some(enc) = cache.current_encounter_mut() {
                     if battle_rez_pending {
@@ -556,8 +556,8 @@ impl EventProcessor {
             // Only track revive immunity during active combat
             // Prevents stale timestamps from previous encounters bleeding into new ones
             // (e.g., medcenter revive after a wipe shouldn't affect the next pull)
-            if let Some(enc) = cache.current_encounter_mut() {
-                if enc.state == EncounterState::InCombat {
+            if let Some(enc) = cache.current_encounter_mut()
+                && enc.state == EncounterState::InCombat {
                     enc.set_player_revive_immunity(event.source_entity.log_id);
 
                     // Track timestamp for local player (soft-timeout wipe detection)
@@ -568,7 +568,6 @@ impl EventProcessor {
                         enc.battle_rez_pending = false;
                     }
                 }
-            }
         }
     }
 
@@ -720,8 +719,8 @@ impl EventProcessor {
         // (e.g., when player uses ReturnToMedCenter, we don't want to overwrite
         // the raid area with the medcenter/fleet area)
         let local_id = cache.player.id;
-        if let Some(enc) = cache.current_encounter_mut() {
-            if enc.state == EncounterState::NotStarted {
+        if let Some(enc) = cache.current_encounter_mut()
+            && enc.state == EncounterState::NotStarted {
                 if event.effect.difficulty_id != 0 {
                     let difficulty = crate::game_data::Difficulty::from_difficulty_id(
                         event.effect.difficulty_id,
@@ -746,7 +745,6 @@ impl EventProcessor {
                 // between encounters — they'll be re-discovered once combat starts.
                 enc.players.retain(|&id, _| id == local_id);
             }
-        }
 
         out.push(GameSignal::AreaEntered {
             area_id: event.effect.effect_id,
@@ -867,11 +865,10 @@ impl EventProcessor {
             (immediate, pending)
         };
 
-        if let Some(idx) = pending_idx {
-            if let Some(enc) = cache.current_encounter_mut() {
+        if let Some(idx) = pending_idx
+            && let Some(enc) = cache.current_encounter_mut() {
                 enc.boss_encounter_triggers_pending.insert(idx);
             }
-        }
 
         if let Some(idx) = immediate_idx
             && cache.activate_boss_by_idx(idx)
@@ -1276,12 +1273,11 @@ impl EventProcessor {
         };
 
         // Update state if triggered (needs mutable borrow)
-        if trigger_fired {
-            if let Some(enc) = cache.current_encounter_mut() {
+        if trigger_fired
+            && let Some(enc) = cache.current_encounter_mut() {
                 enc.victory_triggered = true;
                 enc.victory_triggered_at = Some(event.timestamp);
             }
-        }
     }
 
     fn handle_target_changed(
@@ -1356,15 +1352,14 @@ impl EventProcessor {
         if (eid == effect_id::ABILITYINTERRUPT || eid == effect_id::ABILITYCANCEL)
             && BATTLE_REZ_ABILITY_IDS.contains(&event.action.action_id)
         {
-            if let Some(enc) = cache.current_encounter_mut() {
-                if enc.battle_rez_pending {
+            if let Some(enc) = cache.current_encounter_mut()
+                && enc.battle_rez_pending {
                     enc.battle_rez_pending = false;
                     tracing::debug!(
                         "[BATTLE_REZ] Battle rez canceled/interrupted at {}",
                         event.timestamp
                     );
                 }
-            }
             return;
         }
 
@@ -1372,15 +1367,13 @@ impl EventProcessor {
         if event.effect.type_id == effect_type_id::APPLYEFFECT
             && SCRIPTED_REVIVE_EFFECT_IDS.contains(&eid)
             && event.source_entity.log_id == cache.player.id
-        {
-            if let Some(enc) = cache.current_encounter_mut() {
+            && let Some(enc) = cache.current_encounter_mut() {
                 enc.battle_rez_pending = true;
                 tracing::debug!(
                     "[BATTLE_REZ] Scripted revive effect on local player at {}",
                     event.timestamp
                 );
             }
-        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

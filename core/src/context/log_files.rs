@@ -332,7 +332,7 @@ impl DirectoryIndex {
     //Return all entries sorted ascending by created_at
     pub fn entries(&self) -> Vec<&LogFileMetaData> {
         let mut entries: Vec<_> = self.entries.values().collect();
-        entries.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        entries.sort_by_key(|x| std::cmp::Reverse(x.created_at));
         entries
     }
 
@@ -348,7 +348,7 @@ impl DirectoryIndex {
                     .unwrap_or(false)
             })
             .collect();
-        entries.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        entries.sort_by_key(|x| std::cmp::Reverse(x.created_at));
         entries
     }
 
@@ -504,11 +504,10 @@ pub fn extract_last_event_time(
     // Find last non-empty line and parse its timestamp
     for line in content.lines().rev() {
         let trimmed = line.trim();
-        if !trimmed.is_empty() {
-            if let Some(event) = parser.parse_line(0, trimmed) {
+        if !trimmed.is_empty()
+            && let Some(event) = parser.parse_line(0, trimmed) {
                 return Ok(Some(event.timestamp));
             }
-        }
     }
     Ok(None)
 }

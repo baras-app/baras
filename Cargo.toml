@@ -2,8 +2,12 @@
 resolver = "2"
 members = ["types", "core", "overlay", "app", "app/src-tauri", "validate", "parse-worker", "raid-ocr"]
 
+# Judgement lints: these flag shapes that are deliberate here.
 [workspace.lints.clippy]
 too_many_arguments = "allow"
+type_complexity = "allow"
+large_enum_variant = "allow"
+upper_case_acronyms = "allow" # DPS, HPS, APM are the domain's own names
 
 [profile.release]
 lto = "thin"           # Link-time optimization across crates

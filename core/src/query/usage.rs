@@ -109,7 +109,7 @@ fn compute_inter_cast_stats(timestamps: &[f32]) -> (f32, f32, f32, f32) {
     let min = deltas.first().copied().unwrap_or(0.0);
     let max = deltas.last().copied().unwrap_or(0.0);
 
-    let median = if deltas.len() % 2 == 0 {
+    let median = if deltas.len().is_multiple_of(2) {
         let mid = deltas.len() / 2;
         (deltas[mid - 1] + deltas[mid]) / 2.0
     } else {

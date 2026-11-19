@@ -113,12 +113,14 @@ mod tests {
 
     #[test]
     fn initial_phase_respects_difficulty_and_enabled() {
-        let mut def = crate::dsl::BossEncounterDefinition::default();
-        def.phases = vec![
-            phase("disabled_cs", false, &[], Trigger::CombatStart),
-            phase("story_cs", true, &["story"], Trigger::CombatStart),
-            phase("master_cs", true, &["master"], Trigger::CombatStart),
-        ];
+        let def = crate::dsl::BossEncounterDefinition {
+            phases: vec![
+                phase("disabled_cs", false, &[], Trigger::CombatStart),
+                phase("story_cs", true, &["story"], Trigger::CombatStart),
+                phase("master_cs", true, &["master"], Trigger::CombatStart),
+            ],
+            ..Default::default()
+        };
 
         assert_eq!(
             def.initial_phase(Some(Difficulty::Story8)).map(|p| p.id.as_str()),

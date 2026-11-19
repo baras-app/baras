@@ -270,7 +270,7 @@ fn load_bundled_effects(app_handle: &AppHandle) -> HashMap<String, EffectDefinit
         .map(|e| e.path())
         .filter(|p| {
             p.extension().is_some_and(|ext| ext == "toml")
-                && !p.file_name().is_some_and(|n| n == "custom.toml") // Skip template
+                && p.file_name().is_none_or(|n| n != "custom.toml") // Skip template
         })
         .collect();
 
@@ -760,14 +760,13 @@ fn get_icon_name_mapping(app_handle: &AppHandle) -> Option<&Mutex<HashMap<u64, S
                     continue;
                 }
                 let parts: Vec<&str> = line.splitn(3, ',').collect();
-                if parts.len() >= 3 {
-                    if let Ok(ability_id) = parts[0].parse::<u64>() {
+                if parts.len() >= 3
+                    && let Ok(ability_id) = parts[0].parse::<u64>() {
                         let icon_name = parts[2].trim().to_string();
                         if !icon_name.is_empty() {
                             map.insert(ability_id, icon_name);
                         }
                     }
-                }
             }
         }
 

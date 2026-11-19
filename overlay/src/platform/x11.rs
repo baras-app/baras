@@ -638,11 +638,10 @@ impl OverlayPlatform for X11Overlay {
                         }
                     }
                 }
-                x11rb::protocol::Event::LeaveNotify(_) => {
-                    if !self.is_resizing {
+                x11rb::protocol::Event::LeaveNotify(_)
+                    if !self.is_resizing => {
                         self.in_resize_corner = false;
                     }
-                }
                 x11rb::protocol::Event::DestroyNotify(e) if e.window == self.window => {
                     self.running = false;
                     return false;

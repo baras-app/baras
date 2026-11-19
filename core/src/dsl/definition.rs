@@ -242,11 +242,10 @@ impl ShieldDefinition {
             return self.total;
         };
         for entry in &self.hp {
-            if let Some(req_size) = entry.group_size {
-                if diff.group_size() != req_size {
+            if let Some(req_size) = entry.group_size
+                && diff.group_size() != req_size {
                     continue;
                 }
-            }
             if !entry.difficulties.is_empty()
                 && !entry
                     .difficulties
@@ -804,11 +803,10 @@ impl BossTimerDefinition {
 /// Strip group size suffix from a difficulty key (e.g., "veteran_8" -> "veteran")
 fn strip_group_size_suffix(key: &str) -> &str {
     for suffix in ["_8", "_16", "_4"] {
-        if let Some(base) = key.strip_suffix(suffix) {
-            if matches!(base, "story" | "veteran" | "master") {
+        if let Some(base) = key.strip_suffix(suffix)
+            && matches!(base, "story" | "veteran" | "master") {
                 return base;
             }
-        }
     }
     key
 }
@@ -937,8 +935,8 @@ impl BossEncounterDefinition {
                     );
                 }
             }
-            if let Some(ref dec_trigger) = counter.decrement_on {
-                if let Some(kind) = dec_trigger.contains_unsupported_for_counters_phases() {
+            if let Some(ref dec_trigger) = counter.decrement_on
+                && let Some(kind) = dec_trigger.contains_unsupported_for_counters_phases() {
                     tracing::warn!(
                         boss = %self.id,
                         counter = %counter.id,
@@ -947,7 +945,6 @@ impl BossEncounterDefinition {
                         "Counter trigger type is not supported (only works for timers) and will never fire"
                     );
                 }
-            }
         }
 
         // Validate phase triggers
@@ -964,8 +961,8 @@ impl BossEncounterDefinition {
                     "Phase trigger type is not supported (only works for timers) and will never fire"
                 );
             }
-            if let Some(ref end_trigger) = phase.end_trigger {
-                if let Some(kind) = end_trigger.contains_unsupported_for_counters_phases() {
+            if let Some(ref end_trigger) = phase.end_trigger
+                && let Some(kind) = end_trigger.contains_unsupported_for_counters_phases() {
                     tracing::warn!(
                         boss = %self.id,
                         phase = %phase.id,
@@ -974,12 +971,11 @@ impl BossEncounterDefinition {
                         "Phase trigger type is not supported (only works for timers) and will never fire"
                     );
                 }
-            }
         }
 
         // Validate victory trigger
-        if let Some(ref trigger) = self.victory_trigger {
-            if let Some(kind) = trigger.contains_unsupported_for_victory() {
+        if let Some(ref trigger) = self.victory_trigger
+            && let Some(kind) = trigger.contains_unsupported_for_victory() {
                 tracing::warn!(
                     boss = %self.id,
                     field = "victory_trigger",
@@ -987,7 +983,6 @@ impl BossEncounterDefinition {
                     "Victory trigger type is not supported and will never fire"
                 );
             }
-        }
 
         // Validate shield triggers
         for entity in &self.entities {

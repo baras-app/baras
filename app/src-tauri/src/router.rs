@@ -1177,7 +1177,7 @@ mod raid_detection_message_tests {
     fn counts_are_against_names_read() {
         assert_eq!(
             raid_detection_message(7, 3, 4, 0),
-            "7 names detected. 3/7 matched. 4/7 pending player appearance in logs."
+            "7 names detected. 3 matched. 4 pending player appearance in logs."
         );
     }
 
@@ -1186,7 +1186,7 @@ mod raid_detection_message_tests {
     fn a_full_match_omits_the_pending_count() {
         assert_eq!(
             raid_detection_message(4, 4, 0, 0),
-            "4 names detected. 4/4 matched."
+            "4 names detected. 4 matched."
         );
     }
 
@@ -1205,7 +1205,7 @@ mod raid_detection_message_tests {
     fn lookalikes_ask_for_manual_assignment() {
         assert_eq!(
             raid_detection_message(8, 6, 0, 2),
-            "8 names detected. 6/8 matched. \
+            "8 names detected. 6 matched. \
              Some names too similar. Manual assignment recommended."
         );
     }
@@ -1214,7 +1214,7 @@ mod raid_detection_message_tests {
     fn one_name_reads_singular() {
         assert_eq!(
             raid_detection_message(1, 0, 1, 0),
-            "1 name detected. 0/1 matched. 1/1 pending player appearance in logs."
+            "1 name detected. 0 matched. 1 pending player appearance in logs."
         );
     }
 }

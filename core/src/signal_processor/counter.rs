@@ -314,8 +314,8 @@ pub fn check_counter_timer_triggers(
         }
 
         // Check decrement_on for timer triggers
-        if let Some(ref trigger) = counter.decrement_on {
-            if trigger_eval::check_timer_trigger(trigger, expired_timer_ids, started_timer_ids, canceled_timer_ids) {
+        if let Some(ref trigger) = counter.decrement_on
+            && trigger_eval::check_timer_trigger(trigger, expired_timer_ids, started_timer_ids, canceled_timer_ids) {
                 let Some(enc) = cache.current_encounter_mut() else {
                     tracing::error!(
                         "BUG: encounter missing in check_counter_timer_triggers (decrement_on)"
@@ -334,7 +334,6 @@ pub fn check_counter_timer_triggers(
                     timestamp,
                 });
             }
-        }
 
         // Check reset_on for timer triggers
         if trigger_eval::check_timer_trigger(
@@ -469,12 +468,10 @@ pub fn check_effect_stack_counters(
                         .effects
                         .iter()
                         .any(|s| s.matches(*effect_id as u64, Some(eff_name)))
-                    {
-                        if let Some(enc) = cache.current_encounter_mut() {
+                        && let Some(enc) = cache.current_encounter_mut() {
                             enc.update_effect_stacks(*effect_id, *target_id, *charges);
                             state_changed = true;
                         }
-                    }
                 }
             }
             GameSignal::EffectRemoved {
@@ -490,12 +487,10 @@ pub fn check_effect_stack_counters(
                         .effects
                         .iter()
                         .any(|s| s.matches(*effect_id as u64, Some(eff_name)))
-                    {
-                        if let Some(enc) = cache.current_encounter_mut() {
+                        && let Some(enc) = cache.current_encounter_mut() {
                             enc.remove_effect_stacks(*effect_id, *target_id);
                             state_changed = true;
                         }
-                    }
                 }
             }
             _ => {}

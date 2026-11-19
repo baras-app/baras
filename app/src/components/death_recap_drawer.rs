@@ -512,7 +512,7 @@ fn event_row(ev: &DeathRecapEvent, death_time: f32, european: bool) -> Element {
                 }
             }
             span { class: "{detail_class}",
-                if !ev.damage_type.is_empty() && !(ev.avoided && ev.value == 0) {
+                if !ev.damage_type.is_empty() && (!ev.avoided || ev.value != 0) {
                     span { class: "recap-dmg-type", "{ev.damage_type}" }
                 }
                 "{detail}"

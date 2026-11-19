@@ -42,8 +42,8 @@ pub fn matches_source_target_filters(
     }
 
     // Check source filter if present (None = any, passes)
-    if let Some(source_filter) = trigger.source_filter() {
-        if !source_filter.matches(
+    if let Some(source_filter) = trigger.source_filter()
+        && !source_filter.matches(
             entities,
             source_id,
             source_type,
@@ -56,11 +56,10 @@ pub fn matches_source_target_filters(
         ) {
             return false;
         }
-    }
 
     // Check target filter if present (None = any, passes)
-    if let Some(target_filter) = trigger.target_filter() {
-        if !target_filter.matches(
+    if let Some(target_filter) = trigger.target_filter()
+        && !target_filter.matches(
             entities,
             target_id,
             target_type,
@@ -73,7 +72,6 @@ pub fn matches_source_target_filters(
         ) {
             return false;
         }
-    }
 
     true
 }

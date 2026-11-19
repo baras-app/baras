@@ -52,8 +52,8 @@ impl FileAreaEntry {
         let parts: Vec<&str> = self.difficulty_name.split_whitespace().collect();
 
         // Expected format: ["8", "Player", "Master"] or ["16", "Player", "Veteran"]
-        if parts.len() >= 3 && parts[1].eq_ignore_ascii_case("Player") {
-            if let Ok(player_count) = parts[0].parse::<u8>() {
+        if parts.len() >= 3 && parts[1].eq_ignore_ascii_case("Player")
+            && let Ok(player_count) = parts[0].parse::<u8>() {
                 let difficulty_word = parts[2..].join(" "); // Handle "Story Mode" etc.
 
                 // Only apply shorthand for 8 and 16 player content
@@ -67,7 +67,6 @@ impl FileAreaEntry {
                     return format!("{} {} {}", self.area_name, short, player_count);
                 }
             }
-        }
 
         // Fallback: keep original format for 4-player or unrecognized
         format!("{} {}", self.area_name, self.difficulty_name)

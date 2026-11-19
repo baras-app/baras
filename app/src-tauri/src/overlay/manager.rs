@@ -491,7 +491,7 @@ impl OverlayManager {
                 let cfg = &settings.notes_overlay;
                 let notes_config = NotesConfig {
                     font_size: cfg.font_size,
-                    font_color: cfg.font_color.clone(),
+                    font_color: cfg.font_color,
                     dynamic_background: cfg.dynamic_background,
                 };
                 OverlayConfigUpdate::Notes(notes_config, eu)
@@ -618,13 +618,12 @@ impl OverlayManager {
         Self::send_initial_data(kind, &tx, combat_data.as_ref()).await;
 
         // For Notes overlay, send current notes immediately
-        if matches!(kind, OverlayType::Notes) {
-            if let Some(notes_data) = service.get_current_notes().await {
+        if matches!(kind, OverlayType::Notes)
+            && let Some(notes_data) = service.get_current_notes().await {
                 let _ = tx
                     .send(OverlayCommand::UpdateData(OverlayData::Notes(notes_data)))
                     .await;
             }
-        }
 
         // Save position if needed
         if needs_monitor_save {
@@ -792,13 +791,12 @@ impl OverlayManager {
             Self::send_initial_data(kind, &spawn_result.0, combat_data.as_ref()).await;
 
             // For Notes overlay, send current notes immediately
-            if matches!(kind, OverlayType::Notes) {
-                if let Some(notes_data) = service.get_current_notes().await {
+            if matches!(kind, OverlayType::Notes)
+                && let Some(notes_data) = service.get_current_notes().await {
                     let _ = spawn_result.0
                         .send(OverlayCommand::UpdateData(OverlayData::Notes(notes_data)))
                         .await;
                 }
-            }
 
             // Track for position saving
             if spawn_result.1 {
@@ -951,13 +949,12 @@ impl OverlayManager {
             Self::send_initial_data(kind, &spawn_result, combat_data.as_ref()).await;
 
             // For Notes overlay, send current notes immediately
-            if matches!(kind, OverlayType::Notes) {
-                if let Some(notes_data) = service.get_current_notes().await {
+            if matches!(kind, OverlayType::Notes)
+                && let Some(notes_data) = service.get_current_notes().await {
                     let _ = spawn_result
                         .send(OverlayCommand::UpdateData(OverlayData::Notes(notes_data)))
                         .await;
                 }
-            }
 
             // Update overlay status flag
             service.set_overlay_active(key, true);
@@ -1252,13 +1249,12 @@ impl OverlayManager {
             for (kind, tx) in newly_spawned {
                 Self::send_initial_data(kind, &tx, combat_data.as_ref()).await;
 
-                if matches!(kind, OverlayType::Notes) {
-                    if let Some(notes_data) = service.get_current_notes().await {
+                if matches!(kind, OverlayType::Notes)
+                    && let Some(notes_data) = service.get_current_notes().await {
                         let _ = tx
                             .send(OverlayCommand::UpdateData(OverlayData::Notes(notes_data)))
                             .await;
                     }
-                }
             }
         }
 

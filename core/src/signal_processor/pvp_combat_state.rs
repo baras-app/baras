@@ -70,7 +70,7 @@ pub fn handle_in_combat_arena(
     let round_success = || {
         cache
             .current_encounter()
-            .map_or(true, |e| e.arena_outcome != Some(crate::encounter::PvpOutcome::Loss))
+            .is_none_or(|e| e.arena_outcome != Some(crate::encounter::PvpOutcome::Loss))
     };
 
     // Require damage before honoring a round-end heal: arenas also fire a

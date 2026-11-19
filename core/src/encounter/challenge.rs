@@ -131,7 +131,7 @@ impl ChallengeTracker {
             .into_iter()
             .filter(|c| {
                 c.difficulties.is_empty()
-                    || current_difficulty.map_or(true, |d| {
+                    || current_difficulty.is_none_or(|d| {
                         c.difficulties.iter().any(|key| d.matches_config_key(key))
                     })
             })
@@ -284,7 +284,7 @@ impl ChallengeTracker {
             total
         } else {
             let def = self.definitions.iter().find(|d| d.id == val.id);
-            if def.is_some_and(|d| has_scoping_condition(d)) {
+            if def.is_some_and(has_scoping_condition) {
                 // Condition-scoped challenge: use accumulated + current active span
                 let mut total = val.condition_active_secs;
                 if let Some(start) = val.condition_active_start {
@@ -384,7 +384,7 @@ impl ChallengeTracker {
                 .filter_map(|pid| self.phase_durations.get(pid))
                 .sum();
             total.max(1.0)
-        } else if val.condition_active_secs > 0.0 && def.is_some_and(|d| has_scoping_condition(d))
+        } else if val.condition_active_secs > 0.0 && def.is_some_and(has_scoping_condition)
         {
             // Use condition-scoped duration for BossHpRange/Counter challenges
             val.condition_active_secs.max(1.0)
@@ -713,14 +713,13 @@ impl ChallengeTracker {
                             *current = (*current).max(stacks);
                         } else {
                             // New application — flush any existing window first
-                            if let Some(prev_max) = pending.remove(&entity.entity_id) {
-                                if let Some(val) = self.values.get_mut(&def.id) {
+                            if let Some(prev_max) = pending.remove(&entity.entity_id)
+                                && let Some(val) = self.values.get_mut(&def.id) {
                                     val.value += prev_max as i64;
                                     val.event_count += 1;
                                     *val.by_player.entry(entity.entity_id).or_insert(0) +=
                                         prev_max as i64;
                                 }
-                            }
                             pending.insert(entity.entity_id, stacks);
                         }
 

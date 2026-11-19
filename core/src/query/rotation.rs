@@ -199,11 +199,10 @@ fn group_into_gcd_slots(events: &[RotationEvent]) -> Vec<GcdSlot> {
     }
 
     // Trailing off-GCD abilities with no following GCD — attach to last slot
-    if !pending_off_gcd.is_empty() {
-        if let Some(last) = slots.last_mut() {
+    if !pending_off_gcd.is_empty()
+        && let Some(last) = slots.last_mut() {
             last.off_gcd.extend(pending_off_gcd);
         }
-    }
 
     slots
 }

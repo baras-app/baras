@@ -45,18 +45,15 @@ use crate::verification::{CheckpointVerifier, Expectations};
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
+#[derive(Default)]
 enum ReplayMode {
     /// 1x speed with actual timing delays
     Realtime,
     /// Fast replay with virtual time (default)
+    #[default]
     Accelerated,
 }
 
-impl Default for ReplayMode {
-    fn default() -> Self {
-        Self::Accelerated
-    }
-}
 
 #[derive(Parser, Debug)]
 #[command(name = "baras-validate")]
@@ -250,8 +247,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     walk_and_load_definitions(&def_path, user_dir.as_deref(), &mut all_bosses)?;
 
     // Also load standalone user-created definitions (skip _custom overlays, those are already merged)
-    if let Some(ref ud) = user_dir {
-        if ud.exists() {
+    if let Some(ref ud) = user_dir
+        && ud.exists() {
             let user_standalone = load_bosses_from_dir(ud)?;
             for boss in user_standalone {
                 if !all_bosses.iter().any(|b| b.id == boss.id) {
@@ -259,7 +256,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
-    }
 
     let bosses: Vec<&BossEncounterDefinition> = all_bosses.iter().collect();
 
@@ -323,7 +319,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("Log file is empty or unreadable".into());
     }
 
-    let session_date = extract_session_date(&lines[0])?;
+    let session_date = extract_session_date(lines[0])?;
     let parser = LogParser::new(session_date);
 
     // Resolve encounter filter (--encounter N or --latest)
@@ -410,16 +406,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
 
         // Apply time bounds
-        if let Some(start) = start_at_secs {
-            if combat_time_secs < start {
+        if let Some(start) = start_at_secs
+            && combat_time_secs < start {
                 continue;
             }
-        }
-        if let Some(stop) = stop_at_secs {
-            if combat_time_secs > stop {
+        if let Some(stop) = stop_at_secs
+            && combat_time_secs > stop {
                 break;
             }
-        }
 
         // Advance virtual clock (sleeps in realtime mode)
         clock.advance_to(event.timestamp);
@@ -846,9 +840,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let target = entity_to_info(&event.target_entity, local_player_id);
             let damage = event.details.dmg_effective as i64;
 
-            if target.npc_id.is_some() && event.target_entity.health.1 > 0 {
+            if let Some(npc_id) = target.npc_id
+                && event.target_entity.health.1 > 0
+            {
                 challenge_npcs.insert(
-                    target.npc_id.unwrap(),
+                    npc_id,
                     NpcInfo {
                         current_hp: event.target_entity.health.0,
                         max_hp: event.target_entity.health.1,
@@ -933,11 +929,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Exit with error code if verification failed
-    if let Some((passed, total)) = checkpoint_result {
-        if passed != total {
+    if let Some((passed, total)) = checkpoint_result
+        && passed != total {
             std::process::exit(1);
         }
-    }
 
     Ok(())
 }
@@ -1011,14 +1006,13 @@ fn extract_session_date(first_line: &str) -> Result<NaiveDateTime, Box<dyn std::
     // Extract the timestamp from the first log line (format: [HH:MM:SS.mmm])
     // and use it as the session start time so the parser's midnight wraparound
     // detection works correctly for logs that span midnight.
-    if let Some(start) = first_line.find('[') {
-        if let Some(end) = first_line.find(']') {
+    if let Some(start) = first_line.find('[')
+        && let Some(end) = first_line.find(']') {
             let time_str = &first_line[start + 1..end];
             if let Ok(time) = chrono::NaiveTime::parse_from_str(time_str, "%H:%M:%S%.3f") {
                 return Ok(today.and_time(time));
             }
         }
-    }
 
     Ok(today.and_hms_opt(0, 0, 0).unwrap())
 }
@@ -1308,7 +1302,7 @@ fn print_detailed_report(
             println!("  {}", "─".repeat(80));
 
             let mut abilities: Vec<_> = untracked_abilities;
-            abilities.sort_by(|a, b| b.count.cmp(&a.count));
+            abilities.sort_by_key(|x| std::cmp::Reverse(x.count));
 
             for ability in abilities {
                 let sources: Vec<_> = ability.sources.iter().take(2).cloned().collect();

@@ -24,3 +24,6 @@ visual = ["baras-overlay"]
 [dependencies.baras-overlay]
 path = "../overlay"
 optional = true
+
+[lints]
+workspace = true

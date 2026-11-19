@@ -213,6 +213,7 @@ const OP_EXIT_TIMEOUT_SECS: u64 = 600;
 /// Persistent timer state that tracks an entire operation run.
 /// Lives in the service layer, independent of overlay visibility.
 #[derive(Debug)]
+#[derive(Default)]
 pub struct OperationTimerState {
     /// When the timer was last started (None = stopped/not started)
     started_at: Option<std::time::Instant>,
@@ -235,19 +236,6 @@ pub struct OperationTimerState {
     exited_at: Option<(std::time::Instant, u64)>,
 }
 
-impl Default for OperationTimerState {
-    fn default() -> Self {
-        Self {
-            started_at: None,
-            accumulated_secs: 0,
-            manually_started: false,
-            manually_stopped: false,
-            operation_name: None,
-            op_instance: None,
-            exited_at: None,
-        }
-    }
-}
 
 impl OperationTimerState {
     /// Get total elapsed seconds including current running segment
@@ -657,10 +645,10 @@ impl SignalHandler for CombatSignalHandler {
                     let _ = self.session_event_tx.send(SessionEvent::PlayerInitialized);
                 }
                 // Auto-switch profile on role change (only for local player)
-                if self.local_player_id == Some(*entity_id) {
-                    if let Some(discipline) = Discipline::from_guid(*discipline_id) {
+                if self.local_player_id == Some(*entity_id)
+                    && let Some(discipline) = Discipline::from_guid(*discipline_id) {
                         let new_role = discipline.role();
-                        let role_changed = self.current_role.map_or(true, |r| r != new_role);
+                        let role_changed = self.current_role != Some(new_role);
                         self.current_role = Some(new_role);
                         self.shared.last_player_role.store(new_role.to_u8(), Ordering::SeqCst);
                         let _ = self.cmd_tx.try_send(ServiceCommand::ApplyAlacrityPreset);
@@ -669,32 +657,29 @@ impl SignalHandler for CombatSignalHandler {
                             let _ = self.cmd_tx.try_send(ServiceCommand::AutoSwitchProfile { role_name });
                         }
                     }
-                }
             }
             GameSignal::EffectApplied {
                 effect_id,
                 target_id,
                 ..
-            } => {
+            }
                 // Check for conversation effect on local player
                 if *effect_id == baras_core::game_data::effect_id::CONVERSATION
                     && self.local_player_id == Some(*target_id)
-                {
+                => {
                     let _ = self.overlay_tx.try_send(OverlayUpdate::ConversationStarted);
                 }
-            }
             GameSignal::EffectRemoved {
                 effect_id,
                 target_id,
                 ..
-            } => {
+            }
                 // Check for conversation effect removed from local player
                 if *effect_id == baras_core::game_data::effect_id::CONVERSATION
                     && self.local_player_id == Some(*target_id)
-                {
+                => {
                     let _ = self.overlay_tx.try_send(OverlayUpdate::ConversationEnded);
                 }
-            }
             GameSignal::AreaEntered {
                 area_id,
                 difficulty_id,
@@ -874,19 +859,16 @@ impl SignalHandler for CombatSignalHandler {
                 };
 
                 // Send notes for this specific boss to the overlay
-                if let Some(enc) = _encounter {
-                    if let Some(def) = enc.boss_definitions().get(*definition_idx) {
-                        if let Some(notes) = &def.notes {
-                            if !notes.is_empty() {
+                if let Some(enc) = _encounter
+                    && let Some(def) = enc.boss_definitions().get(*definition_idx)
+                        && let Some(notes) = &def.notes
+                            && !notes.is_empty() {
                                 let notes_data = NotesData {
                                     text: notes.clone(),
                                     boss_name: boss_name.clone(),
                                 };
                                 let _ = self.overlay_tx.try_send(OverlayUpdate::NotesUpdated(notes_data));
                             }
-                        }
-                    }
-                }
 
                 // First boss pull: fallback start for operations without a
                 // region-based `timer_start` (or if that region was never logged).
@@ -900,13 +882,13 @@ impl SignalHandler for CombatSignalHandler {
                 info!(entity_id, "Operation timer start region crossed");
                 self.try_auto_start_operation_timer();
             }
-            GameSignal::InstanceReset { run_started, .. } => {
+            GameSignal::InstanceReset { run_started, .. }
                 // The group reset the operation: the running clock belongs to
                 // the abandoned instance. Restart it from the new instance's
                 // start line, or zero it until that (or the first boss pull).
                 if self.shared.is_live_tailing.load(Ordering::SeqCst)
                     && matches!(self.current_area_kind(), AreaKind::Operation)
-                {
+                => {
                     let mut timer = self.shared.operation_timer.lock().unwrap();
                     if timer.is_running() && !timer.manually_started {
                         timer.reset();
@@ -918,7 +900,6 @@ impl SignalHandler for CombatSignalHandler {
                         let _ = self.cmd_tx.try_send(ServiceCommand::EmitOperationTimerTick);
                     }
                 }
-            }
             GameSignal::AbilityActivated {
                 ability_id,
                 ability_name,
@@ -1434,7 +1415,7 @@ impl CombatService {
             .map(|e| e.path())
             .filter(|p| {
                 p.extension().is_some_and(|ext| ext == "toml")
-                    && !p.file_name().is_some_and(|n| n == "custom.toml") // Skip template
+                    && p.file_name().is_none_or(|n| n != "custom.toml") // Skip template
             })
             .collect();
 
@@ -1764,11 +1745,10 @@ impl CombatService {
         let mut session = session.write().await;
         // Invalidate timer cache to ensure definitions actually reload
         // (bypasses fingerprint optimization for user-triggered reloads)
-        if let Some(timer_mgr) = session.timer_manager() {
-            if let Ok(mut mgr) = timer_mgr.lock() {
+        if let Some(timer_mgr) = session.timer_manager()
+            && let Ok(mut mgr) = timer_mgr.lock() {
                 mgr.invalidate_definitions_cache();
             }
-        }
         session.load_boss_definitions(bosses, true);
     }
 
@@ -1782,8 +1762,8 @@ impl CombatService {
         // Find the first boss with notes (or aggregate all notes)
         // For now, send notes from first boss that has them
         for boss in bosses {
-            if let Some(notes) = &boss.notes {
-                if !notes.is_empty() {
+            if let Some(notes) = &boss.notes
+                && !notes.is_empty() {
                     let notes_data = NotesData {
                         text: notes.clone(),
                         boss_name: boss.name.clone(),
@@ -1791,7 +1771,6 @@ impl CombatService {
                     let _ = self.overlay_tx.try_send(OverlayUpdate::NotesUpdated(notes_data));
                     return;
                 }
-            }
         }
         
         // No notes found - send empty to clear the overlay
@@ -2155,15 +2134,13 @@ impl CombatService {
         }
 
         // Load timer preferences into the session's timer manager (Live mode only)
-        if let Some(prefs_path) = Self::timer_preferences_path() {
-            if let Some(timer_mgr) = session.timer_manager() {
-                if let Ok(mut mgr) = timer_mgr.lock()
+        if let Some(prefs_path) = Self::timer_preferences_path()
+            && let Some(timer_mgr) = session.timer_manager()
+                && let Ok(mut mgr) = timer_mgr.lock()
                     && let Err(e) = mgr.load_preferences(&prefs_path)
                 {
                     warn!(error = %e, "Failed to load timer preferences");
                 }
-            }
-        }
 
         // Set up sync definition loader for AreaEntered events (fixes race condition)
         let area_index = self.area_index.clone();
@@ -2274,7 +2251,7 @@ impl CombatService {
         // Flatten: JoinError<io::Result<Output>> -> treat JoinError as spawn failure
         let output = match output {
             Ok(inner) => inner,
-            Err(e) => Err(std::io::Error::new(std::io::ErrorKind::Other, e)),
+            Err(e) => Err(std::io::Error::other(e)),
         };
 
         match output {
@@ -2380,11 +2357,10 @@ impl CombatService {
                         // discipline-scoped effects and profile auto-switching work
                         // immediately (handler missed historical signals from subprocess)
                         if let Some((player_id, discipline_id)) = player_context {
-                            if let Some(tracker) = session_guard.effect_tracker() {
-                                if let Ok(mut tracker) = tracker.lock() {
+                            if let Some(tracker) = session_guard.effect_tracker()
+                                && let Ok(mut tracker) = tracker.lock() {
                                     tracker.set_player_context(player_id, discipline_id);
                                 }
-                            }
                             self.shared.last_player_id.store(player_id, Ordering::SeqCst);
                             if let Some(discipline) = Discipline::from_guid(discipline_id) {
                                 let role = discipline.role();
@@ -2408,13 +2384,12 @@ impl CombatService {
                         );
 
                         // Load boss definitions for initial area (before releasing lock)
-                        if parse_result.area.area_id != 0 {
-                            if let Some(bosses) = self.load_area_definitions(parse_result.area.area_id) {
+                        if parse_result.area.area_id != 0
+                            && let Some(bosses) = self.load_area_definitions(parse_result.area.area_id) {
                                 // Send notes to overlay
                                 self.send_notes_from_bosses(&bosses);
                                 session_guard.load_boss_definitions(bosses, false);
                             }
-                        }
 
                         session_guard.finalize_session();
                         session_guard.sync_timer_context();
@@ -2831,11 +2806,10 @@ impl CombatService {
                     if let Some(data) = build_raid_frame_data(&shared, rearranging, icon_cache.as_ref()).await {
                         let effect_count: usize = data.frames.iter().map(|f| f.effects.len()).sum();
                         // Always send in rearrange mode, otherwise only when effects exist/changed
-                        if rearranging || effect_count > 0 || last_raid_effect_count > 0 {
-                            if overlay_tx.try_send(OverlayUpdate::EffectsUpdated(data)).is_err() {
+                        if (rearranging || effect_count > 0 || last_raid_effect_count > 0)
+                            && overlay_tx.try_send(OverlayUpdate::EffectsUpdated(data)).is_err() {
                                 warn!("Overlay channel full, dropped raid effects update");
                             }
-                        }
                         last_raid_effect_count = effect_count;
                     } else if rearranging {
                         // In rearrange mode, send empty data to keep overlay rendering
@@ -2853,11 +2827,10 @@ impl CombatService {
                 if effects_a_active {
                     if let Some(data) = build_effects_ab_data(&shared, icon_cache.as_ref(), DisplayTarget::EffectsA).await {
                         let count = data.effects.len();
-                        if count > 0 || last_effects_a_count > 0 {
-                            if overlay_tx.try_send(OverlayUpdate::EffectsAUpdated(data)).is_err() {
+                        if (count > 0 || last_effects_a_count > 0)
+                            && overlay_tx.try_send(OverlayUpdate::EffectsAUpdated(data)).is_err() {
                                 warn!("Overlay channel full, dropped effects A update");
                             }
-                        }
                         last_effects_a_count = count;
                     } else if last_effects_a_count > 0 {
                         if overlay_tx.try_send(OverlayUpdate::EffectsAUpdated(EffectsABData {
@@ -2873,11 +2846,10 @@ impl CombatService {
                 if effects_b_active {
                     if let Some(data) = build_effects_ab_data(&shared, icon_cache.as_ref(), DisplayTarget::EffectsB).await {
                         let count = data.effects.len();
-                        if count > 0 || last_effects_b_count > 0 {
-                            if overlay_tx.try_send(OverlayUpdate::EffectsBUpdated(data)).is_err() {
+                        if (count > 0 || last_effects_b_count > 0)
+                            && overlay_tx.try_send(OverlayUpdate::EffectsBUpdated(data)).is_err() {
                                 warn!("Overlay channel full, dropped effects B update");
                             }
-                        }
                         last_effects_b_count = count;
                     } else if last_effects_b_count > 0 {
                         if overlay_tx.try_send(OverlayUpdate::EffectsBUpdated(EffectsABData {
@@ -2893,11 +2865,10 @@ impl CombatService {
                 if effects_c_active {
                     if let Some(data) = build_effects_ab_data(&shared, icon_cache.as_ref(), DisplayTarget::EffectsC).await {
                         let count = data.effects.len();
-                        if count > 0 || last_effects_c_count > 0 {
-                            if overlay_tx.try_send(OverlayUpdate::EffectsCUpdated(data)).is_err() {
+                        if (count > 0 || last_effects_c_count > 0)
+                            && overlay_tx.try_send(OverlayUpdate::EffectsCUpdated(data)).is_err() {
                                 warn!("Overlay channel full, dropped effects C update");
                             }
-                        }
                         last_effects_c_count = count;
                     } else if last_effects_c_count > 0 {
                         if overlay_tx.try_send(OverlayUpdate::EffectsCUpdated(EffectsABData {
@@ -2913,11 +2884,10 @@ impl CombatService {
                 if cooldowns_active {
                     if let Some(data) = build_cooldowns_data(&shared, icon_cache.as_ref(), DisplayTarget::Cooldowns).await {
                         let count = data.entries.len();
-                        if count > 0 || last_cooldowns_count > 0 {
-                            if overlay_tx.try_send(OverlayUpdate::CooldownsUpdated(data)).is_err() {
+                        if (count > 0 || last_cooldowns_count > 0)
+                            && overlay_tx.try_send(OverlayUpdate::CooldownsUpdated(data)).is_err() {
                                 warn!("Overlay channel full, dropped cooldowns update");
                             }
-                        }
                         last_cooldowns_count = count;
                     } else if last_cooldowns_count > 0 {
                         if overlay_tx.try_send(OverlayUpdate::CooldownsUpdated(CooldownData {
@@ -2933,11 +2903,10 @@ impl CombatService {
                 if cooldowns_b_active {
                     if let Some(data) = build_cooldowns_data(&shared, icon_cache.as_ref(), DisplayTarget::CooldownsB).await {
                         let count = data.entries.len();
-                        if count > 0 || last_cooldowns_b_count > 0 {
-                            if overlay_tx.try_send(OverlayUpdate::CooldownsBUpdated(data)).is_err() {
+                        if (count > 0 || last_cooldowns_b_count > 0)
+                            && overlay_tx.try_send(OverlayUpdate::CooldownsBUpdated(data)).is_err() {
                                 warn!("Overlay channel full, dropped cooldowns B update");
                             }
-                        }
                         last_cooldowns_b_count = count;
                     } else if last_cooldowns_b_count > 0 {
                         if overlay_tx.try_send(OverlayUpdate::CooldownsBUpdated(CooldownData {
@@ -2953,11 +2922,10 @@ impl CombatService {
                 if dot_tracker_active {
                     if let Some(data) = build_dot_tracker_data(&shared, icon_cache.as_ref()).await {
                         let count = data.targets.len();
-                        if count > 0 || last_dot_tracker_count > 0 {
-                            if overlay_tx.try_send(OverlayUpdate::DotTrackerUpdated(data)).is_err() {
+                        if (count > 0 || last_dot_tracker_count > 0)
+                            && overlay_tx.try_send(OverlayUpdate::DotTrackerUpdated(data)).is_err() {
                                 warn!("Overlay channel full, dropped DOT tracker update");
                             }
-                        }
                         last_dot_tracker_count = count;
                     } else if last_dot_tracker_count > 0 {
                         if overlay_tx.try_send(OverlayUpdate::DotTrackerUpdated(DotTrackerData {
@@ -2993,15 +2961,13 @@ impl CombatService {
                 if boss_active
                     && in_combat
                     && let Some(data) = build_boss_health_data(&shared, icon_cache.as_ref()).await
-                {
-                    if overlay_tx.try_send(OverlayUpdate::BossHealthUpdated(data)).is_err() {
+                    && overlay_tx.try_send(OverlayUpdate::BossHealthUpdated(data)).is_err() {
                         warn!("Overlay channel full, dropped boss health update");
                     }
-                }
 
                 // Timers + Audio: always poll when in live mode (alerts can fire at combat end)
-                if shared.is_live_tailing.load(Ordering::SeqCst) {
-                    if let Some(bundle) =
+                if shared.is_live_tailing.load(Ordering::SeqCst)
+                    && let Some(bundle) =
                         build_timer_data_with_audio(&shared, icon_cache.as_ref()).await
                     {
                         // Send timer overlay data (only when in combat)
@@ -3032,11 +2998,10 @@ impl CombatService {
 
                         // Send text alerts to overlay (only those with alert_text_enabled and not stale)
                         let text_alerts: Vec<_> = bundle.alerts.iter().filter(|a| a.alert_text_enabled && a.timestamp >= tailing_started_at).cloned().collect();
-                        if !text_alerts.is_empty() {
-                            if overlay_tx.try_send(OverlayUpdate::AlertsFired(text_alerts)).is_err() {
+                        if !text_alerts.is_empty()
+                            && overlay_tx.try_send(OverlayUpdate::AlertsFired(text_alerts)).is_err() {
                                 warn!("Overlay channel full, dropped timer alerts");
                             }
-                        }
 
                         // Send alert audio events (only if audio_enabled for that alert)
                         // Skip alerts from before we started tailing (stale encounter recovery)
@@ -3049,7 +3014,6 @@ impl CombatService {
                             }
                         }
                     }
-                }
             }
         });
 
@@ -3399,7 +3363,7 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
                     let mut by_player: Vec<PlayerContribution> = val
                         .by_player
                         .iter()
-                        .filter_map(|(&entity_id, &value)| {
+                        .map(|(&entity_id, &value)| {
                             // Resolve player name from encounter
                             let name = encounter
                                 .players
@@ -3418,7 +3382,7 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
                                 .cloned()
                                 .unwrap_or((None, None, None));
 
-                            Some(PlayerContribution {
+                            PlayerContribution {
                                 entity_id,
                                 name,
                                 value,
@@ -3432,12 +3396,12 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
                                 class_icon,
                                 discipline_icon,
                                 role,
-                            })
+                            }
                         })
                         .collect();
 
                     // Sort by value descending (top contributors first)
-                    by_player.sort_by(|a, b| b.value.cmp(&a.value));
+                    by_player.sort_by_key(|x| std::cmp::Reverse(x.value));
 
                     ChallengeEntry {
                         name: val.name,
@@ -4359,12 +4323,11 @@ fn convert_to_raid_effect(
     }
 
     // Load icon if cache available
-    if let Some(cache) = icon_cache {
-        if let Some(data) = cache.get_icon(effect.icon_ability_id) {
+    if let Some(cache) = icon_cache
+        && let Some(data) = cache.get_icon(effect.icon_ability_id) {
             raid_effect =
                 raid_effect.with_icon(std::sync::Arc::new((data.width, data.height, data.rgba)));
         }
-    }
 
     raid_effect
 }

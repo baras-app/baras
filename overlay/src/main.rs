@@ -1437,7 +1437,7 @@ mod examples {
     /// Run boss health overlays demonstrating:
     /// - Row 1: Font scale comparison (1.0x, 1.5x, 2.0x) with 3 bosses
     /// - Row 2: Content-aware background - tall windows with only 1 boss
-    ///          Background shrinks to fit content instead of filling the whole window
+    ///   Background shrinks to fit content instead of filling the whole window
     pub fn run_boss_health_overlay() {
         let three_bosses = vec![
             OverlayHealthEntry {

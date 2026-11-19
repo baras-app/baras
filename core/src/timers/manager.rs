@@ -588,11 +588,10 @@ impl TimerManager {
             let interp_time = self.interpolated_game_time().unwrap_or(ts);
 
             // Prune expired GCD
-            if let Some(ref gcd) = self.active_gcd {
-                if gcd.has_expired(interp_time) {
+            if let Some(ref gcd) = self.active_gcd
+                && gcd.has_expired(interp_time) {
                     self.active_gcd = None;
                 }
-            }
 
             self.process_expirations(interp_time, encounter);
 
@@ -607,11 +606,11 @@ impl TimerManager {
             }
 
             // Populate batch vectors so accessors return tick's events
-            self.batch_expired.extend(self.expired_this_tick.drain(..));
-            self.batch_started.extend(self.started_this_tick.drain(..));
-            self.batch_canceled.extend(self.canceled_this_tick.drain(..));
-            self.batch_queued.extend(self.queued_this_tick.drain(..));
-            self.batch_removed_queued.extend(self.removed_queued_this_tick.drain(..));
+            self.batch_expired.append(&mut self.expired_this_tick);
+            self.batch_started.append(&mut self.started_this_tick);
+            self.batch_canceled.append(&mut self.canceled_this_tick);
+            self.batch_queued.append(&mut self.queued_this_tick);
+            self.batch_removed_queued.append(&mut self.removed_queued_this_tick);
         }
     }
 
@@ -1658,11 +1657,11 @@ impl SignalHandler for TimerManager {
         for signal in signals {
             self.handle_signal(signal, encounter);
             // Accumulate per-signal events into batch-level vectors
-            self.batch_expired.extend(self.expired_this_tick.drain(..));
-            self.batch_started.extend(self.started_this_tick.drain(..));
-            self.batch_canceled.extend(self.canceled_this_tick.drain(..));
-            self.batch_queued.extend(self.queued_this_tick.drain(..));
-            self.batch_removed_queued.extend(self.removed_queued_this_tick.drain(..));
+            self.batch_expired.append(&mut self.expired_this_tick);
+            self.batch_started.append(&mut self.started_this_tick);
+            self.batch_canceled.append(&mut self.canceled_this_tick);
+            self.batch_queued.append(&mut self.queued_this_tick);
+            self.batch_removed_queued.append(&mut self.removed_queued_this_tick);
         }
     }
 
@@ -1926,12 +1925,11 @@ impl SignalHandler for TimerManager {
                     *timestamp,
                 );
             }
-            GameSignal::TargetCleared { source_id, .. } => {
+            GameSignal::TargetCleared { source_id, .. }
                 // Clear local player's current target if they cleared their target
-                if self.local_player_id == Some(*source_id) {
+                if self.local_player_id == Some(*source_id) => {
                     self.current_target_id = None;
                 }
-            }
 
             GameSignal::DamageTaken {
                 ability_id,

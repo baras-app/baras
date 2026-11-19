@@ -41,7 +41,7 @@ fn within_grace_window(cache: &SessionCache, timestamp: NaiveDateTime) -> bool {
 
     let grace_secs = if cache
         .current_encounter()
-        .map_or(false, |e| e.active_boss_idx().is_some())
+        .is_some_and(|e| e.active_boss_idx().is_some())
     {
         BOSS_COMBAT_EXIT_GRACE_SECS
     } else {
@@ -173,7 +173,7 @@ fn handle_in_combat(
     // Uses difficulty-aware check: Trandos on Story/Veteran has no victory trigger, so normal timeout applies
     let has_victory_trigger = cache
         .current_encounter()
-        .map_or(false, |enc| enc.has_active_victory_trigger());
+        .is_some_and(|enc| enc.has_active_victory_trigger());
 
     if !has_victory_trigger
         && let Some(enc) = cache.current_encounter()
@@ -220,8 +220,8 @@ fn handle_in_combat(
     // If local player received RECENTLY_REVIVED and 5+ seconds have passed (by event time),
     // end the encounter. This handles speedrun scenarios where players die to trash,
     // revive at medcenter, and quick-travel to the boss room.
-    if let Some(enc) = cache.current_encounter() {
-        if let Some(revive_time) = enc.local_player_revive_immunity_time {
+    if let Some(enc) = cache.current_encounter()
+        && let Some(revive_time) = enc.local_player_revive_immunity_time {
             let elapsed = timestamp.signed_duration_since(revive_time).num_seconds();
             if elapsed >= REVIVE_IMMUNITY_WIPE_TIMEOUT_SECS {
                 let is_boss_encounter = enc.active_boss_idx().is_some();
@@ -273,7 +273,6 @@ fn handle_in_combat(
                 }
             }
         }
-    }
 
     // Boss reset detection (victory-trigger encounters only): a fresh live
     // instance of a single_instance boss class means the fight reset and was
@@ -281,7 +280,7 @@ fn handle_in_combat(
     // player outside the arena). Split here — the re-pull's EnterCombat was
     // already swallowed as a rejoin, so the new encounter starts InCombat
     // immediately instead of waiting for the next EnterCombat.
-    let boss_reset = cache.current_encounter().map_or(false, |enc| {
+    let boss_reset = cache.current_encounter().is_some_and(|enc| {
         enc.has_active_victory_trigger() && !enc.victory_triggered && enc.detect_boss_reset(event)
     });
     if boss_reset {
@@ -360,7 +359,7 @@ fn handle_in_combat(
 
     // Check if all kill targets are dead (boss encounter victory condition)
     // We check all NPC INSTANCES that match kill target class_ids
-    let all_kill_targets_dead = cache.current_encounter().map_or(false, |enc| {
+    let all_kill_targets_dead = cache.current_encounter().is_some_and(|enc| {
         let Some(def_idx) = enc.active_boss_idx() else {
             return false;
         };
@@ -383,7 +382,7 @@ fn handle_in_combat(
     // Check if this is a boss encounter (has boss definitions loaded OR boss NPCs detected)
     // For boss encounters, we don't want to end on local_player_revived because SWTOR
     // log buffering can cause RECENTLY_REVIVED to arrive before other players' DEATH events
-    let is_boss_encounter = cache.current_encounter().map_or(false, |enc| {
+    let is_boss_encounter = cache.current_encounter().is_some_and(|enc| {
         // Has boss definitions loaded for this area
         !enc.boss_definitions().is_empty()
         // OR has detected any boss NPCs in the encounter
@@ -397,7 +396,7 @@ fn handle_in_combat(
     // Check if this is a victory-trigger encounter that hasn't triggered yet
     // If so, ignore ExitCombat events until the victory trigger fires
     // Difficulty-aware: Trandos on Story/Veteran uses normal combat flow
-    let should_ignore_exit_combat = cache.current_encounter().map_or(false, |enc| {
+    let should_ignore_exit_combat = cache.current_encounter().is_some_and(|enc| {
         enc.has_active_victory_trigger() && !enc.victory_triggered
     });
 
@@ -408,11 +407,11 @@ fn handle_in_combat(
         // Difficulty-aware: Trandos on Story/Veteran uses normal combat flow
         let has_victory_trigger = cache
             .current_encounter()
-            .map_or(false, |enc| enc.has_active_victory_trigger());
+            .is_some_and(|enc| enc.has_active_victory_trigger());
 
         let victory_already_triggered = cache
             .current_encounter()
-            .map_or(false, |enc| enc.victory_triggered);
+            .is_some_and(|enc| enc.victory_triggered);
 
         if has_victory_trigger && victory_already_triggered {
             // Victory trigger already fired — this EnterCombat means the encounter is
@@ -591,7 +590,7 @@ fn handle_in_combat(
 
     // Conversation effect on local player after victory trigger = encounter over.
     // Can't be in a conversation while in combat, so this is a definitive end signal.
-    let conversation_after_victory = cache.current_encounter().map_or(false, |enc| {
+    let conversation_after_victory = cache.current_encounter().is_some_and(|enc| {
         enc.victory_triggered
             && effect_type_id == effect_type_id::APPLYEFFECT
             && effect_id == effect_id::CONVERSATION
@@ -872,7 +871,7 @@ pub fn tick_combat_state(cache: &mut SessionCache, now: NaiveDateTime) -> Vec<Ga
     if let Some(exit_time) = cache.last_combat_exit_time {
         let grace_secs = if cache
             .current_encounter()
-            .map_or(false, |e| e.active_boss_idx().is_some())
+            .is_some_and(|e| e.active_boss_idx().is_some())
         {
             BOSS_COMBAT_EXIT_GRACE_SECS
         } else {
@@ -920,7 +919,7 @@ pub fn tick_combat_state(cache: &mut SessionCache, now: NaiveDateTime) -> Vec<Ga
     // Skip timeout for victory-trigger encounters (e.g., Coratanni has long phases with no activity)
     let has_victory_trigger = cache
         .current_encounter()
-        .map_or(false, |enc| enc.has_active_victory_trigger());
+        .is_some_and(|enc| enc.has_active_victory_trigger());
 
     if !has_victory_trigger
         && let Some(enc) = cache.current_encounter()

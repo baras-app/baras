@@ -576,7 +576,7 @@ impl Trigger {
             Self::ThreatModified { abilities, threat_value, .. } => {
                 let ability_ok = abilities.is_empty()
                     || abilities.iter().any(|s| s.matches(ability_id, ability_name));
-                let value_ok = threat_value.map_or(true, |v| (v - value).abs() < 0.5);
+                let value_ok = threat_value.is_none_or(|v| (v - value).abs() < 0.5);
                 ability_ok && value_ok
             }
             Self::AnyOf { conditions } => conditions

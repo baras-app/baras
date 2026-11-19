@@ -67,11 +67,10 @@ pub async fn upload_to_parsely(
         .text("public", visibility.to_string());
 
     // Add notes if provided
-    if let Some(ref note) = notes {
-        if !note.is_empty() {
+    if let Some(ref note) = notes
+        && !note.is_empty() {
             form = form.text("notes", note.clone());
         }
-    }
 
     let mut config = handle.config().await;
     if !config.parsely.username.is_empty() && !config.parsely.password.is_empty() {
@@ -192,11 +191,10 @@ pub async fn upload_encounter_to_parsely(
         .text("public", visibility.to_string());
 
     // Add notes if provided
-    if let Some(ref note) = notes {
-        if !note.is_empty() {
+    if let Some(ref note) = notes
+        && !note.is_empty() {
             form = form.text("notes", note.clone());
         }
-    }
 
     let mut config = handle.config().await;
     if !config.parsely.username.is_empty() && !config.parsely.password.is_empty() {

@@ -42,6 +42,12 @@ pub struct AutoHideState {
     game_starting: AtomicBool,
 }
 
+impl Default for AutoHideState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AutoHideState {
     pub fn new() -> Self {
         Self {

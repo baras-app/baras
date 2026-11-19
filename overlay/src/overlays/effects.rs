@@ -128,7 +128,7 @@ impl EffectsOverlay {
         let content_height = if num_entries > 0 {
             padding * 2.0
                 + num_entries as f32 * bar_height
-                + (num_entries - 1).max(0) as f32 * entry_spacing
+                + (num_entries - 1) as f32 * entry_spacing
         } else {
             0.0
         };

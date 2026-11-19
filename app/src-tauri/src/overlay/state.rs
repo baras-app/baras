@@ -79,6 +79,7 @@ pub struct OverlayHandle {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// State managing all overlay threads
+#[derive(Default)]
 pub struct OverlayState {
     /// All running overlays, keyed by their kind
     pub overlays: HashMap<OverlayType, OverlayHandle>,
@@ -88,15 +89,6 @@ pub struct OverlayState {
     pub rearrange_mode: bool,
 }
 
-impl Default for OverlayState {
-    fn default() -> Self {
-        Self {
-            overlays: HashMap::new(),
-            move_mode: false,
-            rearrange_mode: false,
-        }
-    }
-}
 
 impl std::fmt::Debug for OverlayState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

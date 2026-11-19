@@ -10,10 +10,12 @@ use chrono::NaiveDateTime;
 
 /// Output verbosity level
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Default)]
 pub enum OutputLevel {
     /// Only show summary at end
     Quiet,
     /// Show only timers and phases (default)
+    #[default]
     Timers,
     /// Show all events: timers, phases, counters, alerts, deaths, challenges
     Normal,
@@ -21,11 +23,6 @@ pub enum OutputLevel {
     Verbose,
 }
 
-impl Default for OutputLevel {
-    fn default() -> Self {
-        Self::Timers
-    }
-}
 
 /// A recorded phase span with start/end times
 #[derive(Debug, Clone)]

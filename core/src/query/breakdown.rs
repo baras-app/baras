@@ -25,9 +25,9 @@ fn miss_ids_csv() -> String {
 impl EncounterQuery<'_> {
     /// Query ability breakdown for any data tab.
     /// - entity_name: For outgoing tabs (Damage/Healing), filters by source_name.
-    ///                For incoming tabs (DamageTaken/HealingTaken), filters by target_name.
+    ///   For incoming tabs (DamageTaken/HealingTaken), filters by target_name.
     /// - entity_id: When set, filters by the entity's instance id instead of its name
-    ///              (one NPC spawn among several with the same name).
+    ///   (one NPC spawn among several with the same name).
     /// - entity_types: Filters by source_entity_type for outgoing, target_entity_type for incoming.
     pub async fn query_breakdown(
         &self,
@@ -402,8 +402,8 @@ impl EncounterQuery<'_> {
         }
 
         // Resolve per-target activation counts from TargetSet timeline
-        if resolve_act_targets {
-            if let Ok(act_map) = self
+        if resolve_act_targets
+            && let Ok(act_map) = self
                 .resolve_activation_targets(
                     entity_name.unwrap(),
                     entity_col,
@@ -437,23 +437,23 @@ impl EncounterQuery<'_> {
                     }
                 }
             }
-        }
 
         // Append shield breakdown rows for healing tabs, then recalculate
         // percent_of_total so the denominator includes shield absorption.
-        if tab.is_healing() && entity_name.is_some() {
+        if tab.is_healing()
+            && let Some(entity_name) = entity_name
+        {
             let is_incoming = tab == DataTab::HealingTaken;
             if let Ok(shields) = self
                 .query_shield_breakdown(
-                    entity_name.unwrap(),
+                    entity_name,
                     time_range,
                     duration,
                     is_incoming,
                     mode,
                 )
                 .await
-            {
-                if !shields.is_empty() {
+                && !shields.is_empty() {
                     results.extend(shields);
                     // Recalculate percent_of_total across all rows (heals + shields)
                     let grand_total: f64 = results.iter().map(|r| r.total_value).sum();
@@ -463,7 +463,6 @@ impl EncounterQuery<'_> {
                         }
                     }
                 }
-            }
         }
 
         Ok(results)

@@ -177,7 +177,7 @@ pub(super) fn CounterEditForm(
                                         "min" => StackAggregation::Min,
                                         _ => StackAggregation::Max,
                                     };
-                                    edit_stacks(&|c| c.aggregation = agg.clone());
+                                    edit_stacks(&|c| c.aggregation = agg);
                                 },
                                 option { value: "max", "Max" }
                                 option { value: "sum", "Sum" }

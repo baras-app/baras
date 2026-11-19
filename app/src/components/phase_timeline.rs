@@ -192,7 +192,7 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
         let mut committed_range_up = committed_range;
         let mut was_dragged_up = was_dragged;
         let dur_up = current_duration;
-        let on_range_change = props.on_range_change.clone();
+        let on_range_change = props.on_range_change;
         let on_mouseup =
             Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |e: web_sys::MouseEvent| {
                 let Ok(drag_guard) = drag_start_up.try_read() else {
@@ -385,27 +385,25 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
                             editing_start.set(Some(e.value()));
                         },
                         onblur: move |_| {
-                            if let Some(ref text) = *editing_start.read() {
-                                if let Some(t) = parse_time(text) {
+                            if let Some(ref text) = *editing_start.read()
+                                && let Some(t) = parse_time(text) {
                                     let t = t.clamp(0.0, duration);
                                     if t < range.end {
                                         props.on_range_change.call(TimeRange::new(t, range.end));
                                     }
                                 }
-                            }
                             editing_start.set(None);
                         },
                         onkeydown: move |e: Event<KeyboardData>| {
                             match e.key() {
                                 Key::Enter => {
-                                    if let Some(ref text) = *editing_start.read() {
-                                        if let Some(t) = parse_time(text) {
+                                    if let Some(ref text) = *editing_start.read()
+                                        && let Some(t) = parse_time(text) {
                                             let t = t.clamp(0.0, duration);
                                             if t < range.end {
                                                 props.on_range_change.call(TimeRange::new(t, range.end));
                                             }
                                         }
-                                    }
                                     editing_start.set(None);
                                 }
                                 Key::Escape => editing_start.set(None),
@@ -444,27 +442,25 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
                             editing_end.set(Some(e.value()));
                         },
                         onblur: move |_| {
-                            if let Some(ref text) = *editing_end.read() {
-                                if let Some(t) = parse_time(text) {
+                            if let Some(ref text) = *editing_end.read()
+                                && let Some(t) = parse_time(text) {
                                     let t = t.clamp(0.0, duration);
                                     if t > range.start {
                                         props.on_range_change.call(TimeRange::new(range.start, t));
                                     }
                                 }
-                            }
                             editing_end.set(None);
                         },
                         onkeydown: move |e: Event<KeyboardData>| {
                             match e.key() {
                                 Key::Enter => {
-                                    if let Some(ref text) = *editing_end.read() {
-                                        if let Some(t) = parse_time(text) {
+                                    if let Some(ref text) = *editing_end.read()
+                                        && let Some(t) = parse_time(text) {
                                             let t = t.clamp(0.0, duration);
                                             if t > range.start {
                                                 props.on_range_change.call(TimeRange::new(range.start, t));
                                             }
                                         }
-                                    }
                                     editing_end.set(None);
                                 }
                                 Key::Escape => editing_end.set(None),

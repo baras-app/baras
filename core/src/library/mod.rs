@@ -196,8 +196,8 @@ pub fn plan(view: &LibraryView<'_>, rules: &LogCleanup, today: NaiveDate) -> Cle
             consider(&a.path, &a.filename, date, a.compressed_size, Action::Delete, age);
         }
     }
-    out.archive.sort_by(|a, b| b.size.cmp(&a.size));
-    out.delete.sort_by(|a, b| b.size.cmp(&a.size));
+    out.archive.sort_by_key(|x| std::cmp::Reverse(x.size));
+    out.delete.sort_by_key(|x| std::cmp::Reverse(x.size));
     out
 }
 

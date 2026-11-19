@@ -339,8 +339,8 @@ pub fn get_outlined_tinted_icon(name: &str, role: Role) -> Option<ClassIcon> {
 
             // Check if any pixel within outline_thickness is transparent
             let mut is_near_edge = false;
-            'outer: for dy in -(outline_thickness as i32)..=(outline_thickness as i32) {
-                for dx in -(outline_thickness as i32)..=(outline_thickness as i32) {
+            'outer: for dy in -outline_thickness..=outline_thickness {
+                for dx in -outline_thickness..=outline_thickness {
                     let nx = x as i32 + dx;
                     let ny = y as i32 + dy;
 

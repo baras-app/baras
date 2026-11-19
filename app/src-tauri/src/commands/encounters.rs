@@ -197,11 +197,10 @@ fn load_all_bosses(app_handle: &AppHandle) -> Result<Vec<BossWithPath>, String> 
                 continue;
             }
             // Check if this has a bundled counterpart
-            if let Ok(rel) = bwp.file_path.strip_prefix(&user_dir) {
-                if bundled_dir.join(rel).exists() {
+            if let Ok(rel) = bwp.file_path.strip_prefix(&user_dir)
+                && bundled_dir.join(rel).exists() {
                     continue;
                 }
-            }
             results.push(bwp);
         }
     }
@@ -605,19 +604,17 @@ pub async fn fetch_area_bosses(
         }
         for phase in &mut bwp.boss.phases {
             let key = boss_phase_key(&bwp.boss.area_name, &bwp.boss.name, &phase.id);
-            if let Some(p) = prefs.get_phase(&key) {
-                if let Some(v) = p.enabled {
+            if let Some(p) = prefs.get_phase(&key)
+                && let Some(v) = p.enabled {
                     phase.enabled = v;
                 }
-            }
         }
         for counter in &mut bwp.boss.counters {
             let key = boss_counter_key(&bwp.boss.area_name, &bwp.boss.name, &counter.id);
-            if let Some(p) = prefs.get_counter(&key) {
-                if let Some(v) = p.enabled {
+            if let Some(p) = prefs.get_counter(&key)
+                && let Some(v) = p.enabled {
                     counter.enabled = v;
                 }
-            }
         }
     }
 
@@ -1111,11 +1108,10 @@ pub async fn get_area_index(app_handle: AppHandle) -> Result<Vec<AreaListItem>, 
     scan_areas_recursive(&bundled_dir, user_dir.as_deref(), &mut areas)?;
 
     // Scan user directory for custom areas (not _custom.toml overlays)
-    if let Some(ref user_dir) = user_dir {
-        if user_dir.exists() {
+    if let Some(ref user_dir) = user_dir
+        && user_dir.exists() {
             scan_user_only_areas(user_dir, &bundled_dir, &mut areas)?;
         }
-    }
 
     // Sort by name
     areas.sort_by(|a, b| a.name.cmp(&b.name));
@@ -1191,11 +1187,10 @@ fn scan_user_only_areas(
             }
 
             // Check if this has a bundled counterpart
-            if let Ok(rel) = path.strip_prefix(user_dir) {
-                if bundled_dir.join(rel).exists() {
+            if let Ok(rel) = path.strip_prefix(user_dir)
+                && bundled_dir.join(rel).exists() {
                     continue; // Already included from bundled scan
                 }
-            }
 
             // User-only area file
             if let Ok(Some(area_config)) = load_area_config(&path) {
@@ -1706,9 +1701,9 @@ pub async fn preview_import_encounter(
     // Check area_id mismatch when importing into an existing area
     if let Some(ref tp) = target_file_path {
         let target_path = PathBuf::from(tp);
-        if let Some(source_area) = config.area.as_ref() {
-            if let Ok(Some(target_area)) = load_area_config(&target_path) {
-                if source_area.area_id != 0
+        if let Some(source_area) = config.area.as_ref()
+            && let Ok(Some(target_area)) = load_area_config(&target_path)
+                && source_area.area_id != 0
                     && target_area.area_id != 0
                     && source_area.area_id != target_area.area_id
                 {
@@ -1718,8 +1713,6 @@ pub async fn preview_import_encounter(
                         target_area.name, target_area.area_id,
                     ));
                 }
-            }
-        }
     }
 
     let is_new_area = target_file_path.is_none();

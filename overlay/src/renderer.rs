@@ -510,8 +510,7 @@ impl Renderer {
             return;
         };
 
-        let mut paint = Paint::default();
-        paint.anti_alias = true;
+        let mut paint = Paint { anti_alias: true, ..Default::default() };
         match LinearGradient::new(
             Point::from_xy(grad_x0, y),
             Point::from_xy(grad_x1, y),
@@ -823,7 +822,7 @@ impl Renderer {
                     (src_g as f32 * alpha + buffer[dest_idx + 1] as f32 * inv_alpha) as u8;
                 buffer[dest_idx + 2] =
                     (src_b as f32 * alpha + buffer[dest_idx + 2] as f32 * inv_alpha) as u8;
-                buffer[dest_idx + 3] = (src_a.max(buffer[dest_idx + 3])) as u8;
+                buffer[dest_idx + 3] = src_a.max(buffer[dest_idx + 3]);
             }
         }
     }

@@ -111,8 +111,7 @@ impl EncounterQuery<'_> {
         };
 
         let batches = self
-            .sql(&format!(
-                r#"
+            .sql(r#"
             SELECT source_id, source_name, target_id, target_name,
                    CAST(dmg_amount AS BIGINT) as dmg
             FROM events
@@ -121,8 +120,7 @@ impl EncounterQuery<'_> {
               AND target_entity_type = 'Player'
               AND source_id != target_id
             ORDER BY line_number
-            "#
-            ))
+            "#)
             .await?;
 
         let mut tracker = PvpFactionTracker::default();

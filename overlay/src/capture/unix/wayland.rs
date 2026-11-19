@@ -355,7 +355,7 @@ impl Dispatch<ExtImageCopyCaptureSessionV1, ()> for Capture {
                 state.buffer_size = Some((width, height))
             }
             // Take the first format that maps onto opaque RGBA without a table.
-            ext_image_copy_capture_session_v1::Event::ShmFormat { format } => {
+            ext_image_copy_capture_session_v1::Event::ShmFormat { format }
                 if state.format.is_none()
                     && matches!(
                         format,
@@ -366,10 +366,9 @@ impl Dispatch<ExtImageCopyCaptureSessionV1, ()> for Capture {
                                 | Format::Abgr8888
                         )
                     )
-                {
+                => {
                     state.format = format.into_result().ok();
                 }
-            }
             ext_image_copy_capture_session_v1::Event::Done => state.constraints_done = true,
             ext_image_copy_capture_session_v1::Event::Stopped => {
                 state.constraints_done = true;

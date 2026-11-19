@@ -164,14 +164,13 @@ impl CheckpointVerifier {
                     ));
                 }
                 Some((_, remaining)) => {
-                    if let Some((min, max)) = expected.remaining_secs {
-                        if *remaining < min - tolerance || *remaining > max + tolerance {
+                    if let Some((min, max)) = expected.remaining_secs
+                        && (*remaining < min - tolerance || *remaining > max + tolerance) {
                             failures.push(format!(
                                 "Timer '{}' remaining {:.1}s not in expected range [{:.1}, {:.1}]",
                                 expected.id, remaining, min, max
                             ));
                         }
-                    }
                 }
             }
         }

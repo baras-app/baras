@@ -140,11 +140,11 @@ fn result(r: &PvpMatchRow) -> (String, &'static str) {
     }
 }
 
-fn names<'a>(r: &'a PvpMatchRow, friendly: bool) -> Vec<&'a str> {
+fn names(r: &PvpMatchRow, friendly: bool) -> Vec<&str> {
     r.players.iter().filter(|p| p.friendly == friendly).map(|p| p.name.as_str()).collect()
 }
 
-fn keyed<'a>(names: Vec<&'a str>) -> Vec<(&'a str, Option<&'a str>)> {
+fn keyed(names: Vec<&str>) -> Vec<(&str, Option<&str>)> {
     names.into_iter().map(|n| (n, None)).collect()
 }
 

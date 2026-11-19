@@ -284,7 +284,7 @@ impl EncounterQuery<'_> {
                 let from = stack_changes.iter().rposition(|&(t, _)| t <= window_start).unwrap_or(0);
                 stack_changes.drain(..from);
                 let active_at_death = windows.last().is_some_and(|&(_, b)| b >= death_time - DEATH_SLACK_SECS);
-                (!windows.is_empty()).then(|| DeathRecapEffect {
+                (!windows.is_empty()).then_some(DeathRecapEffect {
                     effect_id,
                     effect_name: acc.effect_name,
                     ability_id: acc.ability_id,
@@ -483,14 +483,14 @@ fn build_recap(player_name: &str, requested_death_time: f32, rows: Vec<RecapRow>
     downsample(&mut hp_timeline);
 
     let mut damage_rows: Vec<_> = damage_map.into_values().collect();
-    damage_rows.sort_by(|a, b| b.total.cmp(&a.total));
+    damage_rows.sort_by_key(|x| std::cmp::Reverse(x.total));
     for src in &mut damage_rows {
-        src.abilities.sort_by(|a, b| b.total.cmp(&a.total));
+        src.abilities.sort_by_key(|x| std::cmp::Reverse(x.total));
     }
     let mut healing_rows: Vec<_> = heal_map.into_values().collect();
-    healing_rows.sort_by(|a, b| b.effective.cmp(&a.effective));
+    healing_rows.sort_by_key(|x| std::cmp::Reverse(x.effective));
     for src in &mut healing_rows {
-        src.abilities.sort_by(|a, b| b.effective.cmp(&a.effective));
+        src.abilities.sort_by_key(|x| std::cmp::Reverse(x.effective));
     }
 
     if events.len() > MAX_LEDGER_EVENTS {

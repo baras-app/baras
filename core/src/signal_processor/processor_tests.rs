@@ -945,14 +945,13 @@ fn test_bestia_complete_encounter() {
     }
 
     // Per-player breakdown for boss damage
-    if let Some(boss_dmg) = tracker.get_value("boss_damage") {
-        if !boss_dmg.by_player.is_empty() {
+    if let Some(boss_dmg) = tracker.get_value("boss_damage")
+        && !boss_dmg.by_player.is_empty() {
             eprintln!("\n  Per-player boss damage:");
             for (player, value) in &boss_dmg.by_player {
                 eprintln!("    {}: {}", player, value);
             }
         }
-    }
 
     eprintln!("\n=== Summary ===");
     eprintln!("Total phase changes: {}", phase_changes.len());

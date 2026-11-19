@@ -142,7 +142,7 @@ pub fn group_by_area(
         // Start new section if: phase start, no sections yet, or area/difficulty changed
         let area_changed = sections
             .last()
-            .map_or(false, |s| s.0 != enc.area_name || s.1 != enc.difficulty);
+            .is_some_and(|s| s.0 != enc.area_name || s.1 != enc.difficulty);
 
         if enc.is_phase_start || sections.is_empty() || area_changed {
             sections.push((enc.area_name.clone(), enc.difficulty.clone(), vec![enc]));

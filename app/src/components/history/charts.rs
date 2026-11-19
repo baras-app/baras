@@ -145,7 +145,7 @@ fn period_ticks(timestamps: &[&str]) -> Value {
         Some((ts.get(..4)?.parse().ok()?, ts.get(5..7)?.parse().ok()?))
     };
     let month = |(y, m): (u32, u32)| format!("{} {y}", MONTHS[(m as usize).saturating_sub(1).min(11)]);
-    let quarter = |(y, m): (u32, u32)| format!("Q{} {y}", (m + 2) / 3);
+    let quarter = |(y, m): (u32, u32)| format!("Q{} {y}", m.div_ceil(3));
     let year = |(y, _): (u32, u32)| y.to_string();
     let ticks = |label: &dyn Fn((u32, u32)) -> String| -> Vec<(usize, String)> {
         let mut out: Vec<(usize, String)> = Vec::new();
@@ -280,7 +280,7 @@ fn previous_day(date: &str) -> String {
     let days_in = |y: u32, m: u32| match m {
         1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
         4 | 6 | 9 | 11 => 30,
-        _ if y % 4 == 0 && (y % 100 != 0 || y % 400 == 0) => 29,
+        _ if y.is_multiple_of(4) && (!y.is_multiple_of(100) || y.is_multiple_of(400)) => 29,
         _ => 28,
     };
     let (y, m, d) = match (m, d) {

@@ -84,8 +84,8 @@ impl AppConfigExt for AppConfig {
                 tracing::warn!("Failed to load config: {e}");
 
                 // Back up the invalid config file so it isn't lost on next save
-                if let Ok(path) = crate::paths::config_file() {
-                    if path.exists() {
+                if let Ok(path) = crate::paths::config_file()
+                    && path.exists() {
                         let backup = path.with_extension("toml.bak");
                         if let Err(e) = std::fs::copy(&path, &backup) {
                             tracing::error!(
@@ -96,7 +96,6 @@ impl AppConfigExt for AppConfig {
                             tracing::info!("Backed up invalid config to {}", backup.display());
                         }
                     }
-                }
 
                 Self::load_with_defaults()
             }

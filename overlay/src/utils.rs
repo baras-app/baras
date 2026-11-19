@@ -71,11 +71,10 @@ impl SharedScaledIconCache {
         grayscale: bool,
     ) -> Arc<Vec<u8>> {
         let key = (Self::variant_key(ability_id, grayscale), target_size);
-        if let Ok(map) = self.inner.lock() {
-            if let Some(arc) = map.get(&key) {
+        if let Ok(map) = self.inner.lock()
+            && let Some(arc) = map.get(&key) {
                 return arc.clone();
             }
-        }
         let mut scaled = scale_icon(src, src_w, src_h, target_size);
         if grayscale {
             desaturate_rgba(&mut scaled);

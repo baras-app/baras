@@ -126,22 +126,20 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
     // Bring the restored open effect into view once, when the list first
     // loads; picking a row later must not move the list (peek: no subscription)
     use_effect(move || {
-        if !loading() {
-            if let Some(effect_id) = expanded_effect.peek().clone() {
+        if !loading()
+            && let Some(effect_id) = expanded_effect.peek().clone() {
                 // Small delay to ensure DOM is rendered
                 spawn(async move {
                     gloo_timers::future::TimeoutFuture::new(100).await;
-                    if let Some(window) = web_sys::window() {
-                        if let Some(document) = window.document() {
+                    if let Some(window) = web_sys::window()
+                        && let Some(document) = window.document() {
                             let element_id = format!("effect-{}", effect_id);
                             if let Some(element) = document.get_element_by_id(&element_id) {
                                 element.scroll_into_view();
                             }
                         }
-                    }
                 });
             }
-        }
     });
 
     // Name search + hide-disabled; the sidebar counts against this list
@@ -150,7 +148,7 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
         let hide_disabled = hide_disabled_effects();
         effects()
             .into_iter()
-            .filter(|e| !(hide_disabled && !e.enabled) && (query.is_empty() || e.name.to_lowercase().contains(&query)))
+            .filter(|e| (!hide_disabled || e.enabled) && (query.is_empty() || e.name.to_lowercase().contains(&query)))
             .collect::<Vec<_>>()
     });
     let filtered_effects = use_memo(move || {

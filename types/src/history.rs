@@ -179,6 +179,7 @@ pub fn discipline_mirror(name: &str) -> Option<(&'static str, &'static str)> {
 /// Row filter applied server-side to both the tree and the pull list.
 /// Empty strings mean "any".
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct PullFilter {
     /// Logging characters to keep; empty = any
     #[serde(default)]
@@ -222,27 +223,6 @@ pub fn keeps(picked: &[String], value: &str) -> bool {
     picked.is_empty() || picked.iter().any(|p| p == value)
 }
 
-impl Default for PullFilter {
-    fn default() -> Self {
-        Self {
-            characters: Vec::new(),
-            role: String::new(),
-            disciplines: Vec::new(),
-            // Nothing narrowed: every difficulty and size
-            tier: String::new(),
-            group_size: String::new(),
-            flashpoints: false,
-            kills_only: false,
-            date_from: String::new(),
-            date_to: String::new(),
-            tags: Vec::new(),
-            servers: Vec::new(),
-            game_versions: Vec::new(),
-            timed_only: false,
-            show_hidden: false,
-        }
-    }
-}
 
 /// Column the History pull table is sorted by.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]

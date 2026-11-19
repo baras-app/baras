@@ -262,16 +262,15 @@ impl ParsingSession {
         // Sync load definitions on AreaEntered BEFORE processing
         // This ensures boss definitions are available when combat events arrive
         if event.effect.type_id == effect_type_id::AREAENTERED {
-            let area_id = event.effect.effect_id as i64;
-            if area_id != 0 && area_id != self.loaded_area_id {
-                if let Some(loader) = &self.definition_loader {
+            let area_id = event.effect.effect_id;
+            if area_id != 0 && area_id != self.loaded_area_id
+                && let Some(loader) = &self.definition_loader {
                     if let Some(bosses) = loader(area_id) {
                         self.load_boss_definitions(bosses, false);
                         tracing::info!(area_id, "Sync loaded boss definitions for area");
                     }
                     self.loaded_area_id = area_id;
                 }
-            }
         }
 
         // Tick combat state FIRST to check timeouts (grace windows, combat timeout).
@@ -301,8 +300,8 @@ impl ParsingSession {
             // Write event to parquet buffer AFTER processing
             // (so metadata captures the updated phase state)
             // Only write events that were accumulated (filters pre-combat, grace window, etc.)
-            if was_accumulated {
-                if let Some(writer) = &mut self.encounter_writer {
+            if was_accumulated
+                && let Some(writer) = &mut self.encounter_writer {
                 let mut metadata =
                     EventMetadata::from_cache(cache, self.encounter_idx, event.timestamp);
 
@@ -312,19 +311,17 @@ impl ParsingSession {
                     == crate::game_data::defense_type::SHIELD
                     && event.details.dmg_effective == event.details.dmg_amount;
 
-                if event.details.dmg_absorbed > 0 && !is_natural_shield {
-                    if let Some(enc) = cache.current_encounter() {
+                if event.details.dmg_absorbed > 0 && !is_natural_shield
+                    && let Some(enc) = cache.current_encounter() {
                         let shields =
                             enc.get_shield_context(event.target_entity.log_id, event.timestamp);
                         if !shields.is_empty() {
                             metadata.active_shields = Some(shields);
                         }
                     }
-                }
 
                     writer.push_event(&event, &metadata);
                 }
-            }
 
             // Flush parquet on combat end
             let should_flush = signals
@@ -537,8 +534,8 @@ impl ParsingSession {
             // so that timer→counter→phase and timer→phase→counter chains resolve.
             // This mirrors the fixed-point loop in processor.rs but operates on
             // signals produced by timer events rather than combat events.
-            if !new_signals.is_empty() {
-                if let Some(cache) = &mut self.session_cache {
+            if !new_signals.is_empty()
+                && let Some(cache) = &mut self.session_cache {
                     use crate::signal_processor::{
                         check_counter_signal_triggers, check_entity_phase_transitions,
                     };
@@ -574,7 +571,6 @@ impl ParsingSession {
                         ));
                     }
                 }
-            }
 
             if new_signals.is_empty() {
                 break; // No counter/phase reactions — quiescent
@@ -641,17 +637,14 @@ impl ParsingSession {
         // Update combat time so TimeElapsed triggers fire promptly during idle periods.
         // Uses interpolated game time (game clock + monotonic elapsed) instead of
         // system clock to avoid clock skew between SWTOR and the OS.
-        if let Some(interp_time) = self.interpolated_game_time() {
-            if let Some(cache) = &mut self.session_cache {
-                if let Some(enc) = cache.current_encounter_mut() {
-                    if enc.enter_combat_time.is_some()
+        if let Some(interp_time) = self.interpolated_game_time()
+            && let Some(cache) = &mut self.session_cache
+                && let Some(enc) = cache.current_encounter_mut()
+                    && enc.enter_combat_time.is_some()
                         && matches!(enc.state, crate::encounter::EncounterState::InCombat)
                     {
                         enc.update_combat_time(interp_time);
                     }
-                }
-            }
-        }
 
         // Tick timer manager
         if let Some(timer_mgr) = &self.timer_manager {
@@ -672,50 +665,45 @@ impl ParsingSession {
 
     /// Update effect definitions (e.g., after config reload). No-op in Historical mode.
     pub fn set_definitions(&self, definitions: DefinitionSet) {
-        if let Some(tracker) = &self.effect_tracker {
-            if let Ok(mut tracker) = tracker.lock() {
+        if let Some(tracker) = &self.effect_tracker
+            && let Ok(mut tracker) = tracker.lock() {
                 tracker.set_definitions(definitions);
             }
-        }
     }
 
     /// Set player alacrity for effect duration calculations.
     /// No-op in Historical mode (session has no effect tracker).
     pub fn set_effect_alacrity(&self, alacrity_percent: f32) {
-        if let Some(tracker) = &self.effect_tracker {
-            if let Ok(mut tracker) = tracker.lock() {
+        if let Some(tracker) = &self.effect_tracker
+            && let Ok(mut tracker) = tracker.lock() {
                 tracker.set_alacrity(alacrity_percent);
             }
-        }
     }
 
     /// Set the duration bias adjustment (ms) for effect duration calculations.
     /// No-op in Historical mode (session has no effect tracker).
     pub fn set_effect_latency(&self, latency_ms: i16) {
-        if let Some(tracker) = &self.effect_tracker {
-            if let Ok(mut tracker) = tracker.lock() {
+        if let Some(tracker) = &self.effect_tracker
+            && let Ok(mut tracker) = tracker.lock() {
                 tracker.set_latency(latency_ms);
             }
-        }
     }
 
     /// Update timer definitions (e.g., after config reload). No-op in Historical mode.
     pub fn set_timer_definitions(&self, definitions: Vec<TimerDefinition>) {
-        if let Some(timer_mgr) = &self.timer_manager {
-            if let Ok(mut timer_mgr) = timer_mgr.lock() {
+        if let Some(timer_mgr) = &self.timer_manager
+            && let Ok(mut timer_mgr) = timer_mgr.lock() {
                 timer_mgr.set_definitions(definitions);
             }
-        }
     }
 
     /// Update boss definitions (for boss detection and phase tracking).
     /// NOTE: This only updates TimerManager. For full support, use `load_boss_definitions`.
     pub fn set_boss_definitions(&self, bosses: Vec<BossEncounterDefinition>) {
-        if let Some(timer_mgr) = &self.timer_manager {
-            if let Ok(mut timer_mgr) = timer_mgr.lock() {
+        if let Some(timer_mgr) = &self.timer_manager
+            && let Ok(mut timer_mgr) = timer_mgr.lock() {
                 timer_mgr.load_boss_definitions(bosses);
             }
-        }
     }
 
     /// Load boss definitions into both SessionCache and TimerManager.
@@ -731,11 +719,10 @@ impl ParsingSession {
         }
 
         // Update TimerManager (for timer activation) - Live mode only
-        if let Some(timer_mgr) = &self.timer_manager {
-            if let Ok(mut timer_mgr) = timer_mgr.lock() {
+        if let Some(timer_mgr) = &self.timer_manager
+            && let Ok(mut timer_mgr) = timer_mgr.lock() {
                 timer_mgr.load_boss_definitions(bosses);
             }
-        }
     }
 
     /// Install the area's region-based operation timer start (see `[area.timer_start]`).

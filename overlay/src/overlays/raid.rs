@@ -1019,8 +1019,8 @@ impl RaidOverlay {
                 // Only render on state change (click, data update, etc.),
                 // unless a frame is pulsing and needs the clock.
                 let pulsing = self.frames.iter().any(|f| f.ambiguous);
-                if !self.needs_render && !(pulsing && now.duration_since(self.last_render) >= RENDER_INTERVAL)
-                {
+                let pulse_due = pulsing && now.duration_since(self.last_render) >= RENDER_INTERVAL;
+                if !self.needs_render && !pulse_due {
                     return;
                 }
             }
@@ -1404,11 +1404,11 @@ impl RaidOverlay {
         };
 
         // Render class icon (white silhouette with drop shadow) if enabled
-        if show_class {
-            if let Some(name) = class_icon_name {
+        if show_class
+            && let Some(name) = class_icon_name {
                 // Check width: don't overflow the frame
-                if cursor_x + icon_size <= x + self.frame_width() - 2.0 {
-                    if let Some(icon) = crate::class_icons::get_white_class_icon(name) {
+                if cursor_x + icon_size <= x + self.frame_width() - 2.0
+                    && let Some(icon) = crate::class_icons::get_white_class_icon(name) {
                         self.frame.draw_image_with_shadow(
                             &icon.rgba,
                             icon.width,
@@ -1419,9 +1419,7 @@ impl RaidOverlay {
                             icon_size,
                         );
                     }
-                }
             }
-        }
 
         // Suppress unused variable warning when only class icons shown with no role icon
         let _ = role_rendered;

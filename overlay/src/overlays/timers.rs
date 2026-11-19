@@ -240,7 +240,7 @@ impl TimerOverlay {
         let max_display = self.config.max_display as usize;
         let num_entries = self.data.entries.iter().take(max_display).count();
         let total_bars_height = if num_entries > 0 {
-            num_entries as f32 * bar_height + (num_entries - 1).max(0) as f32 * entry_spacing
+            num_entries as f32 * bar_height + (num_entries - 1) as f32 * entry_spacing
         } else {
             0.0
         };

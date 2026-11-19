@@ -408,8 +408,8 @@ impl ServiceHandle {
         }
 
         // Update effect tracker alacrity/latency if changed
-        if alacrity_changed || latency_changed {
-            if let Some(session) = self.shared.session.read().await.as_ref() {
+        if (alacrity_changed || latency_changed)
+            && let Some(session) = self.shared.session.read().await.as_ref() {
                 let session = session.read().await;
                 if let Some(tracker) = session.effect_tracker() {
                     let mut tracker = tracker.lock().unwrap_or_else(|p| p.into_inner());
@@ -421,7 +421,6 @@ impl ServiceHandle {
                     }
                 }
             }
-        }
 
         if old_dir != new_dir {
             self.cmd_tx
@@ -1122,8 +1121,8 @@ impl ServiceHandle {
         if let Some(idx) = encounter_idx {
             // Historical query: get discipline info from that encounter's summary
             // This captures the discipline each player had AT THAT TIME
-            if let Some(cache) = session.session_cache.as_ref() {
-                if let Some(summary) = cache
+            if let Some(cache) = session.session_cache.as_ref()
+                && let Some(summary) = cache
                     .encounter_history
                     .summaries()
                     .iter()
@@ -1145,7 +1144,6 @@ impl ServiceHandle {
                         }
                     }
                 }
-            }
 
             let dir = session.encounters_dir().ok_or("No encounters directory")?;
             let path = dir.join(baras_core::storage::encounter_filename(idx));
@@ -2086,14 +2084,13 @@ impl ServiceHandle {
 
         // Find first boss with notes
         for boss in definitions.iter() {
-            if let Some(notes) = &boss.notes {
-                if !notes.is_empty() {
+            if let Some(notes) = &boss.notes
+                && !notes.is_empty() {
                     return Some(baras_overlay::NotesData {
                         text: notes.clone(),
                         boss_name: boss.name.clone(),
                     });
                 }
-            }
         }
 
         None

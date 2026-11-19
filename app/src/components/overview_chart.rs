@@ -126,12 +126,10 @@ fn build_option(data: &GroupTimeSeries, metric: GroupMetric, roster: &[String], 
     let grey = css_var("--text-disabled");
     // Stacked = share of the group: each point is { value: % of group, raw }, and
     // the bands always fill the height (negative threat counts as none)
-    let group: Vec<f64> = stacked
-        .then(|| {
+    let group: Vec<f64> = if stacked { {
             let len = players[0].1.len();
             (0..len).map(|i| players.iter().chain(&rest).map(|p| p.1[i].max(0.0)).sum()).collect()
-        })
-        .unwrap_or_default();
+        } } else { Default::default() };
     let line = |name: &str, values: &[f64], color: &str| {
         let points: Vec<Value> = values
             .iter()

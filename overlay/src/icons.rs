@@ -75,11 +75,10 @@ impl IconCache {
 
         {
             let mut cache = self.cache.lock().ok()?;
-            if cache.len() >= self.max_cache_size {
-                if let Some(key) = cache.keys().next().cloned() {
+            if cache.len() >= self.max_cache_size
+                && let Some(key) = cache.keys().next().cloned() {
                     cache.remove(&key);
                 }
-            }
             cache.insert(icon_name_lower, data.clone());
         }
 
@@ -143,14 +142,13 @@ fn load_icon_csv(path: &Path) -> Result<HashMap<u64, String>, String> {
             continue;
         }
         let parts: Vec<&str> = line.splitn(3, ',').collect();
-        if parts.len() >= 3 {
-            if let Ok(ability_id) = parts[0].parse::<u64>() {
+        if parts.len() >= 3
+            && let Ok(ability_id) = parts[0].parse::<u64>() {
                 let icon_name = parts[2].trim().to_lowercase();
                 if !icon_name.is_empty() {
                     map.insert(ability_id, icon_name);
                 }
             }
-        }
     }
     Ok(map)
 }

@@ -267,12 +267,12 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     let format_number = move |n: i32| formatting::format_thousands_eu(&formatting::format_thousands(n), eu);
 
     // Mirror props into signals for reactivity
-    let mut time_range_signal = use_signal(|| props.time_range.clone());
+    let mut time_range_signal = use_signal(|| props.time_range);
     let mut encounter_idx_signal = use_signal(|| props.encounter_idx);
 
     // Update signals when props change (runs on every render with new props)
     if *time_range_signal.read() != props.time_range {
-        time_range_signal.set(props.time_range.clone());
+        time_range_signal.set(props.time_range);
     }
     if *encounter_idx_signal.read() != props.encounter_idx {
         encounter_idx_signal.set(props.encounter_idx);
@@ -444,7 +444,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     let on_ready = props.on_ready;
     use_effect(move || {
         let idx = *encounter_idx_signal.read();
-        let tr = time_range_signal.read().clone();
+        let tr = *time_range_signal.read();
         let source = source_filter.read().clone();
         let target = target_filter.read().clone();
         let search = search_debounce.read().clone();
@@ -553,7 +553,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     use_effect(move || {
         let find = find_debounce.read().clone();
         let idx = *encounter_idx_signal.read();
-        let tr = time_range_signal.read().clone();
+        let tr = *time_range_signal.read();
         let source = source_filter.read().clone();
         let target = target_filter.read().clone();
         let search = search_debounce.read().clone();
@@ -668,7 +668,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
         let need_load = start_idx < offset || end_idx > offset + rows_len;
 
         if need_load && rows_len > 0 {
-            let tr = time_range_signal.read().clone();
+            let tr = *time_range_signal.read();
             let source = source_filter.read().clone();
             let target = target_filter.read().clone();
             let search = search_debounce.read().clone();

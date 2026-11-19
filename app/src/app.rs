@@ -213,12 +213,11 @@ pub fn App() -> Element {
             profile_names.set(config.profiles.iter().map(|p| p.name.clone()).collect());
             active_profile.set(config.active_profile_name);
             // Auto-create a "Default" profile for new users
-            if config.profiles.is_empty() {
-                if api::save_profile("Default").await.is_ok() {
+            if config.profiles.is_empty()
+                && api::save_profile("Default").await.is_ok() {
                     profile_names.set(vec!["Default".to_string()]);
                     active_profile.set(Some("Default".to_string()));
                 }
-            }
             hide_small_log_files.set(config.hide_small_log_files);
             ocr_debug_dump.set(config.ocr_debug_dump);
             ocr_debug_max_dumps.set(config.ocr_debug_max_dumps);
@@ -415,8 +414,8 @@ pub fn App() -> Element {
             let closure = Closure::<dyn Fn(web_sys::Event)>::new(move |_event: web_sys::Event| {
                 spawn_local(async move {
                     let global = js_sys::global();
-                    if let Ok(data) = js_sys::Reflect::get(&global, &"__parsely_upload_result".into()) {
-                        if let Some(data_str) = data.as_string() {
+                    if let Ok(data) = js_sys::Reflect::get(&global, &"__parsely_upload_result".into())
+                        && let Some(data_str) = data.as_string() {
                             // Parse format: "path|success|message"
                             let parts: Vec<&str> = data_str.splitn(3, '|').collect();
                             if parts.len() == 3 {
@@ -430,7 +429,6 @@ pub fn App() -> Element {
                             // Clear after reading
                             js_sys::Reflect::delete_property(&global, &"__parsely_upload_result".into()).ok();
                         }
-                    }
                 });
             });
             let _ = window.add_event_listener_with_callback(
@@ -564,7 +562,7 @@ pub fn App() -> Element {
     use_future(move || async move {
         let closure = Closure::new(move |event: JsValue| {
             // event.payload has { elapsed_secs, is_running, operation_name }
-            if let Some(payload) = js_sys::Reflect::get(&event, &"payload".into()).ok() {
+            if let Ok(payload) = js_sys::Reflect::get(&event, &"payload".into()) {
                 // try_write: this runs outside the Dioxus runtime, where .set() can panic
                 if let Some(secs) = js_sys::Reflect::get(&payload, &"elapsed_secs".into()).ok().and_then(|v| v.as_f64()) {
                     let _ = op_timer_secs.try_write().map(|mut w| *w = secs as u64);
@@ -595,14 +593,12 @@ pub fn App() -> Element {
 
     // Check for changelog on startup
     use_future(move || async move {
-        if let Some(response) = api::get_changelog().await {
-            if response.should_show {
-                if let Some(html) = response.html {
+        if let Some(response) = api::get_changelog().await
+            && response.should_show
+                && let Some(html) = response.html {
                     changelog_html.set(html);
                     changelog_open.set(true);
                 }
-            }
-        }
     });
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1088,8 +1084,8 @@ pub fn App() -> Element {
                                                                 let p = path.clone();
                                                                 move |e| {
                                                                     e.stop_propagation();
-                                                                    let filename = p.split('/').last()
-                                                                        .or_else(|| p.split('\\').last())
+                                                                    let filename = p.split('/').next_back()
+                                                                        .or_else(|| p.split('\\').next_back())
                                                                         .unwrap_or("combat.txt")
                                                                         .to_string();
                                                                     parsely_upload.open_file(p.clone(), filename);
@@ -2331,7 +2327,7 @@ pub fn App() -> Element {
                                     let day = f.day_of_week.to_lowercase();
                                     terms.iter().all(|term| {
                                         // Also check area names for operation search
-                                        let areas_match = f.areas.as_ref().map_or(false, |areas| {
+                                        let areas_match = f.areas.as_ref().is_some_and(|areas| {
                                             areas.iter().any(|a| {
                                                 a.display.to_lowercase().contains(term)
                                                     || a.area_name.to_lowercase().contains(term)

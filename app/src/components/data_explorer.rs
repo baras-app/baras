@@ -373,11 +373,10 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
             if let Some(list) = api::get_encounter_history().await {
                 let latest_id = list.last().map(|e| e.encounter_id as u32);
                 let _ = encounters.try_write().map(|mut w| *w = list);
-                if *auto_follow.peek() && selected_encounter.peek().is_none() {
-                    if let Some(id) = latest_id {
+                if *auto_follow.peek() && selected_encounter.peek().is_none()
+                    && let Some(id) = latest_id {
                         let _ = selected_encounter.try_write().map(|mut w| *w = Some(id));
                     }
-                }
             }
         });
     });
@@ -625,7 +624,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         }
 
         // Check if we've already fetched for this (encounter, time_range) combo
-        let last = last_overview_fetch.read().clone();
+        let last = *last_overview_fetch.read();
         if let Some((last_idx, last_tr, had_overview)) = last {
             // Non-overview tabs only need class icons — any loaded data for this encounter is fine
             if !is_overview && last_idx == idx {
@@ -2957,13 +2956,13 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                         }
                                                         td { class: "num group-stat col-avg col-avg-first",
                                                             {
-                                                                let overall = if is_damage_tab {
+                                                                
+                                                                if is_damage_tab {
                                                                     let total_attempts = stats.hits + stats.miss_count;
                                                                     if total_attempts > 0 { format_number(stats.total / total_attempts as f64) } else { format_number(0.0) }
                                                                 } else {
                                                                     format_number(stats.avg)
-                                                                };
-                                                                overall
+                                                                }
                                                             }
                                                         }
                                                         if is_damage_tab {
