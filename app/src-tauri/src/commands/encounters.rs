@@ -1307,15 +1307,15 @@ pub async fn create_boss(
     Ok(boss)
 }
 
-/// Update boss notes.
-/// For bundled areas, notes are written to the `_custom.toml` overlay.
-#[tauri::command]
-pub async fn update_boss_notes(
-    app_handle: AppHandle,
-    service: State<'_, ServiceHandle>,
+/// Change one field of a boss. A bundled boss gets the change written to its
+/// custom overlay file (creating a stub entry there if needed); a user file is
+/// edited in place.
+async fn patch_boss(
+    app_handle: &AppHandle,
+    service: &ServiceHandle,
     boss_id: String,
     file_path: String,
-    notes: Option<String>,
+    patch: impl Fn(&mut BossEncounterDefinition),
 ) -> Result<(), String> {
     let file_path_buf = PathBuf::from(&file_path);
 
@@ -1323,8 +1323,7 @@ pub async fn update_boss_notes(
         return Err(format!("Area file not found: {}", file_path));
     }
 
-    if let Some(custom_path) = get_custom_path_if_bundled(&file_path_buf, &app_handle) {
-        // Bundled area: save notes to custom overlay with [area] header
+    if let Some(custom_path) = get_custom_path_if_bundled(&file_path_buf, app_handle) {
         let area_config = load_area_config(&file_path_buf).ok().flatten();
 
         let mut custom_bosses = if custom_path.exists() {
@@ -1333,15 +1332,14 @@ pub async fn update_boss_notes(
             Vec::new()
         };
 
-        // Find or create the boss entry in the custom file
         if let Some(boss) = custom_bosses.iter_mut().find(|b| b.id == boss_id) {
-            boss.notes = notes;
+            patch(boss);
         } else {
-            let stub = BossEncounterDefinition {
+            let mut stub = BossEncounterDefinition {
                 id: boss_id.clone(),
-                notes,
                 ..Default::default()
             };
+            patch(&mut stub);
             custom_bosses.push(stub);
         }
 
@@ -1350,20 +1348,29 @@ pub async fn update_boss_notes(
         }
         save_bosses_to_file_with_area(&custom_bosses, &custom_path, area_config)?;
     } else {
-        // User file: load, update, save directly
         let mut bosses = load_bosses_from_file(&file_path_buf)?;
         let boss = bosses
             .iter_mut()
             .find(|b| b.id == boss_id)
             .ok_or_else(|| format!("Boss '{}' not found", boss_id))?;
-        boss.notes = notes;
+        patch(boss);
         save_bosses_to_file(&bosses, &file_path_buf)?;
     }
 
-    // Trigger definition reload
     let _ = service.reload_timer_definitions().await;
-
     Ok(())
+}
+
+/// Update notes on a boss definition
+#[tauri::command]
+pub async fn update_boss_notes(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    boss_id: String,
+    file_path: String,
+    notes: Option<String>,
+) -> Result<(), String> {
+    patch_boss(&app_handle, &service, boss_id, file_path, |b| b.notes = notes.clone()).await
 }
 
 /// Toggle a boss definition's enabled state
@@ -1375,57 +1382,10 @@ pub async fn update_boss_enabled(
     file_path: String,
     enabled: bool,
 ) -> Result<(), String> {
-    let file_path_buf = PathBuf::from(&file_path);
-
-    if !file_path_buf.exists() {
-        return Err(format!("Area file not found: {}", file_path));
-    }
-
-    if let Some(custom_path) = get_custom_path_if_bundled(&file_path_buf, &app_handle) {
-        // Bundled area: save enabled state to custom overlay with [area] header
-        let area_config = load_area_config(&file_path_buf).ok().flatten();
-
-        let mut custom_bosses = if custom_path.exists() {
-            load_bosses_from_file(&custom_path).unwrap_or_default()
-        } else {
-            Vec::new()
-        };
-
-        // Find or create the boss entry in the custom file
-        if let Some(boss) = custom_bosses.iter_mut().find(|b| b.id == boss_id) {
-            boss.enabled = enabled;
-        } else {
-            let stub = BossEncounterDefinition {
-                id: boss_id.clone(),
-                enabled,
-                ..Default::default()
-            };
-            custom_bosses.push(stub);
-        }
-
-        if let Some(parent) = custom_path.parent() {
-            std::fs::create_dir_all(parent).ok();
-        }
-        save_bosses_to_file_with_area(&custom_bosses, &custom_path, area_config)?;
-    } else {
-        // User file: load, update, save directly
-        let mut bosses = load_bosses_from_file(&file_path_buf)?;
-        let boss = bosses
-            .iter_mut()
-            .find(|b| b.id == boss_id)
-            .ok_or_else(|| format!("Boss '{}' not found", boss_id))?;
-        boss.enabled = enabled;
-        save_bosses_to_file(&bosses, &file_path_buf)?;
-    }
-
-    // Trigger definition reload
-    let _ = service.reload_timer_definitions().await;
-
-    Ok(())
+    patch_boss(&app_handle, &service, boss_id, file_path, |b| b.enabled = enabled).await
 }
 
-/// Update a boss definition's is_final_boss flag
-/// When the final boss of an operation is killed, the operations timer auto-stops.
+/// Mark whether a boss is the final boss of its area
 #[tauri::command]
 pub async fn update_boss_is_final_boss(
     app_handle: AppHandle,
@@ -1434,53 +1394,10 @@ pub async fn update_boss_is_final_boss(
     file_path: String,
     is_final_boss: bool,
 ) -> Result<(), String> {
-    let file_path_buf = PathBuf::from(&file_path);
-
-    if !file_path_buf.exists() {
-        return Err(format!("Area file not found: {}", file_path));
-    }
-
-    if let Some(custom_path) = get_custom_path_if_bundled(&file_path_buf, &app_handle) {
-        // Bundled area: save to custom overlay with [area] header
-        let area_config = load_area_config(&file_path_buf).ok().flatten();
-
-        let mut custom_bosses = if custom_path.exists() {
-            load_bosses_from_file(&custom_path).unwrap_or_default()
-        } else {
-            Vec::new()
-        };
-
-        // Find or create the boss entry in the custom file
-        if let Some(boss) = custom_bosses.iter_mut().find(|b| b.id == boss_id) {
-            boss.is_final_boss = is_final_boss;
-        } else {
-            let stub = BossEncounterDefinition {
-                id: boss_id.clone(),
-                is_final_boss,
-                ..Default::default()
-            };
-            custom_bosses.push(stub);
-        }
-
-        if let Some(parent) = custom_path.parent() {
-            std::fs::create_dir_all(parent).ok();
-        }
-        save_bosses_to_file_with_area(&custom_bosses, &custom_path, area_config)?;
-    } else {
-        // User file: load, update, save directly
-        let mut bosses = load_bosses_from_file(&file_path_buf)?;
-        let boss = bosses
-            .iter_mut()
-            .find(|b| b.id == boss_id)
-            .ok_or_else(|| format!("Boss '{}' not found", boss_id))?;
-        boss.is_final_boss = is_final_boss;
-        save_bosses_to_file(&bosses, &file_path_buf)?;
-    }
-
-    // Trigger definition reload
-    let _ = service.reload_timer_definitions().await;
-
-    Ok(())
+    patch_boss(&app_handle, &service, boss_id, file_path, |b| {
+        b.is_final_boss = is_final_boss
+    })
+    .await
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
