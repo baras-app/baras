@@ -244,44 +244,32 @@ pub fn App() -> Element {
     });
 
     // Listen for file changes
-    use_future(move || async move {
-        let closure = Closure::new(move |event: JsValue| {
-            if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
-                && let Some(path) = payload.as_string()
-            {
-                opener.loaded(&path);
-                // Use try_write to handle signal being dropped when component unmounts
-                let _ = active_file.try_write().map(|mut w| *w = path);
-            }
-        });
-        api::tauri_listen("active-file-changed", &closure).await;
-        closure.forget();
+    api::use_tauri_event("active-file-changed", move |event: JsValue| {
+        if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
+            && let Some(path) = payload.as_string()
+        {
+            opener.loaded(&path);
+            // Use try_write to handle signal being dropped when component unmounts
+            let _ = active_file.try_write().map(|mut w| *w = path);
+        }
     });
 
-    use_future(move || async move {
-        let closure = Closure::new(move |_event: JsValue| {
-            let _ = screen_capture_error.try_write().map(|mut value| *value = None);
-            let _ = screen_capture_permission_open
-                .try_write()
-                .map(|mut value| *value = true);
-        });
-        api::tauri_listen("screen-capture-permission-required", &closure).await;
-        closure.forget();
+    api::use_tauri_event("screen-capture-permission-required", move |_event: JsValue| {
+        let _ = screen_capture_error.try_write().map(|mut value| *value = None);
+        let _ = screen_capture_permission_open
+            .try_write()
+            .map(|mut value| *value = true);
     });
 
     // Listen for log file changes (event-driven from watcher)
-    use_future(move || async move {
-        let closure = Closure::new(move |_event: JsValue| {
-            // Use spawn_local for JS callbacks (no Dioxus runtime context available)
-            spawn_local(async move {
-                let result = api::get_log_files().await;
-                if let Ok(files) = serde_wasm_bindgen::from_value::<Vec<LogFileInfo>>(result) {
-                    let _ = log_files.try_write().map(|mut w| *w = files);
-                }
-            });
+    api::use_tauri_event("log-files-changed", move |_event: JsValue| {
+        // Use spawn_local for JS callbacks (no Dioxus runtime context available)
+        spawn_local(async move {
+            let result = api::get_log_files().await;
+            if let Ok(files) = serde_wasm_bindgen::from_value::<Vec<LogFileInfo>>(result) {
+                let _ = log_files.try_write().map(|mut w| *w = files);
+            }
         });
-        api::tauri_listen("log-files-changed", &closure).await;
-        closure.forget();
     });
 
     // Listen for session updates (event-driven from backend signals)
@@ -317,34 +305,30 @@ pub fn App() -> Element {
     });
 
     // Listen for profile auto-switch events (role-based default profiles)
-    use_future(move || async move {
-        let closure = Closure::new(move |_event: JsValue| {
-            spawn_local(async move {
-                // Refresh profile state from backend
-                let names = api::get_profile_names().await;
-                let active = api::get_active_profile().await;
-                profile_names.set(names);
-                active_profile.set(active);
-                profile_dirty.set(false);
-                // Refresh overlay settings to match the newly loaded profile
-                if let Some(cfg) = api::get_config().await {
-                    overlay_settings.set(cfg.overlay_settings);
-                }
-                api::refresh_overlay_settings().await;
-                if let Some(status) = api::get_overlay_status().await {
-                    apply_status(
-                        status,
-                        &mut overlays_enabled,
-                        &mut overlays_visible,
-                        &mut move_mode,
-                        &mut rearrange_mode,
-                        &mut auto_hidden,
-                    );
-                }
-            });
+    api::use_tauri_event("profile-auto-switched", move |_event: JsValue| {
+        spawn_local(async move {
+            // Refresh profile state from backend
+            let names = api::get_profile_names().await;
+            let active = api::get_active_profile().await;
+            profile_names.set(names);
+            active_profile.set(active);
+            profile_dirty.set(false);
+            // Refresh overlay settings to match the newly loaded profile
+            if let Some(cfg) = api::get_config().await {
+                overlay_settings.set(cfg.overlay_settings);
+            }
+            api::refresh_overlay_settings().await;
+            if let Some(status) = api::get_overlay_status().await {
+                apply_status(
+                    status,
+                    &mut overlays_enabled,
+                    &mut overlays_visible,
+                    &mut move_mode,
+                    &mut rearrange_mode,
+                    &mut auto_hidden,
+                );
+            }
         });
-        api::tauri_listen("profile-auto-switched", &closure).await;
-        closure.forget();
     });
 
     // Periodic refresh for live session duration (every 60 seconds)
@@ -392,164 +376,124 @@ pub fn App() -> Element {
     });
 
     // Listen for session ended (player logged out, data preserved for upload)
-    use_future(move || async move {
-        let closure = Closure::new(move |_event: JsValue| {
-            let _ = session_ended.try_write().map(|mut w| *w = true);
-        });
-        api::tauri_listen("session-ended", &closure).await;
-        closure.forget();
+    api::use_tauri_event("session-ended", move |_event: JsValue| {
+        let _ = session_ended.try_write().map(|mut w| *w = true);
     });
 
     // Listen for new session started (reset UI state for fresh start)
-    use_future(move || async move {
-        let closure = Closure::new(move |_event: JsValue| {
-            // Reset session-specific state when a new file starts being parsed.
-            // Preserves user preferences like show_only_bosses, show_ids, etc.
-            let _ = ui_state.try_write().map(|mut w| w.reset_session());
-            // Clear the "session ended" flag — a new session starting means
-            // the previous logout/empty-file state is no longer relevant.
-            let _ = session_ended.try_write().map(|mut w| *w = false);
-        });
-        api::tauri_listen("new-session-started", &closure).await;
-        closure.forget();
+    api::use_tauri_event("new-session-started", move |_event: JsValue| {
+        // Reset session-specific state when a new file starts being parsed.
+        // Preserves user preferences like show_only_bosses, show_ids, etc.
+        let _ = ui_state.try_write().map(|mut w| w.reset_session());
+        // Clear the "session ended" flag — a new session starting means
+        // the previous logout/empty-file state is no longer relevant.
+        let _ = session_ended.try_write().map(|mut w| *w = false);
     });
 
     // Listen for encounter focus requests (History tab → Data Explorer). Fires after
     // the file has loaded, so it lands after the new-session reset above. The Data
     // Explorer reads the selection from ui_state when it mounts on the tab switch.
-    use_future(move || async move {
-        let closure = Closure::new(move |event: JsValue| {
-            if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
-                && let Some(id) = payload.as_f64()
-            {
-                let _ = ui_state.try_write().map(|mut state| {
-                    state.data_explorer.selected_encounter = Some(id as u32);
-                    state.active_tab = MainTab::DataExplorer;
-                });
-            }
-        });
-        api::tauri_listen("select-encounter", &closure).await;
-        closure.forget();
+    api::use_tauri_event("select-encounter", move |event: JsValue| {
+        if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
+            && let Some(id) = payload.as_f64()
+        {
+            let _ = ui_state.try_write().map(|mut state| {
+                state.data_explorer.selected_encounter = Some(id as u32);
+                state.active_tab = MainTab::DataExplorer;
+            });
+        }
     });
 
     // Listen for app updates
-    use_future(move || async move {
-        let closure = Closure::new(move |event: JsValue| {
-            if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
-                && let Ok(info) = serde_wasm_bindgen::from_value::<UpdateInfo>(payload)
-            {
-                let _ = update_available.try_write().map(|mut w| *w = Some(info));
-            }
-        });
-        api::tauri_listen("update-available", &closure).await;
-        closure.forget();
+    api::use_tauri_event("update-available", move |event: JsValue| {
+        if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
+            && let Ok(info) = serde_wasm_bindgen::from_value::<UpdateInfo>(payload)
+        {
+            let _ = update_available.try_write().map(|mut w| *w = Some(info));
+        }
     });
 
     // Listen for update failures
     let mut update_failed_toast = use_toast();
-    use_future(move || async move {
-        let closure = Closure::new(move |event: JsValue| {
-            if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
-                && let Some(msg) = payload.as_string()
-            {
-                update_failed_toast.show(format!("Update failed: {}", msg), ToastSeverity::Critical);
-            }
-            // Reset installing state so user can retry
-            let _ = update_installing.try_write().map(|mut w| *w = false);
-        });
-        api::tauri_listen("update-failed", &closure).await;
-        closure.forget();
+    api::use_tauri_event("update-failed", move |event: JsValue| {
+        if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
+            && let Some(msg) = payload.as_string()
+        {
+            update_failed_toast.show(format!("Update failed: {}", msg), ToastSeverity::Critical);
+        }
+        // Reset installing state so user can retry
+        let _ = update_installing.try_write().map(|mut w| *w = false);
     });
 
     // Listen for hotkeys unavailable (Wayland portal failure)
     let mut hotkeys_toast = use_toast();
-    use_future(move || async move {
-        let closure = Closure::new(move |event: JsValue| {
-            if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
-                && let Some(msg) = payload.as_string()
-            {
-                hotkeys_toast.show(
-                    format!(
-                        "Global hotkeys unavailable: {}. Configure shortcuts in compositor settings.",
-                        msg
-                    ),
-                    ToastSeverity::Normal,
-                );
-            }
-        });
-        api::tauri_listen("hotkeys-unavailable", &closure).await;
-        closure.forget();
+    api::use_tauri_event("hotkeys-unavailable", move |event: JsValue| {
+        if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
+            && let Some(msg) = payload.as_string()
+        {
+            hotkeys_toast.show(
+                format!(
+                    "Global hotkeys unavailable: {}. Configure shortcuts in compositor settings.",
+                    msg
+                ),
+                ToastSeverity::Normal,
+            );
+        }
     });
 
     // Listen for overlay status changes (from hotkeys or other sources)
     // This ensures UI buttons stay in sync when overlay state changes
-    use_future(move || async move {
-        let closure = Closure::new(move |_event: JsValue| {
-            // Use spawn_local for JS callbacks (no Dioxus runtime context available)
-            spawn_local(async move {
-                if let Some(status) = api::get_overlay_status().await {
-                    // Use try_write for signals - safe outside Dioxus runtime context
-                    let _ = overlays_visible.try_write().map(|mut w| *w = status.overlays_visible);
-                    let _ = move_mode.try_write().map(|mut w| *w = status.move_mode);
-                    let _ = rearrange_mode.try_write().map(|mut w| *w = status.rearrange_mode);
-                    let _ = auto_hidden.try_write().map(|mut w| *w = status.auto_hidden);
-                }
-            });
+    api::use_tauri_event("overlay-status-changed", move |_event: JsValue| {
+        // Use spawn_local for JS callbacks (no Dioxus runtime context available)
+        spawn_local(async move {
+            if let Some(status) = api::get_overlay_status().await {
+                // Use try_write for signals - safe outside Dioxus runtime context
+                let _ = overlays_visible.try_write().map(|mut w| *w = status.overlays_visible);
+                let _ = move_mode.try_write().map(|mut w| *w = status.move_mode);
+                let _ = rearrange_mode.try_write().map(|mut w| *w = status.rearrange_mode);
+                let _ = auto_hidden.try_write().map(|mut w| *w = status.auto_hidden);
+            }
         });
-        api::tauri_listen("overlay-status-changed", &closure).await;
-        closure.forget();
     });
 
     // Backend emits this only when locking persisted a position that actually changed
-    use_future(move || async move {
-        let closure = Closure::new(move |_event: JsValue| {
-            spawn_local(async move {
-                let dirty = api::is_profile_dirty().await;
-                let _ = profile_dirty.try_write().map(|mut w| *w = dirty);
-            });
+    api::use_tauri_event("overlay-positions-changed", move |_event: JsValue| {
+        spawn_local(async move {
+            let dirty = api::is_profile_dirty().await;
+            let _ = profile_dirty.try_write().map(|mut w| *w = dirty);
         });
-        api::tauri_listen("overlay-positions-changed", &closure).await;
-        closure.forget();
     });
 
     // Listen for operation timer tick events
-    use_future(move || async move {
-        let closure = Closure::new(move |event: JsValue| {
-            // event.payload has { elapsed_secs, is_running, operation_name }
-            if let Ok(payload) = js_sys::Reflect::get(&event, &"payload".into()) {
-                // try_write: this runs outside the Dioxus runtime, where .set() can panic
-                if let Some(secs) = js_sys::Reflect::get(&payload, &"elapsed_secs".into())
-                    .ok()
-                    .and_then(|v| v.as_f64())
-                {
-                    let _ = op_timer_secs.try_write().map(|mut w| *w = secs as u64);
-                }
-                if let Some(running) = js_sys::Reflect::get(&payload, &"is_running".into())
-                    .ok()
-                    .and_then(|v| v.as_bool())
-                {
-                    let _ = op_timer_running.try_write().map(|mut w| *w = running);
-                }
-                let name = js_sys::Reflect::get(&payload, &"operation_name".into())
-                    .ok()
-                    .and_then(|v| v.as_string());
-                let _ = op_timer_name.try_write().map(|mut w| *w = name);
+    api::use_tauri_event("operation-timer-tick", move |event: JsValue| {
+        // event.payload has { elapsed_secs, is_running, operation_name }
+        if let Ok(payload) = js_sys::Reflect::get(&event, &"payload".into()) {
+            // try_write: this runs outside the Dioxus runtime, where .set() can panic
+            if let Some(secs) = js_sys::Reflect::get(&payload, &"elapsed_secs".into())
+                .ok()
+                .and_then(|v| v.as_f64())
+            {
+                let _ = op_timer_secs.try_write().map(|mut w| *w = secs as u64);
             }
-        });
-        api::tauri_listen("operation-timer-tick", &closure).await;
-        closure.forget();
+            if let Some(running) = js_sys::Reflect::get(&payload, &"is_running".into())
+                .ok()
+                .and_then(|v| v.as_bool())
+            {
+                let _ = op_timer_running.try_write().map(|mut w| *w = running);
+            }
+            let name = js_sys::Reflect::get(&payload, &"operation_name".into())
+                .ok()
+                .and_then(|v| v.as_string());
+            let _ = op_timer_name.try_write().map(|mut w| *w = name);
+        }
     });
 
     // Listen for auto-hidden toast events (from hotkey/tray show while auto-hidden)
-    use_future(move || async move {
-        let closure = Closure::new(move |_event: JsValue| {
-            spawn_local(async move {
-                let mut toast = use_toast();
-                toast.show("Overlays are currently auto-hidden".to_string(), ToastSeverity::Normal);
-            });
+    api::use_tauri_event("overlays-auto-hidden-toast", move |_event: JsValue| {
+        spawn_local(async move {
+            let mut toast = use_toast();
+            toast.show("Overlays are currently auto-hidden".to_string(), ToastSeverity::Normal);
         });
-        api::tauri_listen("overlays-auto-hidden-toast", &closure).await;
-        closure.forget();
     });
 
     // Check for changelog on startup
