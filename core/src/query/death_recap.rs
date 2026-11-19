@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use super::*;
-use crate::game_data::{defense_type, effect_id};
+use crate::game_data::{defense_type, effect_id, effect_type_id};
 
 /// Lookback from the death event.
 const WINDOW_SECS: f32 = 15.0;
@@ -13,6 +13,26 @@ const TRAILING_SECS: f32 = 3.0;
 const MAX_LEDGER_EVENTS: usize = 80;
 /// Maximum HP samples returned for the sparkline.
 const MAX_HP_POINTS: usize = 200;
+/// Maximum effects returned.
+const MAX_EFFECTS: usize = 60;
+/// An effect ending this close to the death counts as up when it happened:
+/// the death strips effects on the same timestamp.
+const DEATH_SLACK_SECS: f32 = 0.1;
+
+/// One (effect, source) on the player, rebuilt from its apply/remove events.
+struct EffectAcc {
+    effect_name: String,
+    ability_id: i64,
+    source_name: String,
+    from_npc: bool,
+    stacks: i32,
+    /// (time, stacks) whenever the count changed, a fresh application included
+    changes: Vec<(f32, i32)>,
+    open: Option<f32>,
+    /// Up since before combat: its remove came with no apply
+    pre_combat: bool,
+    windows: Vec<(f32, f32)>,
+}
 
 /// A classified event row from the recap window query.
 struct RecapRow {
@@ -57,8 +77,9 @@ impl EncounterQuery<'_> {
     ///
     /// Covers the final [`WINDOW_SECS`] before the death plus
     /// [`TRAILING_SECS`] after it (killing damage is often logged after the
-    /// death event). Only damage/heal/death events are considered — effect
-    /// applications are visible in the combat log view instead.
+    /// death event). The ledger holds damage/heal/death events; effects on
+    /// the player come from a second pass over the whole fight, since one
+    /// applied long before the window can still be up at the death.
     pub async fn query_death_recap(
         &self,
         player_name: &str,
@@ -139,7 +160,151 @@ impl EncounterQuery<'_> {
             }
         }
 
-        Ok(build_recap(player_name, death_time_secs, rows))
+        let mut recap = build_recap(player_name, death_time_secs, rows);
+        recap.effects = self
+            .recap_effects(player_name, recap.window_start_secs, recap.death_time_secs)
+            .await?;
+        Ok(recap)
+    }
+
+    /// Effects on the player overlapping `[window_start, death_time]`.
+    ///
+    /// Windows follow the uptime tab's rules: an apply opens one unless one
+    /// is open (a refresh), a remove closes it, and a remove with nothing
+    /// open means it was up when the fight began. Player-applied effects up
+    /// since before combat are left out: those are stims and class buffs.
+    async fn recap_effects(
+        &self,
+        player_name: &str,
+        window_start: f32,
+        death_time: f32,
+    ) -> Result<Vec<DeathRecapEffect>, String> {
+        let sql = format!(
+            "SELECT effect_id, source_id, effect_name, ability_id, source_name,
+                    source_entity_type, effect_type_id, charges,
+                    CAST(COALESCE(combat_time_secs, 0.0) AS REAL)
+             FROM events
+             WHERE target_name = '{}'
+               AND effect_type_id IN ({}, {}, {})
+               AND effect_id NOT IN ({}, {})
+               AND effect_name <> ''
+               AND COALESCE(combat_time_secs, 0.0) <= {}
+             ORDER BY line_number",
+            sql_escape(player_name),
+            effect_type_id::APPLYEFFECT,
+            effect_type_id::REMOVEEFFECT,
+            effect_type_id::MODIFYCHARGES,
+            effect_id::DAMAGE,
+            effect_id::HEAL,
+            death_time + DEATH_SLACK_SECS,
+        );
+
+        let mut accs: HashMap<(i64, i64), EffectAcc> = HashMap::new();
+        for batch in &self.sql(&sql).await? {
+            let effect_ids = col_i64(batch, 0)?;
+            let source_ids = col_i64(batch, 1)?;
+            let effect_names = col_strings(batch, 2)?;
+            let ability_ids = col_i64(batch, 3)?;
+            let source_names = col_strings(batch, 4)?;
+            let source_types = col_strings(batch, 5)?;
+            let kinds = col_i64(batch, 6)?;
+            let charges = col_i32(batch, 7)?;
+            let times = col_f32(batch, 8)?;
+
+            for i in 0..batch.num_rows() {
+                let key = (effect_ids[i], source_ids[i]);
+                let seen = accs.contains_key(&key);
+                let acc = accs.entry(key).or_insert_with(|| EffectAcc {
+                    effect_name: effect_names[i].clone(),
+                    ability_id: 0,
+                    source_name: source_names[i].clone(),
+                    from_npc: !matches!(source_types[i].as_str(), "Player" | "Companion"),
+                    stacks: 1,
+                    changes: Vec::new(),
+                    open: None,
+                    pre_combat: false,
+                    windows: Vec::new(),
+                });
+                let t = times[i];
+                if kinds[i] == effect_type_id::REMOVEEFFECT {
+                    match acc.open.take() {
+                        Some(from) => acc.windows.push((from, t)),
+                        None if !seen => {
+                            acc.pre_combat = true;
+                            acc.windows.push((0.0, t));
+                        }
+                        None => {}
+                    }
+                    continue;
+                }
+                if kinds[i] == effect_type_id::APPLYEFFECT {
+                    if acc.ability_id == 0 {
+                        acc.ability_id = ability_ids[i];
+                    }
+                    if acc.open.is_none() {
+                        acc.open = Some(t);
+                        acc.stacks = 1;
+                        acc.changes.push((t, 1));
+                    }
+                } else if acc.open.is_none() {
+                    // Stacks changing on an effect never applied: up since before combat
+                    acc.pre_combat |= !seen;
+                    acc.open = Some(if seen { t } else { 0.0 });
+                }
+                if charges[i] > 0 && charges[i] != acc.stacks {
+                    acc.stacks = charges[i];
+                    // An apply and its stack count share a timestamp: one change
+                    match acc.changes.last_mut() {
+                        Some(last) if last.0 == t => last.1 = charges[i],
+                        _ => acc.changes.push((t, charges[i])),
+                    }
+                }
+            }
+        }
+
+        let mut out: Vec<DeathRecapEffect> = accs
+            .into_iter()
+            .filter_map(|((effect_id, _), mut acc)| {
+                if let Some(from) = acc.open {
+                    acc.windows.push((from, death_time));
+                }
+                let buff_since_pull = acc.pre_combat && !acc.from_npc;
+                let windows: Vec<(f32, f32)> = acc
+                    .windows
+                    .into_iter()
+                    .filter(|&(a, b)| b >= window_start && a <= death_time && !(buff_since_pull && a == 0.0))
+                    // Dying re-applies the player's own passives on the same timestamp
+                    .filter(|&(a, _)| acc.from_npc || a < death_time - DEATH_SLACK_SECS)
+                    .map(|(a, b)| (a, b.min(death_time)))
+                    .collect();
+                let mut stack_changes = acc.changes;
+                if stack_changes.iter().all(|&(_, n)| n <= 1) {
+                    stack_changes.clear();
+                }
+                let from = stack_changes.iter().rposition(|&(t, _)| t <= window_start).unwrap_or(0);
+                stack_changes.drain(..from);
+                let active_at_death = windows.last().is_some_and(|&(_, b)| b >= death_time - DEATH_SLACK_SECS);
+                (!windows.is_empty()).then(|| DeathRecapEffect {
+                    effect_id,
+                    effect_name: acc.effect_name,
+                    ability_id: acc.ability_id,
+                    source_name: acc.source_name,
+                    from_npc: acc.from_npc,
+                    stacks: acc.stacks,
+                    windows,
+                    stack_changes,
+                    active_at_death,
+                })
+            })
+            .collect();
+        out.sort_by(|a, b| {
+            (!a.from_npc, !a.active_at_death)
+                .cmp(&(!b.from_npc, !b.active_at_death))
+                .then(a.windows[0].0.total_cmp(&b.windows[0].0))
+                .then_with(|| a.effect_name.cmp(&b.effect_name))
+        });
+        out.truncate(MAX_EFFECTS);
+        Ok(out)
     }
 }
 
@@ -345,6 +510,7 @@ fn build_recap(player_name: &str, requested_death_time: f32, rows: Vec<RecapRow>
         damage_rows,
         healing_rows,
         events,
+        effects: Vec::new(),
     }
 }
 

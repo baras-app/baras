@@ -1367,6 +1367,7 @@
   margin: var(--space-xs) 0 var(--space-sm);
 }
 
+.recap-effects-wrap h5,
 .recap-ledger-wrap h5 {
   margin: 0;
   font-size: 11px;
@@ -1478,6 +1479,64 @@
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   background: var(--well-bg);
+}
+
+/* Effects on the player: ledger-style rows, each with a bar over the recap window */
+.recap-effects {
+  max-height: 190px;
+  overflow-y: auto;
+  background: var(--well-bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+}
+
+.effect-row .ledger-ability { flex: 1 1 45%; }
+.effect-stacks { color: var(--text-secondary); font-family: var(--font-mono); }
+
+.effect-track {
+  position: relative;
+  flex: 1 1 55%;
+  height: 6px;
+  background: hsla(0, 0%, 50%, 0.18);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.effect-seg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 2px;
+  background: var(--color-success);
+  opacity: 0.7;
+  border-radius: 3px;
+}
+.effect-seg.from-before { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+
+/* Stacking effects: a taller bar cut at each stack change, the count inside */
+.effect-track.stacked { height: 13px; }
+.effect-track.stacked .effect-seg {
+  border-radius: 2px;
+  box-shadow: inset 1px 0 0 var(--well-bg);
+  overflow: hidden;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 13px;
+  text-align: center;
+  opacity: 0.9;
+}
+.effect-row.enemy .effect-seg { background: var(--swtor-red); opacity: 0.85; }
+
+.effect-when {
+  width: 78px;
+  flex-shrink: 0;
+  text-align: right;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  white-space: nowrap;
 }
 
 .ledger-row {
