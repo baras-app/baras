@@ -98,15 +98,21 @@ struct CachedText {
     last_used: u64,
 }
 
-/// Key for text cache: (text content, font size rounded to tenths, is_bold, is_italic)
-type TextCacheKey = (String, u32, bool, bool);
+/// Style half of the text cache key: (font size rounded to tenths, is_bold, is_italic).
+/// Text is the inner key so a lookup hashes a `&str` instead of scanning or allocating.
+type TextStyleKey = (u32, bool, bool);
+
+fn style_key(font_size: f32, bold: bool, italic: bool) -> TextStyleKey {
+    ((font_size * 10.0).round() as u32, bold, italic)
+}
 
 /// A software renderer for overlay content
 pub struct Renderer {
     font_system: FontSystem,
     swash_cache: SwashCache,
     /// Cache of shaped text to avoid re-shaping every frame
-    text_cache: HashMap<TextCacheKey, CachedText>,
+    text_cache: HashMap<TextStyleKey, HashMap<String, CachedText>>,
+    text_cache_len: usize,
     /// Counter for LRU tracking
     cache_access_counter: u64,
     /// Active font family name (resolved from the shared DB at shaping time).
@@ -152,7 +158,8 @@ impl Renderer {
         Self {
             font_system: FontSystem::new_with_locale_and_db(locale, get_shared_font_db()),
             swash_cache: SwashCache::new(),
-            text_cache: HashMap::with_capacity(256),
+            text_cache: HashMap::new(),
+            text_cache_len: 0,
             cache_access_counter: 0,
             font_family: DEFAULT_FONT_FAMILY.to_string(),
             // Bundled Inter ships Regular + Bold + Italic.
@@ -171,40 +178,32 @@ impl Renderer {
             self.font_has_bold = has_bold;
             self.font_has_italic = has_italic;
             self.text_cache.clear();
+            self.text_cache_len = 0;
         }
     }
 
     /// Evict least recently used entries if cache is too large
     fn evict_lru_if_needed(&mut self) {
-        if self.text_cache.len() <= TEXT_CACHE_MAX_ENTRIES {
+        if self.text_cache_len <= TEXT_CACHE_MAX_ENTRIES {
             return;
         }
 
         // Find the oldest entries to remove (remove ~25% of cache)
         let target_size = TEXT_CACHE_MAX_ENTRIES * 3 / 4;
-        let mut entries: Vec<_> = self.text_cache.iter().map(|(k, v)| (k.clone(), v.last_used)).collect();
-        entries.sort_by_key(|(_, last_used)| *last_used);
+        let mut entries: Vec<_> = self
+            .text_cache
+            .iter()
+            .flat_map(|(style, texts)| texts.iter().map(|(text, v)| (*style, text.clone(), v.last_used)))
+            .collect();
+        entries.sort_by_key(|(_, _, last_used)| *last_used);
 
-        // Remove oldest entries
-        for (key, _) in entries.into_iter().take(self.text_cache.len() - target_size) {
-            self.text_cache.remove(&key);
+        for (style, text, _) in entries.into_iter().take(self.text_cache_len - target_size) {
+            if let Some(texts) = self.text_cache.get_mut(&style) {
+                texts.remove(&text);
+            }
         }
-    }
-
-    /// Find cached entry with style options
-    fn find_cached_styled(
-        &mut self,
-        text: &str,
-        font_size_key: u32,
-        bold: bool,
-        italic: bool,
-    ) -> Option<&mut CachedText> {
-        // Linear search through cache - faster than allocation for small cache hits
-        // Most overlays have <20 unique text strings, so this is efficient
-        self.text_cache
-            .iter_mut()
-            .find(|(k, _)| k.0 == text && k.1 == font_size_key && k.2 == bold && k.3 == italic)
-            .map(|(_, v)| v)
+        self.text_cache.retain(|_, texts| !texts.is_empty());
+        self.text_cache_len = target_size;
     }
 
     /// Ensure text is cached, shaping if needed. Returns (width, height).
@@ -214,13 +213,13 @@ impl Renderer {
 
     /// Ensure text is cached with styling options. Returns (width, height).
     fn ensure_cached_styled(&mut self, text: &str, font_size: f32, bold: bool, italic: bool) -> (f32, f32) {
-        let font_size_key = (font_size * 10.0).round() as u32;
+        let style = style_key(font_size, bold, italic);
 
         self.cache_access_counter += 1;
         let current_access = self.cache_access_counter;
 
         // Fast path: check cache without allocation
-        if let Some(cached) = self.find_cached_styled(text, font_size_key, bold, italic) {
+        if let Some(cached) = self.text_cache.get_mut(&style).and_then(|texts| texts.get_mut(text)) {
             cached.last_used = current_access;
             return (cached.width, cached.height);
         }
@@ -267,19 +266,14 @@ impl Renderer {
         };
 
         // Store in cache (only allocate String here on miss)
-        let cache_key = (text.to_string(), font_size_key, bold, italic);
-        self.text_cache.insert(cache_key, cached);
+        self.text_cache
+            .entry(style)
+            .or_default()
+            .insert(text.to_string(), cached);
+        self.text_cache_len += 1;
         self.evict_lru_if_needed();
 
         (width, height)
-    }
-
-    /// Get cached glyphs for drawing. Must call ensure_cached first.
-    fn get_cached_glyphs_styled(&mut self, text: &str, font_size: f32, bold: bool, italic: bool) -> Vec<LayoutGlyph> {
-        let font_size_key = (font_size * 10.0).round() as u32;
-        self.find_cached_styled(text, font_size_key, bold, italic)
-            .map(|c| c.glyphs.clone())
-            .unwrap_or_default()
     }
 
     /// Create a new pixel buffer (RGBA format)
@@ -641,8 +635,14 @@ impl Renderer {
         // Ensure text is cached (shapes if needed)
         let _ = self.ensure_cached_styled(text, font_size, bold, italic);
 
-        // Get glyphs (still need clone due to borrow checker - swash_cache needs &mut self)
-        let glyphs = self.get_cached_glyphs_styled(text, font_size, bold, italic);
+        // Borrowed straight from the cache field, leaving `swash_cache` and `font_system` free below
+        let Some(cached) = self
+            .text_cache
+            .get(&style_key(font_size, bold, italic))
+            .and_then(|texts| texts.get(text))
+        else {
+            return;
+        };
 
         let text_color = CosmicColor::rgba(
             (color.red() * 255.0) as u8,
@@ -652,7 +652,7 @@ impl Renderer {
         );
 
         // Render each cached glyph
-        for glyph in &glyphs {
+        for glyph in &cached.glyphs {
             let physical_glyph = glyph.physical((x, y), 1.0);
 
             if let Some(image) = self

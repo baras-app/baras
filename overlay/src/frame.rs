@@ -360,23 +360,14 @@ impl OverlayFrame {
     /// then the original image on top — similar to SWTOR's icon shadow style.
     pub fn draw_image_with_shadow(
         &mut self,
-        image_data: &[u8],
-        image_width: u32,
-        image_height: u32,
+        icon: &'static crate::class_icons::ClassIcon,
         dest_x: f32,
         dest_y: f32,
         dest_width: f32,
         dest_height: f32,
     ) {
-        // Build shadow version: black with reduced alpha
-        let mut shadow = image_data.to_vec();
-        for chunk in shadow.chunks_exact_mut(4) {
-            let alpha = chunk[3] as u16;
-            chunk[0] = 0;
-            chunk[1] = 0;
-            chunk[2] = 0;
-            chunk[3] = (alpha * 180 / 255) as u8;
-        }
+        let (image_data, image_width, image_height) = (&icon.rgba, icon.width, icon.height);
+        let shadow = &crate::class_icons::shadow_of(icon).rgba;
 
         // Draw shadow at all 8 surrounding offsets for a full 1px outline
         let d = 1.0_f32;
@@ -391,7 +382,7 @@ impl OverlayFrame {
             (d, d),
         ] {
             self.draw_image(
-                &shadow,
+                shadow,
                 image_width,
                 image_height,
                 dest_x + dx,

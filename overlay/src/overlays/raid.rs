@@ -1364,15 +1364,8 @@ impl RaidOverlay {
             if cursor_x + icon_size <= x + self.frame_width() - 2.0
                 && let Some(icon) = crate::class_icons::get_white_class_icon(name)
             {
-                self.frame.draw_image_with_shadow(
-                    &icon.rgba,
-                    icon.width,
-                    icon.height,
-                    cursor_x,
-                    icon_y,
-                    icon_size,
-                    icon_size,
-                );
+                self.frame
+                    .draw_image_with_shadow(icon, cursor_x, icon_y, icon_size, icon_size);
             }
         }
 

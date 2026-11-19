@@ -601,9 +601,7 @@ impl MetricOverlay {
                 };
                 if let Some(icon) = icon {
                     self.frame.draw_image_with_shadow(
-                        &icon.rgba,
-                        icon.width,
-                        icon.height,
+                        icon,
                         padding + icon_padding,
                         y + icon_padding,
                         icon_size,

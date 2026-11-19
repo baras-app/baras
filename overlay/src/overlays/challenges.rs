@@ -712,15 +712,8 @@ impl ChallengeOverlay {
                 if let Some(icon) = icon {
                     let icon_x = x + icon_padding;
                     let icon_y = y + icon_padding;
-                    self.frame.draw_image_with_shadow(
-                        &icon.rgba,
-                        icon.width,
-                        icon.height,
-                        icon_x,
-                        icon_y,
-                        icon_size,
-                        icon_size,
-                    );
+                    self.frame
+                        .draw_image_with_shadow(icon, icon_x, icon_y, icon_size, icon_size);
                 }
             }
 

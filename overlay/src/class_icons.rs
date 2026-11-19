@@ -3,7 +3,7 @@
 //! Icons are embedded at compile time and decoded on first access.
 
 use std::collections::HashMap;
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 
 /// Decoded RGBA icon with dimensions
 pub struct ClassIcon {
@@ -246,13 +246,47 @@ fn get_discipline_icons() -> &'static HashMap<String, ClassIcon> {
 
 /// Get a discipline icon by name as raw RGBA (e.g., "lightning", "lightning.png").
 /// Returns `None` if the discipline is unknown.
-pub fn get_discipline_icon(name: &str) -> Option<ClassIcon> {
+pub fn get_discipline_icon(name: &str) -> Option<&'static ClassIcon> {
     let key = name.strip_suffix(".png").unwrap_or(name);
-    let base = get_discipline_icons().get(key)?;
-    Some(ClassIcon {
-        rgba: base.rgba.clone(),
-        width: base.width,
-        height: base.height,
+    get_discipline_icons().get(key)
+}
+
+/// Recolored copies of the decoded icons, built once each and kept for the
+/// process: keyed by the source icon's address plus the variant.
+static DERIVED_ICONS: OnceLock<Mutex<HashMap<(usize, [u8; 4]), &'static ClassIcon>>> = OnceLock::new();
+
+fn derived(base: &'static ClassIcon, variant: [u8; 4], recolor: impl Fn(&mut [u8])) -> &'static ClassIcon {
+    let mut icons = DERIVED_ICONS
+        .get_or_init(Default::default)
+        .lock()
+        .unwrap_or_else(|p| p.into_inner());
+    icons
+        .entry((std::ptr::from_ref(base) as usize, variant))
+        .or_insert_with(|| {
+            let mut rgba = base.rgba.clone();
+            rgba.chunks_exact_mut(4).for_each(&recolor);
+            Box::leak(Box::new(ClassIcon {
+                rgba,
+                width: base.width,
+                height: base.height,
+            }))
+        })
+}
+
+/// Visible pixels set to one color, alpha preserved
+fn silhouette(base: &'static ClassIcon, (r, g, b): (u8, u8, u8)) -> &'static ClassIcon {
+    derived(base, [1, r, g, b], |px| {
+        if px[3] > 0 {
+            px[..3].copy_from_slice(&[r, g, b]);
+        }
+    })
+}
+
+/// Black copy at reduced alpha, drawn around an icon as its outline
+pub fn shadow_of(icon: &'static ClassIcon) -> &'static ClassIcon {
+    derived(icon, [0; 4], |px| {
+        px[3] = (px[3] as u16 * 180 / 255) as u8;
+        px[..3].fill(0);
     })
 }
 
@@ -280,45 +314,13 @@ pub fn get_tinted_class_icon(name: &str, role: Role) -> Option<ClassIcon> {
 
 /// Get a class icon as a role-colored silhouette (preserves alpha, all visible pixels
 /// set to the role's light tint color). Useful for overlays where icons sit on colored bars.
-pub fn get_role_colored_class_icon(name: &str, role: Role) -> Option<ClassIcon> {
-    let base = get_class_icon(name)?;
-    let (r, g, b) = role.tint_color();
-
-    let mut result = base.rgba.clone();
-    for chunk in result.chunks_exact_mut(4) {
-        if chunk[3] > 0 {
-            chunk[0] = r;
-            chunk[1] = g;
-            chunk[2] = b;
-        }
-    }
-
-    Some(ClassIcon {
-        rgba: result,
-        width: base.width,
-        height: base.height,
-    })
+pub fn get_role_colored_class_icon(name: &str, role: Role) -> Option<&'static ClassIcon> {
+    Some(silhouette(get_class_icon(name)?, role.tint_color()))
 }
 
 /// Get a class icon as a white silhouette (preserves alpha, all visible pixels white)
-pub fn get_white_class_icon(name: &str) -> Option<ClassIcon> {
-    let base = get_class_icon(name)?;
-
-    let mut result = base.rgba.clone();
-    for chunk in result.chunks_exact_mut(4) {
-        // Make all visible pixels white, preserve alpha
-        if chunk[3] > 0 {
-            chunk[0] = 255;
-            chunk[1] = 255;
-            chunk[2] = 255;
-        }
-    }
-
-    Some(ClassIcon {
-        rgba: result,
-        width: base.width,
-        height: base.height,
-    })
+pub fn get_white_class_icon(name: &str) -> Option<&'static ClassIcon> {
+    Some(silhouette(get_class_icon(name)?, (255, 255, 255)))
 }
 
 /// Get a class icon with role-based tinting and white outline
