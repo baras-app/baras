@@ -246,7 +246,9 @@ pub trait Overlay: 'static {
     /// Poll for window events (non-blocking)
     ///
     /// Returns `false` if the window should close (e.g., user closed it).
-    fn poll_events(&mut self) -> bool;
+    fn poll_events(&mut self) -> bool {
+        self.frame_mut().poll_events()
+    }
 
     /// Get the underlying frame for position/size queries
     fn frame(&self) -> &OverlayFrame;

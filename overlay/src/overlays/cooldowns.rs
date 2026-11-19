@@ -822,10 +822,6 @@ impl Overlay for CooldownOverlay {
         CooldownOverlay::render(self);
     }
 
-    fn poll_events(&mut self) -> bool {
-        self.frame.poll_events()
-    }
-
     fn frame(&self) -> &OverlayFrame {
         &self.frame
     }

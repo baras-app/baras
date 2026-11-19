@@ -894,10 +894,6 @@ impl Overlay for ChallengeOverlay {
         self.render_overlay();
     }
 
-    fn poll_events(&mut self) -> bool {
-        self.frame.poll_events()
-    }
-
     fn frame(&self) -> &OverlayFrame {
         &self.frame
     }
