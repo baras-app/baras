@@ -327,3 +327,15 @@ impl SharedState {
         }
     }
 }
+
+/// Lock a mutex whether or not a panicking thread poisoned it: the data is
+/// plain state, and one crashed task should not take every later lock with it.
+pub trait MutexExt<T> {
+    fn locked(&self) -> std::sync::MutexGuard<'_, T>;
+}
+
+impl<T> MutexExt<T> for std::sync::Mutex<T> {
+    fn locked(&self) -> std::sync::MutexGuard<'_, T> {
+        self.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+}

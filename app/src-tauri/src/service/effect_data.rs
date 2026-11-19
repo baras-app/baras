@@ -1,5 +1,6 @@
 //! Effect audio and Effects A/B, cooldown and DoT overlay data
 
+use crate::state::MutexExt;
 use crate::state::SharedState;
 use baras_core::context::resolve;
 use baras_core::{ActiveEffect, DisplayTarget};
@@ -35,7 +36,7 @@ pub(super) async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -
     let Some(effect_tracker) = session.effect_tracker() else {
         return EffectAudioResult { countdowns, alerts };
     };
-    let mut tracker = effect_tracker.lock().unwrap_or_else(|p| p.into_inner());
+    let mut tracker = effect_tracker.locked();
 
     // Note: On-end text alerts are handled by tick() -> fired_alerts -> take_fired_alerts(),
     // consumed in build_timer_data_with_audio(). We don't poll check_expiration_alert() here
@@ -202,7 +203,7 @@ pub(super) async fn clear_uptime_tracking(shared: &Arc<SharedState>) {
     };
     let session = session.read().await;
     if let Some(effect_tracker) = session.effect_tracker() {
-        let mut tracker = effect_tracker.lock().unwrap_or_else(|p| p.into_inner());
+        let mut tracker = effect_tracker.locked();
         tracker.clear_uptime_tracking();
     }
 }
@@ -219,7 +220,7 @@ pub(super) async fn build_effects_ab_data(
     let session = session.read().await;
 
     let effect_tracker = session.effect_tracker()?;
-    let mut tracker = effect_tracker.lock().unwrap_or_else(|p| p.into_inner());
+    let mut tracker = effect_tracker.locked();
 
     tracker.remember_uptime_icons();
     let tracker = &*tracker;
@@ -296,7 +297,7 @@ pub(super) async fn build_cooldowns_data(
     let session = session.read().await;
 
     let effect_tracker = session.effect_tracker()?;
-    let tracker = effect_tracker.lock().unwrap_or_else(|p| p.into_inner());
+    let tracker = effect_tracker.locked();
 
     if !tracker.has_active_effects() {
         return None;
@@ -383,7 +384,7 @@ pub(super) async fn build_dot_tracker_data(
     let session = session.read().await;
 
     let effect_tracker = session.effect_tracker()?;
-    let tracker = effect_tracker.lock().unwrap_or_else(|p| p.into_inner());
+    let tracker = effect_tracker.locked();
 
     if !tracker.has_active_effects() {
         return None;

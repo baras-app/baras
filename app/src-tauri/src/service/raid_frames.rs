@@ -2,6 +2,7 @@
 
 use super::effect_data::calculate_base_remaining_secs;
 use super::raid_detection;
+use crate::state::MutexExt;
 use crate::state::SharedState;
 use baras_core::context::resolve;
 use baras_core::game_data::{Discipline, Role};
@@ -16,7 +17,7 @@ use tracing::{debug, info};
 /// Registration will otherwise wait until combat, not when probing someone.
 pub(super) async fn promote_provisional_slots(shared: &Arc<SharedState>) {
     let provisional = {
-        let registry = shared.raid_registry.lock().unwrap_or_else(|p| p.into_inner());
+        let registry = shared.raid_registry.locked();
         registry.provisional_entries()
     };
     if provisional.is_empty() {
@@ -65,7 +66,7 @@ pub(super) async fn promote_provisional_slots(shared: &Arc<SharedState>) {
     }
 
     {
-        let mut registry = shared.raid_registry.lock().unwrap_or_else(|p| p.into_inner());
+        let mut registry = shared.raid_registry.locked();
         registry.assign_slots(
             assignments
                 .into_iter()
@@ -94,7 +95,7 @@ fn provisional_raid_frame(slot: u8, name: &str, ambiguous: bool) -> RaidFrame {
 }
 
 fn provisional_raid_frame_data(shared: &Arc<SharedState>) -> Option<RaidFrameData> {
-    let registry = shared.raid_registry.lock().unwrap_or_else(|p| p.into_inner());
+    let registry = shared.raid_registry.locked();
     let frames: Vec<_> = (0..registry.max_slots())
         .filter_map(|slot| {
             registry
@@ -152,7 +153,7 @@ pub(crate) async fn build_raid_frame_data(
         // Remember these players past a frame clear: a re-run OCR pass can
         // only rebind names it still has candidates for, and out-of-combat
         // targets never reach the discipline roster.
-        let mut roster = shared.ability_roster.lock().unwrap_or_else(|p| p.into_inner());
+        let mut roster = shared.ability_roster.locked();
         for target in new_targets {
             let name = resolve(target.name).to_string();
             if let Some(at) = session.last_event_time {

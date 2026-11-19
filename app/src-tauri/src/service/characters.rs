@@ -6,6 +6,7 @@ use baras_core::characters::CharacterStore;
 use baras_types::characters::{CharacterRecord, CharacterRoster, ManualLock};
 
 use super::handler::ServiceHandle;
+use crate::state::MutexExt;
 
 impl ServiceHandle {
     /// Every character the logs name, merged with the store, lockouts included.
@@ -27,7 +28,7 @@ impl ServiceHandle {
             })
             .collect();
         self.with_pull_index(move |index| {
-            let store = shared.character_store.lock().unwrap_or_else(|p| p.into_inner());
+            let store = shared.character_store.locked();
             baras_core::characters::roster(index, &store, &catalog, &last_events)
         })
         .await
@@ -36,7 +37,7 @@ impl ServiceHandle {
 
     /// Apply one edit and persist; false when the file could not be written.
     fn edit_characters(&self, edit: impl FnOnce(&mut CharacterStore)) -> bool {
-        let mut store = self.shared.character_store.lock().unwrap_or_else(|p| p.into_inner());
+        let mut store = self.shared.character_store.locked();
         edit(&mut store);
         match store.save() {
             Ok(()) => true,
@@ -66,11 +67,7 @@ impl ServiceHandle {
     }
 
     pub fn lockout_reset_hour(&self) -> u8 {
-        self.shared
-            .character_store
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .reset_hour_utc
+        self.shared.character_store.locked().reset_hour_utc
     }
 
     pub fn set_lockout_reset_hour(&self, hour: u8) -> bool {

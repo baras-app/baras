@@ -16,6 +16,7 @@ use baras_core::history::{LogHistory, start_ms_of};
 use baras_core::state::ipc::WorkerPlayerDiscipline;
 use baras_types::history::BackfillEvent;
 
+use crate::state::MutexExt;
 use crate::state::SharedState;
 
 pub const BACKFILL_EVENT: &str = "history-backfill";
@@ -74,7 +75,7 @@ pub async fn restore_parsely_links(session: &Arc<RwLock<ParsingSession>>, shared
         return;
     };
     let links: HashMap<i64, String> = {
-        let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        let meta = shared.library_meta.locked();
         meta.pull_parsely_links(filename)
             .map(|(ms, l)| (ms, l.to_string()))
             .collect()

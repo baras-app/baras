@@ -1,5 +1,6 @@
 //! Timer overlay data with audio events
 
+use crate::state::MutexExt;
 use crate::state::SharedState;
 use baras_core::timers::FiredAlert;
 use baras_overlay::{TimerData, TimerEntry};
@@ -34,7 +35,7 @@ pub(super) async fn build_timer_data_with_audio(
 
     // Get active timers from timer manager (Live mode only, mutable for countdown checking)
     let timer_mgr = session.timer_manager()?;
-    let mut timer_mgr = timer_mgr.lock().unwrap_or_else(|p| p.into_inner());
+    let mut timer_mgr = timer_mgr.locked();
 
     // Always take alerts (even after combat ends, timer expirations need to play)
     let mut alerts = timer_mgr.take_fired_alerts();
@@ -45,7 +46,7 @@ pub(super) async fn build_timer_data_with_audio(
 
     // Also get alerts from effect tracker (effect start/end alerts)
     if let Some(effect_tracker) = session.effect_tracker() {
-        let mut tracker = effect_tracker.lock().unwrap_or_else(|p| p.into_inner());
+        let mut tracker = effect_tracker.locked();
         alerts.extend(tracker.take_fired_alerts());
     }
 

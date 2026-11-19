@@ -19,6 +19,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{Mutex as AsyncMutex, oneshot};
 
 use crate::overlay::OverlayType;
+use crate::state::MutexExt;
 
 const OVERLAY_PAGE: &str = r#"<!doctype html>
 <html>
@@ -112,7 +113,7 @@ fn frame_cache() -> &'static Mutex<HashMap<String, CachedFrame>> {
 }
 
 fn lock_frames() -> std::sync::MutexGuard<'static, HashMap<String, CachedFrame>> {
-    frame_cache().lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    frame_cache().locked()
 }
 
 struct CachedFrame {

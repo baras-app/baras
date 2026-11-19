@@ -24,6 +24,7 @@ use tracing::{debug, error, info, warn};
 // Parse Worker IPC
 // ─────────────────────────────────────────────────────────────────────────────
 
+use crate::state::MutexExt;
 use baras_core::state::ParseWorkerOutput;
 
 /// Fallback to streaming parse if subprocess fails.
@@ -98,23 +99,11 @@ impl CombatService {
         let _ = self.overlay_tx.try_send(OverlayUpdate::ClearAllData);
 
         // Clear raid registry when switching files (new session = fresh state)
-        self.shared
-            .raid_registry
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .clear();
+        self.shared.raid_registry.locked().clear();
         // Entity ids do not survive a session change, so neither can the
         // ability-cast roster (a user frame clear deliberately keeps it).
-        self.shared
-            .ability_roster
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .clear();
-        *self
-            .shared
-            .pvp_ocr_roster_started_at
-            .lock()
-            .unwrap_or_else(|p| p.into_inner()) = None;
+        self.shared.ability_roster.locked().clear();
+        *self.shared.pvp_ocr_roster_started_at.locked() = None;
 
         // Create trigger channel for signal-driven metrics updates (tokio channel - no spawn_blocking needed)
         let (trigger_tx, mut trigger_rx) = mpsc::channel::<MetricsTrigger>(8);
@@ -467,7 +456,7 @@ impl CombatService {
                 if self.shared.is_live_tailing.load(Ordering::SeqCst) {
                     let area_id = parse_result.area.area_id;
                     let area_kind = AreaKind::from_area_id(area_id);
-                    let timer_already_running = self.shared.operation_timer.lock().unwrap().is_running();
+                    let timer_already_running = self.shared.operation_timer.locked().is_running();
 
                     if !timer_already_running {
                         const MAX_BACKFILL_SECS: u64 = 4 * 3600; // 4-hour cap
@@ -480,7 +469,7 @@ impl CombatService {
                                     let elapsed = now.signed_duration_since(entered_at);
                                     let elapsed_secs = elapsed.num_seconds().max(0) as u64;
                                     let capped = elapsed_secs.min(MAX_BACKFILL_SECS);
-                                    let mut timer = self.shared.operation_timer.lock().unwrap();
+                                    let mut timer = self.shared.operation_timer.locked();
                                     if !timer.manually_stopped {
                                         info!(
                                             area_kind = ?area_kind,
@@ -524,7 +513,7 @@ impl CombatService {
                                     let elapsed = now.signed_duration_since(first_pull);
                                     let elapsed_secs = elapsed.num_seconds().max(0) as u64;
                                     let capped = elapsed_secs.min(MAX_BACKFILL_SECS);
-                                    let mut timer = self.shared.operation_timer.lock().unwrap();
+                                    let mut timer = self.shared.operation_timer.locked();
                                     if !timer.manually_stopped {
                                         info!(elapsed_secs = capped, "Backfilling operation timer from the run start");
                                         timer.start_with_offset(capped);

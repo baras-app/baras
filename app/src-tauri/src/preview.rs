@@ -19,6 +19,7 @@ use baras_types::preview::{OverlayPreviewRequest, PreviewAlertTiming, PreviewAud
 use crate::audio::{AudioEvent, AudioSender};
 
 use crate::overlay::{OverlayCommand, OverlayType, SharedOverlayState};
+use crate::state::MutexExt;
 use crate::state::SharedState;
 
 /// How long a preview stays on screen (longer when its audio cues start earlier)
@@ -246,7 +247,7 @@ fn overlay_type(target: PreviewTarget) -> OverlayType {
 
 /// Merge the running preview into live overlay data on its way to an overlay thread
 pub fn with_preview(shared: &SharedState, mut data: OverlayData) -> OverlayData {
-    let mut slot = shared.preview.lock().unwrap_or_else(|p| p.into_inner());
+    let mut slot = shared.preview.locked();
     if let Some(preview) = slot.as_mut()
         && let Some(target) = target_of(&data)
         && preview.targets.contains(&target)
@@ -404,7 +405,7 @@ pub async fn start(
     let text = preview.text.clone();
     let start_remaining = preview.start_remaining;
     let id = {
-        let mut slot = shared.preview.lock().unwrap_or_else(|p| p.into_inner());
+        let mut slot = shared.preview.locked();
         let id = slot.as_ref().map_or(1, |p| p.id.wrapping_add(1));
         *slot = Some(ActivePreview { id, ..preview });
         id
@@ -416,7 +417,7 @@ pub async fn start(
         loop {
             // Snapshot under the lock; a newer preview (different id) supersedes this one
             let (current, superseded) = {
-                let mut slot = shared.preview.lock().unwrap_or_else(|p| p.into_inner());
+                let mut slot = shared.preview.locked();
                 match slot.as_ref() {
                     Some(p) if p.id == id && p.is_running() => (Some(p.clone()), false),
                     Some(p) if p.id == id => {

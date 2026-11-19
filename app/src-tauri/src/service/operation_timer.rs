@@ -1,6 +1,7 @@
 //! Operation timer state and its service tick
 
 use super::{CombatService, OverlayUpdate};
+use crate::state::MutexExt;
 use tauri::Emitter;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -207,7 +208,7 @@ impl CombatService {
     /// Emit the current operation timer state to the frontend via Tauri event
     /// and to the overlay via the overlay update channel.
     pub(super) fn emit_operation_timer_tick(&self) {
-        let timer = self.shared.operation_timer.lock().unwrap();
+        let timer = self.shared.operation_timer.locked();
         let data = timer.to_overlay_data();
         drop(timer);
 

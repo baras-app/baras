@@ -5,6 +5,7 @@ use std::sync::Arc;
 use baras_core::raid_detect::{CandidateSet, PlayerCandidate};
 use chrono::NaiveDateTime;
 
+use crate::state::MutexExt;
 use crate::state::SharedState;
 
 const ROSTER_WINDOW_MINUTES: i64 = 30;
@@ -29,8 +30,7 @@ pub(super) async fn raid_detection_candidates(shared: &Arc<SharedState>) -> Vec<
     // PvP rosters are match-specific. Players from before this area are not candidates.
     let pvp_roster_started_at = shared
         .pvp_ocr_roster_started_at
-        .lock()
-        .unwrap_or_else(|p| p.into_inner())
+        .locked()
         .or(cache.current_area.entered_at);
     let cutoff = candidate_cutoff(last_event, cache.current_area.area_id, pvp_roster_started_at);
     let mut set = CandidateSet::new();
@@ -48,7 +48,7 @@ pub(super) async fn raid_detection_candidates(shared: &Arc<SharedState>) -> Vec<
     }
 
     // Ability targets may not exist in the discipline roster yet.
-    let mut roster = shared.ability_roster.lock().unwrap_or_else(|p| p.into_inner());
+    let mut roster = shared.ability_roster.locked();
     roster.expire_before(cutoff);
     for candidate in roster.candidates() {
         set.observe_raw(

@@ -12,6 +12,7 @@ use baras_core::library::{LibraryMut, LibraryView};
 use baras_types::history::{ArchiveReport, CleanupEvent, CleanupPlan, CleanupReport};
 use tauri::{AppHandle, Emitter};
 
+use crate::state::MutexExt;
 use crate::state::SharedState;
 
 /// The pull index, brought up to date with the history directory. Links
@@ -19,10 +20,10 @@ use crate::state::SharedState;
 /// way, so the one pass that loads a file never drops them. Locks the index,
 /// then briefly the metadata: every caller takes them in that order.
 pub fn pull_index<'a>(shared: &'a SharedState, log_dir: &Path) -> std::sync::MutexGuard<'a, PullIndex> {
-    let mut index = shared.pull_index.lock().unwrap_or_else(|p| p.into_inner());
+    let mut index = shared.pull_index.locked();
     match index.refresh(log_dir) {
         Ok(report) if !report.legacy_parsely.is_empty() => {
-            let mut meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let mut meta = shared.library_meta.locked();
             let links = report
                 .legacy_parsely
                 .iter()
@@ -65,7 +66,7 @@ pub async fn plan(shared: &Arc<SharedState>, live: Option<&Path>) -> CleanupPlan
     tokio::task::block_in_place(|| {
         let archived = baras_core::library::archived_logs();
         let pulls = pull_index(&shared, &log_dir);
-        let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        let meta = shared.library_meta.locked();
         let view = LibraryView {
             directory: &directory,
             areas: disk_areas.as_ref().unwrap_or(&areas),
@@ -161,7 +162,7 @@ pub async fn apply(
 pub async fn with_library<T>(shared: &SharedState, live: Option<&Path>, f: impl FnOnce(&mut LibraryMut<'_>) -> T) -> T {
     let mut directory = shared.directory_index.write().await;
     let mut areas = shared.area_cache.write().await;
-    let mut meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+    let mut meta = shared.library_meta.locked();
     let mut lib = LibraryMut {
         directory: &mut directory,
         areas: &mut areas,

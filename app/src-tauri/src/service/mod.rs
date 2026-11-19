@@ -45,6 +45,7 @@ use baras_core::timers::FiredAlert;
 use baras_overlay::{BossHealthData, CooldownData, DotTrackerData, EffectsABData, NotesData, RaidFrameData, TimerData};
 
 use crate::audio::{AudioEvent, AudioSender, AudioService};
+use crate::state::MutexExt;
 use tracing::{debug, info, warn};
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -342,13 +343,13 @@ impl CombatService {
                             // Requirement 4: zero out the operation timer when a historical
                             // file is opened — it represents a different session entirely.
                             {
-                                let mut timer = self.shared.operation_timer.lock().unwrap();
+                                let mut timer = self.shared.operation_timer.locked();
                                 timer.reset();
                             }
                             self.emit_operation_timer_tick();
                             // Parse is awaited inline, so "FileLoaded" has fired by now
                             self.start_tailing(path.clone()).await;
-                            self.shared.pending_opens.lock().unwrap_or_else(|p| p.into_inner()).remove(&path);
+                            self.shared.pending_opens.locked().remove(&path);
                             if let Some(id) = select_encounter {
                                 let _ = self.app_handle.emit("select-encounter", id);
                             }
@@ -411,7 +412,7 @@ impl CombatService {
                         ServiceCommand::StartOperationTimer => {
                             // Only allow in live mode - not during historical replay
                             if self.shared.is_live_tailing.load(Ordering::SeqCst) {
-                                let mut timer = self.shared.operation_timer.lock().unwrap();
+                                let mut timer = self.shared.operation_timer.locked();
                                 timer.manually_started = true;
                                 timer.manually_stopped = false;
                                 timer.start();
@@ -422,29 +423,29 @@ impl CombatService {
                         ServiceCommand::StopOperationTimer => {
                             // Only allow in live mode - not during historical replay
                             if self.shared.is_live_tailing.load(Ordering::SeqCst) {
-                                let mut timer = self.shared.operation_timer.lock().unwrap();
+                                let mut timer = self.shared.operation_timer.locked();
                                 timer.stop();
                                 drop(timer);
                                 self.emit_operation_timer_tick();
                                 // Also send final state to overlay
-                                let data = self.shared.operation_timer.lock().unwrap().to_overlay_data();
+                                let data = self.shared.operation_timer.locked().to_overlay_data();
                                 let _ = self.overlay_tx.try_send(OverlayUpdate::OperationTimerUpdated(data));
                             }
                         }
                         ServiceCommand::ResetOperationTimer => {
                             // Only allow in live mode - not during historical replay
                             if self.shared.is_live_tailing.load(Ordering::SeqCst) {
-                                let mut timer = self.shared.operation_timer.lock().unwrap();
+                                let mut timer = self.shared.operation_timer.locked();
                                 timer.reset();
                                 drop(timer);
                                 self.emit_operation_timer_tick();
                                 // Send cleared state to overlay
-                                let data = self.shared.operation_timer.lock().unwrap().to_overlay_data();
+                                let data = self.shared.operation_timer.locked().to_overlay_data();
                                 let _ = self.overlay_tx.try_send(OverlayUpdate::OperationTimerUpdated(data));
                             }
                         }
                         ServiceCommand::SetOperationTimerContext { operation_name } => {
-                            let mut timer = self.shared.operation_timer.lock().unwrap();
+                            let mut timer = self.shared.operation_timer.locked();
                             timer.operation_name = operation_name;
                         }
                         ServiceCommand::EmitOperationTimerTick => {

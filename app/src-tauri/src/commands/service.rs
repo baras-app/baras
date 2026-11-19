@@ -12,6 +12,7 @@ use baras_types::SoundCategory;
 use crate::audio::{AudioEvent, AudioSender, resolve_bundled_definitions_dir, resolve_sound_path};
 use crate::overlay::{MetricType, OverlayManager, OverlayType, SharedOverlayState};
 use crate::service::{LogFileInfo, ServiceHandle, SessionInfo};
+use crate::state::MutexExt;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Log File Commands
@@ -500,12 +501,7 @@ pub async fn apply_profile(
 
     // Update raid registry max slots if grid size changed between profiles
     if new_slots != old_slots {
-        handle
-            .shared
-            .raid_registry
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .set_max_slots(new_slots);
+        handle.shared.raid_registry.locked().set_max_slots(new_slots);
     }
 
     // Reset move mode on profile switch

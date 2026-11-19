@@ -25,6 +25,7 @@ use baras_types::history::{
 use tauri::{AppHandle, Emitter, Manager};
 
 use super::{AreaVisitInfo, CombatData, LogFileInfo, ServiceCommand, SessionInfo, cleanup};
+use crate::state::MutexExt;
 use crate::state::SharedState;
 
 /// Handle to communicate with the combat service and query state
@@ -76,7 +77,7 @@ impl ServiceHandle {
     pub async fn log_files(&self) -> Vec<LogFileInfo> {
         let index = self.shared.directory_index.read().await;
         let area_cache = self.shared.area_cache.read().await;
-        let meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        let meta = self.shared.library_meta.locked();
 
         index
             .entries()
@@ -137,16 +138,11 @@ impl ServiceHandle {
     }
 
     pub async fn retained_content(&self) -> Vec<ContentTag> {
-        self.shared
-            .library_meta
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .retain
-            .clone()
+        self.shared.library_meta.locked().retain.clone()
     }
 
     pub async fn set_retained_content(&self, retain: Vec<ContentTag>) -> bool {
-        let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        let mut meta = self.shared.library_meta.locked();
         meta.retain = retain;
         if let Err(e) = meta.save() {
             tracing::warn!(error = %e, "Failed to save library.json");
@@ -165,7 +161,7 @@ impl ServiceHandle {
         let areas = self.shared.area_cache.read().await;
         tokio::task::block_in_place(|| {
             let pulls = cleanup::pull_index(&shared, &log_dir);
-            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let meta = shared.library_meta.locked();
             let mut rows_out: Vec<LibraryRow> = directory
                 .entries()
                 .into_iter()
@@ -263,7 +259,7 @@ impl ServiceHandle {
     }
 
     pub async fn set_log_favorite(&self, filename: String, favorite: bool) -> bool {
-        let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        let mut meta = self.shared.library_meta.locked();
         meta.set_favorite(&filename, favorite);
         if let Err(e) = meta.save() {
             tracing::warn!(error = %e, "Failed to save library.json");
@@ -274,7 +270,7 @@ impl ServiceHandle {
 
     /// The user's tags and note on one log.
     pub fn set_log_meta(&self, filename: &str, tags: Vec<String>, note: &str) -> bool {
-        let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        let mut meta = self.shared.library_meta.locked();
         meta.set_log_meta(filename, tags, note);
         match meta.save() {
             Ok(()) => true,
@@ -287,7 +283,7 @@ impl ServiceHandle {
 
     /// Hide or show one pull in Boss Statistics
     pub fn set_pull_hidden(&self, filename: &str, start_ms: i64, hidden: bool) -> bool {
-        let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        let mut meta = self.shared.library_meta.locked();
         meta.set_pull_hidden(filename, start_ms, hidden);
         match meta.save() {
             Ok(()) => true,
@@ -300,7 +296,7 @@ impl ServiceHandle {
 
     /// Remove a tag from every run of one log (the grey run tags in Log Management)
     pub fn remove_run_tag_for_log(&self, filename: &str, tag: &str) -> bool {
-        let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        let mut meta = self.shared.library_meta.locked();
         meta.remove_run_tag_for_log(filename, tag);
         match meta.save() {
             Ok(()) => true,
@@ -317,7 +313,7 @@ impl ServiceHandle {
         let mut directory = self.shared.directory_index.write().await;
         let mut areas = self.shared.area_cache.write().await;
         let restored = {
-            let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let mut meta = self.shared.library_meta.locked();
             let mut lib = baras_core::library::LibraryMut {
                 directory: &mut directory,
                 areas: &mut areas,
@@ -398,11 +394,7 @@ impl ServiceHandle {
 
         // Update raid registry max slots if grid size changed
         if new_slots != old_slots {
-            self.shared
-                .raid_registry
-                .lock()
-                .unwrap_or_else(|p| p.into_inner())
-                .set_max_slots(new_slots);
+            self.shared.raid_registry.locked().set_max_slots(new_slots);
         }
 
         // Update effect tracker alacrity/latency if changed
@@ -411,7 +403,7 @@ impl ServiceHandle {
         {
             let session = session.read().await;
             if let Some(tracker) = session.effect_tracker() {
-                let mut tracker = tracker.lock().unwrap_or_else(|p| p.into_inner());
+                let mut tracker = tracker.locked();
                 if alacrity_changed {
                     tracker.set_alacrity(new_alacrity);
                 }
@@ -622,7 +614,7 @@ impl ServiceHandle {
                 source_len: None,
                 visibility,
             };
-            let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let mut meta = self.shared.library_meta.locked();
             meta.set_pull_parsely(&filename, start_ms, upload);
             if let Err(e) = meta.save() {
                 tracing::warn!(error = %e, "Failed to save library.json");
@@ -636,7 +628,7 @@ impl ServiceHandle {
         let catalog = self.area_catalog();
         let shared = self.shared.clone();
         self.with_pull_index(move |index| {
-            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let meta = shared.library_meta.locked();
             index.overview(&filter, &catalog, &meta)
         })
         .await
@@ -648,7 +640,7 @@ impl ServiceHandle {
         let catalog = self.area_catalog();
         let shared = self.shared.clone();
         self.with_pull_index(move |index| {
-            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let meta = shared.library_meta.locked();
             let mut rows = index.pulls(&operation, &boss, &filter, &catalog, &meta);
             for row in &mut rows {
                 row.parsely = meta.parsely_link_for(&row.filename, row.start_ms).map(str::to_string);
@@ -664,7 +656,7 @@ impl ServiceHandle {
         let catalog = self.area_catalog();
         let shared = self.shared.clone();
         self.with_pull_index(move |index| {
-            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let meta = shared.library_meta.locked();
             let runs = index.runs(&catalog, &filter, &meta);
             RunList {
                 runs,
@@ -687,7 +679,7 @@ impl ServiceHandle {
         let catalog = self.area_catalog();
         let shared = self.shared.clone();
         self.with_pull_index(move |index| {
-            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let meta = shared.library_meta.locked();
             let (run, rows) = index.run(&filename, start_ms, &catalog, &meta)?;
             // A run can span logs (disconnect, character swap)
             let mut files: Vec<&str> = rows.iter().map(|r| r.filename.as_str()).collect();
@@ -706,7 +698,7 @@ impl ServiceHandle {
 
     /// Tags and note for one run; an empty meta removes the entry.
     pub fn set_run_meta(&self, filename: &str, start_ms: i64, meta: RunMeta) -> bool {
-        let mut store = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        let mut store = self.shared.library_meta.locked();
         store.set_run(filename, start_ms, meta);
         match store.save() {
             Ok(()) => true,
@@ -807,7 +799,7 @@ impl ServiceHandle {
             source_len,
             visibility,
         };
-        let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        let mut meta = self.shared.library_meta.locked();
         meta.set_log_parsely(filename, upload);
         if let Err(e) = meta.save() {
             tracing::warn!(error = %e, "Failed to save library.json");
@@ -837,21 +829,13 @@ impl ServiceHandle {
 
     /// Swap two slots in the raid registry
     pub async fn swap_raid_slots(&self, slot_a: u8, slot_b: u8) {
-        self.shared
-            .raid_registry
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .swap_slots(slot_a, slot_b);
+        self.shared.raid_registry.locked().swap_slots(slot_a, slot_b);
         self.refresh_raid_frames().await;
     }
 
     /// Remove a slot from the raid registry
     pub async fn remove_raid_slot(&self, slot: u8) {
-        self.shared
-            .raid_registry
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .remove_slot(slot);
+        self.shared.raid_registry.locked().remove_slot(slot);
         self.refresh_raid_frames().await;
     }
 
@@ -867,7 +851,7 @@ impl ServiceHandle {
         ambiguous_rows: &[u8],
     ) -> usize {
         let remaining = {
-            let mut registry = self.shared.raid_registry.lock().unwrap_or_else(|p| p.into_inner());
+            let mut registry = self.shared.raid_registry.locked();
             // The screen is the authority: players the pass did not
             // re-confirm are evicted before the confirmed ones are placed.
             // An ambiguous row is the exception — it read something that
@@ -893,7 +877,7 @@ impl ServiceHandle {
 
     pub async fn apply_provisional_raid_detection(&self, assignments: Vec<(u8, String)>) -> (usize, usize) {
         let counts = {
-            let mut registry = self.shared.raid_registry.lock().unwrap_or_else(|p| p.into_inner());
+            let mut registry = self.shared.raid_registry.locked();
             registry.assign_provisional_slots(assignments);
             (registry.provisional_len(), registry.registered_len())
         };
@@ -910,21 +894,13 @@ impl ServiceHandle {
 
     /// Mark the slots whose reading fitted more than one player.
     pub async fn set_ambiguous_slots(&self, slots: Vec<u8>) {
-        self.shared
-            .raid_registry
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .set_ambiguous_slots(slots);
+        self.shared.raid_registry.locked().set_ambiguous_slots(slots);
         self.refresh_raid_frames().await;
     }
 
     /// Clear all raid registry slots
     pub async fn clear_raid_registry(&self) {
-        self.shared
-            .raid_registry
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .clear();
+        self.shared.raid_registry.locked().clear();
         self.refresh_raid_frames().await;
     }
 
@@ -961,13 +937,7 @@ impl ServiceHandle {
     /// Queue a historical open. Returns `Ok(false)` when the same file is
     /// already queued or being parsed, so the click is a no-op.
     pub async fn open_historical_file(&self, path: PathBuf, select_encounter: Option<u64>) -> Result<bool, String> {
-        if !self
-            .shared
-            .pending_opens
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .insert(path.clone())
-        {
+        if !self.shared.pending_opens.locked().insert(path.clone()) {
             return Ok(false);
         }
         self.cmd_tx
@@ -1791,7 +1761,7 @@ impl ServiceHandle {
     /// Get the current operation timer state
     pub fn operation_timer_state(&self) -> super::OperationTimerState {
         // Return a snapshot copy - can't return the actual state due to mutex
-        let timer = self.shared.operation_timer.lock().unwrap();
+        let timer = self.shared.operation_timer.locked();
         super::OperationTimerState {
             started_at: timer.started_at,
             accumulated_secs: timer.accumulated_secs,

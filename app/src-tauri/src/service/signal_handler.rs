@@ -2,6 +2,7 @@
 
 use super::operation_timer::{AreaKind, secs_since};
 use super::{MetricsTrigger, OverlayUpdate, ServiceCommand, SessionEvent, raid_detection};
+use crate::state::MutexExt;
 use crate::state::SharedState;
 use baras_core::context::resolve;
 use baras_core::game_data::{Discipline, Role};
@@ -77,7 +78,7 @@ impl CombatSignalHandler {
         if !self.shared.is_live_tailing.load(Ordering::SeqCst) {
             return;
         }
-        let mut timer = self.shared.operation_timer.lock().unwrap();
+        let mut timer = self.shared.operation_timer.locked();
         if !timer.is_running() && !timer.manually_stopped {
             timer.reset();
             timer.start();
@@ -152,7 +153,7 @@ impl SignalHandler for CombatSignalHandler {
                 {
                     let area_kind = self.current_area_kind();
                     if matches!(area_kind, AreaKind::Operation | AreaKind::Flashpoint) {
-                        let mut timer = self.shared.operation_timer.lock().unwrap();
+                        let mut timer = self.shared.operation_timer.locked();
                         if timer.is_running() {
                             // Use the game-log timestamp to subtract the grace-period lag
                             // (CombatEnded is dispatched ~3s after the actual kill event).
@@ -207,8 +208,7 @@ impl SignalHandler for CombatSignalHandler {
                 let mut registry = self
                     .shared
                     .raid_registry
-                    .lock()
-                    .unwrap_or_else(|p| p.into_inner());
+                    .locked();
                 registry.update_discipline(*entity_id, *class_id, *discipline_id);
                 // This may be the log identity a provisional slot is waiting
                 // for; the raid tick re-matches when the flag is set.
@@ -264,20 +264,17 @@ impl SignalHandler for CombatSignalHandler {
                 if raid_detection::should_reset_on_area_entry(current, *area_id, is_live) {
                     self.shared
                         .raid_registry
-                        .lock()
-                        .unwrap_or_else(|p| p.into_inner())
+                        .locked()
                         .clear();
                     self.shared
                         .ability_roster
-                        .lock()
-                        .unwrap_or_else(|p| p.into_inner())
+                        .locked()
                         .clear();
                     self.shared.roster_changed.store(false, Ordering::Relaxed);
                     *self
                         .shared
                         .pvp_ocr_roster_started_at
-                        .lock()
-                        .unwrap_or_else(|p| p.into_inner()) = Some(*timestamp);
+                        .locked() = Some(*timestamp);
                     // The overlay renders its own copy of the slots; without a
                     // refresh it keeps showing the previous group's assignments.
                     let _ = self.cmd_tx.try_send(ServiceCommand::RefreshRaidFrames);
@@ -286,8 +283,7 @@ impl SignalHandler for CombatSignalHandler {
                     *self
                         .shared
                         .pvp_ocr_roster_started_at
-                        .lock()
-                        .unwrap_or_else(|p| p.into_inner()) = None;
+                        .locked() = None;
                 }
                 if *area_id != current {
                     // Metric rebuilds keep the last encounter's enemies until a
@@ -336,7 +332,7 @@ impl SignalHandler for CombatSignalHandler {
                             new_kind,
                             AreaKind::Operation | AreaKind::Flashpoint | AreaKind::PvP
                         ) {
-                            let mut timer = self.shared.operation_timer.lock().unwrap();
+                            let mut timer = self.shared.operation_timer.locked();
                             if matches!(new_kind, AreaKind::Operation) {
                                 let instance = (*area_id, *difficulty_id);
                                 // Joining a different instance (other operation and/or
@@ -369,7 +365,7 @@ impl SignalHandler for CombatSignalHandler {
                         if matches!(prev_kind, AreaKind::Operation)
                             && !matches!(new_kind, AreaKind::Operation)
                         {
-                            let mut timer = self.shared.operation_timer.lock().unwrap();
+                            let mut timer = self.shared.operation_timer.locked();
                             timer.mark_exited();
                         }
 
@@ -377,7 +373,7 @@ impl SignalHandler for CombatSignalHandler {
                         if matches!(prev_kind, AreaKind::Flashpoint | AreaKind::PvP)
                             && !matches!(new_kind, AreaKind::Flashpoint | AreaKind::PvP)
                         {
-                            let mut timer = self.shared.operation_timer.lock().unwrap();
+                            let mut timer = self.shared.operation_timer.locked();
                             if timer.is_running() {
                                 timer.stop_auto();
                             }
@@ -388,7 +384,7 @@ impl SignalHandler for CombatSignalHandler {
                         // If entering a FP/PvP area: immediately start the timer
                         // (requirement 1: no boss pull needed).
                         if new_kind.auto_starts_on_entry() {
-                            let mut timer = self.shared.operation_timer.lock().unwrap();
+                            let mut timer = self.shared.operation_timer.locked();
                             if !timer.is_running() && !timer.manually_stopped {
                                 timer.start();
                                 drop(timer);
@@ -461,7 +457,7 @@ impl SignalHandler for CombatSignalHandler {
                 if self.shared.is_live_tailing.load(Ordering::SeqCst)
                     && matches!(self.current_area_kind(), AreaKind::Operation)
                 => {
-                    let mut timer = self.shared.operation_timer.lock().unwrap();
+                    let mut timer = self.shared.operation_timer.locked();
                     if timer.is_running() && !timer.manually_started {
                         timer.reset();
                         if let Some(at) = run_started {
