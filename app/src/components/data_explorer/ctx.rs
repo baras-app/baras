@@ -347,6 +347,14 @@ pub(super) fn repaint_with<T: 'static>(source: Signal<T>) {
 }
 
 impl ExplorerCtx {
+    /// Reloads for `idx` may run: its timeline has loaded and it is the painted
+    /// encounter. Until the encounter load lands, `time_range` and `timeline`
+    /// still hold the previous fight's, and a query with them flashes values
+    /// over the wrong duration. Subscribes the calling effect.
+    pub(super) fn timeline_ready(self, idx: Option<u32>) -> bool {
+        matches!(*self.timeline_state.read(), LoadState::Loaded) && *self.shown_encounter.read() == idx
+    }
+
     // Filter by source when selected
     // `id` is the NPC instance id when the row is one spawn among same-named copies
     pub(super) fn select_source(self, name: String, id: Option<i64>) {

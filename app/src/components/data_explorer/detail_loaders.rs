@@ -341,7 +341,6 @@ pub(super) fn use_detailed_loader(ctx: ExplorerCtx) {
         transitioning_from_live,
         view_mode,
         time_range,
-        timeline_state,
         timeline,
         mut preloaded_detail,
         ..
@@ -351,7 +350,6 @@ pub(super) fn use_detailed_loader(ctx: ExplorerCtx) {
         let idx = *selected_encounter.read();
         let mode = *view_mode.read();
         let tr = time_range();
-        let tl_state = timeline_state();
 
         // During live query, the live poll effect handles data loading — skip here
         // to avoid racing with live poll writes and causing data "waffle" between values.
@@ -360,8 +358,7 @@ pub(super) fn use_detailed_loader(ctx: ExplorerCtx) {
             return;
         }
 
-        // Only load when timeline is loaded
-        if !matches!(tl_state, LoadState::Loaded) {
+        if !ctx.timeline_ready(idx) {
             return;
         }
 
@@ -398,7 +395,6 @@ pub(super) fn use_ability_reload(ctx: ExplorerCtx) {
         show_players_only,
         time_range,
         mut abilities,
-        timeline_state,
         shown_mode,
         timeline,
         ..
@@ -419,7 +415,6 @@ pub(super) fn use_ability_reload(ctx: ExplorerCtx) {
         let src = selected_source.read().clone();
         let src_id = *selected_source_id.read();
         let tr = time_range();
-        let tl_state = timeline_state();
 
         // During live query, the live poll effect handles data loading — skip here.
         // Also skip during live→historical transition (combat just ended, encounter not yet set)
@@ -432,8 +427,7 @@ pub(super) fn use_ability_reload(ctx: ExplorerCtx) {
             return;
         };
 
-        // Skip if timeline not loaded
-        if !matches!(tl_state, LoadState::Loaded) {
+        if !ctx.timeline_ready(idx) {
             return;
         }
 
@@ -480,7 +474,6 @@ pub(super) fn use_dt_summary(ctx: ExplorerCtx) {
         selected_source,
         selected_source_id,
         time_range,
-        timeline_state,
         shown_mode,
         mut dt_summary,
         ..
@@ -492,7 +485,6 @@ pub(super) fn use_dt_summary(ctx: ExplorerCtx) {
         let src = selected_source.read().clone();
         let src_id = *selected_source_id.read();
         let tr = time_range();
-        let tl_state = timeline_state();
 
         // Skip during live query to avoid cascade race conditions
         if *live_query_active.read() || *transitioning_from_live.read() {
@@ -505,7 +497,7 @@ pub(super) fn use_dt_summary(ctx: ExplorerCtx) {
             return;
         }
         // A new encounter is loading: its summary arrives with the rest of the page
-        if !matches!(tl_state, LoadState::Loaded) {
+        if !ctx.timeline_ready(idx) {
             return;
         }
 

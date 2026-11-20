@@ -414,7 +414,6 @@ fn use_overview_loader(ctx: ExplorerCtx) {
         transitioning_from_live,
         view_mode,
         time_range,
-        timeline_state,
         mut shown_mode,
         timeline,
         last_overview_fetch,
@@ -427,7 +426,6 @@ fn use_overview_loader(ctx: ExplorerCtx) {
         let mode = *view_mode.read();
         let is_overview = matches!(mode, ViewMode::Overview);
         let tr = time_range();
-        let tl_state = timeline_state();
 
         // During live query, the live poll effect handles all data loading — skip here
         // to avoid racing with live poll writes and causing data "waffle" between values.
@@ -436,8 +434,7 @@ fn use_overview_loader(ctx: ExplorerCtx) {
             return;
         }
 
-        // Only proceed when timeline is loaded
-        if !matches!(tl_state, LoadState::Loaded) {
+        if !ctx.timeline_ready(idx) {
             return;
         }
 
