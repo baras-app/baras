@@ -352,6 +352,8 @@ pub(super) fn overview_view(ctx: ExplorerCtx, european: bool) -> Element {
                                                            let bar_color = challenge.color
                                                                .map(|c| format!("rgba({}, {}, {}, 0.15)", c[0], c[1], c[2]))
                                                                .unwrap_or_else(|| "rgba(74, 144, 217, 0.15)".to_string());
+                                                           // Bars scale to the top player so the leader spans the full row
+                                                           let max_pct = challenge.by_player.iter().map(|p| p.percent).fold(0.0, f32::max);
 
                                                            rsx! {
                                                                div { class: "challenge-card",
@@ -382,6 +384,7 @@ pub(super) fn overview_view(ctx: ExplorerCtx, european: bool) -> Element {
                                                                            }
                                                                            for player in challenge.by_player.iter() {
                                                                                {
+                                                                                   let bar_pct = if max_pct > 0.0 { player.percent / max_pct * 100.0 } else { 0.0 };
                                                                                    let ps_str = player.per_second
                                                                                        .map(|ps| format_compact(ps as i64))
                                                                                        .unwrap_or_default();
@@ -389,7 +392,7 @@ pub(super) fn overview_view(ctx: ExplorerCtx, european: bool) -> Element {
                                                                                        div { class: "challenge-player-row",
                                                                                            div {
                                                                                                class: "challenge-bar-fill",
-                                                                                               style: "width: {player.percent:.1}%; background: {bar_color}",
+                                                                                               style: "width: {bar_pct:.1}%; background: {bar_color}",
                                                                                            }
                                                                                            span { class: "challenge-player-name",
                                                                                                if let Some((role, class, discipline)) = player_icons.get(&player.name) {
