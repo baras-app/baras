@@ -18,6 +18,7 @@ mod notes;
 mod optional_trigger;
 mod phase_form;
 mod phases;
+pub mod selectors;
 mod tabs;
 mod timer_form;
 mod timers;

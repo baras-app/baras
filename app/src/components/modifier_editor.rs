@@ -8,7 +8,7 @@ use dioxus::prelude::*;
 use crate::components::editor_common::FormCard;
 use crate::components::form_fields::{CheckField, Field, NumberField, SubSection};
 
-use super::encounter_editor::triggers::{AbilitySelectorEditor, EffectSelectorEditor};
+use super::encounter_editor::selectors::{AbilitySelectorEditor, EffectSelectorEditor};
 use crate::types::{AbilitySelector, ChargeDirection, EffectModifier, EffectSelector, MitigationType, Trigger};
 
 // ─────────────────────────────────────────────────────────────────────────────

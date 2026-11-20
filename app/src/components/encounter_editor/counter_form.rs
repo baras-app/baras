@@ -7,8 +7,9 @@ use crate::components::form_fields::{CheckField, Deprecated, Field, NumberField,
 use crate::types::{CounterDefinition, EffectSelector, EffectStackConfig, EntityFilter, StackAggregation, Trigger};
 
 use super::optional_trigger::OptionalTrigger;
+use super::selectors::{EffectSelectorEditor, EntityFilterDropdown};
 use super::tabs::EncounterData;
-use super::triggers::{ComposableTriggerEditor, EffectSelectorEditor, EntityFilterDropdown};
+use super::triggers::ComposableTriggerEditor;
 
 #[component]
 pub(super) fn CounterEditForm(

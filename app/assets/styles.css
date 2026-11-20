@@ -7170,6 +7170,48 @@ a.contributor-name:hover {
   min-width: 0;
 }
 
+/* Several controls under one label (chips over an add box, a select over
+   its specifics): one column, as wide as a text box */
+.field-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4em;
+  flex: 1 1 12em;
+  min-width: 0;
+  max-width: 24em;
+}
+
+.field-stack > :is(select, input) {
+  width: 100%;
+}
+
+.field-stack-row {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.field-stack-row > input {
+  flex: 1;
+  min-width: 0;
+}
+
+.field-stack-row > .btn {
+  flex: 0 0 auto;
+  height: 30px;
+}
+
+.field-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+/* Trigger rows are form rows; the spacing comes from them */
+.trigger-fields > .field:last-child {
+  margin-bottom: 0.6em;
+}
+
 .field-unit {
   color: var(--text-muted);
 }

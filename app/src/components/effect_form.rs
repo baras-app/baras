@@ -10,7 +10,7 @@ use super::effect_trigger::{
     get_trigger_effects, get_trigger_filters, set_trigger_abilities, set_trigger_effects, set_trigger_source,
     set_trigger_target,
 };
-use super::encounter_editor::triggers::{EffectSelectorEditor, EntityFilterDropdown};
+use super::encounter_editor::selectors::{EffectSelectorEditor, EntityFilterDropdown};
 use super::sound_picker::SoundPicker;
 use crate::api;
 use crate::components::editor_common::{FormCard, ItemActions, PreviewButton, preview_audio};

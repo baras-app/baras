@@ -11,9 +11,9 @@ use crate::utils::parse_hex_color;
 
 use super::DifficultiesEditor;
 use super::challenges::IdChipEditor;
+use super::selectors::EntityFilterDropdown;
 use super::tabs::EncounterData;
 use super::timers::PhaseSelector;
-use super::triggers::EntityFilterDropdown;
 
 /// (value, label) per column layout, in menu order
 const COLUMNS: [(ChallengeColumns, &str, &str); 6] = [
