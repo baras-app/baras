@@ -45,18 +45,19 @@ impl OverlayManager {
         let handle = match kind {
             OverlayType::Metric(metric_type) => {
                 let appearance = get_appearance_for_type(settings, metric_type);
+                let m = settings.metric_options_for(&appearance.overrides);
                 create_metric_overlay(
                     metric_type,
                     position,
                     appearance,
-                    settings.metric_show_empty_bars,
-                    settings.metric_stack_from_bottom,
-                    settings.metric_scaling_factor,
-                    settings.class_icon_mode,
-                    settings.metric_font_scale,
-                    settings.metric_dynamic_background,
-                    settings.metric_show_background_bar,
-                    settings.metric_gradient_intensity,
+                    m.show_empty_bars,
+                    m.stack_from_bottom,
+                    m.scaling_factor,
+                    m.class_icon_mode,
+                    m.font_scale,
+                    m.dynamic_background,
+                    m.show_background_bar,
+                    m.gradient_intensity,
                 )?
             }
             OverlayType::Personal => {
@@ -362,18 +363,19 @@ impl OverlayManager {
         match kind {
             OverlayType::Metric(metric_type) => {
                 let appearance = get_appearance_for_type(settings, metric_type);
+                let m = settings.metric_options_for(&appearance.overrides);
                 OverlayConfigUpdate::Metric(
                     appearance,
-                    settings.metric_show_empty_bars,
-                    settings.metric_stack_from_bottom,
-                    settings.metric_scaling_factor,
-                    settings.class_icon_mode,
-                    settings.metric_font_scale,
-                    settings.metric_dynamic_background,
+                    m.show_empty_bars,
+                    m.stack_from_bottom,
+                    m.scaling_factor,
+                    m.class_icon_mode,
+                    m.font_scale,
+                    m.dynamic_background,
                     eu,
-                    settings.metric_show_background_bar,
+                    m.show_background_bar,
                     settings.class_colors.clone(),
-                    settings.metric_gradient_intensity,
+                    m.gradient_intensity,
                 )
             }
             OverlayType::Personal => {

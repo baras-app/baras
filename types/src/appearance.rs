@@ -198,9 +198,57 @@ pub struct OverlayAppearanceConfig {
     /// `None` follows `OverlaySettings::metric_bar_spacing`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bar_spacing: Option<f32>,
+    /// Corner radius of each bar in pixels at base size (0 = square).
+    /// `None` follows `OverlaySettings::metric_bar_radius`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bar_radius: Option<f32>,
     /// Pre-`bar_spacing` per-overlay value; read once by `migrate_legacy`
     #[serde(default, skip_serializing, rename = "bar_spacing_ratio")]
     pub legacy_bar_spacing: Option<f32>,
+    #[serde(default, skip_serializing_if = "MetricOverrides::is_empty")]
+    pub overrides: MetricOverrides,
+}
+
+/// One metric overlay's overrides of the global `OverlaySettings::metric_*`
+/// options; `None` inherits. Resolved by `OverlaySettings::metric_options_for`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MetricOverrides {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_empty_bars: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stack_from_bottom: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scaling_factor: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub class_icon_mode: Option<ClassIconMode>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font_scale: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dynamic_background: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_background_bar: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gradient_intensity: Option<f32>,
+}
+
+impl MetricOverrides {
+    pub fn is_empty(&self) -> bool {
+        *self == Self::default()
+    }
+}
+
+/// Fully resolved options one metric overlay draws with
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct MetricOptions {
+    pub show_empty_bars: bool,
+    pub stack_from_bottom: bool,
+    pub scaling_factor: f32,
+    pub class_icon_mode: ClassIconMode,
+    pub font_scale: f32,
+    pub dynamic_background: bool,
+    pub show_background_bar: bool,
+    pub gradient_intensity: f32,
 }
 
 fn default_metric_template() -> String {
@@ -209,6 +257,12 @@ fn default_metric_template() -> String {
 
 pub(crate) fn default_bar_spacing_ratio() -> f32 {
     0.2
+}
+
+pub const MAX_BAR_RADIUS: f32 = 16.0;
+
+pub(crate) fn default_bar_radius() -> f32 {
+    4.0
 }
 
 pub(crate) fn default_font_color() -> Color {
@@ -238,7 +292,9 @@ impl Default for OverlayAppearanceConfig {
             use_class_color: false,
             bar_gradient: true,
             bar_spacing: None,
+            bar_radius: None,
             legacy_bar_spacing: None,
+            overrides: MetricOverrides::default(),
         }
     }
 }

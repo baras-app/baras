@@ -7,7 +7,7 @@ use std::sync::Arc;
 use baras_core::PlayerMetrics;
 use baras_core::context::OverlayAppearanceConfig;
 use baras_types::metric_template::{self, MetricTemplate};
-use baras_types::{ClassColorConfig, ClassIconMode};
+use baras_types::{ClassColorConfig, ClassIconMode, MAX_BAR_RADIUS};
 use tiny_skia::Color;
 
 use super::metric_values::{entry_value, footer_value};
@@ -439,7 +439,7 @@ impl MetricOverlay {
         }
 
         let content_width = width - padding * 2.0;
-        let bar_radius = 4.0 * self.frame.scale_factor();
+        let bar_radius = self.appearance.bar_radius.unwrap_or(4.0).clamp(0.0, MAX_BAR_RADIUS) * self.frame.scale_factor();
 
         // Draw header just above the first bar (uses base_font_size, not bar_font_size)
         let mut y = if self.appearance.show_header {

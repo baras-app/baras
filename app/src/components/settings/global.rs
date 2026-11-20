@@ -7,6 +7,7 @@ use crate::components::{Slider, ToastSeverity, use_toast};
 
 use super::draft::SettingsDraft;
 use super::frame_style::FrameStyleSection;
+use super::metrics_global::MetricsGlobalSection;
 
 #[component]
 pub fn GlobalTab(draft: SettingsDraft) -> Element {
@@ -17,40 +18,10 @@ pub fn GlobalTab(draft: SettingsDraft) -> Element {
     let mut hide_during_conversations = use_signal(|| current_settings.hide_during_conversations);
     let mut toast = use_toast();
 
-    // Available system fonts for the font picker (loaded once)
-    let mut system_fonts: Signal<Vec<String>> = use_signal(Vec::new);
-    use_future(move || async move {
-        system_fonts.set(api::list_system_fonts().await);
-    });
-
     rsx! {
         div { class: "settings-section",
-            div { class: "setting-row",
-                label { "Overlay Font" }
-                select {
-                    value: "{current_settings.overlay_font_family}",
-                    onchange: move |e: Event<FormData>| {
-                        let family = e.value();
-                        let mut new_settings = draft.current();
-                        new_settings.overlay_font_family = family.clone();
-                        draft.update(new_settings);
-                        // Applies to all overlays immediately, independent of Save
-                        spawn(async move {
-                            let _ = api::set_overlay_font_family(family).await;
-                        });
-                    },
-                    for font in system_fonts().iter() {
-                        // `selected` (not just the select's `value`) so the active
-                        // font stays chosen even though options load asynchronously.
-                        option {
-                            key: "{font}",
-                            value: "{font}",
-                            selected: *font == current_settings.overlay_font_family,
-                            "{font}"
-                        }
-                    }
-                }
-            }
+            h4 { "All Overlays" }
+            p { class: "hint", "Always apply to every overlay. These cannot be overridden per overlay." }
             Slider {
                 label: "Countdown Frame Rate",
                 value: current_settings.overlay_fps as f64,
@@ -69,12 +40,6 @@ pub fn GlobalTab(draft: SettingsDraft) -> Element {
                     });
                 },
             }
-        }
-
-        FrameStyleSection { draft }
-
-        div { class: "settings-section",
-            h4 { "Visibility" }
             label { class: "settings-check",
                 input {
                     r#type: "checkbox",
@@ -117,5 +82,10 @@ pub fn GlobalTab(draft: SettingsDraft) -> Element {
             }
             p { class: "hint", "Hide every overlay during in-game conversations." }
         }
+
+        h4 { class: "overlay-options-title", "Overlay Defaults" }
+        p { class: "hint", "Starting values for every overlay. One overlay can differ: Overlays tab, Override Global Settings." }
+        FrameStyleSection { draft }
+        MetricsGlobalSection { draft }
     }
 }

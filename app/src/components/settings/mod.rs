@@ -19,6 +19,7 @@ mod metric;
 mod metrics_global;
 mod notes;
 mod operation_timer;
+mod overrides;
 mod personal;
 mod profiles;
 mod raid;
@@ -42,12 +43,11 @@ use dot_tracker::DotTrackerTab;
 use draft::use_settings_draft;
 use effects::{EffectsGroup, EffectsTab};
 use enemy_frames::EnemyFramesTab;
-use frame_style::FrameOverrideSection;
 use global::GlobalTab;
 use metric::MetricTab;
-use metrics_global::MetricsGlobalSection;
 use notes::NotesTab;
 use operation_timer::OperationTimerTab;
+use overrides::OverridesSection;
 use personal::PersonalTab;
 use profiles::ProfilesSection;
 use raid::RaidTab;
@@ -153,7 +153,6 @@ pub fn SettingsPanel(
             *d = false;
         }
     });
-    let mut metrics_global_open = use_signal(|| false);
     let mut toast = use_toast();
 
     let tab = selected_tab();
@@ -181,6 +180,7 @@ pub fn SettingsPanel(
                 config.overlay_settings.metric_stack_from_bottom = new_settings.metric_stack_from_bottom;
                 config.overlay_settings.metric_scaling_factor = new_settings.metric_scaling_factor;
                 config.overlay_settings.metric_bar_spacing = new_settings.metric_bar_spacing;
+                config.overlay_settings.metric_bar_radius = new_settings.metric_bar_radius;
                 config.overlay_settings.metric_font_scale = new_settings.metric_font_scale;
                 config.overlay_settings.metric_gradient_intensity = new_settings.metric_gradient_intensity;
                 config.overlay_settings.metric_dynamic_background = new_settings.metric_dynamic_background;
@@ -305,15 +305,12 @@ pub fn SettingsPanel(
                     TabButton { label: "Profiles", active: section() == SettingsSection::Profiles, onclick: move |_| section.set(SettingsSection::Profiles) }
                     TabButton { label: "Global", active: section() == SettingsSection::Global, onclick: move |_| section.set(SettingsSection::Global) }
                 }
-                if section() == SettingsSection::Overlays {
+                if showing_overlays {
                     div { class: "setting-row overlay-select-row",
                         label { "Overlay" }
                         select {
                             value: "{tab}",
-                            onchange: move |e: Event<FormData>| {
-                                selected_tab.set(e.value());
-                                metrics_global_open.set(false);
-                            },
+                            onchange: move |e: Event<FormData>| selected_tab.set(e.value()),
                             for (group, items) in overlay_groups.iter() {
                                 optgroup { label: "{group}",
                                     for (label, key) in items.iter() {
@@ -325,12 +322,13 @@ pub fn SettingsPanel(
                     }
                     h4 { class: "overlay-options-title", "{overlay_label(&tab)} Options" }
                 }
-                // Shared by every metric overlay, so it sits above whichever one is selected
-                if showing_overlays && is_metric_tab {
-                    MetricsGlobalSection { draft, open: metrics_global_open }
-                }
                 if showing_overlays {
-                    FrameOverrideSection { draft, tab_key: selected_tab }
+                    OverridesSection {
+                        draft,
+                        tab_key: selected_tab,
+                        is_metric: is_metric_tab,
+                        on_open_global: move |_| section.set(SettingsSection::Global),
+                    }
                 }
                 {tab_content}
             }

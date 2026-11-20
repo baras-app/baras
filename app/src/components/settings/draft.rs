@@ -105,3 +105,11 @@ pub fn appearance_for(settings: &OverlaySettings, key: &str) -> OverlayAppearanc
         .or_else(|| settings.default_appearances.get(key).cloned())
         .unwrap_or_default()
 }
+
+/// Edit an overlay's appearance, seeding it from its default on first change
+pub fn edit_appearance(draft: SettingsDraft, key: &str, f: impl FnOnce(&mut OverlayAppearanceConfig)) {
+    draft.edit(|s| {
+        let default = s.default_appearances.get(key).cloned().unwrap_or_default();
+        f(s.appearances.entry(key.to_string()).or_insert(default));
+    });
+}

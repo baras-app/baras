@@ -1,31 +1,22 @@
 //! Settings tab shared by every metric overlay (DPS, HPS, ...), keyed by its config key.
-//! Font Scale, Dynamic Background and the default Bar Spacing live in Global Metrics Settings.
+//! Options shared by all of them (bar sizing, font scale, ...) are on the Global tab and
+//! overridden per overlay in `overrides.rs`.
 
 use dioxus::prelude::*;
 
-use crate::components::Slider;
 use crate::types::OverlayAppearanceConfig;
 use baras_types::metric_template::{MetricVar, PRESETS};
 
-use super::draft::{SettingsDraft, appearance_for};
+use super::draft::{SettingsDraft, appearance_for, edit_appearance};
 use super::widgets::{Check, ColorRow, Group, NumberRow, ResetRow, Row, Section, SelectRow};
 
 /// Preset dropdown value when the template matches none of `PRESETS`
 const CUSTOM: &str = "custom";
 
-/// Edit this overlay's appearance, seeding it from its default on first change
-fn edit_appearance(draft: SettingsDraft, tab: &str, f: impl FnOnce(&mut OverlayAppearanceConfig)) {
-    draft.edit(|s| {
-        let default = s.default_appearances.get(tab).cloned().unwrap_or_default();
-        f(s.appearances.entry(tab.to_string()).or_insert(default));
-    });
-}
-
 #[component]
 pub fn MetricTab(draft: SettingsDraft, tab_key: String, actions: Element) -> Element {
     let settings = draft.current();
     let a = appearance_for(&settings, &tab_key);
-    let global_spacing = settings.metric_bar_spacing;
     let check = |f: fn(&mut OverlayAppearanceConfig, bool)| {
         let tab = tab_key.clone();
         move |v: bool| edit_appearance(draft, &tab, |a| f(a, v))
@@ -34,8 +25,7 @@ pub fn MetricTab(draft: SettingsDraft, tab_key: String, actions: Element) -> Ele
         let tab = tab_key.clone();
         move |v| edit_appearance(draft, &tab, |a| f(a, v))
     };
-    let (tab_max, tab_spacing, tab_custom_spacing, tab_reset) =
-        (tab_key.clone(), tab_key.clone(), tab_key.clone(), tab_key.clone());
+    let (tab_max, tab_reset) = (tab_key.clone(), tab_key.clone());
     let (tab_template, tab_preset) = (tab_key.clone(), tab_key.clone());
     let preset = PRESETS
         .iter()
@@ -57,22 +47,6 @@ pub fn MetricTab(draft: SettingsDraft, tab_key: String, actions: Element) -> Ele
                     min: 1.0,
                     max: 16.0,
                     on_change: move |v: f64| edit_appearance(draft, &tab_max, |a| a.max_entries = v as u8),
-                }
-                Check {
-                    label: "Custom Bar Spacing",
-                    checked: a.bar_spacing.is_some(),
-                    on_change: move |on: bool| edit_appearance(draft, &tab_custom_spacing, |a| a.bar_spacing = on.then_some(global_spacing)),
-                }
-                if let Some(spacing) = a.bar_spacing {
-                    Slider {
-                        label: "Bar Spacing",
-                        value: (spacing * 100.0).round() as f64,
-                        min: 0.0,
-                        max: 60.0,
-                        step: 5.0,
-                        suffix: "%",
-                        on_change: move |v: f64| edit_appearance(draft, &tab_spacing, |a| a.bar_spacing = Some((v as f32 / 100.0).clamp(0.0, 0.6))),
-                    }
                 }
             }
             Section { group: Group::Content,
@@ -126,8 +100,14 @@ pub fn MetricTab(draft: SettingsDraft, tab_key: String, actions: Element) -> Ele
                 ColorRow { label: "Font Color", value: a.font_color, on_change: color(|a, v| a.font_color = v) }
             }
             ResetRow {
+                // The global overrides are not this tab's style, so they survive
                 on_reset: move |_| draft.edit(|s| {
-                    let default = s.default_appearances.get(&tab_reset).cloned().unwrap_or_default();
+                    let mut default = s.default_appearances.get(&tab_reset).cloned().unwrap_or_default();
+                    if let Some(current) = s.appearances.get(&tab_reset) {
+                        default.overrides = current.overrides;
+                        default.bar_spacing = current.bar_spacing;
+                        default.bar_radius = current.bar_radius;
+                    }
                     s.appearances.insert(tab_reset.clone(), default);
                 }),
                 actions,

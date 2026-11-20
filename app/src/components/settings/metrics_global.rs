@@ -1,12 +1,16 @@
-//! Global settings shared by every metric overlay: bar sizing, class colours.
+//! Options shared by every metric overlay (bar sizing, class colours): the
+//! global values and one overlay's overrides of them.
 
 use dioxus::prelude::*;
 
 use crate::components::Slider;
 use crate::types::{ClassColorConfig, ClassIconMode, Color};
+use baras_types::MAX_BAR_RADIUS;
 
-use super::draft::SettingsDraft;
-use super::widgets::{Check, ColorRow, DynamicBackground, FontScale, Group, Section, SelectRow};
+use super::draft::{SettingsDraft, appearance_for, edit_appearance};
+use super::widgets::{
+    Check, ColorRow, DynamicBackground, FontScale, Group, OnOff, Override, PercentSlider, Section, SelectRow,
+};
 
 /// The eight class colours: label and field
 const CLASS_COLORS: [(&str, fn(&mut ClassColorConfig) -> &mut Color); 8] = [
@@ -20,91 +24,153 @@ const CLASS_COLORS: [(&str, fn(&mut ClassColorConfig) -> &mut Color); 8] = [
     ("Sniper / Gunslinger", |c| &mut c.sniper_gunslinger),
 ];
 
-#[component]
-pub fn MetricsGlobalSection(draft: SettingsDraft, mut open: Signal<bool>) -> Element {
-    let s = draft.current();
-    let mut class_colors = s.class_colors.clone();
-    let icon_mode = match s.class_icon_mode {
+const ICON_MODES: [(&str, &str); 3] = [("none", "None"), ("class", "Class"), ("discipline", "Discipline")];
+
+fn icon_mode_key(mode: ClassIconMode) -> String {
+    match mode {
         ClassIconMode::None => "none",
         ClassIconMode::Class => "class",
         ClassIconMode::Discipline => "discipline",
-    };
+    }
+    .to_string()
+}
+
+fn icon_mode_from(key: &str) -> ClassIconMode {
+    match key {
+        "class" => ClassIconMode::Class,
+        "discipline" => ClassIconMode::Discipline,
+        _ => ClassIconMode::None,
+    }
+}
+
+/// Global metric options, on the Global tab
+#[component]
+pub fn MetricsGlobalSection(draft: SettingsDraft) -> Element {
+    let s = draft.current();
+    let mut class_colors = s.class_colors.clone();
 
     rsx! {
-        div { class: if open() { "settings-section collapsible metrics-global open" } else { "settings-section collapsible metrics-global" },
-            div {
-                class: "collapsible-summary",
-                onclick: move |_| open.set(!open()),
-                i { class: "fa-solid fa-sliders summary-icon" }
-                "Global Metrics Settings"
-            }
-            if open() {
-                div { class: "collapsible-content",
-                    Section { group: Group::Background,
-                        DynamicBackground { checked: s.metric_dynamic_background, on_change: move |v| draft.edit(|s| s.metric_dynamic_background = v) }
-                        Check { label: "Show Background Bar", checked: s.metric_show_background_bar, on_change: move |v| draft.edit(|s| s.metric_show_background_bar = v) }
-                        Slider {
-                            label: "Gradient Intensity",
-                            value: (s.metric_gradient_intensity * 100.0) as i32 as f64,
-                            min: 0.0,
-                            max: 60.0,
-                            step: 2.0,
-                            suffix: "%",
-                            on_change: move |v: f64| draft.edit(|s| s.metric_gradient_intensity = (v as f32 / 100.0).clamp(0.0, 0.6)),
+        div { class: "settings-section",
+            h4 { "Metric Overlays" }
+            p { class: "hint", "Shared by the metric overlays (DPS, HPS, ...). Class colors cannot be overridden." }
+            Section { group: Group::Background,
+                DynamicBackground { checked: s.metric_dynamic_background, on_change: move |v| draft.edit(|s| s.metric_dynamic_background = v) }
+                Check { label: "Show Background Bar", checked: s.metric_show_background_bar, on_change: move |v| draft.edit(|s| s.metric_show_background_bar = v) }
+                PercentSlider { label: "Gradient Intensity", value: s.metric_gradient_intensity, min: 0.0, max: 60.0, step: 2.0, on_change: move |v| draft.edit(|s| s.metric_gradient_intensity = v) }
+                Slider {
+                    label: "Bar Corner Radius",
+                    value: s.metric_bar_radius as f64,
+                    min: 0.0,
+                    max: MAX_BAR_RADIUS as f64,
+                    suffix: "px",
+                    on_change: move |v: f64| draft.edit(|s| s.metric_bar_radius = v as f32),
+                }
+                details { class: "collapsible",
+                    summary { class: "collapsible-summary", "Class Colors" }
+                    for (label, field) in CLASS_COLORS {
+                        ColorRow {
+                            label,
+                            value: *field(&mut class_colors),
+                            on_change: move |v| draft.edit(|s| *field(&mut s.class_colors) = v),
                         }
-                        details { class: "collapsible",
-                            summary { class: "collapsible-summary", "Class Colors" }
-                            for (label, field) in CLASS_COLORS {
-                                ColorRow {
-                                    label,
-                                    value: *field(&mut class_colors),
-                                    on_change: move |v| draft.edit(|s| *field(&mut s.class_colors) = v),
-                                }
-                            }
-                        }
-                    }
-                    Section { group: Group::Layout,
-                        Slider {
-                            label: "Bar Thickness",
-                            value: (s.metric_scaling_factor * 100.0) as i32 as f64,
-                            min: 30.0,
-                            max: 200.0,
-                            step: 5.0,
-                            suffix: "%",
-                            on_change: move |v: f64| draft.edit(|s| s.metric_scaling_factor = (v as f32 / 100.0).clamp(0.3, 2.0)),
-                        }
-                        Slider {
-                            label: "Bar Spacing",
-                            value: (s.metric_bar_spacing * 100.0).round() as f64,
-                            min: 0.0,
-                            max: 60.0,
-                            step: 5.0,
-                            suffix: "%",
-                            tooltip: "Gap between bars. Each metric overlay can set its own under Custom Bar Spacing.",
-                            on_change: move |v: f64| draft.edit(|s| s.metric_bar_spacing = (v as f32 / 100.0).clamp(0.0, 0.6)),
-                        }
-                        Check { label: "Stack from Bottom", checked: s.metric_stack_from_bottom, on_change: move |v| draft.edit(|s| s.metric_stack_from_bottom = v) }
-                    }
-                    Section { group: Group::Content,
-                        Check { label: "Show Empty Bars", checked: s.metric_show_empty_bars, on_change: move |v| draft.edit(|s| s.metric_show_empty_bars = v) }
-                        SelectRow {
-                            label: "Class Icons",
-                            value: icon_mode.to_string(),
-                            options: vec![("none", "None"), ("class", "Class"), ("discipline", "Discipline")],
-                            on_change: move |v: String| draft.edit(|s| {
-                                s.class_icon_mode = match v.as_str() {
-                                    "class" => ClassIconMode::Class,
-                                    "discipline" => ClassIconMode::Discipline,
-                                    _ => ClassIconMode::None,
-                                };
-                            }),
-                        }
-                    }
-                    Section { group: Group::Text,
-                        FontScale { value: s.metric_font_scale, on_change: move |v| draft.edit(|s| s.metric_font_scale = v) }
                     }
                 }
             }
+            Section { group: Group::Layout,
+                PercentSlider { label: "Bar Thickness", value: s.metric_scaling_factor, min: 30.0, max: 200.0, on_change: move |v| draft.edit(|s| s.metric_scaling_factor = v) }
+                PercentSlider { label: "Bar Spacing", value: s.metric_bar_spacing, min: 0.0, max: 60.0, step: 1.0, on_change: move |v| draft.edit(|s| s.metric_bar_spacing = v) }
+                Check { label: "Stack from Bottom", checked: s.metric_stack_from_bottom, on_change: move |v| draft.edit(|s| s.metric_stack_from_bottom = v) }
+            }
+            Section { group: Group::Content,
+                Check { label: "Show Empty Bars", checked: s.metric_show_empty_bars, on_change: move |v| draft.edit(|s| s.metric_show_empty_bars = v) }
+                SelectRow {
+                    label: "Icon Type",
+                    value: icon_mode_key(s.class_icon_mode),
+                    options: ICON_MODES.to_vec(),
+                    on_change: move |v: String| draft.edit(|s| s.class_icon_mode = icon_mode_from(&v)),
+                }
+            }
+            Section { group: Group::Text,
+                FontScale { value: s.metric_font_scale, on_change: move |v| draft.edit(|s| s.metric_font_scale = v) }
+            }
+        }
+    }
+}
+
+/// One metric overlay's overrides of the options above, as rows of the overrides section
+#[component]
+pub fn MetricOverrideRows(draft: SettingsDraft, tab_key: Signal<String>) -> Element {
+    let s = draft.current();
+    let a = appearance_for(&s, &tab_key());
+    let o = a.overrides;
+    let m = s.metric_options_for(&o);
+    let spacing = a.bar_spacing.unwrap_or(s.metric_bar_spacing);
+    let radius = a.bar_radius.unwrap_or(s.metric_bar_radius);
+
+    rsx! {
+        Override {
+            custom: o.dynamic_background.is_some(),
+            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.overrides.dynamic_background = on.then_some(m.dynamic_background)),
+            OnOff { label: "Dynamic Background", value: m.dynamic_background, disabled: o.dynamic_background.is_none(), on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.dynamic_background = Some(v)) }
+        }
+        Override {
+            custom: o.show_background_bar.is_some(),
+            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.overrides.show_background_bar = on.then_some(m.show_background_bar)),
+            OnOff { label: "Show Background Bar", value: m.show_background_bar, disabled: o.show_background_bar.is_none(), on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.show_background_bar = Some(v)) }
+        }
+        Override {
+            custom: o.gradient_intensity.is_some(),
+            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.overrides.gradient_intensity = on.then_some(m.gradient_intensity)),
+            PercentSlider { label: "Gradient Intensity", value: m.gradient_intensity, min: 0.0, max: 60.0, step: 2.0, disabled: o.gradient_intensity.is_none(), on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.gradient_intensity = Some(v)) }
+        }
+        Override {
+            custom: a.bar_radius.is_some(),
+            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.bar_radius = on.then_some(radius)),
+            Slider {
+                label: "Bar Corner Radius",
+                value: radius as f64,
+                min: 0.0,
+                max: MAX_BAR_RADIUS as f64,
+                suffix: "px",
+                disabled: a.bar_radius.is_none(),
+                on_change: move |v: f64| edit_appearance(draft, &tab_key(), |a| a.bar_radius = Some(v as f32)),
+            }
+        }
+        Override {
+            custom: o.scaling_factor.is_some(),
+            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.overrides.scaling_factor = on.then_some(m.scaling_factor)),
+            PercentSlider { label: "Bar Thickness", value: m.scaling_factor, min: 30.0, max: 200.0, disabled: o.scaling_factor.is_none(), on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.scaling_factor = Some(v)) }
+        }
+        Override {
+            custom: a.bar_spacing.is_some(),
+            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.bar_spacing = on.then_some(spacing)),
+            PercentSlider { label: "Bar Spacing", value: spacing, min: 0.0, max: 60.0, step: 1.0, disabled: a.bar_spacing.is_none(), on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.bar_spacing = Some(v)) }
+        }
+        Override {
+            custom: o.stack_from_bottom.is_some(),
+            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.overrides.stack_from_bottom = on.then_some(m.stack_from_bottom)),
+            OnOff { label: "Stack from Bottom", value: m.stack_from_bottom, disabled: o.stack_from_bottom.is_none(), on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.stack_from_bottom = Some(v)) }
+        }
+        Override {
+            custom: o.show_empty_bars.is_some(),
+            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.overrides.show_empty_bars = on.then_some(m.show_empty_bars)),
+            OnOff { label: "Show Empty Bars", value: m.show_empty_bars, disabled: o.show_empty_bars.is_none(), on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.show_empty_bars = Some(v)) }
+        }
+        Override {
+            custom: o.class_icon_mode.is_some(),
+            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.overrides.class_icon_mode = on.then_some(m.class_icon_mode)),
+            SelectRow {
+                label: "Icon Type",
+                value: icon_mode_key(m.class_icon_mode),
+                options: ICON_MODES.to_vec(),
+                disabled: o.class_icon_mode.is_none(),
+                on_change: move |v: String| edit_appearance(draft, &tab_key(), |a| a.overrides.class_icon_mode = Some(icon_mode_from(&v))),
+            }
+        }
+        Override {
+            custom: o.font_scale.is_some(),
+            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.overrides.font_scale = on.then_some(m.font_scale)),
+            FontScale { value: m.font_scale, disabled: o.font_scale.is_none(), on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.font_scale = Some(v)) }
         }
     }
 }

@@ -64,7 +64,8 @@ pub fn get_appearance_for_type(settings: &OverlaySettings, overlay_type: MetricT
         // No saved appearance - use type-specific default
         None => overlay_type.default_appearance(),
     };
-    // The overlay only ever sees the resolved spacing
+    // The overlay only ever sees the resolved spacing and radius
     appearance.bar_spacing.get_or_insert(settings.metric_bar_spacing);
+    appearance.bar_radius.get_or_insert(settings.metric_bar_radius);
     appearance
 }

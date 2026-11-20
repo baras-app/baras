@@ -193,18 +193,70 @@ pub(super) fn DynamicBackground(checked: bool, on_change: EventHandler<bool>) ->
     rsx! { Check { label: "Dynamic Background", checked, on_change } }
 }
 
-/// Font Scale as a percentage of the base size (stored as a factor)
+/// A factor edited as a percentage: 0.2 shows as 20%
 #[component]
-pub(super) fn FontScale(value: f32, on_change: EventHandler<f32>) -> Element {
+pub(super) fn PercentSlider(
+    label: &'static str,
+    value: f32,
+    min: f64,
+    max: f64,
+    #[props(default = 5.0)] step: f64,
+    #[props(default = "")] tooltip: &'static str,
+    #[props(default = false)] disabled: bool,
+    on_change: EventHandler<f32>,
+) -> Element {
     rsx! {
         Slider {
-            label: "Font Scale",
+            label,
             value: (value * 100.0).round() as f64,
-            min: 30.0,
-            max: 300.0,
-            step: 10.0,
+            min,
+            max,
+            step,
             suffix: "%",
-            on_change: move |v: f64| on_change.call((v as f32 / 100.0).clamp(0.3, 3.0)),
+            tooltip,
+            disabled,
+            on_change: move |v: f64| on_change.call(v as f32 / 100.0),
+        }
+    }
+}
+
+/// Font Scale as a percentage of the base size (stored as a factor)
+#[component]
+pub(super) fn FontScale(value: f32, #[props(default = false)] disabled: bool, on_change: EventHandler<f32>) -> Element {
+    rsx! { PercentSlider { label: "Font Scale", value, min: 30.0, max: 300.0, step: 10.0, disabled, on_change } }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Per-overlay overrides of a global option
+// ─────────────────────────────────────────────────────────────────────────
+
+/// One overridable option. Ticked: the overlay has its own value. Unticked:
+/// the child control is passed `disabled` and shows the global value.
+#[component]
+pub(super) fn Override(custom: bool, on_toggle: EventHandler<bool>, children: Element) -> Element {
+    rsx! {
+        div { class: if custom { "override-row custom" } else { "override-row" },
+            input {
+                r#type: "checkbox",
+                title: if custom { "Set for this overlay only. Untick to follow the global value." } else { "Following the global value. Tick to set it for this overlay only." },
+                checked: custom,
+                onchange: move |e: Event<FormData>| on_toggle.call(e.checked()),
+            }
+            {children}
+        }
+    }
+}
+
+/// A boolean as an On/Off dropdown, for override rows where the checkbox is taken
+#[component]
+pub(super) fn OnOff(label: &'static str, value: bool, disabled: bool, on_change: EventHandler<bool>) -> Element {
+    rsx! {
+        SelectRow {
+            label,
+            value: (if value { "on" } else { "off" }).to_string(),
+            options: vec![("on", "On"), ("off", "Off")],
+            disabled,
+            on_change: move |v: String| on_change.call(v == "on"),
         }
     }
 }

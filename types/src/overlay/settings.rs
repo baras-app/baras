@@ -1,12 +1,13 @@
 //! Overlay profiles and combined overlay settings
 
-use crate::appearance::default_bar_spacing_ratio;
+use crate::appearance::{default_bar_radius, default_bar_spacing_ratio};
 use crate::serde_defaults::{default_scaling_factor, default_true};
 use crate::{
     AbilityCastOverlayConfig, AbilityQueueOverlayConfig, AlertsOverlayConfig, BossHealthConfig, ChallengeOverlayConfig,
     ClassColorConfig, ClassIconMode, CombatTimeOverlayConfig, CooldownTrackerConfig, DotTrackerConfig, EffectsAConfig,
-    EffectsBConfig, EnemyFramesConfig, FrameStyle, FrameStyleOverride, NotesOverlayConfig, OperationTimerOverlayConfig,
-    OverlayAppearanceConfig, OverlayPositionConfig, PersonalOverlayConfig, RaidOverlaySettings, TimerOverlayConfig,
+    EffectsBConfig, EnemyFramesConfig, FrameStyle, FrameStyleOverride, MetricOptions, MetricOverrides, NotesOverlayConfig,
+    OperationTimerOverlayConfig, OverlayAppearanceConfig, OverlayPositionConfig, PersonalOverlayConfig,
+    RaidOverlaySettings, TimerOverlayConfig,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -70,6 +71,10 @@ pub struct OverlaySettings {
     /// override it with `OverlayAppearanceConfig::bar_spacing`
     #[serde(default = "default_bar_spacing_ratio")]
     pub metric_bar_spacing: f32,
+    /// Corner radius of metric bars in pixels at base size; overlays may
+    /// override it with `OverlayAppearanceConfig::bar_radius`
+    #[serde(default = "default_bar_radius")]
+    pub metric_bar_radius: f32,
     /// Font scale multiplier for metric overlays (0.3 - 3.0, default 1.0)
     #[serde(default = "default_scaling_factor")]
     pub metric_font_scale: f32,
@@ -213,6 +218,7 @@ impl Default for OverlaySettings {
             metric_stack_from_bottom: false,
             metric_scaling_factor: 1.0,
             metric_bar_spacing: default_bar_spacing_ratio(),
+            metric_bar_radius: default_bar_radius(),
             metric_font_scale: 1.0,
             metric_gradient_intensity: 0.32,
             metric_dynamic_background: false,
@@ -358,6 +364,20 @@ impl OverlaySettings {
             {
                 self.frame_overrides.entry(key.to_string()).or_default().opacity = Some(opacity);
             }
+        }
+    }
+
+    /// The global metric options with one overlay's overrides applied
+    pub fn metric_options_for(&self, o: &MetricOverrides) -> MetricOptions {
+        MetricOptions {
+            show_empty_bars: o.show_empty_bars.unwrap_or(self.metric_show_empty_bars),
+            stack_from_bottom: o.stack_from_bottom.unwrap_or(self.metric_stack_from_bottom),
+            scaling_factor: o.scaling_factor.unwrap_or(self.metric_scaling_factor),
+            class_icon_mode: o.class_icon_mode.unwrap_or(self.class_icon_mode),
+            font_scale: o.font_scale.unwrap_or(self.metric_font_scale),
+            dynamic_background: o.dynamic_background.unwrap_or(self.metric_dynamic_background),
+            show_background_bar: o.show_background_bar.unwrap_or(self.metric_show_background_bar),
+            gradient_intensity: o.gradient_intensity.unwrap_or(self.metric_gradient_intensity),
         }
     }
 
