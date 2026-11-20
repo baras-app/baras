@@ -3,14 +3,14 @@
 use dioxus::prelude::*;
 use std::collections::HashMap;
 
-use super::ctx::ExplorerCtx;
+use super::ctx::{ExplorerCtx, repaint_with};
 use crate::api::EntityBreakdown;
 use crate::components::class_icons::get_class_icon;
 use crate::types::{DataTab, ViewMode};
 use baras_types::formatting;
 
-#[component]
-pub(super) fn EntitySidebar(
+pub(super) fn entity_sidebar(
+    ctx: ExplorerCtx,
     shown: ViewMode,
     european: bool,
     on_source_click: Callback<(String, Option<i64>)>,
@@ -26,8 +26,12 @@ pub(super) fn EntitySidebar(
         entity_list,
         class_icon_lookup,
         overview_stats_lookup,
+        entities,
+        overview_data,
         ..
-    } = use_context();
+    } = ctx;
+    repaint_with(entities);
+    repaint_with(overview_data);
     let current_tab = if let ViewMode::Detailed(tab) = shown {
         Some(tab)
     } else {

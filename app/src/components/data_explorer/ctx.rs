@@ -329,6 +329,14 @@ pub(super) fn use_explorer_ctx(state: Signal<UiSessionState>) -> ExplorerCtx {
     }
 }
 
+/// Subscribe the panel to a query result that the view reads only through a
+/// memo. A memo tells its readers about a change one scheduler step after the
+/// signal it derives from, so without this that part of the page would repaint
+/// a beat behind the rest.
+pub(super) fn repaint_with<T: 'static>(source: Signal<T>) {
+    let _ = source.read();
+}
+
 impl ExplorerCtx {
     // Filter by source when selected
     // `id` is the NPC instance id when the row is one spawn among same-named copies

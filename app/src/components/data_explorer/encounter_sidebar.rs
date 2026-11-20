@@ -2,14 +2,13 @@
 
 use dioxus::prelude::*;
 
-use super::ctx::ExplorerCtx;
+use super::ctx::{ExplorerCtx, repaint_with};
 use crate::api;
 use crate::components::toggle_switch::ToggleSwitch;
 use crate::components::{ToastSeverity, use_parsely_upload, use_toast};
 use baras_types::formatting;
 
-#[component]
-pub(super) fn EncounterSidebar() -> Element {
+pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
     let ExplorerCtx {
         mut state,
         mut encounters,
@@ -24,7 +23,8 @@ pub(super) fn EncounterSidebar() -> Element {
         filtered_history,
         sections,
         ..
-    } = use_context();
+    } = ctx;
+    repaint_with(encounters);
 
     // Toast notifications
     let mut toast = use_toast();

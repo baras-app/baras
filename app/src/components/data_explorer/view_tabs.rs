@@ -20,8 +20,7 @@ const VIEW_TABS: [(ViewMode, &str); 10] = [
     (ViewMode::Uptime, "Effect Uptime"),
 ];
 
-#[component]
-pub(super) fn EncounterStrip() -> Element {
+pub(super) fn encounter_strip(ctx: ExplorerCtx) -> Element {
     let ExplorerCtx {
         encounters,
         selected_encounter,
@@ -29,7 +28,7 @@ pub(super) fn EncounterStrip() -> Element {
         sidebar_collapsed,
         overview_fullscreen,
         ..
-    } = use_context();
+    } = ctx;
 
     rsx! {
         if *sidebar_collapsed.read() || *overview_fullscreen.read() {
@@ -62,14 +61,13 @@ pub(super) fn EncounterStrip() -> Element {
     }
 }
 
-#[component]
-pub(super) fn ViewTabBar() -> Element {
+pub(super) fn view_tab_bar(ctx: ExplorerCtx) -> Element {
     let ExplorerCtx {
         mut view_mode,
         mut overview_fullscreen,
         mut death_target_filter,
         ..
-    } = use_context();
+    } = ctx;
 
     rsx! {
         div { class: "data-tab-selector",

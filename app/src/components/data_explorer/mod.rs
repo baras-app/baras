@@ -28,10 +28,10 @@ mod usage_tab;
 mod view_tabs;
 
 use ctx::{ExplorerCtx, LoadState, use_explorer_ctx};
-use detailed_view::DetailedView;
-use encounter_sidebar::EncounterSidebar;
-use overview_view::OverviewView;
-use view_tabs::{EncounterStrip, ViewTabBar};
+use detailed_view::detailed_view;
+use encounter_sidebar::encounter_sidebar;
+use overview_view::overview_view;
+use view_tabs::{encounter_strip, view_tab_bar};
 
 #[derive(Props, Clone, PartialEq)]
 pub struct DataExplorerProps {
@@ -42,7 +42,6 @@ pub struct DataExplorerProps {
 #[component]
 pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
     let ctx = use_explorer_ctx(props.state);
-    use_context_provider(|| ctx);
 
     // Mirror-class naming map (fetched once per app lifetime)
     mirror_names::ensure_loaded();
@@ -78,7 +77,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
     rsx! {
         div { class: "data-explorer",
             // Sidebar with encounter list
-            EncounterSidebar {}
+            {encounter_sidebar(ctx)}
 
             // Data Panel (main content area)
             div { class: if *overview_fullscreen.read() { "data-panel fullscreen" } else { "data-panel" },
@@ -103,10 +102,10 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                     }
 
                     // Selected encounter indicator (shown when sidebar collapsed or fullscreen)
-                    EncounterStrip {}
+                    {encounter_strip(ctx)}
 
                     // Data tab selector (Overview, Damage, Healing, Damage Taken, Healing Taken, Charts)
-                    ViewTabBar {}
+                    {view_tab_bar(ctx)}
 
                     // Content area — fixed-height flex region below tab bar
                     // Prevents combat log filters from shifting the tab bar position
@@ -145,10 +144,10 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                     if matches!(shown, ViewMode::CombatLog) {
                         // Rendered by the host above
                     } else if matches!(shown, ViewMode::Overview) {
-                        OverviewView { european: eu }
+                        {overview_view(ctx, eu)}
                     } else if matches!(shown, ViewMode::Detailed(_) | ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts | ViewMode::Uptime) {
                         // Two-column layout (Detailed breakdown, Rotation, Usage, or Charts)
-                        DetailedView { shown, european: eu, on_source_click }
+                        {detailed_view(ctx, shown, eu, on_source_click)}
                     }
 
                     } // end timeline-loaded gate

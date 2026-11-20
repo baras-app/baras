@@ -2,9 +2,9 @@
 
 use dioxus::prelude::*;
 
-use super::ability_table::AbilityTable;
+use super::ability_table::ability_table;
 use super::ctx::ExplorerCtx;
-use super::entity_sidebar::EntitySidebar;
+use super::entity_sidebar::entity_sidebar;
 use super::usage_tab::UsageTab;
 use crate::api::TimeRange;
 use crate::components::ability_naming::AbilityNamingPills;
@@ -15,8 +15,8 @@ use crate::components::entity_picker::EntityPicker;
 use crate::components::rotation_view::RotationView;
 use crate::types::{DataTab, ViewMode};
 
-#[component]
-pub(super) fn DetailedView(
+pub(super) fn detailed_view(
+    ctx: ExplorerCtx,
     shown: ViewMode,
     european: bool,
     on_source_click: Callback<(String, Option<i64>)>,
@@ -38,7 +38,7 @@ pub(super) fn DetailedView(
         entity_list,
         class_icon_lookup,
         ..
-    } = use_context();
+    } = ctx;
     let eu = european;
     let current_tab = if let ViewMode::Detailed(tab) = shown {
         Some(tab)
@@ -49,7 +49,7 @@ pub(super) fn DetailedView(
     rsx! {
         div { class: "explorer-content",
             // Entity breakdown sidebar
-            EntitySidebar { shown, european, on_source_click }
+            {entity_sidebar(ctx, shown, european, on_source_click)}
 
             if matches!(shown, ViewMode::Charts) {
                 // Charts view in right column
@@ -260,7 +260,7 @@ pub(super) fn DetailedView(
                     AbilityNamingPills {}
                 }
                 // Table with dynamic columns (sortable)
-                AbilityTable { tab: current_tab, european }
+                {ability_table(ctx, current_tab, european)}
             }
             }
         }

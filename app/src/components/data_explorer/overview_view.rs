@@ -3,7 +3,7 @@
 use dioxus::prelude::*;
 use std::collections::HashMap;
 
-use super::ctx::ExplorerCtx;
+use super::ctx::{ExplorerCtx, repaint_with};
 use crate::api::{NpcHealthRow, PlayerDeath, PvpFaction, RaidOverviewRow, TimeRange};
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::components::encounter_types::ChallengeSummary;
@@ -11,8 +11,7 @@ use crate::components::overview_chart::OverviewGroupChart;
 use crate::components::overview_table::OverviewTable;
 use baras_types::formatting;
 
-#[component]
-pub(super) fn OverviewView(european: bool) -> Element {
+pub(super) fn overview_view(ctx: ExplorerCtx, european: bool) -> Element {
     let ExplorerCtx {
         encounters,
         selected_encounter,
@@ -28,8 +27,10 @@ pub(super) fn OverviewView(european: bool) -> Element {
         npc_health,
         mut recap_death,
         overview_table_data,
+        overview_data,
         ..
-    } = use_context();
+    } = ctx;
+    repaint_with(overview_data);
     let eu = european;
     let format_number = |n: f64| formatting::format_compact_f64(n, eu);
 

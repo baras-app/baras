@@ -3,7 +3,7 @@
 use dioxus::prelude::*;
 
 use super::ability_rows::table_body;
-use super::ctx::ExplorerCtx;
+use super::ctx::{ExplorerCtx, repaint_with};
 use super::grouping::AbilityGroups;
 use crate::types::{DataTab, SortColumn, SortDirection};
 use baras_types::formatting;
@@ -21,9 +21,8 @@ pub(super) struct TableCols {
     pub is_outgoing_tab: bool,
 }
 
-#[component]
-pub(super) fn AbilityTable(tab: DataTab, european: bool) -> Element {
-    let ctx = use_context::<ExplorerCtx>();
+pub(super) fn ability_table(ctx: ExplorerCtx, tab: DataTab, european: bool) -> Element {
+    repaint_with(ctx.abilities);
     let mode = *ctx.breakdown_mode.read();
     let is_damage_tab = tab == DataTab::Damage || tab == DataTab::DamageTaken;
     let is_healing_tab = tab.is_healing();
