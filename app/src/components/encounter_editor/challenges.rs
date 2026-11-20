@@ -180,18 +180,22 @@ fn ChallengeRow(
                 class: "list-item-header",
                 onclick: move |_| on_toggle.call(()),
 
-                span { class: "font-medium", "{challenge.name}" }
-                if expanded && is_dirty() {
-                    span { class: "unsaved-indicator", title: "Unsaved changes" }
+                div { class: "row-col-name-id",
+                    span { class: "font-medium text-primary truncate", "{challenge.name}" }
+                    if expanded && is_dirty() {
+                        span { class: "unsaved-indicator", title: "Unsaved changes" }
+                    }
+                    span { class: "text-xs text-mono text-muted", title: "{challenge.id}", "{challenge.id}" }
                 }
-                span { class: "text-xs text-mono text-muted", "{challenge.id}" }
-                span { class: "tag", "{metric_label}" }
-                if condition_count > 0 {
-                    span { class: "tag tag-secondary", "{condition_count} conditions" }
+                span { class: "row-col-tags",
+                    if condition_count > 0 {
+                        span { class: "tag tag-secondary", "{condition_count} conditions" }
+                    }
+                    span { class: "tag", "{metric_label}" }
                 }
 
                 // Right side - enable toggle
-                div { class: "flex items-center gap-xs ml-auto shrink-0",
+                div { class: "flex items-center gap-xs shrink-0",
                     span {
                         class: "row-toggle",
                         title: if challenge.enabled { "Disable challenge" } else { "Enable challenge" },
@@ -211,10 +215,7 @@ fn ChallengeRow(
                                 let _ = api::update_encounter_item(&boss_id, &file_path, &item, None).await;
                             });
                         },
-                        span {
-                            class: if challenge.enabled { "text-success" } else { "text-muted" },
-                            if challenge.enabled { "✓" } else { "○" }
-                        }
+                        i { class: if challenge.enabled { "fa-solid fa-power-off text-success" } else { "fa-solid fa-power-off text-muted" } }
                     }
                     OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "challenge" }
                 }

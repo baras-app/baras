@@ -49,9 +49,12 @@
   --bg-light: #2f2f38;
   --bg-input: #2a2a2f;
   --bg-elevated: rgba(40, 40, 45, 0.9);
-  --bg-card: var(--bg-light);
-  --bg-card-header: #2a2a33;
-  --bg-card-input: #24242c;
+  /* Editor surfaces: the drawer is the darkest layer, cards and list rows
+     sit one quiet step above it, inputs are wells below the card */
+  --bg-drawer: #1b1b22;
+  --bg-card: #23232c;
+  --bg-card-header: #23232c;
+  --bg-card-input: #17171d;
   --bg-deep: #18181d;
   --bg-raised: #3a3a3a;
   --btn-top: rgba(50, 50, 55, 0.9);
@@ -258,6 +261,8 @@
   --bg-light: #f1f1f4;
   --bg-input: #ffffff;
   --bg-elevated: rgba(255, 255, 255, 0.96);
+  --bg-drawer: var(--bg-mid);
+  --bg-card: var(--bg-light);
   --bg-card-header: #eaeaee;
   --bg-card-input: #ffffff;
   --bg-deep: #cfcfd7;
@@ -5069,7 +5074,7 @@ a.contributor-name:hover {
   width: var(--editor-drawer-w);
   display: flex;
   flex-direction: column;
-  background: var(--bg-mid);
+  background: var(--bg-drawer);
   border-left: 1px solid var(--border-accent-strong);
   border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
   box-shadow: -6px 0 20px rgba(0, 0, 0, 0.25);
@@ -5771,6 +5776,21 @@ a.contributor-name:hover {
   overflow: hidden;
   text-align: right;
   white-space: nowrap;
+}
+
+/* Trailing tags (trigger, metric, entity flags): right-aligned, one line */
+.row-col-tags {
+  display: flex;
+  flex: 0 1 auto;
+  justify-content: flex-end;
+  gap: var(--space-xs);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.row-col-tags > .tag {
+  flex-shrink: 0;
 }
 
 .row-col-duration {
@@ -7030,7 +7050,7 @@ a.contributor-name:hover {
 .form-card {
   background: var(--bg-card);
   border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-xl);
   margin-bottom: var(--space-md);
 }
 
@@ -7041,9 +7061,16 @@ a.contributor-name:hover {
   padding: var(--space-sm) var(--space-md);
   background: var(--bg-card-header);
   border-bottom: 1px solid var(--border-light);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+/* Header-only card (its options are switched off) */
+.form-card-header:has(+ .form-card-content:empty) {
+  border-bottom: none;
+  border-radius: var(--radius-xl);
 }
 
 .form-card-header i {

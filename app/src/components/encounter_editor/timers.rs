@@ -497,15 +497,23 @@ fn role_toggle(
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[component]
-pub fn PhaseSelector(selected: Vec<String>, available: Vec<String>, on_change: EventHandler<Vec<String>>) -> Element {
+pub fn PhaseSelector(
+    selected: Vec<String>,
+    /// (id, label) per phase
+    available: Vec<(String, String)>,
+    on_change: EventHandler<Vec<String>>,
+) -> Element {
     let mut dropdown_open = use_signal(|| false);
     let mut dropdown_pos = use_signal(|| (0.0f64, 0.0f64));
 
     // Display text
     let display = if selected.is_empty() {
         "(all phases)".to_string()
-    } else if selected.len() == 1 {
-        selected[0].clone()
+    } else if let [only] = selected.as_slice() {
+        available
+            .iter()
+            .find(|(id, _)| id == only)
+            .map_or_else(|| only.clone(), |(_, label)| label.clone())
     } else {
         format!("{} phases", selected.len())
     };
@@ -554,9 +562,9 @@ pub fn PhaseSelector(selected: Vec<String>, available: Vec<String>, on_change: E
                         }
 
                         // Individual phases
-                        for phase in available.iter() {
+                        for (phase_id, phase) in available.iter() {
                             {
-                                let phase_id = phase.clone();
+                                let phase_id = phase_id.clone();
                                 let is_selected = selected.contains(&phase_id);
                                 let selected_clone = selected.clone();
 

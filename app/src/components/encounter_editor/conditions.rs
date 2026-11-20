@@ -540,7 +540,7 @@ fn PhaseActiveEditor(
     rsx! {
         PhaseSelector {
             selected: phase_ids,
-            available: encounter_data.phase_ids(),
+            available: encounter_data.phase_options(),
             on_change: move |new_phases| {
                 on_change.call(Condition::PhaseActive { phase_ids: new_phases });
             }

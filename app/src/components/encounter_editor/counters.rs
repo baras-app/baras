@@ -208,18 +208,22 @@ fn CounterRow(
                 class: "list-item-header",
                 onclick: move |_| on_toggle.call(()),
 
-                span { class: "font-medium", "{counter.name}" }
-                if expanded && is_dirty() {
-                    span { class: "unsaved-indicator", title: "Unsaved changes" }
+                div { class: "row-col-name-id",
+                    span { class: "font-medium text-primary truncate", "{counter.name}" }
+                    if expanded && is_dirty() {
+                        span { class: "unsaved-indicator", title: "Unsaved changes" }
+                    }
+                    span { class: "text-xs text-mono text-muted", title: "{counter.id}", "{counter.id}" }
                 }
-                span { class: "text-xs text-mono text-muted", "{counter.id}" }
-                span { class: "tag", "{trigger_label}" }
-                if counter.decrement_on.is_some() {
-                    span { class: "tag tag-info", "↓ Decrement" }
-                } else if counter.decrement {
-                    span { class: "tag tag-warning", "Decrement" }
+                span { class: "row-col-tags",
+                    if counter.decrement_on.is_some() {
+                        span { class: "tag tag-info", "↓ Decrement" }
+                    } else if counter.decrement {
+                        span { class: "tag tag-warning", "Decrement" }
+                    }
+                    span { class: "tag", "{trigger_label}" }
                 }
-                span { class: "ml-auto shrink-0", OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "counter" } }
+                OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "counter" }
             }
 
             // Expanded content

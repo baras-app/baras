@@ -148,11 +148,6 @@ impl EncounterData {
             .collect()
     }
 
-    /// Get phase IDs for dropdowns
-    pub fn phase_ids(&self) -> Vec<String> {
-        self.phases.iter().map(|p| p.id.clone()).collect()
-    }
-
     /// Get counter IDs for dropdowns
     pub fn counter_ids(&self) -> Vec<String> {
         self.counters.iter().map(|c| c.id.clone()).collect()

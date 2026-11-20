@@ -160,11 +160,14 @@ fn EntityRow(
             div {
                 class: "list-item-header",
                 onclick: move |_| on_toggle.call(()),
-                span { class: "font-medium", "{entity.name}" }
-                if expanded && is_dirty() {
-                    span { class: "unsaved-indicator", title: "Unsaved changes" }
+                div { class: "row-col-name-id",
+                    span { class: "font-medium text-primary truncate", "{entity.name}" }
+                    if expanded && is_dirty() {
+                        span { class: "unsaved-indicator", title: "Unsaved changes" }
+                    }
+                    span { class: "text-xs text-muted text-mono", "{id_count} IDs" }
                 }
-                span { class: "text-xs text-muted text-mono", "{id_count} IDs" }
+                span { class: "row-col-tags",
                 if entity.is_boss {
                     span { class: "tag tag-danger", "Boss" }
                 }
@@ -188,6 +191,7 @@ fn EntityRow(
                 }
                 if let Some(pct) = entity.pushes_at {
                     span { class: "tag tag-warning", "Pushes {pct}%" }
+                }
                 }
             }
 

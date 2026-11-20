@@ -278,7 +278,7 @@ fn ChallengeConditionRow(
                             span { class: "condition-label", "Phase" }
                             PhaseSelector {
                                 selected: phase_ids.clone(),
-                                available: encounter_data.phase_ids(),
+                                available: encounter_data.phase_options(),
                                 on_change: move |ids| {
                                     on_change.call(ChallengeCondition::Phase { phase_ids: ids });
                                 }

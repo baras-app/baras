@@ -199,13 +199,15 @@ fn PhaseRow(
                 class: "list-item-header",
                 onclick: move |_| on_toggle.call(()),
 
-                span { class: "font-medium", "{phase.name}" }
-                if expanded && is_dirty() {
-                    span { class: "unsaved-indicator", title: "Unsaved changes" }
+                div { class: "row-col-name-id",
+                    span { class: "font-medium text-primary truncate", "{phase.name}" }
+                    if expanded && is_dirty() {
+                        span { class: "unsaved-indicator", title: "Unsaved changes" }
+                    }
+                    span { class: "text-xs text-mono text-muted", title: "{phase.id}", "{phase.id}" }
                 }
-                span { class: "text-xs text-mono text-muted", "{phase.id}" }
-                span { class: "tag", "{trigger_label}" }
-                span { class: "ml-auto shrink-0", OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "phase" } }
+                span { class: "row-col-tags", span { class: "tag", "{trigger_label}" } }
+                OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "phase" }
             }
 
             // Expanded content

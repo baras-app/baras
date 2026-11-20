@@ -356,7 +356,7 @@ pub(super) fn TimerEditForm(
                                 Field { label: "Phases (legacy)", muted: true,
                                     PhaseSelector {
                                         selected: draft().phases.clone(),
-                                        available: encounter_data.phase_ids(),
+                                        available: encounter_data.phase_options(),
                                         on_change: move |p| draft.write().phases = p,
                                     }
                                 }
