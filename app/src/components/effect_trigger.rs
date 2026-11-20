@@ -209,10 +209,10 @@ pub(crate) fn TriggerAbilitiesEditor(
     let abilities_for_click = abilities.clone();
 
     rsx! {
-        div { class: "flex-col gap-xs items-start",
+        div { class: "chip-box wide",
 
             // Ability chips
-            div { class: "flex flex-wrap gap-xs",
+            div { class: "field-chips",
                 for (idx, sel) in abilities.iter().enumerate() {
                     {
                         let abilities_clone = abilities.clone();
@@ -236,10 +236,9 @@ pub(crate) fn TriggerAbilitiesEditor(
             }
 
             // Add new ability
-            div { class: "flex gap-xs",
+            div { class: "field-stack-row",
                 input {
                     r#type: "text",
-                    class: "input-inline flex-fill",
                     placeholder: "Ability ID or Name (Enter)",
                     value: "{new_input}",
                     oninput: move |e| new_input.set(e.value()),
@@ -312,7 +311,7 @@ pub(crate) fn RefreshAbilitiesEditor(
     let abilities_for_click = abilities.clone();
 
     rsx! {
-        div { class: "flex-col gap-xs items-start",
+        div { class: "chip-box wide",
             // One row per refresh ability
             for (idx, ra) in abilities.iter().enumerate() {
                 {
@@ -327,7 +326,7 @@ pub(crate) fn RefreshAbilitiesEditor(
                     let abilities_ir = abilities.clone();
                     let abilities_fd = abilities.clone();
                     rsx! {
-                        div { class: "flex gap-xs items-center flex-wrap",
+                        div { class: "chip-box-row",
                             span { class: "chip",
                                 "{display}"
                                 button {
@@ -454,10 +453,9 @@ pub(crate) fn RefreshAbilitiesEditor(
             }
 
             // Add new ability (defaults to On Cast, any stacks)
-            div { class: "flex gap-xs",
+            div { class: "field-stack-row",
                 input {
                     r#type: "text",
-                    class: "input-inline flex-fill",
                     placeholder: "Ability ID or Name (Enter)",
                     value: "{new_input}",
                     oninput: move |e| new_input.set(e.value()),

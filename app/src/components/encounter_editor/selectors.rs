@@ -9,8 +9,15 @@ use crate::types::{AbilitySelector, EffectSelector, EntityFilter, EntitySelector
 
 /// A form row when labelled, else just the control stack
 #[component]
-fn Row(label: &'static str, #[props(default)] help: &'static str, children: Element) -> Element {
-    let stack = rsx! { div { class: "field-stack", {children} } };
+fn Row(
+    label: &'static str,
+    #[props(default)] help: &'static str,
+    /// A list (chips + add control): boxed so it reads as one unit
+    #[props(default)]
+    boxed: bool,
+    children: Element,
+) -> Element {
+    let stack = rsx! { div { class: if boxed { "field-stack chip-box" } else { "field-stack" }, {children} } };
     if label.is_empty() {
         stack
     } else {
@@ -52,7 +59,7 @@ fn ChipList(
     };
 
     rsx! {
-        Row { label,
+        Row { label, boxed: true,
             Chips { labels: chips, on_remove }
             div { class: "field-stack-row",
                 input {
@@ -126,14 +133,15 @@ selector_editor!(
     EntitySelector
 );
 
-/// One of the trigger's own timers, phases or counters
+/// One of the encounter's timers, phases or counters; `available` is (id, label)
 #[component]
 pub(super) fn IdSelector(
     label: &'static str,
     value: String,
-    available: Vec<String>,
+    available: Vec<(String, String)>,
     on_change: EventHandler<String>,
 ) -> Element {
+    let known = available.iter().any(|(id, _)| *id == value);
     rsx! {
         Field { label,
             select {
@@ -142,11 +150,11 @@ pub(super) fn IdSelector(
                 if value.is_empty() {
                     option { value: "", selected: true, "(select)" }
                 }
-                for id in &available {
-                    option { value: "{id}", selected: *id == value, "{id}" }
+                for (id, text) in &available {
+                    option { value: "{id}", selected: *id == value, "{text}" }
                 }
                 // Keep a value that is no longer in the list visible
-                if !value.is_empty() && !available.contains(&value) {
+                if !value.is_empty() && !known {
                     option { value: "{value}", selected: true, "{value} (not found)" }
                 }
             }
@@ -208,7 +216,7 @@ pub fn BossSelector(
 ) -> Element {
     let (removing, adding) = (selected.clone(), selected.clone());
     rsx! {
-        Row { label: "Boss",
+        Row { label: "Boss", boxed: true,
             Chips {
                 labels: selected.iter().map(|s| s.display()).collect::<Vec<_>>(),
                 on_remove: move |idx| on_change.call(without(&removing, idx)),
@@ -245,7 +253,7 @@ pub fn BossSelector(
 pub fn MitigationTypeEditor(selected: Vec<MitigationType>, on_change: EventHandler<Vec<MitigationType>>) -> Element {
     let (removing, adding) = (selected.clone(), selected.clone());
     rsx! {
-        Row { label: "Mitigation", help: "Only fire for these hit results. Leave empty for any.",
+        Row { label: "Mitigation", help: "Only fire for these hit results. Leave empty for any.", boxed: true,
             Chips {
                 labels: selected.iter().map(|m| m.display_name().to_string()).collect::<Vec<_>>(),
                 on_remove: move |idx| on_change.call(without(&removing, idx)),

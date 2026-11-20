@@ -4935,32 +4935,34 @@ a.contributor-name:hover {
 
 /* Row toggle buttons (enable/audio in timer list) */
 .row-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 24px;
   cursor: pointer;
-  padding: 2px 8px;
-  border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
-  transition:
-    background 0.15s,
-    border-color 0.15s;
+  font-size: 0.85em;
+  transition: background 0.15s;
 }
 
 .row-toggle:hover {
   background: var(--bg-hover);
-  border-color: var(--border-medium);
 }
 
 /* Role toggle group (separated from enable/audio toggles) */
 .role-toggle-group {
   margin-left: 4px;
-  gap: 2px;
+  gap: 0;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
 }
 
 /* Role toggle buttons [T] [H] [D] */
 .role-toggle {
   cursor: pointer;
-  padding: 3px 7px;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
+  padding: 5px 7px;
   font-size: 0.75rem;
   font-weight: 700;
   line-height: 1;
@@ -4973,22 +4975,25 @@ a.contributor-name:hover {
 
 .role-toggle:hover {
   background: var(--bg-hover);
-  border-color: var(--border-medium);
+}
+
+.role-toggle + .role-toggle {
+  border-left: 1px solid var(--border-light);
 }
 
 .role-toggle-tank.active {
   color: #4a90d9;
-  border-color: #4a90d9;
+  background: rgba(74, 144, 217, 0.14);
 }
 
 .role-toggle-healer.active {
   color: var(--lt-green, #4caf50);
-  border-color: #4caf50;
+  background: rgba(76, 175, 80, 0.14);
 }
 
 .role-toggle-dps.active {
   color: var(--color-error);
-  border-color: #e57373;
+  background: rgba(229, 115, 115, 0.14);
 }
 
 /* ─── Width Utilities ────────────────────────────────────────────────────────── */
@@ -5746,13 +5751,15 @@ a.contributor-name:hover {
   white-space: nowrap;
 }
 
+/* Name takes the room; the id, overlay and duration are fixed columns so
+   they line up down the list */
 .row-col-name-id > .truncate {
-  flex-shrink: 1;
+  flex: 1 1 0;
   min-width: 0;
 }
 
 .row-col-name-id > .text-mono {
-  flex-shrink: 10;
+  flex: 0 0 36%;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -5760,13 +5767,24 @@ a.contributor-name:hover {
 }
 
 .row-col-trigger {
-  flex-shrink: 0;
+  flex: 0 0 7.5em;
+  overflow: hidden;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .row-col-duration {
-  flex-shrink: 0;
-  min-width: 45px;
+  flex: 0 0 3.4em;
   text-align: right;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Built-in is the norm: only Custom, Modified and New are marked, in a
+   column that keeps its width */
+.list-item-header .origin-badge.builtin {
+  visibility: hidden;
 }
 
 /* ─── Origin Badge (built-in / modified / custom / new) ──────────────────────── */
@@ -7209,6 +7227,47 @@ a.contributor-name:hover {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-xs);
+}
+
+/* A list under a label (chips + the control that adds one): boxed, so it
+   reads as one unit and not as loose controls */
+.chip-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45em;
+  padding: 0.5em;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: rgba(var(--fg-rgb), 0.03);
+}
+
+.chip-box.wide {
+  max-width: 44em;
+}
+
+.chip-box > .field-chips:empty {
+  display: none;
+}
+
+/* One entry with its own options (a refresh ability) */
+.chip-box-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4em var(--space-sm);
+  padding-bottom: 0.45em;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* The fields an event needs hang off its "When" row */
+.trigger-details {
+  margin: 0 0 0.6em 0.35em;
+  padding-left: 0.9em;
+  border-left: 2px solid var(--border-accent-medium);
+}
+
+.trigger-details:empty {
+  display: none;
 }
 
 /* Trigger rows are form rows; the spacing comes from them */

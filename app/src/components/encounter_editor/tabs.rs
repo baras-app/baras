@@ -103,9 +103,40 @@ impl EncounterData {
         }
     }
 
-    /// Get timer IDs for dropdowns
-    pub fn timer_ids(&self) -> Vec<String> {
-        self.timers.iter().map(|t| t.id.clone()).collect()
+    /// (id, "Name · id") per timer, for dropdowns: names read better but can collide
+    pub fn timer_options(&self) -> Vec<(String, String)> {
+        self.timers
+            .iter()
+            .map(|t| (t.id.clone(), id_label(&t.name, &t.id)))
+            .collect()
+    }
+
+    pub fn phase_options(&self) -> Vec<(String, String)> {
+        self.phases
+            .iter()
+            .map(|p| (p.id.clone(), id_label(&p.name, &p.id)))
+            .collect()
+    }
+
+    pub fn counter_options(&self) -> Vec<(String, String)> {
+        self.counters
+            .iter()
+            .map(|c| (c.id.clone(), id_label(&c.name, &c.id)))
+            .collect()
+    }
+
+    pub fn timer_label(&self, id: &str) -> String {
+        self.timers
+            .iter()
+            .find(|t| t.id == id)
+            .map_or_else(|| id.to_string(), |t| id_label(&t.name, id))
+    }
+
+    pub fn counter_label(&self, id: &str) -> String {
+        self.counters
+            .iter()
+            .find(|c| c.id == id)
+            .map_or_else(|| id.to_string(), |c| id_label(&c.name, id))
     }
 
     /// Get timer IDs for condition dropdowns (excludes instant alerts which have no duration)
@@ -134,6 +165,15 @@ impl EncounterData {
             .filter(|e| e.is_boss)
             .map(|e| e.name.clone())
             .collect()
+    }
+}
+
+/// "Name · id", or the id alone when there is no separate name
+fn id_label(name: &str, id: &str) -> String {
+    if name.is_empty() || name == id {
+        id.to_string()
+    } else {
+        format!("{name} · {id}")
     }
 }
 

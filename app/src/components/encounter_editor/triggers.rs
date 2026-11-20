@@ -346,7 +346,8 @@ pub fn SimpleTriggerEditor(
             }
             }
 
-            // Type-specific fields
+            // What the picked event needs, nested under it
+            div { class: "trigger-details",
             {
                 match trigger.clone() {
                     TimerTrigger::CombatStart
@@ -397,7 +398,7 @@ pub fn SimpleTriggerEditor(
                         {source_target(source, target)}
                     },
                     TimerTrigger::TimerExpires { timer_id } => {
-                        let available_timers = encounter_data.timer_ids();
+                        let available_timers = encounter_data.timer_options();
                         rsx! {
                             IdSelector {
                                 label: "Timer",
@@ -408,7 +409,7 @@ pub fn SimpleTriggerEditor(
                         }
                     },
                     TimerTrigger::TimerStarted { timer_id } => {
-                        let available_timers = encounter_data.timer_ids();
+                        let available_timers = encounter_data.timer_options();
                         rsx! {
                             IdSelector {
                                 label: "Timer",
@@ -419,7 +420,7 @@ pub fn SimpleTriggerEditor(
                         }
                     },
                     TimerTrigger::TimerCanceled { timer_id } => {
-                        let available_timers = encounter_data.timer_ids();
+                        let available_timers = encounter_data.timer_options();
                         rsx! {
                             IdSelector {
                                 label: "Timer",
@@ -430,7 +431,7 @@ pub fn SimpleTriggerEditor(
                         }
                     },
                     TimerTrigger::PhaseEntered { phase_id } => {
-                        let available_phases = encounter_data.phase_ids();
+                        let available_phases = encounter_data.phase_options();
                         rsx! {
                             IdSelector {
                                 label: "Phase",
@@ -441,7 +442,7 @@ pub fn SimpleTriggerEditor(
                         }
                     },
                     TimerTrigger::PhaseEnded { phase_id } => {
-                        let available_phases = encounter_data.phase_ids();
+                        let available_phases = encounter_data.phase_options();
                         rsx! {
                             IdSelector {
                                 label: "Phase",
@@ -486,7 +487,7 @@ pub fn SimpleTriggerEditor(
                         }
                     },
                     TimerTrigger::CounterReaches { counter_id, value } => {
-                        let available_counters = encounter_data.counter_ids();
+                        let available_counters = encounter_data.counter_options();
                         rsx! {
                             Fragment {
                                 IdSelector {
@@ -519,7 +520,7 @@ pub fn SimpleTriggerEditor(
                         }
                     },
                     TimerTrigger::CounterChanges { counter_id } => {
-                        let available_counters = encounter_data.counter_ids();
+                        let available_counters = encounter_data.counter_options();
                         rsx! {
                             IdSelector {
                                 label: "Counter",
@@ -617,6 +618,7 @@ pub fn SimpleTriggerEditor(
                         raw_on_change.call(trigger_for_position.clone().with_position(p));
                     }
                 }
+            }
             }
         }
     }

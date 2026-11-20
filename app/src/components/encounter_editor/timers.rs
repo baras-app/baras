@@ -290,27 +290,30 @@ fn TimerRow(
                     if expanded && is_dirty() {
                         span { class: "unsaved-indicator", title: "Unsaved changes" }
                     }
-                    span { class: "text-xs text-mono text-muted", "  {timer.id}" }
+                    span { class: "text-xs text-mono text-muted", title: "{timer.id}", "{timer.id}" }
                 }
 
-                // Overlay tag
+                // Overlay tag, or Alert for instant alerts
                 span { class: "row-col-trigger",
-                    {
-                        let targets_label = match timer.display_targets.len() {
-                            0 => "None".to_string(),
-                            1 => timer.display_targets[0].label().to_string(),
-                            n => format!("{n} overlays"),
-                        };
-                        rsx! { span { class: "tag", "{targets_label}" } }
+                    if timer.is_alert {
+                        span { class: "tag tag-alert", "Alert" }
+                    } else {
+                        {
+                            let targets_label = match timer.display_targets.len() {
+                                0 => "None".to_string(),
+                                1 => timer.display_targets[0].label().to_string(),
+                                n => format!("{n} overlays"),
+                            };
+                            rsx! { span { class: "tag", "{targets_label}" } }
+                        }
                     }
                 }
 
                 // Duration / Alert
                 span { class: "row-col-duration",
-                    if timer.is_alert {
-                        span { class: "tag tag-alert", "Alert" }
-                    } else {
-                        span { class: "text-sm text-secondary", "{timer.duration_secs:.1}s" }
+                    if !timer.is_alert {
+                        // Whole seconds drop the ".0"
+                        "{(timer.duration_secs * 10.0).round() / 10.0}s"
                     }
                 }
 
@@ -367,10 +370,7 @@ fn TimerRow(
                                 on_refetch.call(());
                             });
                         },
-                        span {
-                            class: if timer.audio.enabled { "text-primary" } else { "text-muted" },
-                            if timer.audio.enabled { "🔊" } else { "🔇" }
-                        }
+                        i { class: if timer.audio.enabled { "fa-solid fa-volume-high text-primary" } else { "fa-solid fa-volume-xmark text-muted" } }
                     }
 
                     // Role toggles [T] [H] [D]

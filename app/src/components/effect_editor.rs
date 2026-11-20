@@ -597,7 +597,7 @@ fn EffectImportPreviewModal(
                                                 let targets_label = match effect.display_targets.len() {
                                                     0 => "None".to_string(),
                                                     1 => effect.display_targets[0].label().to_string(),
-                                                    n => format!("⊞ {n} targets"),
+                                                    n => format!("{n} overlays"),
                                                 };
                                                 rsx! { span { class: "tag", "{targets_label}" } }
                                             }
@@ -691,7 +691,7 @@ fn EffectRow(
                         span { class: "unsaved-indicator", title: "Unsaved changes" }
                     }
                     if !is_draft {
-                        span { class: "text-xs text-mono text-muted", "  {effect.id}" }
+                        span { class: "text-xs text-mono text-muted", title: "{effect.id}", "{effect.id}" }
                     }
                 }
 
@@ -714,7 +714,7 @@ fn EffectRow(
                 span { class: "row-col-duration",
                     if !effect.is_alert {
                         if let Some(dur) = effect.duration_secs {
-                            span { class: "effect-duration", "{dur:.0}s" }
+                            "{dur:.0}s"
                         }
                     }
                 }
@@ -731,10 +731,7 @@ fn EffectRow(
                             updated.enabled = !updated.enabled;
                             on_save.call(updated);
                         },
-                        span {
-                            class: if effect.enabled { "text-success" } else { "text-muted" },
-                            if effect.enabled { "✓" } else { "○" }
-                        }
+                        i { class: if effect.enabled { "fa-solid fa-power-off text-success" } else { "fa-solid fa-power-off text-muted" } }
                     }
 
                     // Audio toggle
@@ -747,10 +744,7 @@ fn EffectRow(
                             updated.audio.enabled = !updated.audio.enabled;
                             on_save.call(updated);
                         },
-                        span {
-                            class: if effect.audio.enabled { "text-primary" } else { "text-muted" },
-                            if effect.audio.enabled { "🔊" } else { "🔇" }
-                        }
+                        i { class: if effect.audio.enabled { "fa-solid fa-volume-high text-primary" } else { "fa-solid fa-volume-xmark text-muted" } }
                     }
                     OriginBadge { origin: effect_origin(is_draft, effect.is_bundled, effect.is_user_override), kind: "effect" }
                 }

@@ -589,7 +589,7 @@ fn CounterCompareEditor(
                 },
                 option { value: "__none__", selected: selected_counter == "__none__", "(select counter)" }
                 for cid in &counters {
-                    option { value: "{cid}", selected: *cid == selected_counter, "{cid}" }
+                    option { value: "{cid}", selected: *cid == selected_counter, "{encounter_data.counter_label(cid)}" }
                 }
             }
 
@@ -688,7 +688,7 @@ fn CounterCompareCounterEditor(
                 },
                 option { value: "__none__", selected: selected_left == "__none__", "(select counter)" }
                 for cid in &counters {
-                    option { value: "{cid}", selected: *cid == selected_left, "{cid}" }
+                    option { value: "{cid}", selected: *cid == selected_left, "{encounter_data.counter_label(cid)}" }
                 }
             }
 
@@ -734,7 +734,7 @@ fn CounterCompareCounterEditor(
                     },
                     option { value: "__none__", selected: selected_right == "__none__", "(select counter)" }
                     for cid in &counters_for_right {
-                        option { value: "{cid}", selected: *cid == selected_right, "{cid}" }
+                        option { value: "{cid}", selected: *cid == selected_right, "{encounter_data.counter_label(cid)}" }
                     }
                 }
             }
@@ -783,7 +783,7 @@ fn TimerTimeRemainingEditor(
                 },
                 option { value: "__none__", selected: selected_timer == "__none__", "(select timer)" }
                 for tid in &timers {
-                    option { value: "{tid}", selected: *tid == selected_timer, "{tid}" }
+                    option { value: "{tid}", selected: *tid == selected_timer, "{encounter_data.timer_label(tid)}" }
                 }
             }
 

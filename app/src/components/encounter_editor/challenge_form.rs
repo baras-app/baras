@@ -354,7 +354,7 @@ fn ChallengeConditionRow(
                                     },
                                     option { value: "__none__", selected: selected_counter == "__none__", "(select counter)" }
                                     for cid in &counters {
-                                        option { value: "{cid}", selected: *cid == selected_counter, "{cid}" }
+                                        option { value: "{cid}", selected: *cid == selected_counter, "{encounter_data.counter_label(cid)}" }
                                     }
                                 }
                                 if has_counter {
