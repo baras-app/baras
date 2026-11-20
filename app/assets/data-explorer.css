@@ -2850,8 +2850,13 @@
 
 .uptime-table-box {
   overflow: auto;
+  /* Capped so the timeline under it keeps its room; the rows scroll */
+  max-height: min(45vh, 24em);
+  flex-shrink: 0;
 }
 
+/* Effect names stay put while scrolling sideways, target names while
+   scrolling down; the corner sits over both */
 .uptime-table .name-col {
   position: sticky;
   left: 0;
@@ -2861,11 +2866,18 @@
   white-space: nowrap;
 }
 
-.uptime-table .name-col.npc {
-  color: var(--text-secondary);
+.uptime-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-dark);
 }
 
-.uptime-table th.uptime-effect {
+.uptime-table thead th.name-col {
+  z-index: 2;
+}
+
+.uptime-table th.uptime-target {
   vertical-align: bottom;
   max-width: 7em;
   font-weight: 500;
@@ -2873,7 +2885,11 @@
   letter-spacing: 0;
 }
 
-.uptime-effect span {
+.uptime-table th.uptime-target.npc {
+  color: var(--text-muted);
+}
+
+.uptime-target span {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -2895,17 +2911,17 @@
 }
 
 .uptime-row .name-col,
-.uptime-table th.uptime-effect,
+.uptime-table th.uptime-target,
 .uptime-cell:not(.none) {
   cursor: pointer;
 }
 
-.uptime-table th.uptime-effect:hover,
-.uptime-table th.uptime-effect.picked {
+.uptime-table th.uptime-target:hover,
+.uptime-table th.uptime-target.picked {
   color: var(--swtor-blue);
 }
 
-.uptime-table th.uptime-effect.picked {
+.uptime-table th.uptime-target.picked {
   box-shadow: inset 0 -2px 0 var(--swtor-blue);
 }
 
