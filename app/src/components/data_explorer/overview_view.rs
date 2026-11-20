@@ -14,7 +14,7 @@ use baras_types::formatting;
 pub(super) fn overview_view(ctx: ExplorerCtx, european: bool) -> Element {
     let ExplorerCtx {
         encounters,
-        selected_encounter,
+        shown_encounter,
         overview_sort_col,
         overview_sort_asc,
         overview_alive_view,
@@ -108,7 +108,7 @@ pub(super) fn overview_view(ctx: ExplorerCtx, european: bool) -> Element {
 
                     // Group chart: PvP plots the friendly side only (shares across sides are meaningless)
                     OverviewGroupChart {
-                        encounter_idx: *selected_encounter.read(),
+                        encounter_idx: shown_encounter(),
                         time_range: time_range(),
                         rows: table_data.rows.iter().filter(|r| r.faction != Some(PvpFaction::Enemy)).cloned().collect::<Vec<_>>(),
                         sort_col: overview_sort_col,
@@ -127,7 +127,7 @@ pub(super) fn overview_view(ctx: ExplorerCtx, european: bool) -> Element {
                         let npcs = npc_health.read();
                         // The encounter's challenges and each player's (role, class, discipline) icons
                         let (challenges, player_icons): (Vec<ChallengeSummary>, HashMap<String, (Option<String>, Option<String>, String)>) =
-                            (*selected_encounter.read())
+                            shown_encounter()
                                 .and_then(|enc_idx| {
                                     encounters().iter().find(|e| e.encounter_id as u32 == enc_idx).map(|e| (
                                         e.challenges.clone(),

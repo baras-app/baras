@@ -47,6 +47,9 @@ pub(super) struct ExplorerCtx {
     pub state: Signal<UiSessionState>,
     pub encounters: Signal<Vec<EncounterSummary>>,
     pub selected_encounter: Signal<Option<u32>>,
+    /// The encounter whose data is painted: follows `selected_encounter` once
+    /// that encounter's timeline and page have loaded, in the same update
+    pub shown_encounter: Signal<Option<u32>>,
     pub auto_live: Signal<bool>,
     pub auto_follow: Signal<bool>,
     pub live_query_active: Signal<bool>,
@@ -91,6 +94,8 @@ pub(super) struct ExplorerCtx {
     pub player_deaths: Signal<Vec<PlayerDeath>>,
     pub npc_health: Signal<Vec<NpcHealthRow>>,
     pub last_overview_fetch: Signal<Option<(Option<u32>, TimeRange, bool)>>,
+    /// (encounter, view, range) whose entities + abilities arrived with the timeline
+    pub preloaded_detail: Signal<Option<(Option<u32>, ViewMode, TimeRange)>>,
     pub death_target_filter: Signal<Option<String>>,
     pub recap_death: Signal<Option<PlayerDeath>>,
     pub dt_summary: Signal<Option<DamageTakenSummary>>,
@@ -110,6 +115,7 @@ pub(super) fn use_explorer_ctx(state: Signal<UiSessionState>) -> ExplorerCtx {
     // Extract persisted state fields into local signals for easier access
     // Initialize from parent state to support navigation from other components
     let selected_encounter = use_signal(|| state.read().data_explorer.selected_encounter);
+    let shown_encounter = use_signal(|| *selected_encounter.peek());
     // Auto-live preference: loaded from config, controls whether auto_follow starts enabled.
     let auto_live = use_signal(|| state.read().data_explorer.auto_live);
     // Auto-follow: when true, CombatStarted auto-switches to live mode.
@@ -196,6 +202,7 @@ pub(super) fn use_explorer_ctx(state: Signal<UiSessionState>) -> ExplorerCtx {
     // Track last (encounter, time_range, was_overview) we fetched overview data for (prevents re-fetch loops)
     // The bool tracks whether deaths/NPC HP were also loaded (only on Overview tab)
     let last_overview_fetch = use_signal(|| None::<(Option<u32>, TimeRange, bool)>);
+    let preloaded_detail = use_signal(|| None);
 
     // Death target filter - set when clicking a death to filter combat log by target
     let death_target_filter = use_signal(|| None::<String>);
@@ -272,6 +279,7 @@ pub(super) fn use_explorer_ctx(state: Signal<UiSessionState>) -> ExplorerCtx {
         state,
         encounters,
         selected_encounter,
+        shown_encounter,
         auto_live,
         auto_follow,
         live_query_active,
@@ -316,6 +324,7 @@ pub(super) fn use_explorer_ctx(state: Signal<UiSessionState>) -> ExplorerCtx {
         player_deaths,
         npc_health,
         last_overview_fetch,
+        preloaded_detail,
         death_target_filter,
         recap_death,
         dt_summary,
@@ -342,7 +351,7 @@ impl ExplorerCtx {
     // `id` is the NPC instance id when the row is one spawn among same-named copies
     pub(super) fn select_source(self, name: String, id: Option<i64>) {
         let ExplorerCtx {
-            selected_encounter,
+            shown_encounter,
             view_mode,
             mut selected_source,
             mut selected_source_id,
@@ -355,7 +364,7 @@ impl ExplorerCtx {
             ..
         } = self;
 
-        let idx = *selected_encounter.read();
+        let idx = *shown_encounter.read();
         let mode = *view_mode.read();
         let current = selected_source.read().clone();
         let current_id = *selected_source_id.read();

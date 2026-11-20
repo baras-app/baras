@@ -22,7 +22,7 @@ pub(super) fn detailed_view(
     on_source_click: Callback<(String, Option<i64>)>,
 ) -> Element {
     let ExplorerCtx {
-        selected_encounter,
+        shown_encounter,
         selected_source,
         selected_source_id,
         mut breakdown_mode,
@@ -68,8 +68,8 @@ pub(super) fn detailed_view(
                             let tr = time_range();
                             rsx! {
                                 ChartsPanel {
-                                    key: "{selected_encounter():?}",
-                                    encounter_idx: *selected_encounter.read(),
+                                    key: "{shown_encounter():?}",
+                                    encounter_idx: shown_encounter(),
                                     duration_secs: tl.duration_secs,
                                     time_range: tr,
                                     selected_source: selected_source,
@@ -96,7 +96,7 @@ pub(super) fn detailed_view(
                         }
                     }
                     RotationView {
-                        encounter_idx: *selected_encounter.read(),
+                        encounter_idx: shown_encounter(),
                         time_range: time_range(),
                         selected_source: selected_source.read().clone(),
                         selected_anchor: selected_rotation_anchor,
@@ -118,7 +118,7 @@ pub(super) fn detailed_view(
                         }
                     }
                     EffectUptimeView {
-                        encounter_idx: *selected_encounter.read(),
+                        encounter_idx: shown_encounter(),
                         time_range: time_range(),
                         duration_secs: timeline.read().as_ref().map_or(0.0, |t| t.duration_secs),
                         selected_source: selected_source.read().clone(),
@@ -139,7 +139,7 @@ pub(super) fn detailed_view(
                         }
                     }
                     UsageTab {
-                        selected_encounter: selected_encounter,
+                        selected_encounter: shown_encounter,
                         selected_source: selected_source,
                         time_range: time_range,
                         usage_sort_column: usage_sort_column,
@@ -162,28 +162,34 @@ pub(super) fn detailed_view(
                     }
                 }
                 // DamageTaken summary panel
+                // Always laid out on this tab (dashes until the numbers are in), so
+                // nothing below it moves when they arrive
                 if current_tab == DataTab::DamageTaken {
-                    if let Some(ref summary) = *dt_summary.read() {
-                        div { class: "damage-taken-summary",
-                            DtSummaryTable {
-                                title: "Damage types",
-                                european: eu,
-                                rows: vec![
-                                    ("Internal / Elemental", summary.internal_elemental_pct, Some(summary.internal_elemental_total)),
-                                    ("Kinetic / Energy", summary.kinetic_energy_pct, Some(summary.kinetic_energy_total)),
-                                    ("Force / Tech", summary.force_tech_pct, Some(summary.force_tech_total)),
-                                    ("Melee / Ranged", summary.melee_ranged_pct, Some(summary.melee_ranged_total)),
-                                ],
-                            }
-                            DtSummaryTable {
-                                title: "Mitigation",
-                                european: eu,
-                                rows: vec![
-                                    ("Avoided", summary.avoided_pct, None),
-                                    ("Shielded", summary.shielded_pct, None),
-                                    ("Absorbed (self)", summary.absorbed_self_pct, Some(summary.absorbed_self_total)),
-                                    ("Absorbed (given)", summary.absorbed_given_pct, Some(summary.absorbed_given_total)),
-                                ],
+                    {
+                        let summary = dt_summary.read();
+                        let s = summary.as_ref();
+                        rsx! {
+                            div { class: "damage-taken-summary",
+                                DtSummaryTable {
+                                    title: "Damage types",
+                                    european: eu,
+                                    rows: vec![
+                                        ("Internal / Elemental", s.map(|s| s.internal_elemental_pct), s.map(|s| s.internal_elemental_total)),
+                                        ("Kinetic / Energy", s.map(|s| s.kinetic_energy_pct), s.map(|s| s.kinetic_energy_total)),
+                                        ("Force / Tech", s.map(|s| s.force_tech_pct), s.map(|s| s.force_tech_total)),
+                                        ("Melee / Ranged", s.map(|s| s.melee_ranged_pct), s.map(|s| s.melee_ranged_total)),
+                                    ],
+                                }
+                                DtSummaryTable {
+                                    title: "Mitigation",
+                                    european: eu,
+                                    rows: vec![
+                                        ("Avoided", s.map(|s| s.avoided_pct), None),
+                                        ("Shielded", s.map(|s| s.shielded_pct), None),
+                                        ("Absorbed (self)", s.map(|s| s.absorbed_self_pct), s.map(|s| s.absorbed_self_total)),
+                                        ("Absorbed (given)", s.map(|s| s.absorbed_given_pct), s.map(|s| s.absorbed_given_total)),
+                                    ],
+                                }
                             }
                         }
                     }

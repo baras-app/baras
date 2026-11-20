@@ -55,6 +55,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
 
     let ExplorerCtx {
         selected_encounter,
+        shown_encounter,
         live_query_active,
         mut view_mode,
         mut time_range,
@@ -120,8 +121,8 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                         div {
                             class: if shown_mode() == Some(ViewMode::CombatLog) { "combat-log-host" } else { "combat-log-host pending" },
                             CombatLog {
-                                key: "{selected_encounter():?}",
-                                encounter_idx: *selected_encounter.read(),
+                                key: "{shown_encounter():?}",
+                                encounter_idx: shown_encounter(),
                                 time_range: time_range(),
                                 initial_target: death_target_filter(),
                                 state: combat_log_state,
@@ -159,7 +160,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
             // the root so it stays open across tabs, and last so Esc closes it before fullscreen
             if let Some(d) = recap_death() {
                 DeathRecapDrawer {
-                    encounter_idx: *selected_encounter.read(),
+                    encounter_idx: shown_encounter(),
                     player_name: d.name.clone(),
                     death_time_secs: d.death_time_secs,
                     european: eu,

@@ -4,7 +4,9 @@ use dioxus::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use super::ctx::{ExplorerCtx, LoadState};
-use super::detail_loaders::{use_ability_reload, use_detailed_loader, use_dt_summary, use_live_loader};
+use super::detail_loaders::{
+    apply_detail, fetch_detail, use_ability_reload, use_detailed_loader, use_dt_summary, use_live_loader,
+};
 use crate::api::{self, TimeRange};
 use crate::types::ViewMode;
 
@@ -182,6 +184,8 @@ fn use_live_tick(ctx: ExplorerCtx) {
         mut live_poll_tick,
         view_mode,
         mut shown_mode,
+        selected_encounter,
+        mut shown_encounter,
         ..
     } = ctx;
     // Live query polling loop — bumps live_poll_tick once a second while active.
@@ -201,6 +205,7 @@ fn use_live_tick(ctx: ExplorerCtx) {
         let mode = *view_mode.read();
         if *live_query_active.read() {
             shown_mode.set(Some(mode));
+            shown_encounter.set(*selected_encounter.read());
         }
     });
 }
@@ -217,6 +222,9 @@ fn use_timeline_loader(ctx: ExplorerCtx) {
         mut load_generation,
         mut timeline,
         mut last_overview_fetch,
+        mut shown_encounter,
+        view_mode,
+        mut preloaded_detail,
         ..
     } = ctx;
     // Load timeline when encounter changes - prerequisite for all data loading
@@ -258,68 +266,145 @@ fn use_timeline_loader(ctx: ExplorerCtx) {
 
         // Load timeline for selected encounter
         timeline_state.set(LoadState::Loading);
+        preloaded_detail.set(None);
 
         // Capture whether we should restore time_range after timeline loads
         let restore_time_range = !is_encounter_change;
         let saved_time_range = *time_range.peek();
 
         spawn(async move {
-            // Check if this request is still current
-            if *load_generation.peek() != generation {
-                return; // Stale request, discard
+            let is_stale = move || *load_generation.peek() != generation;
+            if is_stale() {
+                return;
             }
 
-            match api::query_encounter_timeline(idx).await {
-                Some(tl) => {
-                    // Double-check generation before applying
-                    if *load_generation.peek() != generation {
-                        return;
-                    }
-                    let dur = tl.duration_secs;
-                    if !restore_time_range || saved_time_range.end <= 0.0 {
-                        time_range.set(TimeRange::full(dur));
-                    }
-                    timeline.set(Some(tl));
-                    timeline_state.set(LoadState::Loaded);
+            // Retry up to 2 times with backoff — the session may still be loading
+            let mut loaded = api::query_encounter_timeline(idx).await;
+            for delay_ms in [500, 1000] {
+                if loaded.is_some() || is_stale() {
+                    break;
                 }
-                None => {
-                    // Retry up to 2 times with backoff — the session may still be loading
-                    let delays = [500, 1000];
-                    let mut succeeded = false;
-                    for delay_ms in delays {
-                        if *load_generation.peek() != generation {
-                            return; // Stale request
-                        }
-                        gloo_timers::future::TimeoutFuture::new(delay_ms).await;
-                        if *load_generation.peek() != generation {
-                            return; // Stale request
-                        }
-                        if let Some(tl) = api::query_encounter_timeline(idx).await {
-                            if *load_generation.peek() != generation {
-                                return;
-                            }
-                            let dur = tl.duration_secs;
-                            if !restore_time_range || saved_time_range.end <= 0.0 {
-                                time_range.set(TimeRange::full(dur));
-                            }
-                            timeline.set(Some(tl));
-                            timeline_state.set(LoadState::Loaded);
-                            succeeded = true;
-                            break;
-                        }
-                    }
-                    if !succeeded {
-                        if *load_generation.peek() != generation {
-                            return;
-                        }
-                        timeline_state.set(LoadState::Idle);
-                        // Nothing loaded for this encounter: don't leave the old one up
-                        shown_mode.set(None);
-                    }
+                gloo_timers::future::TimeoutFuture::new(delay_ms).await;
+                if is_stale() {
+                    return;
                 }
+                loaded = api::query_encounter_timeline(idx).await;
             }
+            if is_stale() {
+                return;
+            }
+            let Some(tl) = loaded else {
+                timeline_state.set(LoadState::Idle);
+                // Nothing loaded for this encounter: don't leave the old one up
+                shown_mode.set(None);
+                shown_encounter.set(idx);
+                return;
+            };
+
+            // Fetch the page for the open tab before anything is painted, so the
+            // timeline, sidebar and tables of the new encounter land in one update.
+            let dur = tl.duration_secs;
+            let tr = if !restore_time_range || saved_time_range.end <= 0.0 {
+                TimeRange::full(dur)
+            } else {
+                saved_time_range
+            };
+            let mode = *view_mode.peek();
+            let is_overview = matches!(mode, ViewMode::Overview);
+            let (overview, detail) = futures_util::future::join(
+                fetch_overview(idx, tr, Some(dur), is_overview),
+                fetch_detail(ctx, idx, mode, tr, Some(dur)),
+            )
+            .await;
+            if is_stale() {
+                return;
+            }
+
+            shown_encounter.set(idx);
+            time_range.set(tr);
+            timeline.set(Some(tl));
+            // A tab picked while this ran is loaded by its own effect instead
+            let same_tab = *view_mode.peek() == mode;
+            apply_overview(ctx, idx, tr, is_overview && same_tab, overview);
+            if same_tab && let Some(detail) = detail {
+                apply_detail(ctx, mode, detail);
+                preloaded_detail.set(Some((idx, mode, tr)));
+            }
+            timeline_state.set(LoadState::Loaded);
         });
     });
+}
+
+type OverviewData = (
+    Option<Vec<api::RaidOverviewRow>>,
+    Option<Vec<api::PlayerDeath>>,
+    Option<Vec<api::NpcHealthRow>>,
+);
+
+/// Raid overview (class icons for every view), plus deaths and NPC health when
+/// the Overview tab itself is open; they don't depend on each other, so all
+/// three run at once.
+async fn fetch_overview(
+    idx: Option<u32>,
+    tr: TimeRange,
+    full_duration: Option<f32>,
+    is_overview: bool,
+) -> OverviewData {
+    let tr_opt = if tr.start == 0.0 && tr.end == 0.0 {
+        None
+    } else {
+        Some(tr)
+    };
+    // Use selected time range duration for rate calculations, or full fight duration
+    let duration = if let Some(ref range) = tr_opt {
+        Some(range.end - range.start)
+    } else {
+        full_duration
+    };
+    if is_overview {
+        futures_util::future::join3(
+            api::query_raid_overview(idx, tr_opt.as_ref(), duration),
+            api::query_player_deaths(idx),
+            api::query_npc_health(idx, tr_opt.as_ref()),
+        )
+        .await
+    } else {
+        (
+            api::query_raid_overview(idx, tr_opt.as_ref(), duration).await,
+            None,
+            None,
+        )
+    }
+}
+
+fn apply_overview(ctx: ExplorerCtx, idx: Option<u32>, tr: TimeRange, is_overview: bool, data: OverviewData) {
+    let ExplorerCtx {
+        view_mode,
+        mut shown_mode,
+        mut overview_data,
+        mut player_deaths,
+        mut npc_health,
+        mut last_overview_fetch,
+        ..
+    } = ctx;
+    let (overview, deaths, npcs) = data;
+    // None typically means no data available (no encounters dir, etc.) - not an error.
+    // Not recorded in last_overview_fetch, so the next effect trigger retries.
+    let loaded = overview.is_some();
+    let _ = overview_data.try_write().map(|mut w| *w = overview.unwrap_or_default());
+    if is_overview {
+        let _ = player_deaths.try_write().map(|mut w| *w = deaths.unwrap_or_default());
+        let _ = npc_health.try_write().map(|mut w| *w = npcs.unwrap_or_default());
+        if *view_mode.peek() == ViewMode::Overview {
+            shown_mode.set(Some(ViewMode::Overview));
+        }
+    }
+    if loaded {
+        // The bool tracks whether overview-specific data was loaded
+        let _ = last_overview_fetch
+            .try_write()
+            .map(|mut w| *w = Some((idx, tr, is_overview)));
+    }
 }
 
 fn use_overview_loader(ctx: ExplorerCtx) {
@@ -332,10 +417,7 @@ fn use_overview_loader(ctx: ExplorerCtx) {
         timeline_state,
         mut shown_mode,
         timeline,
-        mut overview_data,
-        mut player_deaths,
-        mut npc_health,
-        mut last_overview_fetch,
+        last_overview_fetch,
         ..
     } = ctx;
     // Load overview data when timeline is loaded and view_mode/time_range changes
@@ -374,61 +456,12 @@ fn use_overview_loader(ctx: ExplorerCtx) {
         }
 
         spawn(async move {
-            let full_duration = timeline.read().as_ref().map(|t| t.duration_secs);
-            let tr_opt = if tr.start == 0.0 && tr.end == 0.0 {
-                None
-            } else {
-                Some(tr)
-            };
-
-            // Use selected time range duration for rate calculations, or full fight duration
-            let duration = if let Some(ref range) = tr_opt {
-                Some(range.end - range.start)
-            } else {
-                full_duration
-            };
-
-            // Deaths + NPC health are only shown on the Overview tab; they don't
-            // depend on the raid overview, so all three run at once.
-            let (overview, deaths, npcs) = if is_overview {
-                futures_util::future::join3(
-                    api::query_raid_overview(idx, tr_opt.as_ref(), duration),
-                    api::query_player_deaths(idx),
-                    api::query_npc_health(idx, tr_opt.as_ref()),
-                )
-                .await
-            } else {
-                (
-                    api::query_raid_overview(idx, tr_opt.as_ref(), duration).await,
-                    None,
-                    None,
-                )
-            };
-
+            let full_duration = timeline.peek().as_ref().map(|t| t.duration_secs);
+            let data = fetch_overview(idx, tr, full_duration, is_overview).await;
             // Superseded while the queries ran: the newer request owns the signals
-            if *selected_encounter.peek() != idx || *time_range.peek() != tr {
-                return;
+            if *selected_encounter.peek() == idx && *time_range.peek() == tr {
+                apply_overview(ctx, idx, tr, is_overview && *view_mode.peek() == mode, data);
             }
-
-            // None typically means no data available (no encounters dir, etc.) - not an error.
-            // Not recorded in last_overview_fetch, so the next effect trigger retries.
-            let loaded = overview.is_some();
-            let _ = overview_data.try_write().map(|mut w| *w = overview.unwrap_or_default());
-            if is_overview {
-                let _ = player_deaths.try_write().map(|mut w| *w = deaths.unwrap_or_default());
-                let _ = npc_health.try_write().map(|mut w| *w = npcs.unwrap_or_default());
-                if *view_mode.peek() == mode {
-                    shown_mode.set(Some(mode));
-                }
-            }
-            if !loaded {
-                return;
-            }
-
-            // Cache after all queries complete — bool tracks whether overview-specific data was loaded
-            let _ = last_overview_fetch
-                .try_write()
-                .map(|mut w| *w = Some((idx, tr, is_overview)));
         });
     });
 }
