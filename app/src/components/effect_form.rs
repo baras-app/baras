@@ -12,9 +12,10 @@ use super::effect_trigger::{
 };
 use super::encounter_editor::selectors::{EffectSelectorEditor, EntityFilterDropdown};
 use super::sound_picker::SoundPicker;
+use super::toggle_switch::ToggleSwitch;
 use crate::api;
 use crate::components::editor_common::{FormCard, ItemActions, PreviewButton, preview_audio};
-use crate::components::form_fields::{CheckField, Field, NumberField, SubSection, TextField, TogglePill};
+use crate::components::form_fields::{CheckField, Field, NumberField, PickField, SubSection, TextField, TogglePill};
 use crate::types::{
     AlertTrigger, DisplayTarget, EffectListItem, EntityFilter, RefreshAbility, RefreshScope, Trigger,
     effect_alert_label,
@@ -183,25 +184,17 @@ pub(crate) fn EffectEditForm(
                                     }
                                 }
                             }
-                            Field {
+                            PickField {
                                 label: "Display Overlays",
-                                help: "Overlays this effect will appear on. Select multiple to show the same effect on more than one overlay.",
-                                for target in DisplayTarget::all().iter().filter(|t| !matches!(t, DisplayTarget::None)).copied() {
-                                    label { class: "field-check",
-                                        input {
-                                            r#type: "checkbox",
-                                            checked: draft().display_targets.contains(&target),
-                                            onchange: move |e| {
-                                                let mut d = draft.write();
-                                                d.display_targets.retain(|t| *t != target);
-                                                if e.checked() {
-                                                    d.display_targets.push(target);
-                                                }
-                                            }
-                                        }
-                                        "{target.label()}"
-                                    }
-                                }
+                                help: "Overlays this effect will appear on. Pick several to show the same effect on more than one overlay.",
+                                none_label: "No overlay",
+                                noun: "overlays",
+                                options: effect_targets().map(|t| t.label().to_string()).collect::<Vec<_>>(),
+                                picked: draft().display_targets.iter().map(|t| t.label().to_string()).collect::<Vec<_>>(),
+                                on_change: move |picked: Vec<String>| {
+                                    draft.write().display_targets =
+                                        effect_targets().filter(|t| picked.iter().any(|p| p == t.label())).collect();
+                                },
                             }
                         }
                         Field {
@@ -492,11 +485,14 @@ pub(crate) fn EffectEditForm(
                 // ═══ RIGHT COLUMN: Timing, Alerts, Audio ═════════════════════════
                 div { class: "edit-grid-right",
                     FormCard { icon: "fa-clock", title: "Timing",
-                        CheckField {
-                            label: "Instant alert only",
-                            help: "Shows a brief alert notification instead of tracking the effect. No duration, no overlay bar/icon — only alert text and audio fire on trigger.",
-                            checked: draft().is_alert,
-                            on_change: move |v| draft.write().is_alert = v,
+                        Field { label: "Type", help: "Tracked shows the effect on its overlays for its duration; Instant alert only fires alert text and audio on trigger",
+                            for (label, alert) in [("Tracked", false), ("Instant alert", true)] {
+                                TogglePill {
+                                    label,
+                                    active: draft().is_alert == alert,
+                                    on_click: move |_| draft.write().is_alert = alert,
+                                }
+                            }
                         }
                         if !draft().is_alert {
                             CheckField {
@@ -605,7 +601,9 @@ pub(crate) fn EffectEditForm(
                     }
 
                     FormCard { icon: "fa-volume-up", title: "Audio",
-                        CheckField { label: "Enable audio", checked: draft().audio.enabled, on_change: move |v| draft.write().audio.enabled = v }
+                        action: rsx! {
+                            ToggleSwitch { label: "", checked: draft().audio.enabled, on_change: move |v| draft.write().audio.enabled = v }
+                        },
                         if draft().audio.enabled {
                             SoundPicker { value: draft().audio.file.clone(), on_change: move |v| draft.write().audio.file = v }
                             if !draft().is_alert {
@@ -707,4 +705,12 @@ fn preview_request(effect: &EffectListItem) -> OverlayPreviewRequest {
         targets,
         audio: preview_audio(&effect.audio, effect.is_alert),
     }
+}
+
+/// Overlays an effect can be shown on
+fn effect_targets() -> impl Iterator<Item = DisplayTarget> {
+    DisplayTarget::all()
+        .iter()
+        .copied()
+        .filter(|t| !matches!(t, DisplayTarget::None))
 }

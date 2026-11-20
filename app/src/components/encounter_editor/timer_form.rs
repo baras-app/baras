@@ -6,7 +6,10 @@ use dioxus::prelude::*;
 use crate::api;
 use crate::components::SoundPicker;
 use crate::components::editor_common::{FormCard, ItemActions, Origin, PreviewButton, preview_audio};
-use crate::components::form_fields::{CheckField, Deprecated, Field, NumberField, SubSection, TextField, TogglePill};
+use crate::components::form_fields::{
+    CheckField, Deprecated, Field, NumberField, PickField, SubSection, TextField, TogglePill,
+};
+use crate::components::toggle_switch::ToggleSwitch;
 use crate::types::{
     AlertTrigger, BossTimerDefinition, BossWithPath, Condition, EncounterItem, TimerDisplayTarget, Trigger,
     timer_alert_label,
@@ -244,34 +247,33 @@ pub(super) fn TimerEditForm(
                             }
                         }
                         if !draft().is_alert {
-                            Field {
+                            PickField {
                                 label: "Display Overlays",
-                                help: "Overlays this timer will appear on. Select multiple to show the same timer on more than one overlay.",
-                                for target in TimerDisplayTarget::all().iter().filter(|t| !matches!(t, TimerDisplayTarget::None)).copied() {
-                                    label { class: "field-check",
-                                        input {
-                                            r#type: "checkbox",
-                                            checked: draft().display_targets.contains(&target),
-                                            onchange: move |e| {
-                                                let mut d = draft.write();
-                                                d.display_targets.retain(|t| *t != target);
-                                                if e.checked() {
-                                                    d.display_targets.push(target);
-                                                }
-                                                // Clear queue-only fields when AbilityQueue is removed
-                                                if !d.display_targets.contains(&TimerDisplayTarget::AbilityQueue) {
-                                                    d.queue_on_expire = false;
-                                                    d.gcd_secs = None;
-                                                    d.queue_priority = 0;
-                                                    d.queue_remove_trigger = None;
-                                                    d.queue_countdown_bar = false;
-                                                    d.queue_hide_from_next = false;
-                                                }
-                                            }
-                                        }
-                                        "{target.label()}"
+                                help: "Overlays this timer will appear on. Pick several to show the same timer on more than one overlay.",
+                                none_label: "No overlay",
+                                noun: "overlays",
+                                options: timer_targets().map(|t| t.label().to_string()).collect::<Vec<_>>(),
+                                picked: draft().display_targets.iter().map(|t| t.label().to_string()).collect::<Vec<_>>(),
+                                on_change: move |picked: Vec<String>| {
+                                    let mut d = draft.write();
+                                    d.display_targets = timer_targets().filter(|t| picked.iter().any(|p| p == t.label())).collect();
+                                    // Clear queue-only fields when AbilityQueue is removed
+                                    if !d.display_targets.contains(&TimerDisplayTarget::AbilityQueue) {
+                                        d.queue_on_expire = false;
+                                        d.gcd_secs = None;
+                                        d.queue_priority = 0;
+                                        d.queue_remove_trigger = None;
+                                        d.queue_countdown_bar = false;
+                                        d.queue_hide_from_next = false;
                                     }
-                                }
+                                },
+                            }
+                        }
+                        CheckField { label: "Timer enabled", checked: draft().enabled, on_change: move |v| draft.write().enabled = v }
+                        if !draft().enabled {
+                            div { class: "text-xs text-warning mt-xs",
+                                i { class: "fa-solid fa-triangle-exclamation" }
+                                " Disabling a timer may break phases, counters, or other timers that depend on it."
                             }
                         }
                     }
@@ -373,11 +375,14 @@ pub(super) fn TimerEditForm(
                 // ═══ RIGHT COLUMN: Timing, Alerts, Audio ═══════════════════════
                 div { class: "edit-grid-right",
                     FormCard { icon: "fa-clock", title: "Timing",
-                        CheckField {
-                            label: "Instant alert only",
-                            help: "Shows a brief alert notification instead of a countdown timer bar",
-                            checked: draft().is_alert,
-                            on_change: move |v| draft.write().is_alert = v,
+                        Field { label: "Type", help: "Countdown shows a timer bar; Instant alert only shows a brief notification",
+                            for (label, alert) in [("Countdown", false), ("Instant alert", true)] {
+                                TogglePill {
+                                    label,
+                                    active: draft().is_alert == alert,
+                                    on_click: move |_| draft.write().is_alert = alert,
+                                }
+                            }
                         }
                         if !draft().is_alert {
                             CheckField {
@@ -475,7 +480,9 @@ pub(super) fn TimerEditForm(
                     }
 
                     FormCard { icon: "fa-volume-up", title: "Audio",
-                        CheckField { label: "Enable audio", checked: draft().audio.enabled, on_change: move |v| draft.write().audio.enabled = v }
+                        action: rsx! {
+                            ToggleSwitch { label: "", checked: draft().audio.enabled, on_change: move |v| draft.write().audio.enabled = v }
+                        },
                         if draft().audio.enabled {
                             SoundPicker { value: draft().audio.file.clone(), on_change: move |v| draft.write().audio.file = v }
                             // Audio timing options (only for countdown timers)
@@ -509,16 +516,6 @@ pub(super) fn TimerEditForm(
                         }
                     }
 
-                    FormCard { icon: "fa-triangle-exclamation", title: "Advanced",
-                        CheckField { label: "Timer enabled", checked: draft().enabled, on_change: move |v| draft.write().enabled = v }
-                        if !draft().enabled {
-                            div { class: "text-xs text-warning mt-xs",
-                                i { class: "fa-solid fa-triangle-exclamation" }
-                                " Disabling a timer may break phases, counters, or other timers that depend on it."
-                            }
-                        }
-                    }
-
                     // Only when the Ability Queue overlay is a target
                     if !draft().is_alert && draft().display_targets.contains(&TimerDisplayTarget::AbilityQueue) {
                         AbilityQueueCard { draft, all_timers: all_timers.clone(), encounter_data: encounter_data.clone() }
@@ -538,6 +535,14 @@ pub(super) fn TimerEditForm(
             }
         }
     }
+}
+
+/// Overlays a timer can be shown on
+fn timer_targets() -> impl Iterator<Item = TimerDisplayTarget> {
+    TimerDisplayTarget::all()
+        .iter()
+        .copied()
+        .filter(|t| !matches!(t, TimerDisplayTarget::None))
 }
 
 fn preview_request(timer: &BossTimerDefinition) -> OverlayPreviewRequest {

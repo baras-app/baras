@@ -5810,12 +5810,15 @@ a.contributor-name:hover {
 
 /* ─── Toggle Buttons (difficulty selectors, etc.) ────────────────────────────── */
 .toggle-btn {
-  padding: var(--space-xs) var(--space-sm);
-  background: var(--bg-input);
+  height: 30px;
+  box-sizing: border-box;
+  padding: 0 0.8em;
+  background: var(--bg-card-input);
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-md);
-  color: var(--text-muted);
-  font-size: 0.85em;
+  /* Off still reads as a live choice, not a disabled one */
+  color: var(--text-secondary);
+  font-size: 0.9rem;
   cursor: pointer;
   transition: all var(--transition-fast);
   text-transform: capitalize;
@@ -5823,13 +5826,14 @@ a.contributor-name:hover {
 
 .toggle-btn:hover {
   border-color: var(--border-accent);
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .toggle-btn.active {
-  background: var(--blue-alpha-15);
-  border-color: var(--border-accent-medium);
-  color: var(--swtor-blue);
+  background: var(--swtor-blue);
+  border-color: var(--swtor-blue);
+  color: #fff;
+  font-weight: 600;
 }
 
 /* Icon preview in effect editor */
@@ -7210,6 +7214,21 @@ a.contributor-name:hover {
 /* Trigger rows are form rows; the spacing comes from them */
 .trigger-fields > .field:last-child {
   margin-bottom: 0.6em;
+}
+
+/* Checklist dropdown in a row: as wide as a text box */
+.field-control > .multi-select {
+  flex: 1 1 12em;
+  max-width: 24em;
+}
+
+/* A card whose options are all behind its header switch: header only */
+.form-card-content:empty {
+  display: none;
+}
+
+.form-card-action .toggle-switch-label {
+  gap: 0;
 }
 
 .field-unit {
