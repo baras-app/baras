@@ -853,11 +853,9 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
 
         let Some(entity) = entity else { return };
 
-        // Clear stale effect data immediately so icons don't show wrong player's effects.
-        // Spinner for historical only: live refreshes would make it flicker
+        // The previous rows stay up (dimmed) until the new ones land, so the table
+        // doesn't blink empty. Historical only: live refreshes would make it flicker
         effects_loading.set(idx.is_some());
-        active_effects.set(Vec::new());
-        passive_effects.set(Vec::new());
         selected_effects.set(Vec::new());
         effect_windows.set(Vec::new());
 
@@ -869,11 +867,10 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
             };
             let sf_opt = if sf == "all" { None } else { Some(sf.as_str()) };
 
-            if let Some(data) = api::query_effect_uptime(idx, Some(&entity), tr_opt, duration, sf_opt).await {
-                let (active, passive): (Vec<_>, Vec<_>) = data.into_iter().partition(|e| e.is_active);
-                active_effects.set(active);
-                passive_effects.set(passive);
-            }
+            let data = api::query_effect_uptime(idx, Some(&entity), tr_opt, duration, sf_opt).await;
+            let (active, passive): (Vec<_>, Vec<_>) = data.unwrap_or_default().into_iter().partition(|e| e.is_active);
+            active_effects.set(active);
+            passive_effects.set(passive);
             effects_loading.set(false);
         });
     });
@@ -1262,12 +1259,12 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                 // Combined effects table (active abilities + passive effects)
                 div { class: "effects-section",
                     h4 { "Effects" }
-                    if effects_loading() {
+                    if sorted_effects.is_empty() && effects_loading() {
                         div { class: "effects-loading", i { class: "fa-solid fa-spinner fa-spin" } }
                     } else if sorted_effects.is_empty() {
                         div { class: "effects-empty", "No effects" }
                     } else {
-                        div { class: "effect-table-wrapper",
+                        div { class: if effects_loading() { "effect-table-wrapper stale" } else { "effect-table-wrapper" },
                             table { class: "effect-table",
                                 thead {
                                     {

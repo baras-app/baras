@@ -1719,6 +1719,28 @@
   pointer-events: none;
 }
 
+/* Spinners only appear once a load has run long enough to be worth showing,
+   so quick loads don't blink one in and out */
+.charts-loading,
+.effects-loading {
+  opacity: 0;
+  animation: spinner-late 0s linear 0.3s forwards;
+}
+
+@keyframes spinner-late {
+  to { opacity: 1; }
+}
+
+/* Rows of the previous selection, held while the next ones load */
+.effect-table-wrapper {
+  transition: opacity 0.15s;
+}
+
+.effect-table-wrapper.stale {
+  opacity: 0.5;
+  transition-delay: 0.3s;
+}
+
 .effects-loading {
   display: flex;
   justify-content: center;
