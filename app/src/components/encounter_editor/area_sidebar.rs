@@ -13,9 +13,8 @@ pub fn AreaCategory(
     name: &'static str,
     areas: Vec<AreaListItem>,
     selected: Option<AreaListItem>,
-    /// Bosses of the selected area (empty while loading)
+    /// Bosses of the selected area
     bosses: Vec<BossRow>,
-    loading: bool,
     /// The open area's boss list is shown
     bosses_open: bool,
     selected_boss: Option<String>,
@@ -56,9 +55,6 @@ pub fn AreaCategory(
                         }
                         if is_active && bosses_open {
                             div { class: "sidebar-boss-list",
-                                if loading {
-                                    div { class: "sidebar-boss-item muted", "Loading…" }
-                                }
                                 for (id, boss_name, enabled, is_final) in bosses.iter().cloned() {
                                     {
                                         let is_sel = selected_boss.as_deref() == Some(id.as_str());
@@ -81,11 +77,9 @@ pub fn AreaCategory(
                                         }
                                     }
                                 }
-                                if !loading {
-                                    div { class: "sidebar-boss-item add", onclick: move |_| on_new_boss.call(()),
-                                        i { class: "fa-solid fa-plus" }
-                                        " New boss"
-                                    }
+                                div { class: "sidebar-boss-item add", onclick: move |_| on_new_boss.call(()),
+                                    i { class: "fa-solid fa-plus" }
+                                    " New boss"
                                 }
                             }
                         }

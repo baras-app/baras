@@ -185,6 +185,9 @@ pub use tabs::BossTabs;
 // Main Panel
 // ─────────────────────────────────────────────────────────────────────────────
 
+static AREAS: GlobalSignal<Vec<AreaListItem>> = Signal::global(Vec::new);
+static BOSSES: GlobalSignal<Vec<BossWithPath>> = Signal::global(Vec::new);
+
 #[derive(Props, Clone, PartialEq)]
 pub struct EncounterEditorProps {
     /// Unified UI session state (includes persisted state for this panel)
@@ -194,13 +197,16 @@ pub struct EncounterEditorProps {
 #[component]
 pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
     let guard = provide_drawer_guard();
-    // Area index state (not persisted - loaded fresh each time)
-    let mut areas = use_signal(Vec::<AreaListItem>::new);
-    let mut loading_areas = use_signal(|| true);
+    // The lists outlive the panel, so coming back to the tab shows the last
+    // known sidebar at once; the load on mount below refreshes it in place.
+    let mut areas = AREAS.signal();
+    let mut loading_areas = use_signal(|| AREAS.peek().is_empty());
 
-    // Boss state - unified: one signal holds all bosses with their items
-    let mut bosses = use_signal(Vec::<BossWithPath>::new);
-    let mut loading_bosses = use_signal(|| false);
+    // Boss state - unified: one signal holds all bosses with their items.
+    // Always those of `selected_area_path`.
+    let mut bosses = BOSSES.signal();
+    // Area whose bosses are being fetched; a later click supersedes it
+    let mut pending_area = use_signal(|| None::<String>);
 
     // Extract persisted state fields
     let mut selected_area_path = use_signal(|| props.state.read().encounter_builder.selected_area_path.clone());
@@ -221,7 +227,10 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
     let hide_disabled_counters = use_signal(|| props.state.read().encounter_builder.hide_disabled_counters);
 
     // Derived: selected_area AreaListItem (reconstructed from path/name when areas load)
-    let mut selected_area = use_signal(|| None::<AreaListItem>);
+    let mut selected_area = use_signal(|| {
+        let path = selected_area_path.peek().clone()?;
+        AREAS.peek().iter().find(|a| a.file_path == path).cloned()
+    });
 
     // Sync persisted state back to unified state
     use_effect(move || {
@@ -283,26 +292,24 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
         });
     });
 
-    // Load bosses when area is selected - single unified call
+    // Open an area: fetch its bosses first, then swap the selection and the
+    // list together, so the page never passes through an empty state.
     let load_area_data = move |area: AreaListItem| {
         let file_path = area.file_path.clone();
-        let area_name = area.name.clone();
-
-        // Update persisted state
-        selected_area_path.set(Some(file_path.clone()));
-        selected_area_name.set(Some(area_name));
-        selected_area.set(Some(area));
-
-        loading_bosses.set(true);
-        bosses.set(Vec::new());
-        expanded_boss.set(None);
-        bosses_open.set(true);
+        pending_area.set(Some(file_path.clone()));
 
         spawn(async move {
-            if let Some(b) = api::fetch_area_bosses(&file_path).await {
-                bosses.set(b);
+            let fetched = api::fetch_area_bosses(&file_path).await;
+            if pending_area.peek().as_ref() != Some(&file_path) {
+                return;
             }
-            loading_bosses.set(false);
+            pending_area.set(None);
+            selected_area_path.set(Some(file_path));
+            selected_area_name.set(Some(area.name.clone()));
+            selected_area.set(Some(area));
+            bosses.set(fetched.unwrap_or_default());
+            expanded_boss.set(None);
+            bosses_open.set(true);
         });
     };
 
@@ -439,7 +446,6 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                                         areas: group,
                                         selected: selected_area(),
                                         bosses: boss_rows.clone(),
-                                        loading: loading_bosses(),
                                         bosses_open: bosses_open(),
                                         selected_boss: expanded_boss(),
                                         on_select: move |a: AreaListItem| {
@@ -505,8 +511,6 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                         div { class: "empty-state-icon", "📂" }
                         "Select an area to edit encounters"
                     }
-                } else if loading_bosses() {
-                    div { class: "empty-state", "Loading..." }
                 } else if let Some(bwp) = open_boss {
                     BossTabs {
                         key: "{bwp.boss.id}",
