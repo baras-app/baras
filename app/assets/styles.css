@@ -6742,16 +6742,13 @@ a.contributor-name:hover {
 
 .ability-table .ability-name-cell {
   font-weight: 400;
-  max-width: 180px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .ability-table .ability-name-cell .ability-name-inner {
   display: flex;
   align-items: center;
   gap: 0.5em;
+  min-width: 0;
 }
 
 .ability-icon {

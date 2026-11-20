@@ -445,7 +445,7 @@ pub(super) fn UsageTab(
                                     td { class: "ability-name-cell",
                                         span { class: "ability-name-inner",
                                             AbilityIcon { ability_id: display_id(row.ability_id) }
-                                            span { "{row.ability_name}" }
+                                            span { class: "ability-name-text", "{row.ability_name}" }
                                             span { class: "ability-id-muted", " ({row.ability_id})" }
                                         }
                                     }

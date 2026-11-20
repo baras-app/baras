@@ -602,10 +602,11 @@
 .tab-content-area {
   flex: 1;
   min-height: 0;
-  overflow: auto;
-  /* Keep the scrollbar's space reserved, so content (e.g. the overview columns)
-     doesn't reflow sideways as the content height crosses the viewport */
-  scrollbar-gutter: stable;
+  overflow-x: auto;
+  /* Always scroll vertically, so the scrollbar's width is always taken: content
+     (table columns) doesn't reflow sideways as its height crosses the viewport.
+     scrollbar-gutter: stable would be the quiet way, but WebKitGTK ignores it */
+  overflow-y: scroll;
   display: flex;
   flex-direction: column;
 }
@@ -721,10 +722,27 @@
   border-radius: var(--radius-md);
 }
 
+/* Fixed layout: number columns sized for their widest formatted value
+   ("123.45M", "100.0%"); the name takes the rest and truncates */
 .npc-health-table {
   border-collapse: collapse;
   font-size: 13px;
   width: 100%;
+  table-layout: fixed;
+}
+
+.npc-health-table thead th.num {
+  width: 84px;
+}
+
+.npc-health-table thead th.num:last-child {
+  width: 72px;
+}
+
+.npc-health-table td:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .npc-health-table tbody tr:last-child td {
@@ -1435,6 +1453,9 @@
 
 .recap-table {
   width: 100%;
+  /* Number columns sized for their header or widest value ("123.45K");
+     the name column takes the rest and truncates */
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 11px;
@@ -1482,11 +1503,14 @@
 }
 
 .recap-table td:first-child {
-  width: 100%;
-  max-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.recap-table th.col-count { width: 48px; }
+.recap-table th.col-val { width: 60px; }
+.recap-table th.col-wide { width: 80px; }
+.recap-table th.col-type { width: 72px; }
 
 .recap-ability {
   color: var(--text-primary);
@@ -2700,6 +2724,8 @@
 
 .usage-table {
   width: 100%;
+  /* The 7 number columns plus room for the ability name */
+  min-width: calc(7 * 95px + 220px);
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -2763,6 +2789,19 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+}
+
+.ability-name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ability-id-muted,
+.shield-badge {
+  flex-shrink: 0;
 }
 
 .ability-id-muted {
@@ -2877,9 +2916,10 @@
   z-index: 2;
 }
 
+/* Fixed layout (from .overview-table) takes these widths from the header */
 .uptime-table th.uptime-target {
   vertical-align: bottom;
-  max-width: 7em;
+  width: 84px;
   font-weight: 500;
   text-transform: none;
   letter-spacing: 0;
@@ -3044,8 +3084,12 @@
 }
 
 /* The ability table has no wrapper of its own: frame the table itself.
-   Separate borders let the radius show; spacing 0 keeps the rows flush. */
+   Separate borders let the radius show; spacing 0 keeps the rows flush.
+   Fixed layout: widths come from the header row, sized for each column's
+   header word or widest formatted value ("123.45K", "100.0%"), so columns
+   never resize with the data; the name truncates. */
 .ability-table {
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
   background: var(--well-bg);
@@ -3099,6 +3143,25 @@
 .effect-table thead tr,
 .effect-table tbody tr {
   border-bottom: none;
+}
+
+.ability-table th:first-child { width: 220px; }
+.ability-table th.num { width: 64px; }
+.ability-table th.col-val { width: 80px; }
+.ability-table th.col-pct { width: 72px; }
+.ability-table th.col-pct-bar { width: 110px; }
+.ability-table th.col-dmg-type { width: 90px; }
+.ability-table th.col-avg { width: 88px; }
+.ability-table th.col-wide { width: 112px; }
+
+.ability-table td.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.ability-table td:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Totals keep their rule but sit on the card, not a lighter band */

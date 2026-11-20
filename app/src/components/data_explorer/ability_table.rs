@@ -118,7 +118,7 @@ fn table_head(
                 // Activations and Hits as columns #2 and #3
                 if show_ability_col {
                     th {
-                        class: "num {sort_class(SortColumn::Activations)}",
+                        class: "num col-wide {sort_class(SortColumn::Activations)}",
                         onclick: sort_click(SortColumn::Activations, false),
                         "Activations"
                     }
@@ -140,7 +140,7 @@ fn table_head(
                 }
                 if is_healing_tab {
                     th {
-                        class: "num col-val col-eff {sort_class(SortColumn::Effective)}",
+                        class: "num col-val col-eff col-wide {sort_class(SortColumn::Effective)}",
                         onclick: sort_click(SortColumn::Effective, false),
                         "Effective"
                     }

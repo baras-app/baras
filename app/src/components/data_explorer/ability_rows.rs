@@ -176,10 +176,12 @@ pub(super) fn table_body(grouped_abilities: Memo<AbilityGroups>, cols: TableCols
                             td { class: "ability-name-cell",
                                 span { class: "ability-name-inner",
                                     AbilityIcon { ability_id: display_id(ability.ability_id) }
-                                    if !ability.ability_name.is_empty() {
-                                        "{ability.ability_name}"
-                                    } else {
-                                        "Ability #{ability.ability_id}"
+                                    span { class: "ability-name-text",
+                                        if !ability.ability_name.is_empty() {
+                                            "{ability.ability_name}"
+                                        } else {
+                                            "Ability #{ability.ability_id}"
+                                        }
                                     }
                                     if ability.is_shield {
                                         span { class: "shield-badge", " (shield)" }

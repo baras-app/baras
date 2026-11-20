@@ -268,11 +268,11 @@ fn DamageTakenTable(rows: Vec<DeathRecapDamageSource>, european: bool) -> Elemen
                     thead {
                         tr {
                             th { class: "col-left", "Source" }
-                            th { "Hits" }
-                            th { "Total" }
-                            th { "Max" }
-                            th { "Absorbed" }
-                            th { class: "col-left", "Type" }
+                            th { class: "col-count", "Hits" }
+                            th { class: "col-val", "Total" }
+                            th { class: "col-val", "Max" }
+                            th { class: "col-wide", "Absorbed" }
+                            th { class: "col-left col-type", "Type" }
                         }
                     }
                     tbody {
@@ -335,8 +335,8 @@ fn HealingReceivedTable(rows: Vec<DeathRecapHealSource>, european: bool) -> Elem
                     thead {
                         tr {
                             th { class: "col-left", "Source" }
-                            th { "Ticks" }
-                            th { "Effective" }
+                            th { class: "col-count", "Ticks" }
+                            th { class: "col-wide", "Effective" }
                         }
                     }
                     tbody {
