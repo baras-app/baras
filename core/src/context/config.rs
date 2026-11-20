@@ -18,7 +18,7 @@ pub use baras_types::{
 // ─────────────────────────────────────────────────────────────────────────────
 
 fn default_log_directory() -> String {
-    #[cfg(target_os = "windows")]
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
     {
         dirs::document_dir()
             .map(|p| p.join("Star Wars - The Old Republic/CombatLogs"))
@@ -27,16 +27,25 @@ fn default_log_directory() -> String {
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {
-        dirs::home_dir()
-            .map(|p| {
-                p.join(".local/share/Steam/steamapps/compatdata/1286830/pfx/drive_c/users/steamuser/Documents/Star Wars - The Old Republic/CombatLogs")
-            })
-            .and_then(|p| p.to_str().map(String::from))
+        const STEAM_ROOTS: [&str; 3] = [
+            ".local/share/Steam",
+            ".steam/steam",
+            ".var/app/com.valvesoftware.Steam/.local/share/Steam",
+        ];
+        const PREFIX_LOGS: &str = "steamapps/compatdata/1286830/pfx/drive_c/users/steamuser/Documents/Star Wars - The Old Republic/CombatLogs";
+
+        let Some(home) = dirs::home_dir() else {
+            return String::new();
+        };
+        let candidates = STEAM_ROOTS.map(|root| home.join(root).join(PREFIX_LOGS));
+        // Prefer an existing directory; fall back to the native Steam path
+        candidates
+            .iter()
+            .find(|p| p.is_dir())
+            .unwrap_or(&candidates[0])
+            .to_str()
+            .map(String::from)
             .unwrap_or_default()
-    }
-    #[cfg(target_os = "macos")]
-    {
-        String::new()
     }
 }
 
@@ -72,6 +81,10 @@ impl AppConfigExt for AppConfig {
     fn load() -> Self {
         match crate::paths::config_file().and_then(confy::load_path::<Self>) {
             Ok(mut config) => {
+                // confy returns Default (empty path) when the file doesn't exist yet
+                if config.log_directory.is_empty() {
+                    config.log_directory = default_log_directory();
+                }
                 config.parsely.migrate_legacy();
                 config.overlay_settings.migrate_legacy();
                 for profile in &mut config.profiles {
