@@ -305,11 +305,7 @@ impl SharedState {
         // Only stale if the newest log file is blank (session rotation —
         // SWTOR created a new empty file meaning the player logged out/restarted)
         let index = self.directory_index.read().await;
-        if index.newest_file().map(|f| f.is_empty).unwrap_or(false) {
-            return true;
-        }
-
-        false
+        index.newest_file().is_some_and(|f| f.is_empty)
     }
 
     /// Execute a function with mutable access to the current session.
