@@ -1912,12 +1912,14 @@
   font-size: 11px;
 }
 
+/* Sized to fit the header with its sort arrow ("UPTIME ▼"), which never
+   wraps: the header keeps one height whichever column is sorted */
 .effect-table .col-apps {
-  width: 46px;
+  width: 56px;
 }
 
 .effect-table .col-uptime {
-  width: 58px;
+  width: 70px;
 }
 
 .effect-table .col-pct {
@@ -1936,6 +1938,7 @@
 }
 
 .effect-table th {
+  white-space: nowrap;
   font-weight: 600;
   color: var(--text-muted);
   font-size: 10px;
@@ -2910,6 +2913,13 @@
 
 .uptime-table thead th.name-col {
   z-index: 2;
+}
+
+/* Always room for two lines of target name (12px × 1.2 line-height, plus the
+   span's 2px margin and the cell padding), so the header keeps one height
+   whichever targets the source hit */
+.uptime-table thead th {
+  height: 44px;
 }
 
 /* Fixed layout (from .overview-table) takes these widths from the header */
