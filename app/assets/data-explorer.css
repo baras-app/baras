@@ -2690,9 +2690,6 @@
 } /* Effect Uptime - magenta */
 
 .usage-section {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
   overflow-y: auto;
 }
 
