@@ -363,7 +363,7 @@ pub(super) fn TimerEditForm(
                                 Field { label: "Counter (legacy)", muted: true,
                                     CounterConditionEditor {
                                         condition: draft().counter_condition.clone(),
-                                        counters: encounter_data.counter_ids(),
+                                        counters: encounter_data.counter_options(),
                                         on_change: move |c| draft.write().counter_condition = c,
                                     }
                                 }

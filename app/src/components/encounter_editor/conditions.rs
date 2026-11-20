@@ -18,7 +18,8 @@ use crate::types::{ComparisonOp, Condition, CounterCondition};
 #[component]
 pub fn CounterConditionEditor(
     condition: Option<CounterCondition>,
-    counters: Vec<String>,
+    /// (id, label) per counter
+    counters: Vec<(String, String)>,
     on_change: EventHandler<Option<CounterCondition>>,
 ) -> Element {
     let effective_condition = condition.clone().filter(|c| !c.counter_id.is_empty());
@@ -60,12 +61,8 @@ pub fn CounterConditionEditor(
                 if counters.is_empty() {
                     option { value: "__none__", disabled: true, "No counters defined" }
                 }
-                for counter_id in &counters {
-                    option {
-                        value: "{counter_id}",
-                        selected: *counter_id == selected_value,
-                        "{counter_id}"
-                    }
+                for (counter_id, label) in &counters {
+                    option { value: "{counter_id}", selected: *counter_id == selected_value, "{label}" }
                 }
             }
 

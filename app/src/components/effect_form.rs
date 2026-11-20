@@ -330,6 +330,8 @@ pub(crate) fn EffectEditForm(
                                     }
                                 }
                             }
+                            // What the picked type needs, nested under it
+                            div { class: "trigger-details",
                             if trigger_type() == EffectTriggerType::EffectBased {
                                 Field { label: "When",
                                     select {
@@ -346,6 +348,26 @@ pub(crate) fn EffectEditForm(
                                         },
                                         option { value: "Effect Applied", "Effect Applied" }
                                         option { value: "Effect Removed", "Effect Removed" }
+                                    }
+                                }
+                            }
+                            if trigger_type() == EffectTriggerType::EffectBased {
+                                EffectSelectorEditor {
+                                    label: "Effects",
+                                    selectors: get_trigger_effects(&draft().trigger).1,
+                                    on_change: move |selectors| {
+                                        let mut d = draft.write();
+                                        d.trigger = set_trigger_effects(d.trigger.clone(), selectors);
+                                    }
+                                }
+                            } else {
+                                Field { label: "Abilities", top: true,
+                                    TriggerAbilitiesEditor {
+                                        abilities: get_trigger_abilities(&draft().trigger),
+                                        on_change: move |abilities| {
+                                            let mut d = draft.write();
+                                            d.trigger = set_trigger_abilities(d.trigger.clone(), abilities);
+                                        }
                                     }
                                 }
                             }
@@ -387,29 +409,6 @@ pub(crate) fn EffectEditForm(
                                     on_change: move |v: Vec<String>| draft.write().target_disciplines = v,
                                 }
                             }
-                        }
-
-                        // Effects or trigger abilities, by trigger type
-                        if trigger_type() == EffectTriggerType::EffectBased {
-                            SubSection { title: "Effects",
-                                EffectSelectorEditor {
-                                    label: "",
-                                    selectors: get_trigger_effects(&draft().trigger).1,
-                                    on_change: move |selectors| {
-                                        let mut d = draft.write();
-                                        d.trigger = set_trigger_effects(d.trigger.clone(), selectors);
-                                    }
-                                }
-                            }
-                        } else {
-                            SubSection { title: "Trigger Abilities",
-                                TriggerAbilitiesEditor {
-                                    abilities: get_trigger_abilities(&draft().trigger),
-                                    on_change: move |abilities| {
-                                        let mut d = draft.write();
-                                        d.trigger = set_trigger_abilities(d.trigger.clone(), abilities);
-                                    }
-                                }
                             }
                         }
 

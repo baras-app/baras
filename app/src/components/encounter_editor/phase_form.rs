@@ -132,7 +132,7 @@ pub(super) fn PhaseEditForm(
                             Field { label: "Counter (legacy)", muted: true,
                                 CounterConditionEditor {
                                     condition: draft().counter_condition.clone(),
-                                    counters: encounter_data.counter_ids(),
+                                    counters: encounter_data.counter_options(),
                                     on_change: move |cond| draft.write().counter_condition = cond,
                                 }
                             }
@@ -142,7 +142,7 @@ pub(super) fn PhaseEditForm(
                     SubSection { title: "Resets Counters", help: "Counters to reset when this phase starts",
                         CounterListEditor {
                             counters: draft().resets_counters.clone(),
-                            available_counters: encounter_data.counter_ids(),
+                            available: encounter_data.counter_options(),
                             on_change: move |counters| draft.write().resets_counters = counters,
                         }
                     }
@@ -199,74 +199,60 @@ pub(super) fn PhaseEditForm(
 #[component]
 fn CounterListEditor(
     counters: Vec<String>,
-    available_counters: Vec<String>,
+    /// (id, label) per counter
+    available: Vec<(String, String)>,
     on_change: EventHandler<Vec<String>>,
 ) -> Element {
-    let mut selected_counter = use_signal(String::new);
-
-    // Available counters not already picked
-    let remaining: Vec<_> = available_counters
-        .iter()
-        .filter(|c| !counters.contains(c))
-        .cloned()
-        .collect();
+    let label_of = |id: &String| {
+        available
+            .iter()
+            .find(|(i, _)| i == id)
+            .map_or_else(|| id.clone(), |(_, label)| label.clone())
+    };
+    let remaining: Vec<&(String, String)> = available.iter().filter(|(id, _)| !counters.contains(id)).collect();
     let counters_for_add = counters.clone();
 
     rsx! {
-        div { class: "flex-col gap-xs",
-            div { class: "flex flex-wrap gap-xs",
-                for (idx, counter) in counters.iter().enumerate() {
-                    {
-                        let counters_clone = counters.clone();
-                        rsx! {
-                            span { class: "chip",
-                                "{counter}"
-                                button {
-                                    class: "chip-remove",
-                                    onclick: move |_| {
-                                        let mut new_counters = counters_clone.clone();
-                                        new_counters.remove(idx);
-                                        on_change.call(new_counters);
-                                    },
-                                    "×"
+        div { class: "field-stack chip-box",
+            if !counters.is_empty() {
+                div { class: "field-chips",
+                    for (idx, counter) in counters.iter().enumerate() {
+                        {
+                            let counters_clone = counters.clone();
+                            rsx! {
+                                span { class: "chip",
+                                    "{label_of(counter)}"
+                                    button {
+                                        class: "chip-remove",
+                                        onclick: move |_| {
+                                            let mut next = counters_clone.clone();
+                                            next.remove(idx);
+                                            on_change.call(next);
+                                        },
+                                        "×"
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
-
             if !remaining.is_empty() {
-                div { class: "flex gap-xs",
-                    {
-                        let current_selection = selected_counter();
-                        rsx! {
-                            select {
-                                class: "select w-md",
-                                onchange: move |e| selected_counter.set(e.value()),
-                                option { value: "", selected: current_selection.is_empty(), "Select counter..." }
-                                for counter_id in &remaining {
-                                    option { value: "{counter_id}", selected: counter_id == &current_selection, "{counter_id}" }
-                                }
-                            }
+                select {
+                    onchange: move |e| {
+                        let id = e.value();
+                        if !id.is_empty() && !counters_for_add.contains(&id) {
+                            let mut next = counters_for_add.clone();
+                            next.push(id);
+                            on_change.call(next);
                         }
-                    }
-                    button {
-                        class: "btn btn-sm",
-                        disabled: selected_counter().is_empty(),
-                        onclick: move |_| {
-                            let val = selected_counter();
-                            if !val.is_empty() && !counters_for_add.contains(&val) {
-                                let mut new_counters = counters_for_add.clone();
-                                new_counters.push(val);
-                                on_change.call(new_counters);
-                                selected_counter.set(String::new());
-                            }
-                        },
-                        "Add"
+                    },
+                    option { value: "", selected: true, "(add counter...)" }
+                    for (id, label) in remaining {
+                        option { value: "{id}", "{label}" }
                     }
                 }
-            } else if available_counters.is_empty() {
+            } else if available.is_empty() {
                 span { class: "text-xs text-muted", "No counters defined" }
             }
         }

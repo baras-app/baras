@@ -5453,8 +5453,13 @@ a.contributor-name:hover {
     min-width: 0;
     padding-inline: 4px;
   }
-  .boss-views .data-tab .tab-label {
+  /* The open tab keeps its name */
+  .boss-views .data-tab:not(.active) .tab-label {
     display: none;
+  }
+  .boss-views .data-tab.active {
+    flex: 0 0 auto;
+    padding-inline: 10px;
   }
 }
 
@@ -6342,6 +6347,12 @@ a.contributor-name:hover {
 .sidebar-encounter-item.selected {
   background: var(--blue-alpha-10);
   border-left-color: var(--swtor-blue);
+}
+
+/* Encounter editor: areas are one-word rows, as tight as the boss list under them */
+.editor-layout .sidebar-encounter-item {
+  padding: 0.38em 0.75em;
+  margin: 1px 0;
 }
 
 /* Encounter editor: the open area's bosses, nested under it */
@@ -7266,6 +7277,11 @@ a.contributor-name:hover {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   background: rgba(var(--fg-rgb), 0.03);
+}
+
+.field-control > .chip-box {
+  flex: 1 1 12em;
+  min-width: 0;
 }
 
 .chip-box.wide {
