@@ -5,9 +5,9 @@ use crate::serde_defaults::{default_scaling_factor, default_true};
 use crate::{
     AbilityCastOverlayConfig, AbilityQueueOverlayConfig, AlertsOverlayConfig, BossHealthConfig, ChallengeOverlayConfig,
     ClassColorConfig, ClassIconMode, CombatTimeOverlayConfig, CooldownTrackerConfig, DotTrackerConfig, EffectsAConfig,
-    EffectsBConfig, EnemyFramesConfig, FrameStyle, FrameStyleOverride, MetricOptions, MetricOverrides, NotesOverlayConfig,
-    OperationTimerOverlayConfig, OverlayAppearanceConfig, OverlayPositionConfig, PersonalOverlayConfig,
-    RaidOverlaySettings, TimerOverlayConfig,
+    EffectsBConfig, EnemyFramesConfig, FrameStyle, FrameStyleOverride, MetricOptions, MetricOverrides,
+    NotesOverlayConfig, OperationTimerOverlayConfig, OverlayAppearanceConfig, OverlayPositionConfig,
+    PersonalOverlayConfig, RaidOverlaySettings, TimerOverlayConfig,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

@@ -439,7 +439,8 @@ impl MetricOverlay {
         }
 
         let content_width = width - padding * 2.0;
-        let bar_radius = self.appearance.bar_radius.unwrap_or(4.0).clamp(0.0, MAX_BAR_RADIUS) * self.frame.scale_factor();
+        let bar_radius =
+            self.appearance.bar_radius.unwrap_or(4.0).clamp(0.0, MAX_BAR_RADIUS) * self.frame.scale_factor();
 
         // Draw header just above the first bar (uses base_font_size, not bar_font_size)
         let mut y = if self.appearance.show_header {
