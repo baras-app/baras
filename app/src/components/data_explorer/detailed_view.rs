@@ -128,7 +128,7 @@ pub(super) fn detailed_view(
                 }
             } else if matches!(shown, ViewMode::Usage) {
                 // Ability Usage view in right column
-                div { class: "ability-section usage-section",
+                div { class: "ability-section",
                     if *entity_collapsed.read() {
                         EntityPicker {
                             entities: entity_list,

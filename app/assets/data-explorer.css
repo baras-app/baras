@@ -2714,10 +2714,6 @@
   background: hsl(320, 60%, 55%);
 } /* Effect Uptime - magenta */
 
-.usage-section {
-  overflow-y: auto;
-}
-
 .usage-table-container {
   overflow-x: auto;
 }
@@ -3143,6 +3139,20 @@
 .effect-table thead tr,
 .effect-table tbody tr {
   border-bottom: none;
+}
+
+/* Nothing in the column shrinks when the content outgrows it (the controls
+   were squeezed to their min-height under a long table, pulling it up)... */
+.ability-section > * {
+  flex-shrink: 0;
+}
+
+/* ...except the table, which takes what's left under the controls and
+   scrolls there */
+.ability-section > .ability-table-scroll {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: auto;
 }
 
 .ability-table th:first-child { width: 220px; }
