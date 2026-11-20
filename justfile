@@ -97,7 +97,7 @@ release:
   [[ -z "$(git status --porcelain)" ]] || { echo "Working tree is not clean"; exit 1; }
   git fetch -q origin master
   [[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/master)" ]] || { echo "master differs from origin/master"; exit 1; }
-  [[ "$(head -n 1 "changelogs/v$VERSION.md")" == "# v$VERSION" ]] || { echo "changelogs/v$VERSION.md does not start with '# v$VERSION'"; exit 1; }
+  [[ "$(head -n 1 "changelogs/v$VERSION.md" 2> /dev/null)" == "# v$VERSION" ]] || { echo "changelogs/v$VERSION.md is missing or does not start with '# v$VERSION'"; exit 1; }
   gh workflow run build.yml --ref master -f release=true
   echo "✓ Release v$VERSION started; follow it with: gh run watch"
 

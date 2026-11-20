@@ -106,7 +106,7 @@ impl SharedScaledIconCache {
 
 /// Desaturate an RGBA buffer in place (luma-weighted, slightly dimmed).
 pub fn desaturate_rgba(rgba: &mut [u8]) {
-    for px in rgba.chunks_exact_mut(4) {
+    for px in rgba.as_chunks_mut::<4>().0 {
         let luma = (0.299 * px[0] as f32 + 0.587 * px[1] as f32 + 0.114 * px[2] as f32) * 0.7;
         let v = luma as u8;
         px[0] = v;

@@ -414,7 +414,7 @@ fn frame_from_buffer(
         let pixels = bytes
             .get(start..end)
             .ok_or_else(|| CaptureError::Failed("PipeWire returned a short frame".into()))?;
-        for pixel in pixels.chunks_exact(4) {
+        for pixel in pixels.as_chunks::<4>().0 {
             let (r, b) = if swap {
                 (pixel[2], pixel[0])
             } else {

@@ -227,7 +227,7 @@ pub fn reconcile_bars(bars: &mut [Option<BarPosition>]) -> Vec<bool> {
 fn ink_threshold(slot: &CapturedImage) -> u8 {
     // A histogram avoids sorting every pixel.
     let mut histogram = [0u32; 256];
-    for px in slot.rgba.chunks_exact(4) {
+    for px in slot.rgba.as_chunks::<4>().0 {
         histogram[luma(px[0], px[1], px[2]) as usize] += 1;
     }
 

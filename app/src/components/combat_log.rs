@@ -204,17 +204,6 @@ fn readable_defense_type(id: i64) -> &'static str {
     }
 }
 
-/// Format damage type to a shorter display name.
-fn format_damage_type(dmg_type: &str) -> &str {
-    match dmg_type {
-        "kinetic" => "kinetic",
-        "energy" => "energy",
-        "internal" => "internal",
-        "elemental" => "elemental",
-        _ => dmg_type,
-    }
-}
-
 /// Get CSS class for row based on content.
 fn row_class(row: &CombatLogRow, highlighted_row_idx: Option<u64>) -> String {
     let mut classes = vec!["log-row"];
@@ -1274,7 +1263,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                                 div { class: "log-cell log-absorbed", style: "width: {col_abs}px; min-width: {col_abs}px;", "{format_number(row.absorbed)}" }
                                 div { class: "log-cell log-overheal", style: "width: {col_over}px; min-width: {col_over}px;", "{format_number(row.overheal)}" }
                                 div { class: "log-cell log-mitigation", style: "width: {col_mit}px; min-width: {col_mit}px;", "{readable_defense_type(row.defense_type_id)}" }
-                                div { class: "log-cell log-dmg-type", style: "width: {col_dmg_type}px; min-width: {col_dmg_type}px;", "{format_damage_type(&row.damage_type)}" }
+                                div { class: "log-cell log-dmg-type", style: "width: {col_dmg_type}px; min-width: {col_dmg_type}px;", "{row.damage_type}" }
                                 div { class: "log-cell log-threat", style: "width: {col_threat}px; min-width: {col_threat}px;",
                                     {
                                         let threat_str = if row.threat != 0.0 {

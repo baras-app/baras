@@ -112,7 +112,9 @@ pub fn prepare(slot: &CapturedImage, band: &Band) -> Option<PreparedCrop> {
 
 fn to_gray(img: &CapturedImage) -> Vec<u8> {
     img.rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|p| (((p[0] as u32 * 77) + (p[1] as u32 * 150) + (p[2] as u32 * 29)) >> 8) as u8)
         .collect()
 }
@@ -124,7 +126,9 @@ fn to_gray(img: &CapturedImage) -> Vec<u8> {
 /// leaves the glyphs bright.
 fn to_gray_suppressing_red(img: &CapturedImage) -> Vec<u8> {
     img.rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|p| {
             let g = p[1] as i32;
             let b = p[2] as i32;

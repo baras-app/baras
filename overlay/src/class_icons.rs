@@ -264,7 +264,9 @@ fn derived(base: &'static ClassIcon, variant: [u8; 4], recolor: impl Fn(&mut [u8
         .entry((std::ptr::from_ref(base) as usize, variant))
         .or_insert_with(|| {
             let mut rgba = base.rgba.clone();
-            rgba.chunks_exact_mut(4).for_each(&recolor);
+            for px in rgba.as_chunks_mut::<4>().0 {
+                recolor(px);
+            }
             Box::leak(Box::new(ClassIcon {
                 rgba,
                 width: base.width,

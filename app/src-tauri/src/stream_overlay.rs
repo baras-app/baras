@@ -217,7 +217,7 @@ fn frame_png(id: &str) -> Option<Vec<u8>> {
 
 /// tiny-skia stores premultiplied RGBA; PNG/browser input expects straight RGBA.
 fn encode_png(width: u32, height: u32, mut rgba: Vec<u8>) -> Result<Vec<u8>, String> {
-    for pixel in rgba.chunks_exact_mut(4) {
+    for pixel in rgba.as_chunks_mut::<4>().0 {
         let alpha = pixel[3] as u32;
         if alpha > 0 && alpha < 255 {
             for channel in &mut pixel[..3] {

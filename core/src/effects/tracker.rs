@@ -2613,7 +2613,7 @@ impl EffectTracker {
         self.pending_dot_refresh = None;
         self.alacrity_buffs.clear();
 
-        for (_key, effect) in self.active_effects.iter_mut() {
+        for effect in self.active_effects.values_mut() {
             if effect.mark_removed() && !effect.timer_expired {
                 self.ticking_count = self.ticking_count.saturating_sub(1);
             }

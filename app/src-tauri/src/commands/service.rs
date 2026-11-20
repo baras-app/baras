@@ -603,7 +603,11 @@ include!(concat!(env!("OUT_DIR"), "/changelogs.rs"));
 /// (`2.1501` = Feb 15 hotfix 1, `3.7001` = Mar 7 hotfix 1).
 fn version_key(version: &str) -> [u32; 4] {
     let mut parts = version.split('.').map(|p| p.parse().unwrap_or(0));
-    let (year, month, patch) = (parts.next().unwrap_or(0), parts.next().unwrap_or(0), parts.next().unwrap_or(0));
+    let (year, month, patch) = (
+        parts.next().unwrap_or(0),
+        parts.next().unwrap_or(0),
+        parts.next().unwrap_or(0),
+    );
     let (day, hotfix) = match patch {
         0..100 => (patch, 0),
         _ if patch / 100 <= 31 => (patch / 100, patch % 100),
@@ -630,7 +634,7 @@ pub async fn get_changelog(
         .map(|(version, md)| (version_key(version), *md))
         .filter(|(key, _)| history || viewed.map_or(*key == current, |v| *key > v))
         .collect();
-    entries.sort_unstable_by(|a, b| b.0.cmp(&a.0));
+    entries.sort_unstable_by_key(|(key, _)| std::cmp::Reverse(*key));
 
     Ok(ChangelogResponse {
         should_show: !history && !entries.is_empty(),
@@ -660,7 +664,10 @@ fn render_changelog_html(entries: &[([u32; 4], &str)]) -> String {
     for (i, (_, md)) in entries.iter().enumerate() {
         let (header, body) = md.split_once('\n').unwrap_or((md, ""));
         let open = if i == 0 { " open" } else { "" };
-        out.push_str(&format!("<details{open}><summary>{}</summary>", header.trim_start_matches('#').trim()));
+        out.push_str(&format!(
+            "<details{open}><summary>{}</summary>",
+            header.trim_start_matches('#').trim()
+        ));
         html::push_html(&mut out, Parser::new_ext(body, options));
         out.push_str("</details>");
     }

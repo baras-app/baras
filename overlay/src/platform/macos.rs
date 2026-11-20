@@ -589,12 +589,14 @@ impl OverlayPlatform for MacOSOverlay {
     fn commit(&mut self) {
         // Convert RGBA to BGRA (tiny-skia already produces premultiplied alpha,
         // so we just need to swap channels - no additional premultiplication!).
-        // chunks_exact + zip lets LLVM elide bounds checks and autovectorize
+        // as_chunks + zip lets LLVM elide bounds checks and autovectorize
         // the swizzle; both buffers are always pixel-aligned and equal length.
         for (src, dst) in self
             .pixel_data
-            .chunks_exact(4)
-            .zip(self.bgra_buffer.chunks_exact_mut(4))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(self.bgra_buffer.as_chunks_mut::<4>().0)
         {
             dst[0] = src[2]; // B
             dst[1] = src[1]; // G

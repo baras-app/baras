@@ -57,7 +57,7 @@ pub fn capture_region(x: i32, y: i32, width: u32, height: u32) -> Result<Capture
     // Z_PIXMAP is B,G,R,X little-endian and X,R,G,B the other way round.
     let lsb = setup.image_byte_order == ImageOrder::LSB_FIRST;
     let mut rgba = Vec::with_capacity(expected);
-    for px in reply.data[..expected].chunks_exact(4) {
+    for px in reply.data[..expected].as_chunks::<4>().0 {
         let (r, g, b) = if lsb {
             (px[2], px[1], px[0])
         } else {

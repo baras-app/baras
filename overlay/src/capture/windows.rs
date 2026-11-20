@@ -102,14 +102,19 @@ fn capture_with_dc(
 
         // GDI hands back BGRA with an unused alpha byte; normalize to opaque RGBA.
         let mut rgba = vec![0u8; byte_len];
-        for (dst, px) in rgba.chunks_exact_mut(4).zip(src.chunks_exact(4)) {
+        for (dst, px) in rgba.as_chunks_mut::<4>().0.iter_mut().zip(src.as_chunks::<4>().0) {
             dst[0] = px[2];
             dst[1] = px[1];
             dst[2] = px[0];
             dst[3] = 255;
         }
 
-        if rgba.chunks_exact(4).all(|p| p[0] == 0 && p[1] == 0 && p[2] == 0) {
+        if rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .all(|p| p[0] == 0 && p[1] == 0 && p[2] == 0)
+        {
             Err(CaptureError::Failed(
                 "captured region was entirely black — the game may be in exclusive fullscreen".into(),
             ))

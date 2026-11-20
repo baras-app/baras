@@ -185,7 +185,7 @@ pub fn capture_region(x: i32, y: i32, width: u32, height: u32) -> Result<Capture
     let swap = matches!(format, Format::Xrgb8888 | Format::Argb8888);
     for row in crop_y..crop_y + crop_height {
         let start = (row as usize * buffer_width as usize + crop_x as usize) * 4;
-        for px in src[start..start + crop_width as usize * 4].chunks_exact(4) {
+        for px in src[start..start + crop_width as usize * 4].as_chunks::<4>().0 {
             // Xrgb/Argb arrive as B,G,R,A; the bgr variants are already in order.
             let (r, b) = if swap { (px[2], px[0]) } else { (px[0], px[2]) };
             rgba.extend_from_slice(&[r, px[1], b, 255]);
