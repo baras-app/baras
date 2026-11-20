@@ -3,13 +3,14 @@
 use super::ctx::OverviewTableData;
 use crate::api::{PvpFaction, RaidOverviewRow};
 use crate::components::encounter_types::{EncounterSummary, group_by_area};
-use crate::components::overview_table::{OverviewSort, OverviewTotals};
+use crate::components::overview_columns::column;
+use baras_types::OverviewColumn;
 
 /// (area name, difficulty, encounters newest-first), newest area first
 pub(super) type AreaSections = Vec<(String, Option<String>, Vec<EncounterSummary>)>;
 
 /// Player/companion rows sorted by the selected column, with their totals
-pub(super) fn overview_table(data: &[RaidOverviewRow], sort_col: OverviewSort, sort_asc: bool) -> OverviewTableData {
+pub(super) fn overview_table(data: &[RaidOverviewRow], sort_col: OverviewColumn, sort_asc: bool) -> OverviewTableData {
     let mut rows: Vec<RaidOverviewRow> = data
         .iter()
         .filter(|r| r.entity_type == "Player" || r.entity_type == "Companion")
@@ -18,6 +19,7 @@ pub(super) fn overview_table(data: &[RaidOverviewRow], sort_col: OverviewSort, s
 
     // Sort rows by selected column. PvP rows (faction set) group
     // friendlies first, then enemies, sorting by column within each side.
+    let value = column(sort_col).value;
     rows.sort_by(|a, b| {
         let rank = |r: &RaidOverviewRow| match r.faction {
             Some(PvpFaction::Friendly) => 0u8,
@@ -25,30 +27,14 @@ pub(super) fn overview_table(data: &[RaidOverviewRow], sort_col: OverviewSort, s
             None => 2,
         };
         rank(a).cmp(&rank(b)).then_with(|| {
-            let cmp = sort_col
-                .extract(a)
-                .partial_cmp(&sort_col.extract(b))
-                .unwrap_or(std::cmp::Ordering::Equal);
+            let cmp = value(a).partial_cmp(&value(b)).unwrap_or(std::cmp::Ordering::Equal);
             if sort_asc { cmp } else { cmp.reverse() }
         })
     });
 
-    // Calculate totals; PvP encounters get per-side totals instead of a
-    // combined group total (friend+enemy sums are meaningless)
-    let totals = OverviewTotals::from_rows(rows.iter());
-    let pvp_totals = if rows.iter().any(|r| r.faction.is_some()) {
-        Some((
-            OverviewTotals::from_rows(rows.iter().filter(|r| r.faction == Some(PvpFaction::Friendly))),
-            OverviewTotals::from_rows(rows.iter().filter(|r| r.faction == Some(PvpFaction::Enemy))),
-        ))
-    } else {
-        None
-    };
-
     OverviewTableData {
+        pvp: rows.iter().any(|r| r.faction.is_some()),
         rows,
-        totals,
-        pvp_totals,
     }
 }
 

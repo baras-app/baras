@@ -14,7 +14,7 @@ const MISS_IDS: &[i64] = &[
     defense_type::RESIST,
 ];
 
-fn miss_ids_csv() -> String {
+pub(super) fn miss_ids_csv() -> String {
     MISS_IDS.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(",")
 }
 

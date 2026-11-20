@@ -256,6 +256,8 @@ pub struct DataExplorerState {
     pub usage_sort_direction: SortDirection,
     /// Whether live mode auto-activates on combat start (loaded from config)
     pub auto_live: bool,
+    /// Overview table column layouts (loaded from config)
+    pub overview_columns: crate::OverviewLayouts,
 }
 
 impl Default for DataExplorerState {
@@ -276,6 +278,7 @@ impl Default for DataExplorerState {
             usage_sort_column: UsageSortColumn::default(),
             usage_sort_direction: SortDirection::default(),
             auto_live: false,
+            overview_columns: Default::default(),
         }
     }
 }

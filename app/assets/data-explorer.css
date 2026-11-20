@@ -904,6 +904,73 @@
   flex-shrink: 0;
 }
 
+/* Anchors the column menu, which can't live inside the scrolling box */
+.overview-table-wrap {
+  position: relative;
+}
+
+/* Columns button in the Name header cell */
+.overview-columns-btn {
+  margin-left: 0.6em;
+  padding: 0.15em 0.35em;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.overview-columns-btn:hover {
+  color: var(--text-primary);
+  background: var(--blue-alpha-8);
+}
+
+.overview-columns-list {
+  top: 30px;
+  left: 8px;
+  max-height: 70vh;
+  overflow-y: auto;
+  white-space: nowrap;
+}
+
+.overview-columns-row {
+  display: flex;
+  align-items: center;
+  gap: 0.15em;
+}
+
+.overview-columns-row .nav-menu-item {
+  flex: 1;
+}
+
+.overview-columns-desc {
+  margin-left: auto;
+  padding-left: 1.5em;
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+.overview-columns-move {
+  padding: 0.3em 0.5em;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.8em;
+  cursor: pointer;
+}
+
+.overview-columns-move:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--blue-alpha-8);
+}
+
+.overview-columns-move:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
 /* Card around the table; it scrolls sideways itself when the columns overflow */
 .overview-table-box {
   overflow-x: auto;
@@ -977,18 +1044,11 @@
   white-space: nowrap;
 }
 
-.overview-table th.section-header {
-  text-align: center;
-  border-bottom: 2px solid var(--border-subtle);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
 .overview-table tr.sub-header th {
   font-size: 10px;
   font-weight: 500;
   color: var(--text-muted);
+  border-bottom: 2px solid var(--border-subtle);
 }
 
 .overview-table tr.sub-header th.sortable {

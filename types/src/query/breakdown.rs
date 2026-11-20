@@ -250,6 +250,37 @@ pub struct RaidOverviewRow {
     /// Interrupt ability casts
     #[serde(default)]
     pub interrupts: f64,
+
+    /// Share of damaging hits that crit (0-100)
+    #[serde(default)]
+    pub damage_crit_pct: f64,
+    /// Damage dealt to boss NPCs
+    #[serde(default)]
+    pub boss_damage_total: f64,
+    #[serde(default)]
+    pub boss_dps: f64,
+    /// Share of heals that crit (0-100)
+    #[serde(default)]
+    pub healing_crit_pct: f64,
+    /// Healing received, overheal included
+    #[serde(default)]
+    pub healing_taken_total: f64,
+    #[serde(default)]
+    pub htps: f64,
+    /// Effective healing received per second
+    #[serde(default)]
+    pub ehtps: f64,
+    /// Damage taken per second after mitigation
+    #[serde(default)]
+    pub edtps: f64,
+    #[serde(default)]
+    pub absorbed_total: f64,
+    /// Share of incoming attacks missed, dodged, parried, deflected or resisted (0-100)
+    #[serde(default)]
+    pub defense_pct: f64,
+    /// Share of landed hits that were shielded (0-100)
+    #[serde(default)]
+    pub shield_pct: f64,
 }
 
 /// Query result for time-series data (DPS/HPS over time).

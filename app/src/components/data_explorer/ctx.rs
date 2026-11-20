@@ -13,8 +13,8 @@ use crate::api::{
     PlayerDeath, RaidOverviewRow, TimeRange,
 };
 use crate::components::encounter_types::EncounterSummary;
-use crate::components::overview_table::{OverviewSort, OverviewTotals};
 use crate::types::{CombatLogSessionState, SortColumn, SortDirection, UiSessionState, UsageSortColumn, ViewMode};
+use baras_types::{OverviewColumn, OverviewLayouts};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Local Types (not persisted)
@@ -29,13 +29,12 @@ pub(super) enum LoadState {
     Loaded,
 }
 
-/// Overview table data with pre-calculated totals
+/// Sorted player rows of the overview table
 #[derive(Clone, PartialEq, Default)]
 pub(super) struct OverviewTableData {
     pub rows: Vec<RaidOverviewRow>,
-    pub totals: OverviewTotals,
-    /// Per-side totals (friendly, enemy) — PvP encounters only
-    pub pvp_totals: Option<(OverviewTotals, OverviewTotals)>,
+    /// Rows carry a friend/enemy side: one table per side
+    pub pvp: bool,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -68,7 +67,8 @@ pub(super) struct ExplorerCtx {
     pub usage_sort_column: Signal<UsageSortColumn>,
     pub usage_sort_direction: Signal<SortDirection>,
     pub usage_selected_abilities: Signal<Vec<(i64, &'static str)>>,
-    pub overview_sort_col: Signal<OverviewSort>,
+    pub overview_sort_col: Signal<OverviewColumn>,
+    pub overview_layouts: Memo<OverviewLayouts>,
     pub overview_sort_asc: Signal<bool>,
     pub overview_alive_view: Signal<bool>,
     pub overview_stacked: Signal<bool>,
@@ -145,7 +145,8 @@ pub(super) fn use_explorer_ctx(state: Signal<UiSessionState>) -> ExplorerCtx {
     let usage_selected_abilities = use_signal(Vec::<(i64, &'static str)>::new);
 
     // Overview table sort (not persisted - default DPS descending)
-    let overview_sort_col = use_signal(OverviewSort::default);
+    let overview_sort_col = use_signal(OverviewColumn::default);
+    let overview_layouts = use_memo(move || state.read().data_explorer.overview_columns.clone());
     let overview_sort_asc = use_signal(|| false);
     // Group chart view toggles; live here so they survive encounter switches (the chart remounts)
     let overview_alive_view = use_signal(|| false);
@@ -299,6 +300,7 @@ pub(super) fn use_explorer_ctx(state: Signal<UiSessionState>) -> ExplorerCtx {
         usage_sort_direction,
         usage_selected_abilities,
         overview_sort_col,
+        overview_layouts,
         overview_sort_asc,
         overview_alive_view,
         overview_stacked,

@@ -37,6 +37,7 @@ pub mod multi_select;
 pub mod nav_menu;
 pub mod overlay_toggle;
 pub mod overview_chart;
+pub mod overview_columns;
 pub mod overview_table;
 pub mod parsely_upload_modal;
 pub mod phase_timeline;

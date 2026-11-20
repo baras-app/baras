@@ -14,7 +14,9 @@ use crate::components::echarts::{
     json_to_js, next_animation_frame, register_brush_handler, register_span_click, set_chart_option, set_js_fn,
     set_option_replace,
 };
-use crate::components::overview_table::OverviewSort;
+use baras_types::OverviewColumn;
+
+use crate::components::overview_columns::{Group, column};
 use crate::utils::{LightTheme, css_var};
 
 const CHART_ID: &str = "overview-group-chart";
@@ -32,20 +34,19 @@ const LABEL_CHAR_PX: f64 = 6.0;
 const LABEL_PAD_PX: f64 = 10.0;
 const LABEL_ROW_PX: f64 = 16.0;
 
-const TABS: [(&str, OverviewSort); 4] = [
-    ("DPS", OverviewSort::DPS),
-    ("EHPS", OverviewSort::EHPS),
-    ("DTPS", OverviewSort::DTPS),
-    ("Threat", OverviewSort::ThreatTotal),
+const TABS: [(&str, OverviewColumn); 4] = [
+    ("DPS", OverviewColumn::Dps),
+    ("EHPS", OverviewColumn::Ehps),
+    ("DTPS", OverviewColumn::Dtps),
+    ("Threat", OverviewColumn::ThreatTotal),
 ];
 
-fn metric_of(sort: OverviewSort) -> GroupMetric {
-    use OverviewSort::*;
-    match sort {
-        ThreatTotal | TPS => GroupMetric::Threat,
-        DamageTakenTotal | DTPS | APS => GroupMetric::DamageTaken,
-        HealingTotal | HPS | HealingPct | EHPS | ShieldingTotal | SPS => GroupMetric::Healing,
-        DPS | DamageTotal | APM | Interrupts => GroupMetric::Damage,
+fn metric_of(sort: OverviewColumn) -> GroupMetric {
+    match column(sort).group {
+        Group::Threat => GroupMetric::Threat,
+        Group::Taken => GroupMetric::DamageTaken,
+        Group::Healing | Group::HealingTaken | Group::Shielding => GroupMetric::Healing,
+        Group::Damage | Group::Activity => GroupMetric::Damage,
     }
 }
 
@@ -257,7 +258,7 @@ pub fn OverviewGroupChart(
     time_range: TimeRange,
     /// Table rows, in table order: the players to plot (and a refresh signal while live)
     rows: Vec<RaidOverviewRow>,
-    sort_col: Signal<OverviewSort>,
+    sort_col: Signal<OverviewColumn>,
     sort_asc: Signal<bool>,
     /// Player whose table row is hovered
     hovered: ReadSignal<Option<String>>,

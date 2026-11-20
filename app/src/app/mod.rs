@@ -210,6 +210,7 @@ pub fn App() -> Element {
             ui_state.write().data_explorer.show_only_bosses = config.show_only_bosses;
             ui_state.write().history.filter.flashpoints = config.raid_summaries_include_flashpoints;
             ui_state.write().data_explorer.auto_live = config.data_explorer_auto_live;
+            ui_state.write().data_explorer.overview_columns = config.overview_columns.clone();
             ui_state.write().combat_log.show_ids = config.show_log_ids;
             ui_state.write().european_number_format = config.european_number_format;
         }

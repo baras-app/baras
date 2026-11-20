@@ -200,6 +200,10 @@ pub struct AppConfig {
     #[serde(default)]
     pub data_explorer_auto_live: bool,
 
+    /// Data Explorer overview table: columns shown and their order, per encounter kind
+    #[serde(default)]
+    pub overview_columns: crate::OverviewLayouts,
+
     /// Default profile name per role for auto-switching on discipline change.
     /// Keys are role names: "Tank", "Healer", "Dps".
     #[serde(default)]
@@ -257,6 +261,7 @@ impl AppConfig {
             raid_summaries_include_flashpoints: false,
             lockout_tiers: [true; 3],
             data_explorer_auto_live: false,
+            overview_columns: Default::default(),
             default_profile_per_role: std::collections::HashMap::new(),
             ocr_debug_dump: false,
             ocr_debug_max_dumps: 100,
