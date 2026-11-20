@@ -2872,12 +2872,40 @@
 }
 
 .uptime-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
   color: var(--text-secondary);
 }
 
-.uptime-title strong {
+/* A name with its icon (discipline or effect), in the titles */
+.uptime-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.uptime-who strong {
   color: var(--text-primary);
   font-weight: 600;
+  white-space: nowrap;
+}
+
+.uptime-class-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.uptime-arrow {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.uptime-every {
+  color: var(--text-muted);
 }
 
 .uptime-empty {
@@ -2997,13 +3025,18 @@
 }
 
 .uptime-timeline-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 2px;
   color: var(--text-secondary);
 }
 
-.uptime-timeline-title strong {
-  color: var(--text-primary);
-  font-weight: 600;
+/* Effect name and source → target read as two parts */
+.uptime-timeline-title > .uptime-who:first-child:has(+ .uptime-who + .uptime-arrow) {
+  margin-right: 8px;
 }
 
 .uptime-lane {

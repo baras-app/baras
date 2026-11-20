@@ -123,6 +123,7 @@ pub(super) fn detailed_view(
                         duration_secs: timeline.read().as_ref().map_or(0.0, |t| t.duration_secs),
                         selected_source: selected_source.read().clone(),
                         selected_source_id: *selected_source_id.read(),
+                        icons: class_icon_lookup,
                         european: eu,
                     }
                 }
