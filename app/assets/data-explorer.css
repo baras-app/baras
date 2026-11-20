@@ -603,6 +603,9 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
+  /* Keep the scrollbar's space reserved, so content (e.g. the overview columns)
+     doesn't reflow sideways as the content height crosses the viewport */
+  scrollbar-gutter: stable;
   display: flex;
   flex-direction: column;
 }
@@ -928,7 +931,15 @@
 .overview-table {
   width: 100%;
   border-collapse: collapse;
+  /* Column widths come from the <colgroup> (name, death, num columns) only;
+     the table grows past 100% and the box scrolls when they don't fit */
+  table-layout: fixed;
   font-size: 12px;
+}
+
+/* Widest compact value ("123.45M") in the 14px mono font, plus cell padding */
+.overview-table col.num-col {
+  width: 76px;
 }
 
 .overview-table tbody tr:last-child td {
@@ -978,7 +989,10 @@
 .overview-table .name-col {
   font-weight: 500;
   color: var(--text-primary);
-  min-width: 120px;
+  /* Fixed, so long names truncate instead of widening the column or wrapping */
+  width: 190px;
+  min-width: 190px;
+  max-width: 190px;
 }
 
 .overview-table th.name-col {
@@ -989,10 +1003,21 @@
 }
 
 .overview-table .name-with-icon {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8px;
   font-size: 14px;
+  min-width: 0;
+  /* Clamp the name's min-content so a long name can't widen the column
+     (cells ignore max-width); 190px column minus 16px padding */
+  max-width: 174px;
+}
+
+.overview-table .name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .overview-table .class-icon {
@@ -1052,9 +1077,18 @@
    Deaths column (overview table)
    ───────────────────────────────────────────────────────────────────────────── */
 
+/* The badge has a fixed width (fits "12:34") and the column is that plus the
+   cell padding, so the column is the same width with or without a death */
+.overview-table {
+  --death-badge-w: 68px;
+}
+
 .overview-table .death-col {
-  min-width: 52px;
+  width: calc(var(--death-badge-w) + 16px);
   white-space: nowrap;
+  line-height: 0; /* no text strut: the badge alone sets the line box */
+  padding-top: 0;
+  padding-bottom: 0;
   text-align: left;
   font-family: var(--font-mono);
   font-size: 11px;
@@ -1068,8 +1102,16 @@
 .overview-table .death-badge {
   display: inline-flex;
   align-items: center;
+  vertical-align: middle;
   gap: 5px;
-  padding: 2px 7px;
+  /* Fixed height; its cell drops the vertical padding instead, so the badge
+     (22px) stays under the number cells' height (16px line + 12px padding) */
+  height: 22px;
+  width: var(--death-badge-w);
+  justify-content: center;
+  overflow: hidden;
+  line-height: 1;
+  padding: 0 6px;
   font: inherit;
   color: var(--text-secondary);
   background: rgba(var(--fg-rgb), 0.05);

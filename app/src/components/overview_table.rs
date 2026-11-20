@@ -93,6 +93,9 @@ impl OverviewTotals {
     }
 }
 
+/// Number columns in the table (Damage 2, Threat 2, Taken 3, Healing 4, Shielding 2, Activity 2)
+const NUM_COLUMNS: usize = 15;
+
 #[derive(Props, Clone, PartialEq)]
 pub struct OverviewTableProps {
     /// Player rows, already sorted
@@ -160,6 +163,15 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
         }
         div { class: "overview-table-box",
             table { class: "overview-table",
+                // Fixed layout takes column widths from here, never from the
+                // cell contents, so nothing moves with digits or death badges
+                colgroup {
+                    col { class: "name-col" }
+                    col { class: "death-col" }
+                    for _ in 0..NUM_COLUMNS {
+                        col { class: "num-col" }
+                    }
+                }
                 thead {
                     tr {
                         th { class: "name-col", "Name" }
@@ -220,7 +232,7 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
                                             }
                                         }
                                     }
-                                    "{row.name}"
+                                    span { class: "name-text", title: "{row.name}", "{row.name}" }
                                 }
                             }
                             {death_cell(row_deaths(row), props.on_death_click)}
