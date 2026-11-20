@@ -80,7 +80,10 @@ pub fn CharactersPanel() -> Element {
     let mut matrix_tiers = use_signal(|| [true; 3]);
     // Saved by `TierPicks`; restored once per mount
     use_future(move || async move {
-        if let Some(cfg) = api::get_config().await {
+        // All-off can only come from an old first-run default; the picks never allow it
+        if let Some(cfg) = api::get_config().await
+            && cfg.lockout_tiers.iter().any(|on| *on)
+        {
             matrix_tiers.set(cfg.lockout_tiers);
         }
     });

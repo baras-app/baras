@@ -82,10 +82,6 @@ impl ParselySettings {
     }
 }
 
-///
-/// Note: Persistence methods (load/save) are provided by baras-core via the
-/// `AppConfigExt` trait, as they require platform-specific dependencies.
-/// The frontend derives Default (getting empty values) which is fine for deserialization.
 /// The alacrity a discipline runs at, optionally for one character only.
 /// Gear is not logged, so one value per discipline and character is the limit.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -119,7 +115,7 @@ impl AlacrityPreset {
 pub const WEB_OVERLAY_PORT: u16 = 47684;
 pub const WEB_OVERLAY_URL: &str = "http://127.0.0.1:47684/overlay";
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     #[serde(default)]
     pub log_directory: String,
@@ -231,6 +227,14 @@ fn default_alacrity() -> f32 {
 
 fn default_latency() -> i16 {
     80
+}
+
+/// confy falls back to this when no config file exists yet, so it must carry
+/// the real defaults rather than derived `false`s
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self::with_log_directory(String::new())
+    }
 }
 
 impl AppConfig {
