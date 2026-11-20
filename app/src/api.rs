@@ -1761,9 +1761,9 @@ pub async fn query_ability_usage(
 
 use crate::types::ChangelogResponse;
 
-/// Check if changelog should be shown and get rendered HTML content.
-pub async fn get_changelog() -> Option<ChangelogResponse> {
-    let result = invoke("get_changelog", JsValue::NULL).await;
+/// Rendered changelog: every version when `history`, otherwise the ones not yet viewed.
+pub async fn get_changelog(history: bool) -> Option<ChangelogResponse> {
+    let result = invoke("get_changelog", build_args("history", &history)).await;
     from_js(result)
 }
 

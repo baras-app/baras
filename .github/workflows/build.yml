@@ -87,16 +87,17 @@ jobs:
           fail() { echo "::error::$1"; exit 1; }
 
           [[ "$GITHUB_REF" == refs/heads/master ]] || fail "Releases are cut from master, not $GITHUB_REF_NAME"
-          [[ "$(head -n 1 CHANGELOG.md)" == "# v$VERSION" ]] \
-            || fail "CHANGELOG.md starts with '$(head -n 1 CHANGELOG.md)', expected '# v$VERSION'"
+          CHANGELOG="changelogs/v$VERSION.md"
+          [[ "$(head -n 1 "$CHANGELOG" 2> /dev/null)" == "# v$VERSION" ]] \
+            || fail "$CHANGELOG is missing or does not start with '# v$VERSION'"
           if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" > /dev/null; then
             fail "v$VERSION is already released; bump the version in tauri.conf.json"
           fi
 
           # Changelog without its version header is the release body; its
           # first section heading is the updater's one-line note.
-          tail -n +3 CHANGELOG.md > "$RUNNER_TEMP/body.md"
-          echo "notes=$(grep -m 1 '^## ' CHANGELOG.md | sed 's/^## //' || true)" >> "$GITHUB_OUTPUT"
+          tail -n +3 "$CHANGELOG" > "$RUNNER_TEMP/body.md"
+          echo "notes=$(grep -m 1 '^## ' "$CHANGELOG" | sed 's/^## //' || true)" >> "$GITHUB_OUTPUT"
 
           # A draft left by an earlier failed run is reused and re-pointed at
           # this commit, so a retry needs no manual cleanup.

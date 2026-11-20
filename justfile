@@ -75,7 +75,7 @@ validate boss log *args:
 # Releasing
 # ─────────────────────────────────────────────────────────────────────────
 
-# Start the next version: archive CHANGELOG.md into changelogs/, bump tauri.conf.json to today's date
+# Start the next version: bump tauri.conf.json to today's date and open its changelogs/ file
 new-version:
   #!/usr/bin/env bash
   set -euo pipefail
@@ -83,12 +83,10 @@ new-version:
   OLD=$(jq -r '.version' "$CONF")
   NEW=$(date +%Y.%-m.%-d)
   [[ "$OLD" != "$NEW" ]] || { echo "Version is already $NEW"; exit 1; }
-  [[ "$(head -n 1 CHANGELOG.md)" == "# v$OLD" ]] || { echo "CHANGELOG.md does not start with '# v$OLD'"; exit 1; }
-  [[ ! -e "changelogs/v$OLD.md" ]] || { echo "changelogs/v$OLD.md already exists"; exit 1; }
-  cp CHANGELOG.md "changelogs/v$OLD.md"
-  printf '# v%s\n\n' "$NEW" > CHANGELOG.md
+  [[ ! -e "changelogs/v$NEW.md" ]] || { echo "changelogs/v$NEW.md already exists"; exit 1; }
+  printf '# v%s\n\n' "$NEW" > "changelogs/v$NEW.md"
   sed -i "s|\"version\": \"$OLD\"|\"version\": \"$NEW\"|" "$CONF"
-  echo "✓ $OLD → $NEW; write the notes in CHANGELOG.md"
+  echo "✓ $OLD → $NEW; write the notes in changelogs/v$NEW.md"
 
 # Publish the version in tauri.conf.json from master via the Build workflow
 release:
@@ -99,7 +97,7 @@ release:
   [[ -z "$(git status --porcelain)" ]] || { echo "Working tree is not clean"; exit 1; }
   git fetch -q origin master
   [[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/master)" ]] || { echo "master differs from origin/master"; exit 1; }
-  [[ "$(head -n 1 CHANGELOG.md)" == "# v$VERSION" ]] || { echo "CHANGELOG.md does not start with '# v$VERSION'"; exit 1; }
+  [[ "$(head -n 1 "changelogs/v$VERSION.md")" == "# v$VERSION" ]] || { echo "changelogs/v$VERSION.md does not start with '# v$VERSION'"; exit 1; }
   gh workflow run build.yml --ref master -f release=true
   echo "✓ Release v$VERSION started; follow it with: gh run watch"
 

@@ -588,7 +588,7 @@ pub async fn set_default_profile_for_role(
 // Changelog Commands
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Response for changelog check - contains HTML content if changelog should be shown.
+/// Rendered changelog; `should_show` is set when there are unseen versions.
 #[derive(serde::Serialize)]
 pub struct ChangelogResponse {
     pub should_show: bool,
@@ -596,26 +596,45 @@ pub struct ChangelogResponse {
     pub version: String,
 }
 
-/// Embedded changelog content (located at CHANGELOG.md in repo root)
-const CHANGELOG_MD: &str = include_str!("../../../../CHANGELOG.md");
+// `CHANGELOGS: &[(version, markdown)]`, one entry per file in `changelogs/` (see build.rs)
+include!(concat!(env!("OUT_DIR"), "/changelogs.rs"));
 
-/// Check if changelog should be shown and return rendered HTML.
-/// Compares current app version with last viewed version in config.
-/// Always returns HTML content so it can be viewed on demand.
+/// Chronological sort key. Early hotfixes appended 2-3 digits to the day
+/// (`2.1501` = Feb 15 hotfix 1, `3.7001` = Mar 7 hotfix 1).
+fn version_key(version: &str) -> [u32; 4] {
+    let mut parts = version.split('.').map(|p| p.parse().unwrap_or(0));
+    let (year, month, patch) = (parts.next().unwrap_or(0), parts.next().unwrap_or(0), parts.next().unwrap_or(0));
+    let (day, hotfix) = match patch {
+        0..100 => (patch, 0),
+        _ if patch / 100 <= 31 => (patch / 100, patch % 100),
+        _ => (patch / 1000, patch % 1000),
+    };
+    [year, month, day, hotfix]
+}
+
+/// Changelog for the modal. `history` returns every version; otherwise only the
+/// versions released since the last one viewed (just the current one on a fresh install).
 #[tauri::command]
-pub async fn get_changelog(app: AppHandle, handle: State<'_, ServiceHandle>) -> Result<ChangelogResponse, String> {
+pub async fn get_changelog(
+    app: AppHandle,
+    handle: State<'_, ServiceHandle>,
+    history: bool,
+) -> Result<ChangelogResponse, String> {
     let config = handle.config().await;
     let current_version = app.config().version.clone().unwrap_or_default();
+    let current = version_key(&current_version);
+    let viewed = config.last_viewed_changelog_version.as_deref().map(version_key);
 
-    let should_show = config
-        .last_viewed_changelog_version
-        .as_ref()
-        .map(|v| v != &current_version)
-        .unwrap_or(true); // Show if never viewed
+    let mut entries: Vec<_> = CHANGELOGS
+        .iter()
+        .map(|(version, md)| (version_key(version), *md))
+        .filter(|(key, _)| history || viewed.map_or(*key == current, |v| *key > v))
+        .collect();
+    entries.sort_unstable_by(|a, b| b.0.cmp(&a.0));
 
     Ok(ChangelogResponse {
-        should_show,
-        html: Some(render_changelog_html()),
+        should_show: !history && !entries.is_empty(),
+        html: (!entries.is_empty()).then(|| render_changelog_html(&entries)),
         version: current_version,
     })
 }
@@ -631,16 +650,21 @@ pub async fn mark_changelog_viewed(app: AppHandle, handle: State<'_, ServiceHand
     Ok(())
 }
 
-/// Render markdown changelog to HTML.
-fn render_changelog_html() -> String {
+/// Render each version as a collapsible `<details>` section titled by its `# ` header;
+/// only the first (newest) starts expanded.
+fn render_changelog_html(entries: &[([u32; 4], &str)]) -> String {
     use pulldown_cmark::{Options, Parser, html};
 
     let options = Options::ENABLE_STRIKETHROUGH | Options::ENABLE_TABLES;
-    let parser = Parser::new_ext(CHANGELOG_MD, options);
-
-    let mut html_output = String::new();
-    html::push_html(&mut html_output, parser);
-    html_output
+    let mut out = String::new();
+    for (i, (_, md)) in entries.iter().enumerate() {
+        let (header, body) = md.split_once('\n').unwrap_or((md, ""));
+        let open = if i == 0 { " open" } else { "" };
+        out.push_str(&format!("<details{open}><summary>{}</summary>", header.trim_start_matches('#').trim()));
+        html::push_html(&mut out, Parser::new_ext(body, options));
+        out.push_str("</details>");
+    }
+    out
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

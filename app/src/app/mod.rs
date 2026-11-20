@@ -499,7 +499,7 @@ pub fn App() -> Element {
 
     // Check for changelog on startup
     use_future(move || async move {
-        if let Some(response) = api::get_changelog().await
+        if let Some(response) = api::get_changelog(false).await
             && response.should_show
             && let Some(html) = response.html
         {
@@ -671,10 +671,10 @@ pub fn App() -> Element {
                                         EventHandler::new(|_| { spawn(api::open_url("https://github.com/baras-app/baras")); })),
                                     ("fa-solid fa-heart", "Contributors".into(), "The people behind BARAS",
                                         EventHandler::new(move |_| contributors_open.set(true))),
-                                    ("fa-solid fa-scroll", format!("Changelog (v{})", app_version()), "What changed in this version",
+                                    ("fa-solid fa-scroll", format!("Changelog (v{})", app_version()), "Release notes for every version",
                                         EventHandler::new(move |_| {
                                             spawn(async move {
-                                                if let Some(html) = api::get_changelog().await.and_then(|r| r.html) {
+                                                if let Some(html) = api::get_changelog(true).await.and_then(|r| r.html) {
                                                     changelog_html.set(html);
                                                 }
                                                 changelog_open.set(true);
