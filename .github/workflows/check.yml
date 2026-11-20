@@ -104,6 +104,12 @@ jobs:
         working-directory: app
         run: cargo clippy --locked --target wasm32-unknown-unknown -- -D warnings
 
+      # rsx! expands differently without debug assertions (hot-reload code
+      # is dropped), so some warnings only exist in the build that ships.
+      - name: Clippy (release)
+        working-directory: app
+        run: cargo clippy --locked --release --target wasm32-unknown-unknown -- -D warnings
+
   # Windows and macOS compile their own overlay, audio and tray backends,
   # which the Linux job never sees. Reported without failing the run until
   # both have had a first cleanup pass.

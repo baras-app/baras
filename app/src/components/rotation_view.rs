@@ -227,7 +227,7 @@ pub fn RotationView(props: RotationViewProps) -> Element {
                                                 let weave_time = weave.time_secs;
                                                 let weave_name = display_name(weave.ability_id, &weave.ability_name).into_owned();
                                                 rsx! {
-                                                div { title: "{weave_name}",
+                                                div { key: "w{k}", title: "{weave_name}",
                                                     oncontextmenu: move |e: MouseEvent| {
                                                         if props.on_range_change.is_some() {
                                                             e.prevent_default();
@@ -236,7 +236,6 @@ pub fn RotationView(props: RotationViewProps) -> Element {
                                                         }
                                                     },
                                                     AbilityIcon {
-                                                        key: "w{k}",
                                                         ability_id: display_id(weave.ability_id),
                                                         size: 28,
                                                         fallback: weave_name.clone(),
