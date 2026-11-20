@@ -49,9 +49,12 @@
   --bg-light: #2f2f38;
   --bg-input: #2a2a2f;
   --bg-elevated: rgba(40, 40, 45, 0.9);
-  --bg-card: var(--bg-light);
-  --bg-card-header: #2a2a33;
-  --bg-card-input: #24242c;
+  /* Editor surfaces: the drawer is the darkest layer, cards and list rows
+     sit one quiet step above it, inputs are wells below the card */
+  --bg-drawer: #1b1b22;
+  --bg-card: #23232c;
+  --bg-card-header: #23232c;
+  --bg-card-input: #17171d;
   --bg-deep: #18181d;
   --bg-raised: #3a3a3a;
   --btn-top: rgba(50, 50, 55, 0.9);
@@ -127,6 +130,7 @@
   --space-xl: 1.5em;
 
   /* ─── Border Radius ──────────────────────────────────────────────────────────── */
+  --select-caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
   --radius-sm: 3px;
   --radius-md: 4px;
   --radius-lg: 6px;
@@ -258,6 +262,8 @@
   --bg-light: #f1f1f4;
   --bg-input: #ffffff;
   --bg-elevated: rgba(255, 255, 255, 0.96);
+  --bg-drawer: var(--bg-mid);
+  --bg-card: var(--bg-light);
   --bg-card-header: #eaeaee;
   --bg-card-input: #ffffff;
   --bg-deep: #cfcfd7;
@@ -340,7 +346,7 @@ select,
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
+  background-image: var(--select-caret);
   background-repeat: no-repeat;
   background-position: right 0.5em center;
 }
@@ -421,7 +427,7 @@ select optgroup {
   width: auto;
   min-height: 0;
   border: 1px solid var(--blue-alpha-20);
-  border-radius: var(--radius-xl) 0 0 0;
+  border-radius: var(--radius-xl) 0 0 var(--radius-xl);
   box-shadow: none;
   animation: none;
 }
@@ -1996,7 +2002,6 @@ button:active {
 .overlay-select-row select {
   flex: 1;
   min-width: 0;
-  font-weight: 600;
   color: var(--swtor-blue);
   border-color: var(--swtor-blue-dim);
 }
@@ -2131,15 +2136,102 @@ details[open] .collapsible-summary::before {
   color: var(--text-secondary);
 }
 
-/* Signal-controlled collapsible (metrics-global) — uses .open class instead of details[open] */
-.metrics-global > .collapsible-summary::before {
-  content: "▶";
-  font-size: 0.7em;
-  transition: transform 0.2s;
+/* Per-overlay override of a global option: tick, then the option's own row.
+   Unticked rows are disabled and show the inherited global value */
+.override-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
 }
 
-.metrics-global.open > .collapsible-summary::before {
-  transform: rotate(90deg);
+.override-row > .setting-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.override-row:not(.custom) > .setting-row {
+  opacity: 0.55;
+}
+
+.placeholder-group,
+.override-group {
+  margin: 0.75em 0 0.25em;
+  font-size: 0.72em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-heading);
+}
+
+/* Inline text link inside a hint */
+.link-btn {
+  display: inline;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: var(--text-accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-btn:hover {
+  background: none;
+  color: var(--swtor-blue-bright);
+}
+
+/* ─── Overlay settings panel: the editors' surfaces ───────────────────────────
+   Drawer layer, rounded cards one step above it, inputs as darker wells */
+.settings-panel {
+  background: var(--bg-drawer);
+}
+
+.settings-panel .settings-section {
+  background: var(--bg-card);
+  border-color: var(--border-light);
+  border-radius: var(--radius-xl);
+}
+
+/* A section's title is the card header strip, as .form-card-header */
+.settings-panel .settings-section > h4:first-child {
+  margin: -0.75em -0.75em 0.75em;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-card-header);
+  border-bottom: 1px solid var(--border-light);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.settings-panel .settings-section > .collapsible {
+  margin: 0;
+}
+
+.settings-panel .settings-section > .collapsible > .collapsible-summary {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.settings-panel .setting-row :is(select, input.template-input) {
+  height: 30px;
+  box-sizing: border-box;
+  padding: 0 0.6em;
+  background: var(--bg-card-input);
+  border-radius: var(--radius-md);
+}
+
+.settings-panel .setting-row select {
+  padding-right: 2em;
+  background: var(--bg-card-input) var(--select-caret) no-repeat right 0.5em center;
+}
+
+.settings-panel .setting-row input.slider-value-input,
+.settings-panel .slider-step {
+  background-color: var(--bg-card-input);
 }
 
 .collapsible-content {
@@ -2269,15 +2361,6 @@ details[open] .collapsible-summary::before {
 }
 
 /* Placeholder reference: one row per placeholder, name then meaning */
-.placeholder-group {
-  margin: 0.75em 0 0.25em;
-  font-size: 0.72em;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-heading);
-}
-
 .placeholder-list {
   display: grid;
   grid-template-columns: max-content 1fr;
@@ -2892,25 +2975,6 @@ details[open] .collapsible-summary::before {
   grid-template-columns: 3.5em 1fr;
   align-items: center;
   gap: 0.35em 0.5em;
-  margin-top: 0.75em;
-  padding-top: 0.75em;
-  border-top: 1px solid var(--border-subtle);
-}
-
-.role-defaults-header,
-.role-defaults-section > .hint {
-  grid-column: 1 / -1;
-}
-
-.role-defaults-header {
-  font-size: 0.85em;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.role-defaults-section > .hint {
-  margin: -0.2em 0 0.2em;
-  padding: 0;
 }
 
 /* Rows flatten into the section grid so labels and selects align in columns */
@@ -2926,10 +2990,10 @@ details[open] .collapsible-summary::before {
 .role-default-select {
   height: 2em;
   padding: 0 0.4em;
-  background: var(--bg-input);
+  background-color: var(--bg-card-input);
   color: var(--text-primary);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
   font-size: 0.8em;
   cursor: pointer;
 }
@@ -3426,6 +3490,27 @@ details[open] .collapsible-summary::before {
   padding-bottom: 0.5em;
   border-bottom: 1px solid var(--blue-alpha-15);
   text-align: left;
+}
+
+.changelog-content details {
+  border-bottom: 1px solid var(--blue-alpha-15);
+}
+
+.changelog-content summary {
+  padding: 0.6em 0;
+  font-size: 1.15em;
+  font-weight: 600;
+  color: var(--swtor-gold);
+  cursor: pointer;
+  user-select: none;
+}
+
+.changelog-content summary:hover {
+  color: var(--text-primary);
+}
+
+.changelog-content details[open] {
+  padding-bottom: 0.75em;
 }
 
 .changelog-content h2 {
@@ -4935,32 +5020,34 @@ a.contributor-name:hover {
 
 /* Row toggle buttons (enable/audio in timer list) */
 .row-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 24px;
   cursor: pointer;
-  padding: 2px 8px;
-  border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
-  transition:
-    background 0.15s,
-    border-color 0.15s;
+  font-size: 0.85em;
+  transition: background 0.15s;
 }
 
 .row-toggle:hover {
   background: var(--bg-hover);
-  border-color: var(--border-medium);
 }
 
 /* Role toggle group (separated from enable/audio toggles) */
 .role-toggle-group {
   margin-left: 4px;
-  gap: 2px;
+  gap: 0;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
 }
 
 /* Role toggle buttons [T] [H] [D] */
 .role-toggle {
   cursor: pointer;
-  padding: 3px 7px;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
+  padding: 5px 7px;
   font-size: 0.75rem;
   font-weight: 700;
   line-height: 1;
@@ -4973,22 +5060,25 @@ a.contributor-name:hover {
 
 .role-toggle:hover {
   background: var(--bg-hover);
-  border-color: var(--border-medium);
+}
+
+.role-toggle + .role-toggle {
+  border-left: 1px solid var(--border-light);
 }
 
 .role-toggle-tank.active {
   color: #4a90d9;
-  border-color: #4a90d9;
+  background: rgba(74, 144, 217, 0.14);
 }
 
 .role-toggle-healer.active {
   color: var(--lt-green, #4caf50);
-  border-color: #4caf50;
+  background: rgba(76, 175, 80, 0.14);
 }
 
 .role-toggle-dps.active {
   color: var(--color-error);
-  border-color: #e57373;
+  background: rgba(229, 115, 115, 0.14);
 }
 
 /* ─── Width Utilities ────────────────────────────────────────────────────────── */
@@ -5064,7 +5154,7 @@ a.contributor-name:hover {
   width: var(--editor-drawer-w);
   display: flex;
   flex-direction: column;
-  background: var(--bg-mid);
+  background: var(--bg-drawer);
   border-left: 1px solid var(--border-accent-strong);
   border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
   box-shadow: -6px 0 20px rgba(0, 0, 0, 0.25);
@@ -5443,8 +5533,13 @@ a.contributor-name:hover {
     min-width: 0;
     padding-inline: 4px;
   }
-  .boss-views .data-tab .tab-label {
+  /* The open tab keeps its name */
+  .boss-views .data-tab:not(.active) .tab-label {
     display: none;
+  }
+  .boss-views .data-tab.active {
+    flex: 0 0 auto;
+    padding-inline: 10px;
   }
 }
 
@@ -5746,13 +5841,15 @@ a.contributor-name:hover {
   white-space: nowrap;
 }
 
+/* Name takes the room; the id, overlay and duration are fixed columns so
+   they line up down the list */
 .row-col-name-id > .truncate {
-  flex-shrink: 1;
+  flex: 1 1 0;
   min-width: 0;
 }
 
 .row-col-name-id > .text-mono {
-  flex-shrink: 10;
+  flex: 0 0 36%;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -5760,13 +5857,39 @@ a.contributor-name:hover {
 }
 
 .row-col-trigger {
+  flex: 0 0 7.5em;
+  overflow: hidden;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Trailing tags (trigger, metric, entity flags): right-aligned, one line */
+.row-col-tags {
+  display: flex;
+  flex: 0 1 auto;
+  justify-content: flex-end;
+  gap: var(--space-xs);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.row-col-tags > .tag {
   flex-shrink: 0;
 }
 
 .row-col-duration {
-  flex-shrink: 0;
-  min-width: 45px;
+  flex: 0 0 3.4em;
   text-align: right;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Built-in is the norm: only Custom, Modified and New are marked, in a
+   column that keeps its width */
+.list-item-header .origin-badge.builtin {
+  visibility: hidden;
 }
 
 /* ─── Origin Badge (built-in / modified / custom / new) ──────────────────────── */
@@ -5810,12 +5933,15 @@ a.contributor-name:hover {
 
 /* ─── Toggle Buttons (difficulty selectors, etc.) ────────────────────────────── */
 .toggle-btn {
-  padding: var(--space-xs) var(--space-sm);
-  background: var(--bg-input);
+  height: 30px;
+  box-sizing: border-box;
+  padding: 0 0.8em;
+  background: var(--bg-card-input);
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-md);
-  color: var(--text-muted);
-  font-size: 0.85em;
+  /* Off still reads as a live choice, not a disabled one */
+  color: var(--text-secondary);
+  font-size: 0.9rem;
   cursor: pointer;
   transition: all var(--transition-fast);
   text-transform: capitalize;
@@ -5823,13 +5949,14 @@ a.contributor-name:hover {
 
 .toggle-btn:hover {
   border-color: var(--border-accent);
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .toggle-btn.active {
-  background: var(--blue-alpha-15);
-  border-color: var(--border-accent-medium);
-  color: var(--swtor-blue);
+  background: var(--swtor-blue);
+  border-color: var(--swtor-blue);
+  color: #fff;
+  font-weight: 600;
 }
 
 /* Icon preview in effect editor */
@@ -6302,6 +6429,12 @@ a.contributor-name:hover {
   border-left-color: var(--swtor-blue);
 }
 
+/* Encounter editor: areas are one-word rows, as tight as the boss list under them */
+.editor-layout .sidebar-encounter-item {
+  padding: 0.38em 0.75em;
+  margin: 1px 0;
+}
+
 /* Encounter editor: the open area's bosses, nested under it */
 .sidebar-boss-list {
   margin: 0 0 0.35em 0.9em;
@@ -6742,16 +6875,13 @@ a.contributor-name:hover {
 
 .ability-table .ability-name-cell {
   font-weight: 400;
-  max-width: 180px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .ability-table .ability-name-cell .ability-name-inner {
   display: flex;
   align-items: center;
   gap: 0.5em;
+  min-width: 0;
 }
 
 .ability-icon {
@@ -7011,7 +7141,7 @@ a.contributor-name:hover {
 .form-card {
   background: var(--bg-card);
   border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-xl);
   margin-bottom: var(--space-md);
 }
 
@@ -7022,9 +7152,16 @@ a.contributor-name:hover {
   padding: var(--space-sm) var(--space-md);
   background: var(--bg-card-header);
   border-bottom: 1px solid var(--border-light);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+/* Header-only card (its options are switched off) */
+.form-card-header:has(+ .form-card-content:empty) {
+  border-bottom: none;
+  border-radius: var(--radius-xl);
 }
 
 .form-card-header i {
@@ -7061,7 +7198,7 @@ a.contributor-name:hover {
 
 /* Checkboxes drawn by hand: the native unchecked box is a bright white square.
    Data Explorer toolbars (charts, breakdown, combat log) share the same box */
-:is(.form-card, .settings-check, .chart-toggles, .breakdown-option, .log-show-ids) input[type="checkbox"] {
+:is(.form-card, .settings-check, .override-row, .chart-toggles, .breakdown-option, .log-show-ids) input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
   box-sizing: border-box;
@@ -7078,22 +7215,22 @@ a.contributor-name:hover {
   cursor: pointer;
 }
 
-:is(.form-card, .settings-check, .chart-toggles, .breakdown-option, .log-show-ids) input[type="checkbox"]:hover {
+:is(.form-card, .settings-check, .override-row, .chart-toggles, .breakdown-option, .log-show-ids) input[type="checkbox"]:hover {
   border-color: var(--border-accent-heavy);
 }
 
-:is(.form-card, .settings-check, .chart-toggles, .breakdown-option, .log-show-ids) input[type="checkbox"]:checked {
+:is(.form-card, .settings-check, .override-row, .chart-toggles, .breakdown-option, .log-show-ids) input[type="checkbox"]:checked {
   background-color: var(--swtor-blue);
   border-color: var(--swtor-blue);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M1.5 5.2l2.3 2.3 4.7-5' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
-:is(.form-card, .settings-check, .chart-toggles, .breakdown-option, .log-show-ids) input[type="checkbox"]:disabled {
+:is(.form-card, .settings-check, .override-row, .chart-toggles, .breakdown-option, .log-show-ids) input[type="checkbox"]:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-:is(.form-card, .settings-check, .chart-toggles, .breakdown-option, .log-show-ids) input[type="checkbox"]:focus-visible {
+:is(.form-card, .settings-check, .override-row, .chart-toggles, .breakdown-option, .log-show-ids) input[type="checkbox"]:focus-visible {
   outline: 2px solid var(--border-accent-heavy);
   outline-offset: 1px;
 }
@@ -7171,6 +7308,109 @@ a.contributor-name:hover {
 .field-control > .flex-col {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+/* Several controls under one label (chips over an add box, a select over
+   its specifics): one column, as wide as a text box */
+.field-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4em;
+  flex: 1 1 12em;
+  min-width: 0;
+  max-width: 24em;
+}
+
+.field-stack > :is(select, input) {
+  width: 100%;
+}
+
+.field-stack-row {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.field-stack-row > input {
+  flex: 1;
+  min-width: 0;
+}
+
+.field-stack-row > .btn {
+  flex: 0 0 auto;
+  height: 30px;
+}
+
+.field-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+/* A list under a label (chips + the control that adds one): boxed, so it
+   reads as one unit and not as loose controls */
+.chip-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45em;
+  padding: 0.5em;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: rgba(var(--fg-rgb), 0.03);
+}
+
+.field-control > .chip-box {
+  flex: 1 1 12em;
+  min-width: 0;
+}
+
+.chip-box.wide {
+  max-width: 44em;
+}
+
+.chip-box > .field-chips:empty {
+  display: none;
+}
+
+/* One entry with its own options (a refresh ability) */
+.chip-box-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4em var(--space-sm);
+  padding-bottom: 0.45em;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* The fields an event needs hang off its "When" row */
+.trigger-details {
+  margin: 0 0 0.6em 0.35em;
+  padding-left: 0.9em;
+  border-left: 2px solid var(--border-accent-medium);
+}
+
+.trigger-details:empty {
+  display: none;
+}
+
+/* Trigger rows are form rows; the spacing comes from them */
+.trigger-fields > .field:last-child {
+  margin-bottom: 0.6em;
+}
+
+/* Checklist dropdown in a row: as wide as a text box */
+.field-control > .multi-select {
+  flex: 1 1 12em;
+  max-width: 24em;
+}
+
+/* A card whose options are all behind its header switch: header only */
+.form-card-content:empty {
+  display: none;
+}
+
+.form-card-action .toggle-switch-label {
+  gap: 0;
 }
 
 .field-unit {

@@ -44,8 +44,12 @@ pub fn AbilityIcon(
 ) -> Element {
     let (primary_url, primary_loaded) = use_icon_url(Some(ability_id as u64));
     // Only looked up once the primary id came back without an icon
-    let fallback_lookup = (primary_loaded() && primary_url().is_none()).then_some(fallback_id).flatten();
+    let fallback_lookup = (primary_loaded() && primary_url().is_none())
+        .then_some(fallback_id)
+        .flatten();
     let (fallback_url, fallback_loaded) = use_icon_url(fallback_lookup.map(|id| id as u64));
+    // A signal is callable but is not an `FnOnce`, so the closure stays
+    #[allow(clippy::redundant_closure)]
     let icon_url = move || primary_url().or_else(|| fallback_url());
     let loaded = move || primary_loaded() && fallback_loaded();
 

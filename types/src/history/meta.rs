@@ -53,9 +53,6 @@ pub struct PullMeta {
 
 impl PullMeta {
     pub fn is_empty(&self) -> bool {
-        self.note.is_empty()
-            && self.bookmarks.is_empty()
-            && !self.excluded
-            && self.parsely.is_none()
+        self.note.is_empty() && self.bookmarks.is_empty() && !self.excluded && self.parsely.is_none()
     }
 }

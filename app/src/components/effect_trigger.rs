@@ -47,9 +47,7 @@ pub(crate) fn effect_icon_id(icon: Option<u64>, trigger: &Trigger) -> Option<u64
 /// Get the effects from an effect-based trigger (returns is_effect_trigger, effects)
 pub(crate) fn get_trigger_effects(trigger: &Trigger) -> (bool, Vec<EffectSelector>) {
     match trigger {
-        Trigger::EffectApplied { effects, .. } | Trigger::EffectRemoved { effects, .. } => {
-            (true, effects.clone())
-        }
+        Trigger::EffectApplied { effects, .. } | Trigger::EffectRemoved { effects, .. } => (true, effects.clone()),
         _ => (false, vec![]),
     }
 }
@@ -67,32 +65,29 @@ pub(crate) fn get_trigger_abilities(trigger: &Trigger) -> Vec<AbilitySelector> {
 /// Set the source filter on a trigger
 pub(crate) fn set_trigger_source(trigger: Trigger, source: EntityFilter) -> Trigger {
     match trigger {
-        Trigger::EffectApplied {
-            effects, target, ..
-        } => Trigger::EffectApplied {
+        Trigger::EffectApplied { effects, target, .. } => Trigger::EffectApplied {
             effects,
             source,
             target,
             position: vec![],
         },
-        Trigger::EffectRemoved {
-            effects, target, ..
-        } => Trigger::EffectRemoved {
+        Trigger::EffectRemoved { effects, target, .. } => Trigger::EffectRemoved {
             effects,
             source,
             target,
             position: vec![],
         },
-        Trigger::AbilityCast {
-            abilities, target, ..
-        } => Trigger::AbilityCast {
+        Trigger::AbilityCast { abilities, target, .. } => Trigger::AbilityCast {
             abilities,
             source,
             target,
             position: vec![],
         },
         Trigger::DamageTaken {
-            abilities, target, mitigation, ..
+            abilities,
+            target,
+            mitigation,
+            ..
         } => Trigger::DamageTaken {
             abilities,
             source,
@@ -100,9 +95,7 @@ pub(crate) fn set_trigger_source(trigger: Trigger, source: EntityFilter) -> Trig
             mitigation,
             position: vec![],
         },
-        Trigger::HealingTaken {
-            abilities, target, ..
-        } => Trigger::HealingTaken {
+        Trigger::HealingTaken { abilities, target, .. } => Trigger::HealingTaken {
             abilities,
             source,
             target,
@@ -115,32 +108,29 @@ pub(crate) fn set_trigger_source(trigger: Trigger, source: EntityFilter) -> Trig
 /// Set the target filter on a trigger
 pub(crate) fn set_trigger_target(trigger: Trigger, target: EntityFilter) -> Trigger {
     match trigger {
-        Trigger::EffectApplied {
-            effects, source, ..
-        } => Trigger::EffectApplied {
+        Trigger::EffectApplied { effects, source, .. } => Trigger::EffectApplied {
             effects,
             source,
             target,
             position: vec![],
         },
-        Trigger::EffectRemoved {
-            effects, source, ..
-        } => Trigger::EffectRemoved {
+        Trigger::EffectRemoved { effects, source, .. } => Trigger::EffectRemoved {
             effects,
             source,
             target,
             position: vec![],
         },
-        Trigger::AbilityCast {
-            abilities, source, ..
-        } => Trigger::AbilityCast {
+        Trigger::AbilityCast { abilities, source, .. } => Trigger::AbilityCast {
             abilities,
             source,
             target,
             position: vec![],
         },
         Trigger::DamageTaken {
-            abilities, source, mitigation, ..
+            abilities,
+            source,
+            mitigation,
+            ..
         } => Trigger::DamageTaken {
             abilities,
             source,
@@ -148,9 +138,7 @@ pub(crate) fn set_trigger_target(trigger: Trigger, target: EntityFilter) -> Trig
             mitigation,
             position: vec![],
         },
-        Trigger::HealingTaken {
-            abilities, source, ..
-        } => Trigger::HealingTaken {
+        Trigger::HealingTaken { abilities, source, .. } => Trigger::HealingTaken {
             abilities,
             source,
             target,
@@ -188,7 +176,12 @@ pub(crate) fn set_trigger_abilities(trigger: Trigger, abilities: Vec<AbilitySele
             target,
             position: vec![],
         },
-        Trigger::DamageTaken { source, target, mitigation, .. } => Trigger::DamageTaken {
+        Trigger::DamageTaken {
+            source,
+            target,
+            mitigation,
+            ..
+        } => Trigger::DamageTaken {
             abilities,
             source,
             target,
@@ -216,10 +209,10 @@ pub(crate) fn TriggerAbilitiesEditor(
     let abilities_for_click = abilities.clone();
 
     rsx! {
-        div { class: "flex-col gap-xs items-start",
+        div { class: "chip-box wide",
 
             // Ability chips
-            div { class: "flex flex-wrap gap-xs",
+            div { class: "field-chips",
                 for (idx, sel) in abilities.iter().enumerate() {
                     {
                         let abilities_clone = abilities.clone();
@@ -243,10 +236,9 @@ pub(crate) fn TriggerAbilitiesEditor(
             }
 
             // Add new ability
-            div { class: "flex gap-xs",
+            div { class: "field-stack-row",
                 input {
                     r#type: "text",
-                    class: "input-inline flex-fill",
                     placeholder: "Ability ID or Name (Enter)",
                     value: "{new_input}",
                     oninput: move |e| new_input.set(e.value()),
@@ -319,7 +311,7 @@ pub(crate) fn RefreshAbilitiesEditor(
     let abilities_for_click = abilities.clone();
 
     rsx! {
-        div { class: "flex-col gap-xs items-start",
+        div { class: "chip-box wide",
             // One row per refresh ability
             for (idx, ra) in abilities.iter().enumerate() {
                 {
@@ -334,7 +326,7 @@ pub(crate) fn RefreshAbilitiesEditor(
                     let abilities_ir = abilities.clone();
                     let abilities_fd = abilities.clone();
                     rsx! {
-                        div { class: "flex gap-xs items-center flex-wrap",
+                        div { class: "chip-box-row",
                             span { class: "chip",
                                 "{display}"
                                 button {
@@ -461,10 +453,9 @@ pub(crate) fn RefreshAbilitiesEditor(
             }
 
             // Add new ability (defaults to On Cast, any stacks)
-            div { class: "flex gap-xs",
+            div { class: "field-stack-row",
                 input {
                     r#type: "text",
-                    class: "input-inline flex-fill",
                     placeholder: "Ability ID or Name (Enter)",
                     value: "{new_input}",
                     oninput: move |e| new_input.set(e.value()),

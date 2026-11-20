@@ -10,13 +10,15 @@ use super::effect_trigger::{
     get_trigger_effects, get_trigger_filters, set_trigger_abilities, set_trigger_effects, set_trigger_source,
     set_trigger_target,
 };
-use super::encounter_editor::triggers::{EffectSelectorEditor, EntityFilterDropdown};
+use super::encounter_editor::selectors::{EffectSelectorEditor, EntityFilterDropdown};
 use super::sound_picker::SoundPicker;
+use super::toggle_switch::ToggleSwitch;
 use crate::api;
 use crate::components::editor_common::{FormCard, ItemActions, PreviewButton, preview_audio};
-use crate::components::form_fields::{CheckField, Field, NumberField, SubSection, TextField, TogglePill};
+use crate::components::form_fields::{CheckField, Field, NumberField, PickField, SubSection, TextField, TogglePill};
 use crate::types::{
-    AlertTrigger, DisplayTarget, EffectListItem, EntityFilter, RefreshAbility, RefreshScope, Trigger, effect_alert_label,
+    AlertTrigger, DisplayTarget, EffectListItem, EntityFilter, RefreshAbility, RefreshScope, Trigger,
+    effect_alert_label,
 };
 use crate::utils::parse_hex_color;
 
@@ -45,7 +47,12 @@ impl EffectTriggerType {
     }
 
     fn all() -> &'static [Self] {
-        &[Self::EffectBased, Self::AbilityCast, Self::DamageTaken, Self::HealingTaken]
+        &[
+            Self::EffectBased,
+            Self::AbilityCast,
+            Self::DamageTaken,
+            Self::HealingTaken,
+        ]
     }
 
     /// Determine trigger type from effect data
@@ -70,11 +77,18 @@ const REFRESH_HELP: &str = "Abilities that refresh this effect's duration. Per a
 
 /// Overlays drawn with personal icons (Effects A/B/C)
 fn on_effects_overlay(targets: &[DisplayTarget]) -> bool {
-    targets.iter().any(|t| matches!(t, DisplayTarget::EffectsA | DisplayTarget::EffectsB | DisplayTarget::EffectsC))
+    targets.iter().any(|t| {
+        matches!(
+            t,
+            DisplayTarget::EffectsA | DisplayTarget::EffectsB | DisplayTarget::EffectsC
+        )
+    })
 }
 
 fn on_cooldowns(targets: &[DisplayTarget]) -> bool {
-    targets.iter().any(|t| matches!(t, DisplayTarget::Cooldowns | DisplayTarget::CooldownsB))
+    targets
+        .iter()
+        .any(|t| matches!(t, DisplayTarget::Cooldowns | DisplayTarget::CooldownsB))
 }
 
 fn refresh_scope_label(scope: RefreshScope) -> &'static str {
@@ -170,25 +184,17 @@ pub(crate) fn EffectEditForm(
                                     }
                                 }
                             }
-                            Field {
+                            PickField {
                                 label: "Display Overlays",
-                                help: "Overlays this effect will appear on. Select multiple to show the same effect on more than one overlay.",
-                                for target in DisplayTarget::all().iter().filter(|t| !matches!(t, DisplayTarget::None)).copied() {
-                                    label { class: "field-check",
-                                        input {
-                                            r#type: "checkbox",
-                                            checked: draft().display_targets.contains(&target),
-                                            onchange: move |e| {
-                                                let mut d = draft.write();
-                                                d.display_targets.retain(|t| *t != target);
-                                                if e.checked() {
-                                                    d.display_targets.push(target);
-                                                }
-                                            }
-                                        }
-                                        "{target.label()}"
-                                    }
-                                }
+                                help: "Overlays this effect will appear on. Pick several to show the same effect on more than one overlay.",
+                                none_label: "No overlay",
+                                noun: "overlays",
+                                options: effect_targets().map(|t| t.label().to_string()).collect::<Vec<_>>(),
+                                picked: draft().display_targets.iter().map(|t| t.label().to_string()).collect::<Vec<_>>(),
+                                on_change: move |picked: Vec<String>| {
+                                    draft.write().display_targets =
+                                        effect_targets().filter(|t| picked.iter().any(|p| p == t.label())).collect();
+                                },
                             }
                         }
                         Field {
@@ -324,6 +330,8 @@ pub(crate) fn EffectEditForm(
                                     }
                                 }
                             }
+                            // What the picked type needs, nested under it
+                            div { class: "trigger-details",
                             if trigger_type() == EffectTriggerType::EffectBased {
                                 Field { label: "When",
                                     select {
@@ -340,6 +348,26 @@ pub(crate) fn EffectEditForm(
                                         },
                                         option { value: "Effect Applied", "Effect Applied" }
                                         option { value: "Effect Removed", "Effect Removed" }
+                                    }
+                                }
+                            }
+                            if trigger_type() == EffectTriggerType::EffectBased {
+                                EffectSelectorEditor {
+                                    label: "Effects",
+                                    selectors: get_trigger_effects(&draft().trigger).1,
+                                    on_change: move |selectors| {
+                                        let mut d = draft.write();
+                                        d.trigger = set_trigger_effects(d.trigger.clone(), selectors);
+                                    }
+                                }
+                            } else {
+                                Field { label: "Abilities", top: true,
+                                    TriggerAbilitiesEditor {
+                                        abilities: get_trigger_abilities(&draft().trigger),
+                                        on_change: move |abilities| {
+                                            let mut d = draft.write();
+                                            d.trigger = set_trigger_abilities(d.trigger.clone(), abilities);
+                                        }
                                     }
                                 }
                             }
@@ -381,29 +409,6 @@ pub(crate) fn EffectEditForm(
                                     on_change: move |v: Vec<String>| draft.write().target_disciplines = v,
                                 }
                             }
-                        }
-
-                        // Effects or trigger abilities, by trigger type
-                        if trigger_type() == EffectTriggerType::EffectBased {
-                            SubSection { title: "Effects",
-                                EffectSelectorEditor {
-                                    label: "",
-                                    selectors: get_trigger_effects(&draft().trigger).1,
-                                    on_change: move |selectors| {
-                                        let mut d = draft.write();
-                                        d.trigger = set_trigger_effects(d.trigger.clone(), selectors);
-                                    }
-                                }
-                            }
-                        } else {
-                            SubSection { title: "Trigger Abilities",
-                                TriggerAbilitiesEditor {
-                                    abilities: get_trigger_abilities(&draft().trigger),
-                                    on_change: move |abilities| {
-                                        let mut d = draft.write();
-                                        d.trigger = set_trigger_abilities(d.trigger.clone(), abilities);
-                                    }
-                                }
                             }
                         }
 
@@ -479,11 +484,14 @@ pub(crate) fn EffectEditForm(
                 // ═══ RIGHT COLUMN: Timing, Alerts, Audio ═════════════════════════
                 div { class: "edit-grid-right",
                     FormCard { icon: "fa-clock", title: "Timing",
-                        CheckField {
-                            label: "Instant alert only",
-                            help: "Shows a brief alert notification instead of tracking the effect. No duration, no overlay bar/icon — only alert text and audio fire on trigger.",
-                            checked: draft().is_alert,
-                            on_change: move |v| draft.write().is_alert = v,
+                        Field { label: "Type", help: "Tracked shows the effect on its overlays for its duration; Instant alert only fires alert text and audio on trigger",
+                            for (label, alert) in [("Tracked", false), ("Instant alert", true)] {
+                                TogglePill {
+                                    label,
+                                    active: draft().is_alert == alert,
+                                    on_click: move |_| draft.write().is_alert = alert,
+                                }
+                            }
                         }
                         if !draft().is_alert {
                             CheckField {
@@ -592,7 +600,9 @@ pub(crate) fn EffectEditForm(
                     }
 
                     FormCard { icon: "fa-volume-up", title: "Audio",
-                        CheckField { label: "Enable audio", checked: draft().audio.enabled, on_change: move |v| draft.write().audio.enabled = v }
+                        action: rsx! {
+                            ToggleSwitch { label: "", checked: draft().audio.enabled, on_change: move |v| draft.write().audio.enabled = v }
+                        },
                         if draft().audio.enabled {
                             SoundPicker { value: draft().audio.file.clone(), on_change: move |v| draft.write().audio.file = v }
                             if !draft().is_alert {
@@ -694,4 +704,12 @@ fn preview_request(effect: &EffectListItem) -> OverlayPreviewRequest {
         targets,
         audio: preview_audio(&effect.audio, effect.is_alert),
     }
+}
+
+/// Overlays an effect can be shown on
+fn effect_targets() -> impl Iterator<Item = DisplayTarget> {
+    DisplayTarget::all()
+        .iter()
+        .copied()
+        .filter(|t| !matches!(t, DisplayTarget::None))
 }

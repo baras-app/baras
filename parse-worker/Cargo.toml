@@ -11,11 +11,8 @@ path = "src/main.rs"
 # default-features = false drops the `query` feature → no DataFusion in the sidecar
 baras-core = { path = "../core", default-features = false }
 baras-types = { path = "../types" }
-serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-chrono = "0.4"
 rayon = "1.11"
-dirs = "7"
 encoding_rs = "0.8"
 memchr = "2.7"
 memmap2 = "0.9"
@@ -23,3 +20,6 @@ arrow = { version = "59", default-features = false }
 parquet = { version = "59", default-features = false, features = ["arrow", "lz4"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+
+[lints]
+workspace = true

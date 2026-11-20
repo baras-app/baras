@@ -77,11 +77,7 @@ pub(super) fn entry_value(var: MetricVar, entry: &MetricEntry, rate_sum: i64, eu
 
 /// The footer's value for a placeholder: the sum over `entries` where the
 /// value is an amount; rates of change and percentages don't add up
-pub(super) fn footer_value<'a>(
-    var: MetricVar,
-    entries: impl Iterator<Item = &'a MetricEntry>,
-    eu: bool,
-) -> String {
+pub(super) fn footer_value<'a>(var: MetricVar, entries: impl Iterator<Item = &'a MetricEntry>, eu: bool) -> String {
     let amount = |e: &MetricEntry| match var {
         MetricVar::Rate => Some(e.value),
         MetricVar::Total => Some(e.total_value),

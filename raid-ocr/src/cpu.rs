@@ -61,11 +61,7 @@ fn platform_brand() -> Option<String> {
 
     // Normalize the padded 48-byte brand string.
     let text = String::from_utf8_lossy(&bytes);
-    let brand = text
-        .trim_matches('\0')
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ");
+    let brand = text.trim_matches('\0').split_whitespace().collect::<Vec<_>>().join(" ");
     (!brand.is_empty()).then_some(brand)
 }
 

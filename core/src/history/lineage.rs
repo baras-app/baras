@@ -40,7 +40,11 @@ impl InstanceLineage {
 
     pub fn absorb(&mut self, v: &InstanceVisit) {
         if v.prefix != 0 {
-            self.max_ctr = if self.prefix == v.prefix { self.max_ctr.max(v.max_ctr) } else { v.max_ctr };
+            self.max_ctr = if self.prefix == v.prefix {
+                self.max_ctr.max(v.max_ctr)
+            } else {
+                v.max_ctr
+            };
             self.prefix = v.prefix;
         }
         self.trash.extend(v.trash.iter().copied());

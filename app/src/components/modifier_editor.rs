@@ -8,13 +8,8 @@ use dioxus::prelude::*;
 use crate::components::editor_common::FormCard;
 use crate::components::form_fields::{CheckField, Field, NumberField, SubSection};
 
-use super::encounter_editor::triggers::{
-    AbilitySelectorEditor, EffectSelectorEditor,
-};
-use crate::types::{
-    AbilitySelector, ChargeDirection, EffectModifier, EffectSelector, MitigationType,
-    Trigger,
-};
+use super::encounter_editor::selectors::{AbilitySelectorEditor, EffectSelectorEditor};
+use crate::types::{AbilitySelector, ChargeDirection, EffectModifier, EffectSelector, MitigationType, Trigger};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Modifier Trigger Type (UI discriminant)
@@ -224,7 +219,7 @@ pub fn ModifierListEditor(props: ModifierListEditorProps) -> Element {
                     title: "Add modifier",
                     onclick: {
                         let modifiers = modifiers.clone();
-                        let on_change = props.on_change.clone();
+                        let on_change = props.on_change;
                         move |_| {
                             let mut mods = modifiers.clone();
                             mods.push(EffectModifier {
@@ -258,7 +253,7 @@ pub fn ModifierListEditor(props: ModifierListEditorProps) -> Element {
             }
             for (idx, modifier) in modifiers.iter().enumerate() {
                 {
-                    let on_change = props.on_change.clone();
+                    let on_change = props.on_change;
                     let all_modifiers = modifiers.clone();
                     rsx! {
                         SingleModifierEditor {
@@ -267,7 +262,6 @@ pub fn ModifierListEditor(props: ModifierListEditorProps) -> Element {
                             index: idx,
                             on_update: {
                                 let all_modifiers = all_modifiers.clone();
-                                let on_change = on_change.clone();
                                 move |updated: EffectModifier| {
                                     let mut mods = all_modifiers.clone();
                                     mods[idx] = updated;
@@ -276,7 +270,6 @@ pub fn ModifierListEditor(props: ModifierListEditorProps) -> Element {
                             },
                             on_remove: {
                                 let all_modifiers = all_modifiers.clone();
-                                let on_change = on_change.clone();
                                 move |_| {
                                     let mut mods = all_modifiers.clone();
                                     mods.remove(idx);
@@ -318,7 +311,7 @@ fn SingleModifierEditor(props: SingleModifierEditorProps) -> Element {
                     options: ModifierTriggerType::all(),
                     on_change: {
                         let modifier = modifier.clone();
-                        let on_update = props.on_update.clone();
+                        let on_update = props.on_update;
                         move |t: Trigger| {
                             let mut m = modifier.clone();
                             m.trigger = t;
@@ -330,7 +323,7 @@ fn SingleModifierEditor(props: SingleModifierEditorProps) -> Element {
                     class: "btn btn-xs btn-danger",
                     title: "Remove modifier",
                     onclick: {
-                        let on_remove = props.on_remove.clone();
+                        let on_remove = props.on_remove;
                         move |_| on_remove.call(())
                     },
                     i { class: "fa-solid fa-trash" }
@@ -463,7 +456,9 @@ fn render_trigger_fields(trigger: &Trigger, on_change: EventHandler<Trigger>) ->
                 })
             }
         },
-        Trigger::DamageTaken { abilities, mitigation, .. } => {
+        Trigger::DamageTaken {
+            abilities, mitigation, ..
+        } => {
             let (abs, mits) = (abilities.clone(), mitigation.clone());
             let build = move |abilities: Vec<AbilitySelector>, mitigation: Vec<MitigationType>| Trigger::DamageTaken {
                 abilities,
@@ -484,7 +479,9 @@ fn render_trigger_fields(trigger: &Trigger, on_change: EventHandler<Trigger>) ->
                 {render_mitigation(&mits, EventHandler::new(move |m: Vec<MitigationType>| on_change.call(build(abs.clone(), m))))}
             }
         }
-        Trigger::DamageDealt { abilities, mitigation, .. } => {
+        Trigger::DamageDealt {
+            abilities, mitigation, ..
+        } => {
             let (abs, mits) = (abilities.clone(), mitigation.clone());
             let build = move |abilities: Vec<AbilitySelector>, mitigation: Vec<MitigationType>| Trigger::DamageDealt {
                 abilities,
@@ -567,9 +564,10 @@ fn render_trigger_fields(trigger: &Trigger, on_change: EventHandler<Trigger>) ->
                 })))}
             }
         }
-        Trigger::SelfChargesChanged { direction } => {
-            render_direction_select(*direction, EventHandler::new(move |direction| on_change.call(Trigger::SelfChargesChanged { direction })))
-        }
+        Trigger::SelfChargesChanged { direction } => render_direction_select(
+            *direction,
+            EventHandler::new(move |direction| on_change.call(Trigger::SelfChargesChanged { direction })),
+        ),
         Trigger::ResourceSpent { per_amount } => rsx! {
             NumberField {
                 label: "Per Amount",
@@ -675,7 +673,10 @@ fn render_mitigation(mitigation: &[MitigationType], on_change: EventHandler<Vec<
     }
 }
 
-fn render_direction_select(direction: Option<ChargeDirection>, on_change: EventHandler<Option<ChargeDirection>>) -> Element {
+fn render_direction_select(
+    direction: Option<ChargeDirection>,
+    on_change: EventHandler<Option<ChargeDirection>>,
+) -> Element {
     rsx! {
         Field { label: "Direction",
             select {

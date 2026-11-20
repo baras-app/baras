@@ -65,13 +65,7 @@ impl CandidateSet {
     }
 
     /// Record a player without constructing an interned [`Entity`].
-    pub fn observe_raw(
-        &mut self,
-        entity_id: i64,
-        name: &str,
-        health: (i32, i32),
-        at: NaiveDateTime,
-    ) {
+    pub fn observe_raw(&mut self, entity_id: i64, name: &str, health: (i32, i32), at: NaiveDateTime) {
         let (current_hp, max_hp) = health;
 
         match self.by_entity.get_mut(&entity_id) {
@@ -90,11 +84,7 @@ impl CandidateSet {
                 }
             }
             None => {
-                let (current_hp, max_hp) = if max_hp > 0 {
-                    (current_hp, max_hp)
-                } else {
-                    (0, 0)
-                };
+                let (current_hp, max_hp) = if max_hp > 0 { (current_hp, max_hp) } else { (0, 0) };
                 self.by_entity.insert(
                     entity_id,
                     PlayerCandidate {

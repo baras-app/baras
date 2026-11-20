@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use crate::api;
 use crate::components::{ToastSeverity, use_toast};
-use crate::types::{MAX_PROFILES, MetricType, OverlaySettings};
+use crate::types::{MAX_PROFILES, OverlaySettings};
 
 #[component]
 pub fn ProfilesSection(
@@ -13,9 +13,7 @@ pub fn ProfilesSection(
     mut profile_names: Signal<Vec<String>>,
     mut active_profile: Signal<Option<String>>,
     mut profile_dirty: Signal<bool>,
-    mut metric_overlays_enabled: Signal<HashMap<MetricType, bool>>,
-    mut personal_enabled: Signal<bool>,
-    mut raid_enabled: Signal<bool>,
+    mut overlays_enabled: Signal<std::collections::HashSet<String>>,
     mut overlays_visible: Signal<bool>,
 ) -> Element {
     let mut new_profile_name = use_signal(String::new);
@@ -31,6 +29,7 @@ pub fn ProfilesSection(
 
     rsx! {
         div { class: "settings-section",
+            h4 { "Profiles" }
             div { class: "collapsible-content",
                 // Profile list
                 div { class: "profile-list",
@@ -101,14 +100,8 @@ pub fn ProfilesSection(
                                                                     settings.set(config.overlay_settings);
                                                                 }
                                                                 if let Some(status) = api::get_overlay_status().await {
-                                                                    let new_map: HashMap<MetricType, bool> = MetricType::all()
-                                                                        .iter()
-                                                                        .map(|ot| (*ot, status.enabled.contains(&ot.config_key().to_string())))
-                                                                        .collect();
-                                                                    metric_overlays_enabled.set(new_map);
-                                                                    personal_enabled.set(status.personal_enabled);
-                                                                    raid_enabled.set(status.raid_enabled);
                                                                     overlays_visible.set(status.overlays_visible);
+                                                                    overlays_enabled.set(status.enabled);
                                                                 }
                                                             }
                                                         });
@@ -240,45 +233,46 @@ pub fn ProfilesSection(
                     p { class: "profile-status", "{profile_status}" }
                 }
 
-                // Role default profiles
-                if !profile_names().is_empty() {
-                    div { class: "role-defaults-section",
-                        div { class: "role-defaults-header",
-                            "Role Defaults"
-                        }
-                        p { class: "hint compact", "Auto-switch profile when your role changes" }
-                        for (role, label) in [("Tank", "Tank"), ("Healer", "Healer"), ("Dps", "DPS")] {
-                            {
-                                let current_default = role_defaults().get(role).cloned().unwrap_or_default();
-                                let role_key = role.to_string();
-                                rsx! {
-                                    div { class: "role-default-row",
-                                        label { class: "role-default-label", "{label}" }
-                                        select {
-                                            class: "role-default-select",
-                                            value: "{current_default}",
-                                            onchange: {
-                                                let role_key = role_key.clone();
-                                                move |e: Event<FormData>| {
-                                                    let selected = e.value();
-                                                    let role = role_key.clone();
-                                                    spawn(async move {
-                                                        let profile = if selected.is_empty() { None } else { Some(selected.as_str()) };
-                                                        if let Err(err) = api::set_default_profile_for_role(&role, profile).await {
-                                                            toast.show(format!("Failed to set default: {}", err), ToastSeverity::Normal);
-                                                        } else {
-                                                            role_defaults.set(api::get_default_profiles_per_role().await);
-                                                        }
-                                                    });
-                                                }
-                                            },
-                                            option { value: "", "None" }
-                                            for pname in profile_names().iter() {
-                                                option {
-                                                    value: "{pname}",
-                                                    selected: current_default == *pname,
-                                                    "{pname}"
-                                                }
+            }
+        }
+
+        // Role default profiles, in their own card
+        if !profile_names().is_empty() {
+            div { class: "settings-section",
+                h4 { "Role Defaults" }
+                p { class: "hint", "Auto-switch profile when your role changes" }
+                div { class: "role-defaults-section",
+                    for (role, label) in [("Tank", "Tank"), ("Healer", "Healer"), ("Dps", "DPS")] {
+                        {
+                            let current_default = role_defaults().get(role).cloned().unwrap_or_default();
+                            let role_key = role.to_string();
+                            rsx! {
+                                div { class: "role-default-row",
+                                    label { class: "role-default-label", "{label}" }
+                                    select {
+                                        class: "role-default-select",
+                                        value: "{current_default}",
+                                        onchange: {
+                                            let role_key = role_key.clone();
+                                            move |e: Event<FormData>| {
+                                                let selected = e.value();
+                                                let role = role_key.clone();
+                                                spawn(async move {
+                                                    let profile = if selected.is_empty() { None } else { Some(selected.as_str()) };
+                                                    if let Err(err) = api::set_default_profile_for_role(&role, profile).await {
+                                                        toast.show(format!("Failed to set default: {}", err), ToastSeverity::Normal);
+                                                    } else {
+                                                        role_defaults.set(api::get_default_profiles_per_role().await);
+                                                    }
+                                                });
+                                            }
+                                        },
+                                        option { value: "", "None" }
+                                        for pname in profile_names().iter() {
+                                            option {
+                                                value: "{pname}",
+                                                selected: current_default == *pname,
+                                                "{pname}"
                                             }
                                         }
                                     }

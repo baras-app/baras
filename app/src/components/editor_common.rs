@@ -85,7 +85,12 @@ pub fn origin_counts(origins: impl Iterator<Item = Origin>) -> [usize; 3] {
 /// Custom / Modified / Built-in segmented toggle. Nothing lit = any origin;
 /// clicking the lit one clears it. `kind` names the items ("timers")
 #[component]
-pub fn OriginFilter(selected: Option<Origin>, counts: [usize; 3], kind: &'static str, on_pick: EventHandler<Option<Origin>>) -> Element {
+pub fn OriginFilter(
+    selected: Option<Origin>,
+    counts: [usize; 3],
+    kind: &'static str,
+    on_pick: EventHandler<Option<Origin>>,
+) -> Element {
     rsx! {
         div { class: "filter-pills", title: "Where the {kind} come from",
             for (o, n) in ORIGINS.into_iter().zip(counts) {
@@ -170,7 +175,8 @@ pub fn FormCard(
     icon: &'static str,
     title: &'static str,
     /// Right side of the header (e.g. an "Add" button)
-    #[props(default = VNode::empty())] action: Element,
+    #[props(default = VNode::empty())]
+    action: Element,
     children: Element,
 ) -> Element {
     rsx! {

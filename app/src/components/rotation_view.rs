@@ -5,10 +5,10 @@
 
 use dioxus::prelude::*;
 
-use crate::components::ability_naming::AbilityNamingPills;
 use crate::api;
 use crate::api::{RotationAnalysis, TimeRange};
 use crate::components::ability_icon::AbilityIcon;
+use crate::components::ability_naming::AbilityNamingPills;
 use crate::components::mirror_names::{display_id, display_name};
 use baras_types::formatting;
 
@@ -33,7 +33,7 @@ pub fn RotationView(props: RotationViewProps) -> Element {
     let format_number = move |value: f64| formatting::format_compact_f64(value, eu);
     let format_pct = move |count: i64, total: i64| formatting::format_pct_ratio(count, total, eu);
 
-    let mut available_abilities = use_signal(|| Vec::<(i64, String)>::new());
+    let mut available_abilities = use_signal(Vec::<(i64, String)>::new);
     let mut selected_anchor = props.selected_anchor;
     let mut rotation = use_signal(|| None::<RotationAnalysis>);
     let mut loading = use_signal(|| false);
@@ -49,9 +49,9 @@ pub fn RotationView(props: RotationViewProps) -> Element {
     }
 
     // Track time_range so effects react to phase/time filter changes
-    let mut tracked_time_range = use_signal(|| props.time_range.clone());
+    let mut tracked_time_range = use_signal(|| props.time_range);
     if *tracked_time_range.read() != props.time_range {
-        tracked_time_range.set(props.time_range.clone());
+        tracked_time_range.set(props.time_range);
     }
 
     // Flag: user has clicked Create (reset on source/anchor change)
@@ -126,8 +126,7 @@ pub fn RotationView(props: RotationViewProps) -> Element {
 
         loading.set(true);
         spawn(async move {
-            let result =
-                api::query_rotation(enc_idx, &source_name, anchor_id, tr_opt.as_ref()).await;
+            let result = api::query_rotation(enc_idx, &source_name, anchor_id, tr_opt.as_ref()).await;
             rotation.set(result);
             loading.set(false);
         });
@@ -228,7 +227,7 @@ pub fn RotationView(props: RotationViewProps) -> Element {
                                                 let weave_time = weave.time_secs;
                                                 let weave_name = display_name(weave.ability_id, &weave.ability_name).into_owned();
                                                 rsx! {
-                                                div { title: "{weave_name}",
+                                                div { key: "w{k}", title: "{weave_name}",
                                                     oncontextmenu: move |e: MouseEvent| {
                                                         if props.on_range_change.is_some() {
                                                             e.prevent_default();
@@ -237,7 +236,6 @@ pub fn RotationView(props: RotationViewProps) -> Element {
                                                         }
                                                     },
                                                     AbilityIcon {
-                                                        key: "w{k}",
                                                         ability_id: display_id(weave.ability_id),
                                                         size: 28,
                                                         fallback: weave_name.clone(),
@@ -315,5 +313,3 @@ pub fn RotationView(props: RotationViewProps) -> Element {
         }
     }
 }
-
-

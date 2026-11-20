@@ -14,8 +14,8 @@ use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::sync::RwLock;
 
-use baras_core::context::{AppConfig, DirectoryIndex, LogAreaCache, ParsingSession};
 use baras_core::characters::CharacterStore;
+use baras_core::context::{AppConfig, DirectoryIndex, LogAreaCache, ParsingSession};
 use baras_core::history::{LibraryMeta, PullIndex};
 use baras_core::query::QueryContext;
 
@@ -42,6 +42,12 @@ pub struct AutoHideState {
     game_starting: AtomicBool,
 }
 
+impl Default for AutoHideState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AutoHideState {
     pub fn new() -> Self {
         Self {
@@ -55,8 +61,7 @@ impl AutoHideState {
     /// Returns true if ANY auto-hide condition is active.
     /// This is the single check all overlay spawn paths use.
     pub fn is_auto_hidden(&self) -> bool {
-        self.conversation_active.load(Ordering::SeqCst)
-            || self.not_live_active.load(Ordering::SeqCst)
+        self.conversation_active.load(Ordering::SeqCst) || self.not_live_active.load(Ordering::SeqCst)
     }
 
     /// Whether conversation auto-hide is currently active.
@@ -291,11 +296,7 @@ impl SharedState {
         };
 
         let s = session.read().await;
-        let has_player = s
-            .session_cache
-            .as_ref()
-            .map(|c| c.player_initialized)
-            .unwrap_or(false);
+        let has_player = s.session_cache.as_ref().map(|c| c.player_initialized).unwrap_or(false);
 
         if !has_player {
             return true;
@@ -304,11 +305,7 @@ impl SharedState {
         // Only stale if the newest log file is blank (session rotation —
         // SWTOR created a new empty file meaning the player logged out/restarted)
         let index = self.directory_index.read().await;
-        if index.newest_file().map(|f| f.is_empty).unwrap_or(false) {
-            return true;
-        }
-
-        false
+        index.newest_file().is_some_and(|f| f.is_empty)
     }
 
     /// Execute a function with mutable access to the current session.
@@ -324,5 +321,17 @@ impl SharedState {
         } else {
             None
         }
+    }
+}
+
+/// Lock a mutex whether or not a panicking thread poisoned it: the data is
+/// plain state, and one crashed task should not take every later lock with it.
+pub trait MutexExt<T> {
+    fn locked(&self) -> std::sync::MutexGuard<'_, T>;
+}
+
+impl<T> MutexExt<T> for std::sync::Mutex<T> {
+    fn locked(&self) -> std::sync::MutexGuard<'_, T> {
+        self.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 }

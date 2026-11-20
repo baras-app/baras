@@ -94,7 +94,11 @@ impl ParsingSession {
         let anchor_time = match (self.last_event_time, self.last_event_instant) {
             (Some(gt), Some(inst)) => {
                 let interp = gt + chrono::Duration::milliseconds(inst.elapsed().as_millis() as i64);
-                if event_timestamp > interp { event_timestamp } else { interp }
+                if event_timestamp > interp {
+                    event_timestamp
+                } else {
+                    interp
+                }
             }
             _ => event_timestamp,
         };
@@ -218,7 +222,10 @@ impl ParsingSession {
     /// log ended in (see `AreaResume`).
     fn resumed_entry_events(&mut self, event: &CombatEvent) -> Option<[CombatEvent; 2]> {
         if matches!(self.area_resume, Some(None))
-            || matches!(event.effect.type_id, effect_type_id::AREAENTERED | effect_type_id::DISCIPLINECHANGED)
+            || matches!(
+                event.effect.type_id,
+                effect_type_id::AREAENTERED | effect_type_id::DISCIPLINECHANGED
+            )
         {
             return None;
         }
@@ -227,9 +234,11 @@ impl ParsingSession {
             self.area_resume = Some(None);
             return None;
         }
-        let resume = self
-            .area_resume
-            .get_or_insert_with(|| self.active_file.as_deref().and_then(crate::history::AreaResume::for_log));
+        let resume = self.area_resume.get_or_insert_with(|| {
+            self.active_file
+                .as_deref()
+                .and_then(crate::history::AreaResume::for_log)
+        });
         let outcome = resume.as_mut().map(|r| r.entry_events(event))?;
         match outcome {
             // Still waiting for the player and an NPC to show up
@@ -262,31 +271,31 @@ impl ParsingSession {
         // Sync load definitions on AreaEntered BEFORE processing
         // This ensures boss definitions are available when combat events arrive
         if event.effect.type_id == effect_type_id::AREAENTERED {
-            let area_id = event.effect.effect_id as i64;
-            if area_id != 0 && area_id != self.loaded_area_id {
-                if let Some(loader) = &self.definition_loader {
-                    if let Some(bosses) = loader(area_id) {
-                        self.load_boss_definitions(bosses, false);
-                        tracing::info!(area_id, "Sync loaded boss definitions for area");
-                    }
-                    self.loaded_area_id = area_id;
+            let area_id = event.effect.effect_id;
+            if area_id != 0
+                && area_id != self.loaded_area_id
+                && let Some(loader) = &self.definition_loader
+            {
+                if let Some(bosses) = loader(area_id) {
+                    self.load_boss_definitions(bosses, false);
+                    tracing::info!(area_id, "Sync loaded boss definitions for area");
                 }
+                self.loaded_area_id = area_id;
             }
         }
 
         // Tick combat state FIRST to check timeouts (grace windows, combat timeout).
         // Uses interpolated game time so clock skew between the OS and SWTOR
         // doesn't cause false timeouts.
-        let interp_now = self.interpolated_game_time()
-            .unwrap_or(event.timestamp);
-        let tick_signals = self.session_cache.as_mut().map(|cache| {
-            crate::signal_processor::tick_combat_state(cache, interp_now)
-        }).unwrap_or_default();
+        let interp_now = self.interpolated_game_time().unwrap_or(event.timestamp);
+        let tick_signals = self
+            .session_cache
+            .as_mut()
+            .map(|cache| crate::signal_processor::tick_combat_state(cache, interp_now))
+            .unwrap_or_default();
 
         if !tick_signals.is_empty() {
-            let should_flush_tick = tick_signals
-                .iter()
-                .any(|s| matches!(s, GameSignal::CombatEnded { .. }));
+            let should_flush_tick = tick_signals.iter().any(|s| matches!(s, GameSignal::CombatEnded { .. }));
             self.dispatch_signals(&tick_signals);
             if should_flush_tick {
                 self.flush_encounter_parquet();
@@ -301,35 +310,29 @@ impl ParsingSession {
             // Write event to parquet buffer AFTER processing
             // (so metadata captures the updated phase state)
             // Only write events that were accumulated (filters pre-combat, grace window, etc.)
-            if was_accumulated {
-                if let Some(writer) = &mut self.encounter_writer {
-                let mut metadata =
-                    EventMetadata::from_cache(cache, self.encounter_idx, event.timestamp);
+            if was_accumulated && let Some(writer) = &mut self.encounter_writer {
+                let mut metadata = EventMetadata::from_cache(cache, self.encounter_idx, event.timestamp);
 
                 // Capture shield context for damage events with absorption
                 // Exclude natural shield rolls (tank passive procs) - these aren't from player shields
-                let is_natural_shield = event.details.defense_type_id
-                    == crate::game_data::defense_type::SHIELD
+                let is_natural_shield = event.details.defense_type_id == crate::game_data::defense_type::SHIELD
                     && event.details.dmg_effective == event.details.dmg_amount;
 
-                if event.details.dmg_absorbed > 0 && !is_natural_shield {
-                    if let Some(enc) = cache.current_encounter() {
-                        let shields =
-                            enc.get_shield_context(event.target_entity.log_id, event.timestamp);
-                        if !shields.is_empty() {
-                            metadata.active_shields = Some(shields);
-                        }
+                if event.details.dmg_absorbed > 0
+                    && !is_natural_shield
+                    && let Some(enc) = cache.current_encounter()
+                {
+                    let shields = enc.get_shield_context(event.target_entity.log_id, event.timestamp);
+                    if !shields.is_empty() {
+                        metadata.active_shields = Some(shields);
                     }
                 }
 
-                    writer.push_event(&event, &metadata);
-                }
+                writer.push_event(&event, &metadata);
             }
 
             // Flush parquet on combat end
-            let should_flush = signals
-                .iter()
-                .any(|s| matches!(s, GameSignal::CombatEnded { .. }));
+            let should_flush = signals.iter().any(|s| matches!(s, GameSignal::CombatEnded { .. }));
 
             // Capture timestamp before dispatch (needed for counter triggers)
             let event_timestamp = event.timestamp;
@@ -502,13 +505,22 @@ impl ParsingSession {
             // Synthesize timer GameSignals so downstream consumers (notably shield
             // start/end triggers in check_shield_triggers) can react to timer events.
             for id in &started_ids {
-                new_signals.push(GameSignal::TimerStarted { timer_id: id.clone(), timestamp });
+                new_signals.push(GameSignal::TimerStarted {
+                    timer_id: id.clone(),
+                    timestamp,
+                });
             }
             for id in &expired_ids {
-                new_signals.push(GameSignal::TimerExpired { timer_id: id.clone(), timestamp });
+                new_signals.push(GameSignal::TimerExpired {
+                    timer_id: id.clone(),
+                    timestamp,
+                });
             }
             for id in &canceled_ids {
-                new_signals.push(GameSignal::TimerCanceled { timer_id: id.clone(), timestamp });
+                new_signals.push(GameSignal::TimerCanceled {
+                    timer_id: id.clone(),
+                    timestamp,
+                });
             }
 
             // Run shield triggers against the synthesized timer signals so shields
@@ -521,7 +533,11 @@ impl ParsingSession {
             if let Some(cache) = &mut self.session_cache {
                 use crate::signal_processor::check_counter_timer_triggers;
                 new_signals.extend(check_counter_timer_triggers(
-                    &expired_ids, &started_ids, &canceled_ids, cache, timestamp,
+                    &expired_ids,
+                    &started_ids,
+                    &canceled_ids,
+                    cache,
+                    timestamp,
                 ));
             }
 
@@ -529,7 +545,11 @@ impl ParsingSession {
             if let Some(cache) = &mut self.session_cache {
                 use crate::signal_processor::check_timer_phase_transitions;
                 new_signals.extend(check_timer_phase_transitions(
-                    &expired_ids, &started_ids, &canceled_ids, cache, timestamp,
+                    &expired_ids,
+                    &started_ids,
+                    &canceled_ids,
+                    cache,
+                    timestamp,
                 ));
             }
 
@@ -537,42 +557,32 @@ impl ParsingSession {
             // so that timer→counter→phase and timer→phase→counter chains resolve.
             // This mirrors the fixed-point loop in processor.rs but operates on
             // signals produced by timer events rather than combat events.
-            if !new_signals.is_empty() {
-                if let Some(cache) = &mut self.session_cache {
-                    use crate::signal_processor::{
-                        check_counter_signal_triggers, check_entity_phase_transitions,
-                    };
-                    let mut watermark = 0;
-                    for _ in 0..10 {
-                        if new_signals.len() == watermark {
-                            break;
-                        }
-                        // Snapshot the start of this iteration. Counters need to
-                        // see signals carried in (e.g. PhaseChanged/PhaseEndTriggered
-                        // from check_timer_phase_transitions, CounterChanged from
-                        // check_counter_timer_triggers) AND any new phase signals
-                        // entity_phase_transitions adds below — otherwise reset_on
-                        // / increment_on with PhaseEntered/PhaseEnded/CounterReaches
-                        // never fires for timer-driven transitions.
-                        let iter_start = watermark;
-                        watermark = new_signals.len();
-                        let slice = &new_signals[iter_start..];
-
-                        // Phase transitions from counter changes (CounterReaches,
-                        // PhaseEntered, PhaseEnded, EntityDeath, NpcAppears, etc.)
-                        new_signals.extend(check_entity_phase_transitions(
-                            cache,
-                            slice,
-                            timestamp,
-                        ));
-
-                        let counter_slice = &new_signals[iter_start..];
-                        new_signals.extend(check_counter_signal_triggers(
-                            cache,
-                            counter_slice,
-                            timestamp,
-                        ));
+            if !new_signals.is_empty()
+                && let Some(cache) = &mut self.session_cache
+            {
+                use crate::signal_processor::{check_counter_signal_triggers, check_entity_phase_transitions};
+                let mut watermark = 0;
+                for _ in 0..10 {
+                    if new_signals.len() == watermark {
+                        break;
                     }
+                    // Snapshot the start of this iteration. Counters need to
+                    // see signals carried in (e.g. PhaseChanged/PhaseEndTriggered
+                    // from check_timer_phase_transitions, CounterChanged from
+                    // check_counter_timer_triggers) AND any new phase signals
+                    // entity_phase_transitions adds below — otherwise reset_on
+                    // / increment_on with PhaseEntered/PhaseEnded/CounterReaches
+                    // never fires for timer-driven transitions.
+                    let iter_start = watermark;
+                    watermark = new_signals.len();
+                    let slice = &new_signals[iter_start..];
+
+                    // Phase transitions from counter changes (CounterReaches,
+                    // PhaseEntered, PhaseEnded, EntityDeath, NpcAppears, etc.)
+                    new_signals.extend(check_entity_phase_transitions(cache, slice, timestamp));
+
+                    let counter_slice = &new_signals[iter_start..];
+                    new_signals.extend(check_counter_signal_triggers(cache, counter_slice, timestamp));
                 }
             }
 
@@ -614,15 +624,14 @@ impl ParsingSession {
     pub fn tick(&mut self) {
         // Tick combat state for timeout detection (grace windows, combat timeout).
         // Uses interpolated game time to avoid clock skew issues.
-        let tick_now = self.interpolated_game_time()
+        let tick_now = self
+            .interpolated_game_time()
             .unwrap_or_else(|| chrono::Local::now().naive_local());
         if let Some(cache) = &mut self.session_cache {
             let signals = crate::signal_processor::tick_combat_state(cache, tick_now);
             if !signals.is_empty() {
                 // Check if combat ended - need to flush parquet
-                let should_flush = signals
-                    .iter()
-                    .any(|s| matches!(s, GameSignal::CombatEnded { .. }));
+                let should_flush = signals.iter().any(|s| matches!(s, GameSignal::CombatEnded { .. }));
 
                 self.dispatch_signals(&signals);
 
@@ -641,30 +650,25 @@ impl ParsingSession {
         // Update combat time so TimeElapsed triggers fire promptly during idle periods.
         // Uses interpolated game time (game clock + monotonic elapsed) instead of
         // system clock to avoid clock skew between SWTOR and the OS.
-        if let Some(interp_time) = self.interpolated_game_time() {
-            if let Some(cache) = &mut self.session_cache {
-                if let Some(enc) = cache.current_encounter_mut() {
-                    if enc.enter_combat_time.is_some()
-                        && matches!(enc.state, crate::encounter::EncounterState::InCombat)
-                    {
-                        enc.update_combat_time(interp_time);
-                    }
-                }
-            }
+        if let Some(interp_time) = self.interpolated_game_time()
+            && let Some(cache) = &mut self.session_cache
+            && let Some(enc) = cache.current_encounter_mut()
+            && enc.enter_combat_time.is_some()
+            && matches!(enc.state, crate::encounter::EncounterState::InCombat)
+        {
+            enc.update_combat_time(interp_time);
         }
 
         // Tick timer manager
         if let Some(timer_mgr) = &self.timer_manager {
-            let encounter = self
-                .session_cache
-                .as_ref()
-                .and_then(|c| c.current_encounter());
+            let encounter = self.session_cache.as_ref().and_then(|c| c.current_encounter());
             timer_mgr.lock().unwrap_or_else(|p| p.into_inner()).tick(encounter);
         }
 
         // Run timer feedback loop so timer expirations during tick() can
         // cascade into counter/phase changes and back into timers.
-        let feedback_time = self.interpolated_game_time()
+        let feedback_time = self
+            .interpolated_game_time()
             .or(self.last_event_time)
             .unwrap_or_else(|| chrono::Local::now().naive_local());
         self.process_timer_feedback_loop(feedback_time);
@@ -672,49 +676,49 @@ impl ParsingSession {
 
     /// Update effect definitions (e.g., after config reload). No-op in Historical mode.
     pub fn set_definitions(&self, definitions: DefinitionSet) {
-        if let Some(tracker) = &self.effect_tracker {
-            if let Ok(mut tracker) = tracker.lock() {
-                tracker.set_definitions(definitions);
-            }
+        if let Some(tracker) = &self.effect_tracker
+            && let Ok(mut tracker) = tracker.lock()
+        {
+            tracker.set_definitions(definitions);
         }
     }
 
     /// Set player alacrity for effect duration calculations.
     /// No-op in Historical mode (session has no effect tracker).
     pub fn set_effect_alacrity(&self, alacrity_percent: f32) {
-        if let Some(tracker) = &self.effect_tracker {
-            if let Ok(mut tracker) = tracker.lock() {
-                tracker.set_alacrity(alacrity_percent);
-            }
+        if let Some(tracker) = &self.effect_tracker
+            && let Ok(mut tracker) = tracker.lock()
+        {
+            tracker.set_alacrity(alacrity_percent);
         }
     }
 
     /// Set the duration bias adjustment (ms) for effect duration calculations.
     /// No-op in Historical mode (session has no effect tracker).
     pub fn set_effect_latency(&self, latency_ms: i16) {
-        if let Some(tracker) = &self.effect_tracker {
-            if let Ok(mut tracker) = tracker.lock() {
-                tracker.set_latency(latency_ms);
-            }
+        if let Some(tracker) = &self.effect_tracker
+            && let Ok(mut tracker) = tracker.lock()
+        {
+            tracker.set_latency(latency_ms);
         }
     }
 
     /// Update timer definitions (e.g., after config reload). No-op in Historical mode.
     pub fn set_timer_definitions(&self, definitions: Vec<TimerDefinition>) {
-        if let Some(timer_mgr) = &self.timer_manager {
-            if let Ok(mut timer_mgr) = timer_mgr.lock() {
-                timer_mgr.set_definitions(definitions);
-            }
+        if let Some(timer_mgr) = &self.timer_manager
+            && let Ok(mut timer_mgr) = timer_mgr.lock()
+        {
+            timer_mgr.set_definitions(definitions);
         }
     }
 
     /// Update boss definitions (for boss detection and phase tracking).
     /// NOTE: This only updates TimerManager. For full support, use `load_boss_definitions`.
     pub fn set_boss_definitions(&self, bosses: Vec<BossEncounterDefinition>) {
-        if let Some(timer_mgr) = &self.timer_manager {
-            if let Ok(mut timer_mgr) = timer_mgr.lock() {
-                timer_mgr.load_boss_definitions(bosses);
-            }
+        if let Some(timer_mgr) = &self.timer_manager
+            && let Ok(mut timer_mgr) = timer_mgr.lock()
+        {
+            timer_mgr.load_boss_definitions(bosses);
         }
     }
 
@@ -731,10 +735,10 @@ impl ParsingSession {
         }
 
         // Update TimerManager (for timer activation) - Live mode only
-        if let Some(timer_mgr) = &self.timer_manager {
-            if let Ok(mut timer_mgr) = timer_mgr.lock() {
-                timer_mgr.load_boss_definitions(bosses);
-            }
+        if let Some(timer_mgr) = &self.timer_manager
+            && let Ok(mut timer_mgr) = timer_mgr.lock()
+        {
+            timer_mgr.load_boss_definitions(bosses);
         }
     }
 

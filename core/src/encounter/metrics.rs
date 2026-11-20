@@ -1,6 +1,6 @@
 use crate::combat_log::EntityType;
-use crate::context::resolve;
 use crate::context::IStr;
+use crate::context::resolve;
 use crate::game_data::Discipline;
 use baras_types::PvpFaction;
 use chrono::NaiveDateTime;

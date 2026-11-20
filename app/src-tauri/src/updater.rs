@@ -99,33 +99,7 @@ pub async fn install_update(app: AppHandle) -> Result<(), String> {
             let msg = e.to_string();
             // Emit failure event so frontend can show error and reset state
             let _ = app.emit("update-failed", &msg);
-            return Err(msg);
+            Err(msg)
         }
     }
-}
-
-/// Manually check for updates (called from frontend)
-#[tauri::command]
-pub async fn check_update(app: AppHandle) -> Result<Option<UpdateAvailable>, String> {
-    let updater = app.updater().map_err(|e| e.to_string())?;
-
-    let update = updater.check().await.map_err(|e| e.to_string())?;
-
-    Ok(update.map(|u| {
-        let info = UpdateAvailable {
-            version: u.version.clone(),
-            notes: u.body.clone(),
-            date: u.date.map(|d| d.to_string()),
-        };
-
-        // Cache the update for later installation
-        if let Some(state) = app.try_state::<PendingUpdate>() {
-            *state.0.lock().unwrap_or_else(|poisoned| {
-                tracing::warn!("PendingUpdate mutex poisoned, recovering");
-                poisoned.into_inner()
-            }) = Some(u);
-        }
-
-        info
-    }))
 }

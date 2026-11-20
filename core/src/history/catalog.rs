@@ -47,8 +47,14 @@ impl TimerRule {
 /// operation's own modes.
 fn highest_tier(bosses: &[CatalogBoss]) -> String {
     let required = || bosses.iter().filter(|b| !b.optional);
-    let has = |t: &str| required().any(|b| b.difficulties.is_empty() || b.difficulties.iter().any(|k| k.split('_').next() == Some(t)));
-    ["master", "veteran", "story"].into_iter().find(|t| has(t)).unwrap_or("master").to_string()
+    let has = |t: &str| {
+        required().any(|b| b.difficulties.is_empty() || b.difficulties.iter().any(|k| k.split('_').next() == Some(t)))
+    };
+    ["master", "veteran", "story"]
+        .into_iter()
+        .find(|t| has(t))
+        .unwrap_or("master")
+        .to_string()
 }
 
 #[derive(Debug, Clone)]
@@ -63,7 +69,9 @@ pub struct AreaDef {
 impl AreaDef {
     /// Bosses that make up a clear at this difficulty (optional ones excluded)
     pub fn bosses_at<'a>(&'a self, tier: &'a str, size: u8) -> impl Iterator<Item = &'a CatalogBoss> + 'a {
-        self.bosses.iter().filter(move |b| !b.optional && b.exists_at(tier, size))
+        self.bosses
+            .iter()
+            .filter(move |b| !b.optional && b.exists_at(tier, size))
     }
 
     pub fn is_final(&self, boss_name: &str) -> bool {
@@ -84,8 +92,7 @@ impl AreaDef {
         ["story", "veteran", "master"]
             .into_iter()
             .filter(|t| {
-                !explicit
-                    || required().any(|b| !b.difficulties.is_empty() && (b.exists_at(t, 8) || b.exists_at(t, 16)))
+                !explicit || required().any(|b| !b.difficulties.is_empty() && (b.exists_at(t, 8) || b.exists_at(t, 16)))
             })
             .collect()
     }
@@ -144,7 +151,10 @@ impl AreaCatalog {
                     Some(d) if !d.is_empty() => d.clone(),
                     _ => vec![highest_tier(&bosses)],
                 };
-                TimerRule { tiers, limit_secs: Some(m * 60) }
+                TimerRule {
+                    tiers,
+                    limit_secs: Some(m * 60),
+                }
             });
             areas.insert(
                 area_id,

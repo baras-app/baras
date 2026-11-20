@@ -4,8 +4,8 @@
 //! table, so the charts follow the selection and filters for free. Clicking
 //! a point or bar publishes a `ChartPick` the table narrows itself to.
 
-use std::cell::RefCell;
 use crate::utils::{LightTheme, css_var};
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use dioxus::prelude::*;
@@ -67,8 +67,13 @@ const NO_KILL_COLOR: &str = "#6c7a89";
 /// (seconds keep same-minute pulls apart); the axis label formatter shows
 /// only the day, the tooltip shows all of it.
 fn pull_label(iso: &str) -> String {
-    const MONTHS: [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    let month = iso.get(5..7).and_then(|m| m.parse::<usize>().ok()).and_then(|m| MONTHS.get(m.wrapping_sub(1)));
+    const MONTHS: [&str; 12] = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+    let month = iso
+        .get(5..7)
+        .and_then(|m| m.parse::<usize>().ok())
+        .and_then(|m| MONTHS.get(m.wrapping_sub(1)));
     let day = iso.get(8..10).and_then(|d| d.parse::<u32>().ok());
     let time = iso.get(11..19).unwrap_or("");
     match (month, day) {
@@ -79,7 +84,10 @@ fn pull_label(iso: &str) -> String {
 
 /// Minimal HTML escape for names placed in the tooltip markup
 fn escape(s: &str) -> String {
-    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
 }
 
 /// A pull point: its value plus what the tooltip shows (character with role
@@ -140,12 +148,12 @@ fn pull_axis(labels: Vec<String>) -> Value {
 /// while they fit, then quarters, then years. The points themselves stay
 /// evenly spaced and unlabelled; the tooltip has their time.
 fn period_ticks(timestamps: &[&str]) -> Value {
-    const MONTHS: [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    let ym = |ts: &str| -> Option<(u32, u32)> {
-        Some((ts.get(..4)?.parse().ok()?, ts.get(5..7)?.parse().ok()?))
-    };
+    const MONTHS: [&str; 12] = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+    let ym = |ts: &str| -> Option<(u32, u32)> { Some((ts.get(..4)?.parse().ok()?, ts.get(5..7)?.parse().ok()?)) };
     let month = |(y, m): (u32, u32)| format!("{} {y}", MONTHS[(m as usize).saturating_sub(1).min(11)]);
-    let quarter = |(y, m): (u32, u32)| format!("Q{} {y}", (m + 2) / 3);
+    let quarter = |(y, m): (u32, u32)| format!("Q{} {y}", m.div_ceil(3));
     let year = |(y, _): (u32, u32)| y.to_string();
     let ticks = |label: &dyn Fn((u32, u32)) -> String| -> Vec<(usize, String)> {
         let mut out: Vec<(usize, String)> = Vec::new();
@@ -182,7 +190,10 @@ const ROLE_SERIES: [(Option<&str>, &str, &str); 4] = [
 /// chronological order, one line per role played (gaps between a role's
 /// pulls are bridged); the tooltip says who played and whether it was a kill.
 fn metric_option(rows: &[PullRow], title: &str, pick: impl Fn(&PullRow) -> Option<i64>) -> Option<Value> {
-    let points: Vec<(&PullRow, i64)> = rows.iter().filter_map(|r| pick(r).filter(|v| *v > 0).map(|v| (r, v))).collect();
+    let points: Vec<(&PullRow, i64)> = rows
+        .iter()
+        .filter_map(|r| pick(r).filter(|v| *v > 0).map(|v| (r, v)))
+        .collect();
     if points.is_empty() {
         return None;
     }
@@ -217,7 +228,8 @@ fn metric_option(rows: &[PullRow], title: &str, pick: impl Fn(&PullRow) -> Optio
     opt["_ticks"] = ticks;
     // A boundary label reads as "from here on", so it hangs to the right of its tick
     opt["xAxis"]["axisLabel"]["align"] = json!("left");
-    opt["xAxis"]["splitLine"] = json!({ "show": true, "lineStyle": { "color": css_var("--border-light"), "type": "dashed" } });
+    opt["xAxis"]["splitLine"] =
+        json!({ "show": true, "lineStyle": { "color": css_var("--border-light"), "type": "dashed" } });
     opt["yAxis"] = json!({ "type": "value", "axisLabel": { "color": css_var("--text-muted") }, "splitLine": { "lineStyle": { "color": css_var("--border-light") } }, "scale": true });
     opt["dataZoom"] = json!([{ "type": "inside", "zoomOnMouseWheel": true, "moveOnMouseMove": true }]);
     // Legend only when more than one role shows; clicking an entry hides that line.
@@ -249,7 +261,8 @@ fn ttk_option(rows: &[PullRow]) -> Option<Value> {
     opt["_ticks"] = ticks;
     opt["_mmss"] = json!(true);
     opt["xAxis"]["axisLabel"]["align"] = json!("left");
-    opt["xAxis"]["splitLine"] = json!({ "show": true, "lineStyle": { "color": css_var("--border-light"), "type": "dashed" } });
+    opt["xAxis"]["splitLine"] =
+        json!({ "show": true, "lineStyle": { "color": css_var("--border-light"), "type": "dashed" } });
     opt["yAxis"] = json!({ "type": "value", "axisLabel": { "color": css_var("--text-muted") }, "splitLine": { "lineStyle": { "color": css_var("--border-light") } }, "scale": true });
     opt["dataZoom"] = json!([{ "type": "inside", "zoomOnMouseWheel": true, "moveOnMouseMove": true }]);
     opt["series"] = json!([{
@@ -280,7 +293,7 @@ fn previous_day(date: &str) -> String {
     let days_in = |y: u32, m: u32| match m {
         1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
         4 | 6 | 9 | 11 => 30,
-        _ if y % 4 == 0 && (y % 100 != 0 || y % 400 == 0) => 29,
+        _ if y.is_multiple_of(4) && (!y.is_multiple_of(100) || y.is_multiple_of(400)) => 29,
         _ => 28,
     };
     let (y, m, d) = match (m, d) {
@@ -313,7 +326,10 @@ fn nights_option(rows: &[PullRow]) -> Option<Value> {
     let data: Vec<Value> = nights
         .iter()
         .map(|n| {
-            let pick = ChartPick::Night { character: n.0.0.clone(), date: n.0.1.clone() };
+            let pick = ChartPick::Night {
+                character: n.0.0.clone(),
+                date: n.0.1.clone(),
+            };
             if n.3 {
                 json!({ "value": n.2, "pick": pick, "itemStyle": { "color": KILL_COLOR, "borderRadius": 2 } })
             } else {
@@ -345,7 +361,14 @@ fn options(rows: &[PullRow], kills_only: bool) -> [(&'static str, Option<Value>)
     [
         (DPS_ID, metric_option(rows, "DPS", |r| r.dps)),
         (EHPS_ID, metric_option(rows, "EHPS", |r| r.ehps)),
-        (NIGHTS_ID, if kills_only { ttk_option(rows) } else { nights_option(rows) }),
+        (
+            NIGHTS_ID,
+            if kills_only {
+                ttk_option(rows)
+            } else {
+                nights_option(rows)
+            },
+        ),
     ]
 }
 
@@ -377,13 +400,23 @@ pub fn PullCharts(pulls: Resource<Option<Vec<PullRow>>>, pick: Signal<Option<Cha
                             if let Some(ticks) = option.get("_ticks") {
                                 // Period boundaries only: label, tick and gridline share one index set
                                 let show = format!("var t = {ticks}; return t[i] !== undefined;");
-                                set_js_fn(&js, &["xAxis", "axisLabel", "formatter"], "v, i", &format!("var t = {ticks}; return t[i] || '';"));
+                                set_js_fn(
+                                    &js,
+                                    &["xAxis", "axisLabel", "formatter"],
+                                    "v, i",
+                                    &format!("var t = {ticks}; return t[i] || '';"),
+                                );
                                 set_js_fn(&js, &["xAxis", "axisLabel", "interval"], "i, v", &show);
                                 set_js_fn(&js, &["xAxis", "axisTick", "interval"], "i, v", &show);
                                 set_js_fn(&js, &["xAxis", "splitLine", "interval"], "i, v", &show);
                             } else {
                                 // Day only on the axis ("Sep 12"); the category keeps the time for the tooltip
-                                set_js_fn(&js, &["xAxis", "axisLabel", "formatter"], "v", "var p = v.split(' '); return p.length > 2 ? p[0] + ' ' + p[1] : v;");
+                                set_js_fn(
+                                    &js,
+                                    &["xAxis", "axisLabel", "formatter"],
+                                    "v",
+                                    "var p = v.split(' '); return p.length > 2 ? p[0] + ' ' + p[1] : v;",
+                                );
                             }
                             if option.get("_mmss").is_some() {
                                 let mmss = "var m = Math.floor(v / 60), s = Math.floor(v % 60); return m + ':' + (s < 10 ? '0' : '') + s;";
@@ -396,7 +429,8 @@ pub fn PullCharts(pulls: Resource<Option<Vec<PullRow>>>, pick: Signal<Option<Cha
                             set_option_replace(&chart, &js);
                             // A click anywhere in a pull's column picks it (what the tooltip shows)
                             let handler = Closure::new(move |data: JsValue| {
-                                let hit = js_sys::Reflect::get(&data, &JsValue::from_str("pick")).unwrap_or(JsValue::NULL);
+                                let hit =
+                                    js_sys::Reflect::get(&data, &JsValue::from_str("pick")).unwrap_or(JsValue::NULL);
                                 if let Ok(hit) = serde_wasm_bindgen::from_value::<ChartPick>(hit) {
                                     // Outside the Dioxus runtime (JS callback), so never panic on a lock
                                     let _ = pick.try_write().map(|mut w| {

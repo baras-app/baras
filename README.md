@@ -61,6 +61,12 @@ just dev
 
 This runs `cargo tauri dev` with the frontend served on `localhost:1420`.
 
+`just dev` keeps its settings, history and caches in a separate `baras-dev` config directory (set through
+`BARAS_CONFIG_DIR`), so it can run beside an installed copy without touching it. `just dev-seed` copies your installed
+settings, definitions and characters into it; `just dev-live` runs against the installed copy's directory instead.
+
+Before opening a pull request, `just lint` and `just test` run the same checks as CI.
+
 ### Release Build
 
 Build the parse-worker sidecar and bundle platform-specific artifacts:

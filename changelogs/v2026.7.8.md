@@ -1,24 +1,24 @@
-# v2026.6.22
+# v2026.7.8
 
-## Overlay Formatting
+## DOT Tracker
 
-- **Gradients** - Gradient bars have been added and enabled by default on metrics overlays. This option can be toggled on/off in the overlay customization menu.
-  It is also present on bar mode effects overlays, timers, and boss HP, but not as a default.
-- **Bar Spacing** - Spacing between bars on metrics overlays can now be adjusted in the overlay customization menu.
-- **Overlay Font Selection** - Users can now select any of their available system fonts as the font face for the overlays.
-
-Enjoy customizing.
+- Bar mode display for the DOT Tracker is now available
+- Refresh abilities have been overhauled to support different types of refreshes (e.g. refresh on damage versus cast)
+- DOTs have been added and improved for all major classes
 
 ## Other
 
-- Refresh on immune toggle option added for effects tracking
-- Shielding and SPS columns have been condensed into to the HPS/EHPS columns in the data explorer. Blue-text coloring is used to distinguish between shielding from healing.
-- Various additions to HP markers, alert text rewording in encounter timers
-- Added entry for tracking group revive cooldowns
-- Log file search now supports compound terms using the comma (e.g. `Player Name, Dxun` will find all Dxuns for `Player Name`)
+- Golden Fury timers added
+- Added Effective average per activation column for healing abilities
+- Effects can now be searched by discipline
+- Revive Cooldown display text shortened to "Rez"
+- Font size can now be scaled from 30% to 300% where available
 
 ## Bugfixes
 
-- Fixed issue causing duration modifiers that add time to improperly render total duration in the overlay
-- Removed Sustaining Aura/Fueled Corruption from tracked effects
-- Challenges overlay will now display class/discipline icons when parsed from a historical file
+- Combat log _Find_ now only finds items within the filtered set of log lines
+- Data explorer player selection sidebar now includes shielding in the HPS numbers
+- Corrected Explosive Conflict Enrage timers for 8/16 man
+- DPS chart now filter self-damage from results
+- Removed unused "Prune Delay" option from DOT tracker settings
+- Font scale no longer adjusts bar size when in bar mode for effects overlays

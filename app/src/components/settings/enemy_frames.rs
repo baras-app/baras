@@ -16,7 +16,7 @@ pub fn EnemyFramesTab(draft: SettingsDraft, actions: Element) -> Element {
             Section { group: Group::Background,
                 p { class: "hint",
                     i { class: "fa-solid fa-info-circle" }
-                    " HP bars use the class colors from Global Metrics Settings."
+                    " HP bars use the class colors under Global › Metric Overlays."
                 }
             }
             Section { group: Group::Layout,

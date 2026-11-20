@@ -33,18 +33,13 @@ pub fn is_zero_i64(n: &i64) -> bool {
 }
 
 /// Skip serializing if Vec is empty
-pub fn is_empty_vec<T>(v: &Vec<T>) -> bool {
+pub fn is_empty_vec<T>(v: &[T]) -> bool {
     v.is_empty()
 }
 
 /// Default timer/effect color (light gray with full opacity)
 pub fn default_timer_color() -> [u8; 4] {
     [200, 200, 200, 255]
-}
-
-/// Default countdown start (3 seconds)
-pub fn default_countdown_start() -> u8 {
-    3
 }
 
 /// Skip serializing if bool is true (for fields that default to true)
@@ -65,10 +60,4 @@ pub fn is_alert_trigger_none(t: &baras_types::AlertTrigger) -> bool {
 /// Skip serializing if RefreshScope is the default (Both)
 pub fn is_default_refresh_scope(s: &baras_types::RefreshScope) -> bool {
     *s == baras_types::RefreshScope::Both
-}
-
-/// Default entity filter for boss timer source/target (matches any entity)
-/// Boss timers need permissive defaults since abilities come from NPCs, not players.
-pub fn default_entity_filter_any() -> crate::effects::EntityFilter {
-    crate::effects::EntityFilter::Any
 }

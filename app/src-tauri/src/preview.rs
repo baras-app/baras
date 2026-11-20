@@ -10,15 +10,16 @@ use baras_core::OverlayHealthEntry;
 use baras_core::dsl::format_placeholders;
 use baras_overlay::icons::IconCache;
 use baras_overlay::{
-    AlertEntry, AlertsData, BossEffectIcon, BossHealthData, CooldownData, CooldownEntry, DotEntry,
-    DotTarget, DotTrackerData, EffectABEntry, EffectsABData, OverlayData, RaidEffect, RaidFrame,
-    RaidFrameData, TimerData, TimerEntry,
+    AlertEntry, AlertsData, BossEffectIcon, BossHealthData, CooldownData, CooldownEntry, DotEntry, DotTarget,
+    DotTrackerData, EffectABEntry, EffectsABData, OverlayData, RaidEffect, RaidFrame, RaidFrameData, TimerData,
+    TimerEntry,
 };
 use baras_types::preview::{OverlayPreviewRequest, PreviewAlertTiming, PreviewAudio, PreviewTarget};
 
 use crate::audio::{AudioEvent, AudioSender};
 
 use crate::overlay::{OverlayCommand, OverlayType, SharedOverlayState};
+use crate::state::MutexExt;
 use crate::state::SharedState;
 
 /// How long a preview stays on screen (longer when its audio cues start earlier)
@@ -93,7 +94,11 @@ impl ActivePreview {
                     total_secs: self.total_secs,
                     color: self.color,
                     // Same rule as live entries: a count of 1 only shows with show_single_stack
-                    stacks: if self.show_single_stack || self.stacks > 1 { self.stacks.max(1) } else { 0 },
+                    stacks: if self.show_single_stack || self.stacks > 1 {
+                        self.stacks.max(1)
+                    } else {
+                        0
+                    },
                     stack_in_text: self.stack_in_text,
                     source_name: SOURCE_NAME.to_string(),
                     target_name: TARGET_NAME.to_string(),
@@ -149,7 +154,11 @@ impl ActivePreview {
             }
             OverlayData::Raid(d) => {
                 let mut effect = RaidEffect::new(self.icon_ability_id, self.text.clone())
-                    .with_charges(if self.show_single_stack { self.stacks.max(1) } else { self.stacks })
+                    .with_charges(if self.show_single_stack {
+                        self.stacks.max(1)
+                    } else {
+                        self.stacks
+                    })
                     .with_show_single_stack(self.show_single_stack)
                     .with_color_rgba(self.color)
                     .with_show_icon(self.show_icon)
@@ -238,7 +247,7 @@ fn overlay_type(target: PreviewTarget) -> OverlayType {
 
 /// Merge the running preview into live overlay data on its way to an overlay thread
 pub fn with_preview(shared: &SharedState, mut data: OverlayData) -> OverlayData {
-    let mut slot = shared.preview.lock().unwrap_or_else(|p| p.into_inner());
+    let mut slot = shared.preview.locked();
     if let Some(preview) = slot.as_mut()
         && let Some(target) = target_of(&data)
         && preview.targets.contains(&target)
@@ -294,17 +303,22 @@ pub async fn start(
             .map(|&t| (t, state.get_tx(overlay_type(t)).cloned()))
             .collect()
     };
-    let missing: Vec<_> = txs.iter().filter(|(_, tx)| tx.is_none()).map(|(t, _)| t.label()).collect();
+    let missing: Vec<_> = txs
+        .iter()
+        .filter(|(_, tx)| tx.is_none())
+        .map(|(t, _)| t.label())
+        .collect();
     let txs: Vec<_> = txs.into_iter().filter_map(|(t, tx)| Some((t, tx?))).collect();
     let icon_ability_id = req.icon_ability_id.unwrap_or(0);
-    let icon = icon_cache
-        .as_ref()
-        .and_then(|cache| cache.get_icon(icon_ability_id))
-        .map(|d| Arc::new((d.width, d.height, d.rgba)));
+    let icon = icon_cache.as_ref().and_then(|cache| cache.get_icon(icon_ability_id));
     let stacks = req.stacks.unwrap_or(0);
     let resolve = |text: &str| format_placeholders(text, SOURCE_NAME, TARGET_NAME, req.stacks);
 
-    let total_secs = if req.duration_secs > 0.0 { req.duration_secs } else { DEFAULT_TOTAL_SECS };
+    let total_secs = if req.duration_secs > 0.0 {
+        req.duration_secs
+    } else {
+        DEFAULT_TOTAL_SECS
+    };
     let audio_lead = req
         .audio
         .as_ref()
@@ -352,10 +366,15 @@ pub async fn start(
             icon_ability_id: alert_icon_id,
             icon: alert_icon.clone(),
         };
-        let _ = tx.try_send(OverlayCommand::UpdateData(OverlayData::Alerts(AlertsData { entries: vec![entry] })));
+        let _ = tx.try_send(OverlayCommand::UpdateData(OverlayData::Alerts(AlertsData {
+            entries: vec![entry],
+        })));
     };
     let alert_timing = req.alert_timing;
-    let alert_tx = txs.iter().find(|(t, _)| *t == PreviewTarget::Alerts).map(|(_, tx)| tx.clone());
+    let alert_tx = txs
+        .iter()
+        .find(|(t, _)| *t == PreviewTarget::Alerts)
+        .map(|(_, tx)| tx.clone());
     let alert_tx = match (alert_tx, alert_timing) {
         (Some(tx), PreviewAlertTiming::Start) => {
             send_alert(&tx, None);
@@ -366,8 +385,13 @@ pub async fn start(
 
     // Instant alerts sound with the alert; everything else is timed against expiry below
     let audio = match req.audio {
-        Some(PreviewAudio { instant: true, file, .. }) => {
-            let _ = audio_tx.try_send(AudioEvent::Alert { text: preview.text.clone(), custom_sound: file });
+        Some(PreviewAudio {
+            instant: true, file, ..
+        }) => {
+            let _ = audio_tx.try_send(AudioEvent::Alert {
+                text: preview.text.clone(),
+                custom_sound: file,
+            });
             None
         }
         audio => audio,
@@ -381,7 +405,7 @@ pub async fn start(
     let text = preview.text.clone();
     let start_remaining = preview.start_remaining;
     let id = {
-        let mut slot = shared.preview.lock().unwrap_or_else(|p| p.into_inner());
+        let mut slot = shared.preview.locked();
         let id = slot.as_ref().map_or(1, |p| p.id.wrapping_add(1));
         *slot = Some(ActivePreview { id, ..preview });
         id
@@ -393,7 +417,7 @@ pub async fn start(
         loop {
             // Snapshot under the lock; a newer preview (different id) supersedes this one
             let (current, superseded) = {
-                let mut slot = shared.preview.lock().unwrap_or_else(|p| p.into_inner());
+                let mut slot = shared.preview.locked();
                 match slot.as_ref() {
                     Some(p) if p.id == id && p.is_running() => (Some(p.clone()), false),
                     Some(p) if p.id == id => {

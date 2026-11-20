@@ -63,7 +63,11 @@ fn toggle(picked: &[String], values: &[String]) -> Vec<String> {
 
 /// Toggle one value in `picked` (a board click); a discipline brings its mirror
 pub fn toggle_value(picked: &[String], value: &str, mirrored: bool) -> Vec<String> {
-    let values = if mirrored { names_of(value, discipline_mirror) } else { vec![value.to_string()] };
+    let values = if mirrored {
+        names_of(value, discipline_mirror)
+    } else {
+        vec![value.to_string()]
+    };
     toggle(picked, &values)
 }
 
@@ -79,7 +83,10 @@ pub fn MultiSelect(
     on_change: EventHandler<Vec<String>>,
 ) -> Element {
     let mut open = use_signal(|| false);
-    let on: Vec<&Entry> = entries.iter().filter(|(_, vals)| vals.iter().any(|v| picked.contains(v))).collect();
+    let on: Vec<&Entry> = entries
+        .iter()
+        .filter(|(_, vals)| vals.iter().any(|v| picked.contains(v)))
+        .collect();
     let button_label = match on.as_slice() {
         [] => any_label.to_string(),
         [(label, _)] => label.clone(),

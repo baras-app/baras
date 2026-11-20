@@ -112,9 +112,7 @@ fn parse_grouped_value(folded: &str) -> Option<u32> {
         } else {
             first.as_str()
         };
-        std::iter::once(first)
-            .chain(rest.iter().map(String::as_str))
-            .collect()
+        std::iter::once(first).chain(rest.iter().map(String::as_str)).collect()
     };
 
     if !(MIN_VALUE_DIGITS..=MAX_VALUE_DIGITS).contains(&digits.len()) {
@@ -131,18 +129,12 @@ mod tests {
     fn parses_health_with_value_and_percent() {
         assert_eq!(parse_health_text("271,245 (55%)"), (Some(271_245), Some(55)));
         assert_eq!(parse_health_text("95,575 (22%)"), (Some(95_575), Some(22)));
-        assert_eq!(
-            parse_health_text("485,275 (100%)"),
-            (Some(485_275), Some(100))
-        );
+        assert_eq!(parse_health_text("485,275 (100%)"), (Some(485_275), Some(100)));
     }
 
     #[test]
     fn parses_health_without_separators() {
-        assert_eq!(
-            parse_health_text("443604 (100%)"),
-            (Some(443_604), Some(100))
-        );
+        assert_eq!(parse_health_text("443604 (100%)"), (Some(443_604), Some(100)));
     }
 
     #[test]
@@ -158,10 +150,7 @@ mod tests {
 
     #[test]
     fn recovers_from_letter_for_digit_confusion() {
-        assert_eq!(
-            parse_health_text("44O,917 (1OO%)"),
-            (Some(440_917), Some(100))
-        );
+        assert_eq!(parse_health_text("44O,917 (1OO%)"), (Some(440_917), Some(100)));
         assert_eq!(parse_health_text("l15,319 (26%)"), (Some(115_319), Some(26)));
     }
 
@@ -227,10 +216,7 @@ mod tests {
     fn a_bracket_opens_the_percentage_only_after_digits() {
         // 391,830 (100%): leading '[' is the frame border, the second opens the
         // percentage. Reading both as noise concatenated them into 391830100.
-        assert_eq!(
-            parse_health_text("[391.830[100)"),
-            (Some(391_830), Some(100))
-        );
+        assert_eq!(parse_health_text("[391.830[100)"), (Some(391_830), Some(100)));
         assert_eq!(parse_health_text("! 204111(46%)]"), (Some(204_111), Some(46)));
         // A real '(' still opens it with no value in front.
         assert_eq!(parse_health_text("(76%)"), (None, Some(76)));

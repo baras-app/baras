@@ -7,8 +7,9 @@ use crate::components::form_fields::{CheckField, Deprecated, Field, NumberField,
 use crate::types::{CounterDefinition, EffectSelector, EffectStackConfig, EntityFilter, StackAggregation, Trigger};
 
 use super::optional_trigger::OptionalTrigger;
+use super::selectors::{EffectSelectorEditor, EntityFilterDropdown};
 use super::tabs::EncounterData;
-use super::triggers::{ComposableTriggerEditor, EffectSelectorEditor, EntityFilterDropdown};
+use super::triggers::ComposableTriggerEditor;
 
 #[component]
 pub(super) fn CounterEditForm(
@@ -177,7 +178,7 @@ pub(super) fn CounterEditForm(
                                         "min" => StackAggregation::Min,
                                         _ => StackAggregation::Max,
                                     };
-                                    edit_stacks(&|c| c.aggregation = agg.clone());
+                                    edit_stacks(&|c| c.aggregation = agg);
                                 },
                                 option { value: "max", "Max" }
                                 option { value: "sum", "Sum" }

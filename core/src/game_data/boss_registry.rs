@@ -10,8 +10,7 @@ use hashbrown::HashMap;
 use std::sync::{LazyLock, RwLock};
 
 /// Global registry of HP overlay entities (npc_id -> display_name)
-static HP_OVERLAY_REGISTRY: LazyLock<RwLock<HashMap<i64, String>>> =
-    LazyLock::new(|| RwLock::new(HashMap::new()));
+static HP_OVERLAY_REGISTRY: LazyLock<RwLock<HashMap<i64, String>>> = LazyLock::new(|| RwLock::new(HashMap::new()));
 
 /// Register an entity for HP overlay display.
 /// Called when boss definitions are loaded (e.g., on AreaEntered).
@@ -32,10 +31,7 @@ pub fn clear_boss_registry() {
 /// Look up the display name for a registered HP overlay entity.
 /// Returns None if not registered or lock failed.
 pub fn lookup_registered_name(npc_id: i64) -> Option<String> {
-    HP_OVERLAY_REGISTRY
-        .read()
-        .ok()
-        .and_then(|r| r.get(&npc_id).cloned())
+    HP_OVERLAY_REGISTRY.read().ok().and_then(|r| r.get(&npc_id).cloned())
 }
 
 /// Check if an NPC ID is registered for HP overlay (from loaded definitions).

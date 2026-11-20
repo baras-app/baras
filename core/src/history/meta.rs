@@ -36,9 +36,8 @@ pub fn pull_key(filename: &str, start_ms: i64) -> String {
 
 /// `~/.config/baras/library.json`
 pub fn meta_path() -> PathBuf {
-    dirs::config_dir()
+    crate::paths::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("baras")
         .join("library.json")
 }
 
@@ -67,10 +66,7 @@ impl LibraryMeta {
             std::fs::create_dir_all(parent)?;
         }
         let tmp = path.with_extension("json.tmp");
-        std::fs::write(
-            &tmp,
-            serde_json::to_vec_pretty(self).map_err(std::io::Error::other)?,
-        )?;
+        std::fs::write(&tmp, serde_json::to_vec_pretty(self).map_err(std::io::Error::other)?)?;
         std::fs::rename(&tmp, &path)
     }
 
@@ -206,10 +202,7 @@ impl LibraryMeta {
 
     /// Adopt per-fight links found in pre-versioning history files. Existing
     /// entries win. Returns true if anything was added.
-    pub fn merge_legacy_parsely<'a>(
-        &mut self,
-        links: impl IntoIterator<Item = (&'a str, i64, &'a str)>,
-    ) -> bool {
+    pub fn merge_legacy_parsely<'a>(&mut self, links: impl IntoIterator<Item = (&'a str, i64, &'a str)>) -> bool {
         let mut changed = false;
         for (filename, start_ms, link) in links {
             let meta = self.pull_mut(filename, start_ms);

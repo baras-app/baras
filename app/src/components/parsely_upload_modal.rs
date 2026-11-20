@@ -2,7 +2,7 @@
 
 use dioxus::prelude::*;
 
-use super::toast::{use_toast, ToastSeverity};
+use super::toast::{ToastSeverity, use_toast};
 use crate::api;
 
 /// Type of upload being performed
@@ -145,7 +145,8 @@ pub fn ParselyUploadModal(
     let active_guild: Option<String> = if req.no_guild {
         None
     } else {
-        req.guild.clone()
+        req.guild
+            .clone()
             .or_else(|| selected_guild.read().clone().filter(|g| guilds.iter().any(|x| x == g)))
             .or_else(|| guilds.first().cloned())
     };
@@ -390,20 +391,17 @@ pub fn ParselyUploadModal(
                                         ).await;
 
                                         // If successful, persist the link
-                                        if let Ok(ref r) = resp {
-                                            if r.success {
-                                                if let Some(ref link) = r.link {
+                                        if let Ok(ref r) = resp
+                                            && r.success
+                                                && let Some(ref link) = r.link {
                                                     let _ = api::set_encounter_parsely_link(enc_id, link, visibility).await;
 
                                                     // Emit event to refresh encounter list
-                                                    if let Some(window) = web_sys::window() {
-                                                        if let Ok(event) = web_sys::CustomEvent::new("parsely-upload-success") {
+                                                    if let Some(window) = web_sys::window()
+                                                        && let Ok(event) = web_sys::CustomEvent::new("parsely-upload-success") {
                                                             let _ = window.dispatch_event(&event);
                                                         }
-                                                    }
                                                 }
-                                            }
-                                        }
 
                                         resp
                                     }
@@ -415,8 +413,8 @@ pub fn ParselyUploadModal(
                                 // Emit event with upload result for UI updates (file uploads only)
                                 // Individual encounter uploads have their own state management via
                                 // parsely_link field and parsely-upload-success event
-                                if is_file_upload {
-                                    if let Some(window) = web_sys::window() {
+                                if is_file_upload
+                                    && let Some(window) = web_sys::window() {
                                         let global = js_sys::global();
                                         match &result {
                                             Ok(resp) if resp.success => {
@@ -439,7 +437,6 @@ pub fn ParselyUploadModal(
                                             let _ = window.dispatch_event(&event);
                                         }
                                     }
-                                }
 
                                 match result {
                                     Ok(resp) if resp.success => {

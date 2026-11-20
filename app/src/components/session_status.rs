@@ -16,7 +16,11 @@ pub fn SessionStatusChip(
     let (class, label, title) = if !live_tailing {
         ("historical", "Historical", "Viewing a past log")
     } else if prior {
-        ("prior", "Prior Session", "Live, but the last session in this log has ended")
+        (
+            "prior",
+            "Prior Session",
+            "Live, but the last session in this log has ended",
+        )
     } else if watching {
         ("live", "Live", "Tailing the newest log")
     } else {

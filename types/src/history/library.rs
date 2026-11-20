@@ -227,5 +227,3 @@ pub struct LibraryRow {
     /// Pulls with their own Parsely link
     pub parsely_fights: u32,
 }
-
-

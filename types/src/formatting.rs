@@ -25,11 +25,7 @@ fn europeanize(s: &str) -> String {
 /// Apply European formatting conditionally.
 #[inline]
 fn maybe_eu(s: String, european: bool) -> String {
-    if european {
-        europeanize(&s)
-    } else {
-        s
-    }
+    if european { europeanize(&s) } else { s }
 }
 
 /// Format a large number with K/M suffix for compact display.

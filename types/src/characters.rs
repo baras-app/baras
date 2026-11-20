@@ -9,15 +9,40 @@ use serde::{Deserialize, Serialize};
 
 /// Base class display names, Imperial first, in mirror order
 pub const CLASSES: &[&str] = &[
-    "Sorcerer", "Assassin", "Juggernaut", "Marauder", "Mercenary", "Powertech", "Operative", "Sniper",
-    "Sage", "Shadow", "Guardian", "Sentinel", "Commando", "Vanguard", "Scoundrel", "Gunslinger",
+    "Sorcerer",
+    "Assassin",
+    "Juggernaut",
+    "Marauder",
+    "Mercenary",
+    "Powertech",
+    "Operative",
+    "Sniper",
+    "Sage",
+    "Shadow",
+    "Guardian",
+    "Sentinel",
+    "Commando",
+    "Vanguard",
+    "Scoundrel",
+    "Gunslinger",
 ];
 
 /// Crafting, gathering and mission skills; a character holds up to three
 pub const CREW_SKILLS: &[&str] = &[
-    "Armormech", "Armstech", "Artifice", "Biochem", "Cybertech", "Synthweaving",
-    "Archaeology", "Bioanalysis", "Scavenging", "Slicing",
-    "Diplomacy", "Investigation", "Treasure Hunting", "Underworld Trading",
+    "Armormech",
+    "Armstech",
+    "Artifice",
+    "Biochem",
+    "Cybertech",
+    "Synthweaving",
+    "Archaeology",
+    "Bioanalysis",
+    "Scavenging",
+    "Slicing",
+    "Diplomacy",
+    "Investigation",
+    "Treasure Hunting",
+    "Underworld Trading",
 ];
 
 pub const MAX_CLASSES: usize = 2;
@@ -163,7 +188,11 @@ pub struct TierBosses {
 /// What identifies an operation across localized names: the area id when
 /// known, else the name
 pub fn operation_key(area_id: i64, name: &str) -> String {
-    if area_id != 0 { area_id.to_string() } else { name.to_string() }
+    if area_id != 0 {
+        area_id.to_string()
+    } else {
+        name.to_string()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]

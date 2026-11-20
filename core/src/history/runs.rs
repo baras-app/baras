@@ -74,7 +74,8 @@ impl<'a> OpenRun<'a> {
             return false;
         }
         let character = self.rows.last().map(|(_, r)| r.character.as_str());
-        self.facts.continues(seg.visit, seg.rows.first().map(|r| r.character.as_str()) == character)
+        self.facts
+            .continues(seg.visit, seg.rows.first().map(|r| r.character.as_str()) == character)
     }
 
     fn absorb(&mut self, seg: &Segment) {
@@ -104,11 +105,20 @@ pub(super) fn build_runs<'a>(sources: &[RunSource<'a>], catalog: &AreaCatalog) -
     let mut runs: Vec<OpenRun<'a>> = Vec::new();
 
     for (src, source) in sources.iter().enumerate() {
-        let mut sorted: Vec<&PullRow> = source.rows.iter().filter(|r| r.is_operation || r.is_flashpoint).collect();
+        let mut sorted: Vec<&PullRow> = source
+            .rows
+            .iter()
+            .filter(|r| r.is_operation || r.is_flashpoint)
+            .collect();
         sorted.sort_by_key(|r| r.start_ms);
         let first = segments.len();
         segments.extend(source.visits.iter().filter_map(|visit| {
-            Some(Segment { src, entered_ms: start_ms_of(&visit.entered)?, visit, rows: Vec::new() })
+            Some(Segment {
+                src,
+                entered_ms: start_ms_of(&visit.entered)?,
+                visit,
+                rows: Vec::new(),
+            })
         }));
 
         // Pulls outside any recorded visit: the pre-visit grouping
@@ -128,7 +138,10 @@ pub(super) fn build_runs<'a>(sources: &[RunSource<'a>], catalog: &AreaCatalog) -
                 f.area_id == r.area_id && f.operation == r.operation && f.difficulty == r.difficulty
             });
             if closed || !same {
-                runs.push(OpenRun { src, ..Default::default() });
+                runs.push(OpenRun {
+                    src,
+                    ..Default::default()
+                });
                 legacy = Some(runs.len() - 1);
             }
             runs[legacy.unwrap()].push(src, r, catalog);
@@ -143,7 +156,10 @@ pub(super) fn build_runs<'a>(sources: &[RunSource<'a>], catalog: &AreaCatalog) -
     let mut latest: HashMap<(i64, i64), usize> = HashMap::new();
     for seg in &segments {
         let key = (seg.visit.area_id, seg.visit.difficulty_id);
-        let open = latest.get(&key).copied().filter(|&i| !runs[i].closed && runs[i].continues_into(seg));
+        let open = latest
+            .get(&key)
+            .copied()
+            .filter(|&i| !runs[i].closed && runs[i].continues_into(seg));
         if open.is_none() && seg.rows.is_empty() {
             // Nothing ties this visit to the run and it starts none itself
             continue;
@@ -173,8 +189,13 @@ pub(super) fn build_runs<'a>(sources: &[RunSource<'a>], catalog: &AreaCatalog) -
         .map(|run| {
             let source = &sources[run.rows[0].0];
             let rows: Vec<&PullRow> = run.rows.iter().map(|(_, r)| *r).collect();
-            let mut summary =
-                summarize(&rows, prev_end.get(&run.rows[0].0).copied(), source.timer_starts, source.path.as_deref(), catalog);
+            let mut summary = summarize(
+                &rows,
+                prev_end.get(&run.rows[0].0).copied(),
+                source.timer_starts,
+                source.path.as_deref(),
+                catalog,
+            );
             summary.archived = source.archived;
             for (src, r) in &run.rows {
                 let e = prev_end.entry(*src).or_insert(i64::MIN);
@@ -196,9 +217,7 @@ fn summarize(
     let (tier, size) = difficulty_parts(&first.difficulty);
     let tier_key = tier.to_lowercase();
     let def = catalog.area(first.area_id);
-    let final_kill = g
-        .iter()
-        .find(|r| r.success && def.is_some_and(|a| a.is_final(&r.boss)));
+    let final_kill = g.iter().find(|r| r.success && def.is_some_and(|a| a.is_final(&r.boss)));
     let last_end = g.iter().map(|r| end_ms(r)).max().unwrap_or(first.start_ms);
     // The in-game timed run needs every required boss down, not just the last one
     let full_clear = def.is_some_and(|a| {
@@ -248,7 +267,10 @@ fn summarize(
         ended: iso_of(last_end),
         pulls: g.len() as u32,
         // Matches `bosses_total`: optional encounters never count as a boss kill
-        kills: g.iter().filter(|r| r.success && !def.is_some_and(|a| a.is_optional(&r.boss))).count() as u32,
+        kills: g
+            .iter()
+            .filter(|r| r.success && !def.is_some_and(|a| a.is_optional(&r.boss)))
+            .count() as u32,
         bosses_total: def.map_or(0, |a| a.bosses_at(&tier_key, size).count() as u32),
         // A last-boss lockout ends an operation without clearing it. Flashpoint
         // definitions list bonus bosses, so there the final kill still decides.
@@ -406,5 +428,11 @@ pub fn run_detail(run: RunSummary, rows: Vec<PullRow>, records: &[PullRecord], c
         })
         .collect();
 
-    RunDetail { run, bosses, players, pulls: rows, first_deaths }
+    RunDetail {
+        run,
+        bosses,
+        players,
+        pulls: rows,
+        first_deaths,
+    }
 }

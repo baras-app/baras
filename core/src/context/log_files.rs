@@ -84,9 +84,7 @@ pub struct DirectoryIndex {
 
 impl DirectoryIndex {
     pub fn new() -> Self {
-        Self {
-            ..Default::default()
-        }
+        Self { ..Default::default() }
     }
 
     pub fn build_index(dir: &Path) -> Result<Self> {
@@ -158,10 +156,8 @@ impl DirectoryIndex {
                 let current_size = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
                 if current_size == ce.file_size {
                     // Cache hit - reconstruct entry without opening the file
-                    let session_number = index.compute_session_number(
-                        ce.character_name.as_deref().unwrap_or("Unknown"),
-                        ce.date,
-                    );
+                    let session_number =
+                        index.compute_session_number(ce.character_name.as_deref().unwrap_or("Unknown"), ce.date);
                     let log_entry = LogFileMetaData {
                         path: path.clone(),
                         filename: ce.filename.clone(),
@@ -233,15 +229,12 @@ impl DirectoryIndex {
 
         // Recompute all session numbers after merge
         // Collect entries sorted by created_at to get consistent numbering
-        let mut all_entries: Vec<LogFileMetaData> =
-            self.entries.drain().map(|(_, v)| v).collect();
+        let mut all_entries: Vec<LogFileMetaData> = self.entries.drain().map(|(_, v)| v).collect();
         all_entries.sort_by_key(|e| e.created_at);
 
         for mut entry in all_entries {
-            entry.session_number = self.compute_session_number(
-                entry.character_name.as_deref().unwrap_or("Unknown"),
-                entry.date,
-            );
+            entry.session_number =
+                self.compute_session_number(entry.character_name.as_deref().unwrap_or("Unknown"), entry.date);
             self.entries.insert(entry.path.clone(), entry);
         }
     }
@@ -267,7 +260,7 @@ impl DirectoryIndex {
 
     /// Default path for the directory index cache file.
     pub fn default_cache_path() -> Option<PathBuf> {
-        dirs::config_dir().map(|p| p.join("baras").join("directory_cache.json"))
+        crate::paths::config_dir().map(|p| p.join("directory_cache.json"))
     }
 
     pub fn create_entry(&mut self, path: &Path) -> Option<LogFileMetaData> {
@@ -289,8 +282,7 @@ impl DirectoryIndex {
             None
         };
 
-        let session_number =
-            self.compute_session_number(character_name.as_deref().unwrap_or("Unknown"), date);
+        let session_number = self.compute_session_number(character_name.as_deref().unwrap_or("Unknown"), date);
 
         Some(LogFileMetaData {
             path: path.to_path_buf(),
@@ -332,7 +324,7 @@ impl DirectoryIndex {
     //Return all entries sorted ascending by created_at
     pub fn entries(&self) -> Vec<&LogFileMetaData> {
         let mut entries: Vec<_> = self.entries.values().collect();
-        entries.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        entries.sort_by_key(|x| std::cmp::Reverse(x.created_at));
         entries
     }
 
@@ -348,7 +340,7 @@ impl DirectoryIndex {
                     .unwrap_or(false)
             })
             .collect();
-        entries.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        entries.sort_by_key(|x| std::cmp::Reverse(x.created_at));
         entries
     }
 
@@ -409,9 +401,7 @@ impl DirectoryIndex {
                         entry.file_size = current_size;
                         entry.is_empty = false;
                         // Try to extract character name now that file has content
-                        if let Ok(Some(name)) =
-                            extract_character_name(&entry.path, entry.created_at)
-                        {
+                        if let Ok(Some(name)) = extract_character_name(&entry.path, entry.created_at) {
                             tracing::debug!(
                                 path = %entry.path.display(),
                                 character = %name,
@@ -477,10 +467,7 @@ pub fn extract_character_name(path: &Path, session_date: NaiveDateTime) -> Resul
 /// Reads only the last 2KB of the file to minimize I/O.
 const TAIL_READ_SIZE: usize = 2048;
 
-pub fn extract_last_event_time(
-    path: &Path,
-    session_date: NaiveDateTime,
-) -> Result<Option<NaiveDateTime>> {
+pub fn extract_last_event_time(path: &Path, session_date: NaiveDateTime) -> Result<Option<NaiveDateTime>> {
     use std::io::{Read, Seek, SeekFrom};
 
     let mut file = fs::File::open(path)?;
@@ -504,10 +491,10 @@ pub fn extract_last_event_time(
     // Find last non-empty line and parse its timestamp
     for line in content.lines().rev() {
         let trimmed = line.trim();
-        if !trimmed.is_empty() {
-            if let Some(event) = parser.parse_line(0, trimmed) {
-                return Ok(Some(event.timestamp));
-            }
+        if !trimmed.is_empty()
+            && let Some(event) = parser.parse_line(0, trimmed)
+        {
+            return Ok(Some(event.timestamp));
         }
     }
     Ok(None)

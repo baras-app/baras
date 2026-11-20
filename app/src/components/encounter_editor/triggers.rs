@@ -4,199 +4,17 @@
 
 use dioxus::prelude::*;
 
+use crate::components::form_fields::{Field, NumberField};
 use crate::types::{
-    AbilitySelector, EffectSelector, EntityFilter, EntitySelector, MitigationType, PositionAxis,
-    PositionConstraint, PositionEntity, PositionOp, TimerTrigger,
+    AbilitySelector, EffectSelector, EntityFilter, PositionAxis, PositionConstraint, PositionEntity, PositionOp,
+    TimerTrigger,
 };
 
+use super::selectors::{
+    AbilitySelectorEditor, BossSelector, EffectSelectorEditor, EntityFilterDropdown, EntitySelectorEditor, IdSelector,
+    MitigationTypeEditor,
+};
 use super::tabs::EncounterData;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Reusable ID Selector
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Generic dropdown selector for IDs (timers, phases, counters)
-#[component]
-fn IdSelector(
-    label: &'static str,
-    value: String,
-    available: Vec<String>,
-    on_change: EventHandler<String>,
-) -> Element {
-    rsx! {
-        div { class: "flex items-center gap-xs",
-            label { class: "text-sm text-secondary", "{label}" }
-            select {
-                class: "select w-lg",
-                value: "{value}",
-                onchange: move |e| on_change.call(e.value()),
-                if value.is_empty() {
-                    option { value: "", selected: true, "(select)" }
-                }
-                for id in &available {
-                    option {
-                        value: "{id}",
-                        selected: *id == value,
-                        "{id}"
-                    }
-                }
-                // Allow current value even if not in list (backwards compat)
-                if !value.is_empty() && !available.contains(&value) {
-                    option {
-                        value: "{value}",
-                        selected: true,
-                        "{value} (not found)"
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Entity Filter Dropdown (for source/target filters)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Dropdown selector for EntityFilter values (source/target)
-/// Supports all standard options plus Selector for specific entities
-#[component]
-pub fn EntityFilterDropdown(
-    label: &'static str,
-    value: EntityFilter,
-    options: &'static [EntityFilter],
-    on_change: EventHandler<EntityFilter>,
-) -> Element {
-    let is_selector = matches!(value, EntityFilter::Selector(_));
-    let selectors = if let EntityFilter::Selector(s) = &value {
-        s.clone()
-    } else {
-        vec![]
-    };
-
-    rsx! {
-        div { class: "flex-col gap-xs",
-            div { class: "flex items-center gap-xs",
-                if !label.is_empty() {
-                    span { class: "text-sm text-secondary", "{label}" }
-                }
-                select {
-                    class: "select w-md",
-                    onchange: move |e| {
-                        let selected = e.value();
-                        if selected == "Specific (ID or Name)" {
-                            on_change.call(EntityFilter::Selector(vec![]));
-                        } else {
-                            for opt in options {
-                                if opt.label() == selected {
-                                    on_change.call(opt.clone());
-                                    break;
-                                }
-                            }
-                        }
-                    },
-                    for opt in options.iter() {
-                        option {
-                            value: "{opt.label()}",
-                            selected: *opt == value,
-                            "{opt.label()}"
-                        }
-                    }
-                    option {
-                        value: "Specific (ID or Name)",
-                        selected: is_selector,
-                        "Specific (ID or Name)"
-                    }
-                }
-            }
-            if is_selector {
-                EntitySelectorEditor {
-                    label: "",
-                    selectors: selectors,
-                    on_change: move |sels| on_change.call(EntityFilter::Selector(sels))
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Boss Entity Selector (for HP threshold triggers)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Dropdown selector for boss entities with chip display
-#[component]
-pub fn BossSelector(
-    selected: Vec<EntitySelector>,
-    available_bosses: Vec<String>,
-    on_change: EventHandler<Vec<EntitySelector>>,
-) -> Element {
-    rsx! {
-        div { class: "flex-col gap-xs",
-            // Selected boss chips
-            if !selected.is_empty() {
-                div { class: "flex flex-wrap gap-xs",
-                    for (idx, sel) in selected.iter().enumerate() {
-                        {
-                            let selected_clone = selected.clone();
-                            let display = sel.display();
-                            rsx! {
-                                span { class: "chip",
-                                    "{display}"
-                                    button {
-                                        class: "chip-remove",
-                                        onclick: move |_| {
-                                            let mut new_sels = selected_clone.clone();
-                                            new_sels.remove(idx);
-                                            on_change.call(new_sels);
-                                        },
-                                        "×"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Dropdown to add boss
-            div { class: "flex items-center gap-xs",
-                label { class: "text-sm text-secondary", "Boss" }
-                select {
-                    class: "select w-lg",
-                    onchange: move |e| {
-                        let val = e.value();
-                        if !val.is_empty() {
-                            let selector = EntitySelector::Name(val);
-                            let mut new_sels = selected.clone();
-                            if !new_sels.iter().any(|s| s.display() == selector.display()) {
-                                new_sels.push(selector);
-                                on_change.call(new_sels);
-                            }
-                        }
-                    },
-                    option { value: "", "(add boss...)" }
-                    for boss in &available_bosses {
-                        {
-                            let already_selected = selected.iter().any(|s| s.display() == *boss);
-                            rsx! {
-                                option {
-                                    value: "{boss}",
-                                    disabled: already_selected,
-                                    "{boss}"
-                                    if already_selected { " ✓" }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if selected.is_empty() {
-                span { class: "hint", "No boss selected (triggers for any boss)" }
-            }
-        }
-    }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Timer Trigger Editor
@@ -365,6 +183,61 @@ fn CompositeEditor(
     }
 }
 
+/// A handler that applies one field change to a copy of `trigger` and sends
+/// it on, leaving every other field as it was.
+fn edit<V: 'static>(
+    trigger: &TimerTrigger,
+    on_change: EventHandler<TimerTrigger>,
+    set: fn(&mut TimerTrigger, V),
+) -> impl FnMut(V) + 'static {
+    let trigger = trigger.clone();
+    move |value| {
+        let mut edited = trigger.clone();
+        set(&mut edited, value);
+        on_change.call(edited);
+    }
+}
+
+fn set_abilities(trigger: &mut TimerTrigger, value: Vec<AbilitySelector>) {
+    if let TimerTrigger::AbilityCast { abilities, .. }
+    | TimerTrigger::DamageTaken { abilities, .. }
+    | TimerTrigger::HealingTaken { abilities, .. }
+    | TimerTrigger::ThreatModified { abilities, .. } = trigger
+    {
+        *abilities = value;
+    }
+}
+
+fn set_effects(trigger: &mut TimerTrigger, value: Vec<EffectSelector>) {
+    if let TimerTrigger::EffectApplied { effects, .. } | TimerTrigger::EffectRemoved { effects, .. } = trigger {
+        *effects = value;
+    }
+}
+
+fn set_source(trigger: &mut TimerTrigger, value: EntityFilter) {
+    if let TimerTrigger::AbilityCast { source, .. }
+    | TimerTrigger::EffectApplied { source, .. }
+    | TimerTrigger::EffectRemoved { source, .. }
+    | TimerTrigger::DamageTaken { source, .. }
+    | TimerTrigger::HealingTaken { source, .. }
+    | TimerTrigger::ThreatModified { source, .. } = trigger
+    {
+        *source = value;
+    }
+}
+
+fn set_target(trigger: &mut TimerTrigger, value: EntityFilter) {
+    if let TimerTrigger::AbilityCast { target, .. }
+    | TimerTrigger::EffectApplied { target, .. }
+    | TimerTrigger::EffectRemoved { target, .. }
+    | TimerTrigger::DamageTaken { target, .. }
+    | TimerTrigger::HealingTaken { target, .. }
+    | TimerTrigger::ThreatModified { target, .. } = trigger
+    {
+        *target = value;
+    }
+}
+
 /// Editor for simple (non-composite) triggers
 #[component]
 pub fn SimpleTriggerEditor(
@@ -384,10 +257,7 @@ pub fn SimpleTriggerEditor(
     let preserved_position = trigger.position_constraints().to_vec();
     let trigger_for_position = trigger.clone();
     let on_change = EventHandler::new(move |t: TimerTrigger| {
-        let t = if t.supports_position()
-            && t.position_constraints().is_empty()
-            && !preserved_position.is_empty()
-        {
+        let t = if t.supports_position() && t.position_constraints().is_empty() && !preserved_position.is_empty() {
             t.with_position(preserved_position.clone())
         } else {
             t
@@ -395,10 +265,28 @@ pub fn SimpleTriggerEditor(
         raw_on_change.call(t)
     });
 
+    let trigger_for_type = trigger.clone();
+    let source_target = |source: EntityFilter, target: EntityFilter| {
+        rsx! {
+            EntityFilterDropdown {
+                label: "Source",
+                value: source,
+                options: EntityFilter::source_options(),
+                on_change: edit(&trigger, on_change, set_source),
+            }
+            EntityFilterDropdown {
+                label: "Target",
+                value: target,
+                options: EntityFilter::target_options(),
+                on_change: edit(&trigger, on_change, set_target),
+            }
+        }
+    };
+
     rsx! {
-        div { class: "flex-col gap-xs",
+        div { class: "trigger-fields",
+            Field { label: "When",
             select {
-                class: "select w-lg",
                 value: "{trigger_type}",
                 onchange: move |e| {
                     let new_trigger = match e.value().as_str() {
@@ -409,7 +297,7 @@ pub fn SimpleTriggerEditor(
                         "effect_removed" => TimerTrigger::EffectRemoved { effects: vec![], source: EntityFilter::default(), target: EntityFilter::default(), position: vec![] },
                         "damage_taken" => TimerTrigger::DamageTaken { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default(), mitigation: vec![], position: vec![] },
                         "healing_taken" => TimerTrigger::HealingTaken { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default(), position: vec![] },
-                        "threat_modified" => TimerTrigger::ThreatModified { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
+                        "threat_modified" => TimerTrigger::ThreatModified { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default(), threat_value: None },
                         "timer_expires" => TimerTrigger::TimerExpires { timer_id: String::new() },
                         "timer_started" => TimerTrigger::TimerStarted { timer_id: String::new() },
                         "timer_canceled" => TimerTrigger::TimerCanceled { timer_id: String::new() },
@@ -425,7 +313,7 @@ pub fn SimpleTriggerEditor(
                         "time_elapsed" => TimerTrigger::TimeElapsed { secs: 30.0 },
                         "manual" => TimerTrigger::Manual,
                         "never" => TimerTrigger::Never,
-                        _ => trigger.clone(),
+                        _ => trigger_for_type.clone(),
                     };
                     on_change.call(new_trigger);
                 },
@@ -456,8 +344,10 @@ pub fn SimpleTriggerEditor(
                     option { value: "never", selected: trigger_type == "never", "Never" }
                 }
             }
+            }
 
-            // Type-specific fields
+            // What the picked event needs, nested under it
+            div { class: "trigger-details",
             {
                 match trigger.clone() {
                     TimerTrigger::CombatStart
@@ -465,276 +355,50 @@ pub fn SimpleTriggerEditor(
                     | TimerTrigger::AnyPhaseChange
                     | TimerTrigger::Never
                     | TimerTrigger::Manual => rsx! {},
-                    TimerTrigger::AbilityCast { abilities, source, target, .. } => {
-                        let source_for_abilities = source.clone();
-                        let target_for_abilities = target.clone();
-                        let abilities_for_source = abilities.clone();
-                        let target_for_source = target.clone();
-                        let abilities_for_target = abilities.clone();
-                        let source_for_target = source.clone();
-                        rsx! {
-                            AbilitySelectorEditor {
-                                label: "Abilities",
-                                selectors: abilities,
-                                on_change: move |sels| on_change.call(TimerTrigger::AbilityCast {
-                                    abilities: sels,
-                                    source: source_for_abilities.clone(),
-                                    target: target_for_abilities.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Source",
-                                value: source,
-                                options: EntityFilter::source_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::AbilityCast {
-                                    abilities: abilities_for_source.clone(),
-                                    source: f,
-                                    target: target_for_source.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Target",
-                                value: target,
-                                options: EntityFilter::target_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::AbilityCast {
-                                    abilities: abilities_for_target.clone(),
-                                    source: source_for_target.clone(),
-                                    target: f,
-                                    position: vec![],
-                                })
-                            }
+                    TimerTrigger::AbilityCast { abilities, source, target, .. }
+                    | TimerTrigger::HealingTaken { abilities, source, target, .. } => rsx! {
+                        AbilitySelectorEditor {
+                            label: "Abilities",
+                            selectors: abilities,
+                            on_change: edit(&trigger, on_change, set_abilities),
+                        }
+                        {source_target(source, target)}
+                    },
+                    TimerTrigger::EffectApplied { effects, source, target, .. }
+                    | TimerTrigger::EffectRemoved { effects, source, target, .. } => rsx! {
+                        EffectSelectorEditor {
+                            label: "Effects",
+                            selectors: effects,
+                            on_change: edit(&trigger, on_change, set_effects),
+                        }
+                        {source_target(source, target)}
+                    },
+                    TimerTrigger::DamageTaken { abilities, source, target, mitigation, .. } => rsx! {
+                        AbilitySelectorEditor {
+                            label: "Abilities",
+                            selectors: abilities,
+                            on_change: edit(&trigger, on_change, set_abilities),
+                        }
+                        {source_target(source, target)}
+                        MitigationTypeEditor {
+                            selected: mitigation,
+                            on_change: edit(&trigger, on_change, |t, m| {
+                                if let TimerTrigger::DamageTaken { mitigation, .. } = t {
+                                    *mitigation = m;
+                                }
+                            }),
                         }
                     },
-                    TimerTrigger::EffectApplied { effects, source, target, .. } => {
-                        let source_for_effects = source.clone();
-                        let target_for_effects = target.clone();
-                        let effects_for_source = effects.clone();
-                        let target_for_source = target.clone();
-                        let effects_for_target = effects.clone();
-                        let source_for_target = source.clone();
-                        rsx! {
-                            EffectSelectorEditor {
-                                label: "Effects",
-                                selectors: effects,
-                                on_change: move |sels| on_change.call(TimerTrigger::EffectApplied {
-                                    effects: sels,
-                                    source: source_for_effects.clone(),
-                                    target: target_for_effects.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Source",
-                                value: source,
-                                options: EntityFilter::source_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::EffectApplied {
-                                    effects: effects_for_source.clone(),
-                                    source: f,
-                                    target: target_for_source.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Target",
-                                value: target,
-                                options: EntityFilter::target_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::EffectApplied {
-                                    effects: effects_for_target.clone(),
-                                    source: source_for_target.clone(),
-                                    target: f,
-                                    position: vec![],
-                                })
-                            }
+                    TimerTrigger::ThreatModified { abilities, source, target, .. } => rsx! {
+                        AbilitySelectorEditor {
+                            label: "Abilities",
+                            selectors: abilities,
+                            on_change: edit(&trigger, on_change, set_abilities),
                         }
-                    },
-                    TimerTrigger::EffectRemoved { effects, source, target, .. } => {
-                        let source_for_effects = source.clone();
-                        let target_for_effects = target.clone();
-                        let effects_for_source = effects.clone();
-                        let target_for_source = target.clone();
-                        let effects_for_target = effects.clone();
-                        let source_for_target = source.clone();
-                        rsx! {
-                            EffectSelectorEditor {
-                                label: "Effects",
-                                selectors: effects,
-                                on_change: move |sels| on_change.call(TimerTrigger::EffectRemoved {
-                                    effects: sels,
-                                    source: source_for_effects.clone(),
-                                    target: target_for_effects.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Source",
-                                value: source,
-                                options: EntityFilter::source_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::EffectRemoved {
-                                    effects: effects_for_source.clone(),
-                                    source: f,
-                                    target: target_for_source.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Target",
-                                value: target,
-                                options: EntityFilter::target_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::EffectRemoved {
-                                    effects: effects_for_target.clone(),
-                                    source: source_for_target.clone(),
-                                    target: f,
-                                    position: vec![],
-                                })
-                            }
-                        }
-                    },
-                    TimerTrigger::DamageTaken { abilities, source, target, mitigation, .. } => {
-                        let source_for_abilities = source.clone();
-                        let target_for_abilities = target.clone();
-                        let mitigation_for_abilities = mitigation.clone();
-                        let abilities_for_source = abilities.clone();
-                        let target_for_source = target.clone();
-                        let mitigation_for_source = mitigation.clone();
-                        let abilities_for_target = abilities.clone();
-                        let source_for_target = source.clone();
-                        let mitigation_for_target = mitigation.clone();
-                        let abilities_for_mitigation = abilities.clone();
-                        let source_for_mitigation = source.clone();
-                        let target_for_mitigation = target.clone();
-                        rsx! {
-                            AbilitySelectorEditor {
-                                label: "Abilities (empty = any)",
-                                selectors: abilities,
-                                on_change: move |sels| on_change.call(TimerTrigger::DamageTaken {
-                                    abilities: sels,
-                                    source: source_for_abilities.clone(),
-                                    target: target_for_abilities.clone(),
-                                    mitigation: mitigation_for_abilities.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Source",
-                                value: source,
-                                options: EntityFilter::source_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::DamageTaken {
-                                    abilities: abilities_for_source.clone(),
-                                    source: f,
-                                    target: target_for_source.clone(),
-                                    mitigation: mitigation_for_source.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Target",
-                                value: target,
-                                options: EntityFilter::target_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::DamageTaken {
-                                    abilities: abilities_for_target.clone(),
-                                    source: source_for_target.clone(),
-                                    target: f,
-                                    mitigation: mitigation_for_target.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            MitigationTypeEditor {
-                                selected: mitigation,
-                                on_change: move |m| on_change.call(TimerTrigger::DamageTaken {
-                                    abilities: abilities_for_mitigation.clone(),
-                                    source: source_for_mitigation.clone(),
-                                    target: target_for_mitigation.clone(),
-                                    mitigation: m,
-                                    position: vec![],
-                                })
-                            }
-                        }
-                    },
-                    TimerTrigger::HealingTaken { abilities, source, target, .. } => {
-                        let source_for_abilities = source.clone();
-                        let target_for_abilities = target.clone();
-                        let abilities_for_source = abilities.clone();
-                        let target_for_source = target.clone();
-                        let abilities_for_target = abilities.clone();
-                        let source_for_target = source.clone();
-                        rsx! {
-                            AbilitySelectorEditor {
-                                label: "Abilities",
-                                selectors: abilities,
-                                on_change: move |sels| on_change.call(TimerTrigger::HealingTaken {
-                                    abilities: sels,
-                                    source: source_for_abilities.clone(),
-                                    target: target_for_abilities.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Source",
-                                value: source,
-                                options: EntityFilter::source_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::HealingTaken {
-                                    abilities: abilities_for_source.clone(),
-                                    source: f,
-                                    target: target_for_source.clone(),
-                                    position: vec![],
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Target",
-                                value: target,
-                                options: EntityFilter::target_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::HealingTaken {
-                                    abilities: abilities_for_target.clone(),
-                                    source: source_for_target.clone(),
-                                    target: f,
-                                    position: vec![],
-                                })
-                            }
-                        }
-                    },
-                    TimerTrigger::ThreatModified { abilities, source, target } => {
-                        let source_for_abilities = source.clone();
-                        let target_for_abilities = target.clone();
-                        let abilities_for_source = abilities.clone();
-                        let target_for_source = target.clone();
-                        let abilities_for_target = abilities.clone();
-                        let source_for_target = source.clone();
-                        rsx! {
-                            AbilitySelectorEditor {
-                                label: "Abilities (empty = any)",
-                                selectors: abilities,
-                                on_change: move |sels| on_change.call(TimerTrigger::ThreatModified {
-                                    abilities: sels,
-                                    source: source_for_abilities.clone(),
-                                    target: target_for_abilities.clone(),
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Source",
-                                value: source,
-                                options: EntityFilter::source_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::ThreatModified {
-                                    abilities: abilities_for_source.clone(),
-                                    source: f,
-                                    target: target_for_source.clone(),
-                                })
-                            }
-                            EntityFilterDropdown {
-                                label: "Target",
-                                value: target,
-                                options: EntityFilter::target_options(),
-                                on_change: move |f| on_change.call(TimerTrigger::ThreatModified {
-                                    abilities: abilities_for_target.clone(),
-                                    source: source_for_target.clone(),
-                                    target: f,
-                                })
-                            }
-                        }
+                        {source_target(source, target)}
                     },
                     TimerTrigger::TimerExpires { timer_id } => {
-                        let available_timers = encounter_data.timer_ids();
+                        let available_timers = encounter_data.timer_options();
                         rsx! {
                             IdSelector {
                                 label: "Timer",
@@ -745,7 +409,7 @@ pub fn SimpleTriggerEditor(
                         }
                     },
                     TimerTrigger::TimerStarted { timer_id } => {
-                        let available_timers = encounter_data.timer_ids();
+                        let available_timers = encounter_data.timer_options();
                         rsx! {
                             IdSelector {
                                 label: "Timer",
@@ -756,7 +420,7 @@ pub fn SimpleTriggerEditor(
                         }
                     },
                     TimerTrigger::TimerCanceled { timer_id } => {
-                        let available_timers = encounter_data.timer_ids();
+                        let available_timers = encounter_data.timer_options();
                         rsx! {
                             IdSelector {
                                 label: "Timer",
@@ -767,7 +431,7 @@ pub fn SimpleTriggerEditor(
                         }
                     },
                     TimerTrigger::PhaseEntered { phase_id } => {
-                        let available_phases = encounter_data.phase_ids();
+                        let available_phases = encounter_data.phase_options();
                         rsx! {
                             IdSelector {
                                 label: "Phase",
@@ -778,7 +442,7 @@ pub fn SimpleTriggerEditor(
                         }
                     },
                     TimerTrigger::PhaseEnded { phase_id } => {
-                        let available_phases = encounter_data.phase_ids();
+                        let available_phases = encounter_data.phase_options();
                         rsx! {
                             IdSelector {
                                 label: "Phase",
@@ -791,32 +455,29 @@ pub fn SimpleTriggerEditor(
                     TimerTrigger::BossHpBelow { hp_percent, selector } => {
                         let available_bosses = encounter_data.boss_entity_names();
                         rsx! {
-                            div { class: "flex-col gap-xs",
-                                div { class: "flex items-center gap-xs",
-                                    label { class: "text-sm text-secondary", "HP %" }
-                                    input {
-                                        r#type: "number",
-                                        step: "0.1",
-                                        min: "0",
-                                        max: "100",
-                                        class: "input-inline w-sm",
-                                        value: "{hp_percent}",
-                                        oninput: {
-                                            let selector = selector.clone();
-                                            move |e| {
-                                                if let Ok(val) = e.value().parse::<f32>() {
-                                                    on_change.call(TimerTrigger::BossHpBelow {
-                                                        hp_percent: val,
-                                                        selector: selector.clone(),
-                                                    });
-                                                }
+                            Fragment {
+                                NumberField {
+                                    label: "HP below",
+                                    unit: "%",
+                                    step: "0.1",
+                                    min: "0",
+                                    max: "100",
+                                    value: "{hp_percent}",
+                                    on_input: {
+                                        let selector = selector.clone();
+                                        move |v: String| {
+                                            if let Ok(val) = v.parse::<f32>() {
+                                                on_change.call(TimerTrigger::BossHpBelow {
+                                                    hp_percent: val,
+                                                    selector: selector.clone(),
+                                                });
                                             }
                                         }
-                                    }
+                                    },
                                 }
                                 BossSelector {
                                     selected: selector.clone(),
-                                    available_bosses: available_bosses,
+                                    available_bosses,
                                     on_change: move |sels| on_change.call(TimerTrigger::BossHpBelow {
                                         hp_percent,
                                         selector: sels,
@@ -826,9 +487,9 @@ pub fn SimpleTriggerEditor(
                         }
                     },
                     TimerTrigger::CounterReaches { counter_id, value } => {
-                        let available_counters = encounter_data.counter_ids();
+                        let available_counters = encounter_data.counter_options();
                         rsx! {
-                            div { class: "flex-col gap-xs",
+                            Fragment {
                                 IdSelector {
                                     label: "Counter",
                                     value: counter_id.clone(),
@@ -838,31 +499,28 @@ pub fn SimpleTriggerEditor(
                                         value
                                     })
                                 }
-                                div { class: "flex items-center gap-xs",
-                                    label { class: "text-sm text-secondary", "Value" }
-                                    input {
-                                        r#type: "number",
-                                        min: "0",
-                                        class: "input-inline w-sm",
-                                        value: "{value}",
-                                        oninput: {
-                                            let counter_id = counter_id.clone();
-                                            move |e| {
-                                                if let Ok(val) = e.value().parse::<u32>() {
-                                                    on_change.call(TimerTrigger::CounterReaches {
-                                                        counter_id: counter_id.clone(),
-                                                        value: val
-                                                    });
-                                                }
+                                NumberField {
+                                    label: "Value",
+                                    min: "0",
+                                    step: "1",
+                                    value: "{value}",
+                                    on_input: {
+                                        let counter_id = counter_id.clone();
+                                        move |v: String| {
+                                            if let Ok(val) = v.parse::<u32>() {
+                                                on_change.call(TimerTrigger::CounterReaches {
+                                                    counter_id: counter_id.clone(),
+                                                    value: val
+                                                });
                                             }
                                         }
-                                    }
+                                    },
                                 }
                             }
                         }
                     },
                     TimerTrigger::CounterChanges { counter_id } => {
-                        let available_counters = encounter_data.counter_ids();
+                        let available_counters = encounter_data.counter_options();
                         rsx! {
                             IdSelector {
                                 label: "Counter",
@@ -876,7 +534,7 @@ pub fn SimpleTriggerEditor(
                     },
                     TimerTrigger::NpcAppears { selector, .. } => rsx! {
                         EntitySelectorEditor {
-                            label: "Entity (Spawned)",
+                            label: "Entity",
                             selectors: selector.clone(),
                             on_change: move |sels| on_change.call(TimerTrigger::NpcAppears {
                                 selector: sels,
@@ -886,7 +544,7 @@ pub fn SimpleTriggerEditor(
                     },
                     TimerTrigger::EntityDeath { selector, .. } => rsx! {
                         EntitySelectorEditor {
-                            label: "Entity (Death)",
+                            label: "Entity",
                             selectors: selector.clone(),
                             on_change: move |sels| on_change.call(TimerTrigger::EntityDeath {
                                 selector: sels,
@@ -899,7 +557,7 @@ pub fn SimpleTriggerEditor(
                         let selector_for_target = selector.clone();
                         rsx! {
                             EntitySelectorEditor {
-                                label: "NPC (Setter)",
+                                label: "Set by",
                                 selectors: selector.clone(),
                                 on_change: move |sels| on_change.call(TimerTrigger::TargetSet {
                                     selector: sels,
@@ -918,21 +576,17 @@ pub fn SimpleTriggerEditor(
                         }
                     },
                     TimerTrigger::TimeElapsed { secs } => rsx! {
-                        div { class: "flex items-center gap-xs",
-                            label { class: "text-sm text-secondary", "Seconds" }
-                            input {
-                                r#type: "number",
-                                step: "0.1",
-                                min: "0",
-                                class: "input-inline w-sm",
-                                value: "{secs}",
-                                oninput: move |e| {
-                                    if let Ok(val) = e.value().parse::<f32>() {
-                                        on_change.call(TimerTrigger::TimeElapsed { secs: val });
-                                    }
+                        NumberField {
+                            label: "After",
+                            unit: "s into combat",
+                            step: "0.1",
+                            min: "0",
+                            value: "{secs}",
+                            on_input: move |v: String| {
+                                if let Ok(val) = v.parse::<f32>() {
+                                    on_change.call(TimerTrigger::TimeElapsed { secs: val });
                                 }
-                            }
-                            span { class: "hint", "into combat" }
+                            },
                         }
                     },
                     _ => rsx! {
@@ -964,6 +618,7 @@ pub fn SimpleTriggerEditor(
                         raw_on_change.call(trigger_for_position.clone().with_position(p));
                     }
                 }
+            }
             }
         }
     }
@@ -1043,8 +698,7 @@ fn PositionConstraintList(
 fn PositionConstraintRow(
     constraint: PositionConstraint,
     on_change: EventHandler<PositionConstraint>,
-    #[props(default = true)]
-    show_entity: bool,
+    #[props(default = true)] show_entity: bool,
 ) -> Element {
     let c_entity = constraint.clone();
     let c_axis = constraint.clone();
@@ -1195,343 +849,6 @@ fn PositionConstraintRow(
                             on_change.call(c);
                         }
                     }
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Selector List Editors (for ability/effect IDs or names)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Editor for a list of effect selectors (ID or name)
-#[component]
-pub fn EffectSelectorEditor(
-    label: &'static str,
-    selectors: Vec<EffectSelector>,
-    on_change: EventHandler<Vec<EffectSelector>>,
-) -> Element {
-    let mut new_input = use_signal(String::new);
-
-    let selectors_for_keydown = selectors.clone();
-    let selectors_for_click = selectors.clone();
-
-    rsx! {
-        div { class: "flex-col gap-xs items-start",
-            if !label.is_empty() {
-                span { class: "text-sm text-secondary text-left", "{label}" }
-            }
-
-            // Selector chips
-            div { class: "flex flex-wrap gap-xs",
-                for (idx, sel) in selectors.iter().enumerate() {
-                    {
-                        let selectors_clone = selectors.clone();
-                        let display = sel.display();
-                        rsx! {
-                            span { class: "chip",
-                                "{display}"
-                                button {
-                                    class: "chip-remove",
-                                    onclick: move |_| {
-                                        let mut new_sels = selectors_clone.clone();
-                                        new_sels.remove(idx);
-                                        on_change.call(new_sels);
-                                    },
-                                    "×"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Add new selector
-            div { class: "flex gap-xs",
-                input {
-                    r#type: "text",
-                    class: "input-inline w-lg",
-                    placeholder: "ID or Name (Enter)",
-                    value: "{new_input}",
-                    oninput: move |e| new_input.set(e.value()),
-                    onkeydown: move |e| {
-                        if e.key() == Key::Enter && !new_input().trim().is_empty() {
-                            let selector = EffectSelector::from_input(&new_input());
-                            let mut new_sels = selectors_for_keydown.clone();
-                            if !new_sels.contains(&selector) {
-                                new_sels.push(selector);
-                                on_change.call(new_sels);
-                            }
-                            new_input.set(String::new());
-                        }
-                    }
-                }
-                button {
-                    class: "btn btn-sm",
-                    onclick: move |_| {
-                        if !new_input().trim().is_empty() {
-                            let selector = EffectSelector::from_input(&new_input());
-                            let mut new_sels = selectors_for_click.clone();
-                            if !new_sels.contains(&selector) {
-                                new_sels.push(selector);
-                                on_change.call(new_sels);
-                            }
-                            new_input.set(String::new());
-                        }
-                    },
-                    "Add"
-                }
-            }
-        }
-    }
-}
-
-/// Editor for a list of ability selectors (ID or name)
-#[component]
-pub fn AbilitySelectorEditor(
-    label: &'static str,
-    selectors: Vec<AbilitySelector>,
-    on_change: EventHandler<Vec<AbilitySelector>>,
-) -> Element {
-    let mut new_input = use_signal(String::new);
-
-    let selectors_for_keydown = selectors.clone();
-    let selectors_for_click = selectors.clone();
-
-    rsx! {
-        div { class: "flex-col gap-xs items-start",
-            if !label.is_empty() {
-                span { class: "text-sm text-secondary text-left", "{label}" }
-            }
-
-            // Selector chips
-            div { class: "flex flex-wrap gap-xs",
-                for (idx, sel) in selectors.iter().enumerate() {
-                    {
-                        let selectors_clone = selectors.clone();
-                        let display = sel.display();
-                        rsx! {
-                            span { class: "chip",
-                                "{display}"
-                                button {
-                                    class: "chip-remove",
-                                    onclick: move |_| {
-                                        let mut new_sels = selectors_clone.clone();
-                                        new_sels.remove(idx);
-                                        on_change.call(new_sels);
-                                    },
-                                    "×"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Add new selector
-            div { class: "flex gap-xs",
-                input {
-                    r#type: "text",
-                    class: "input-inline w-lg",
-                    placeholder: "ID or Name (Enter)",
-                    value: "{new_input}",
-                    oninput: move |e| new_input.set(e.value()),
-                    onkeydown: move |e| {
-                        if e.key() == Key::Enter && !new_input().trim().is_empty() {
-                            let selector = AbilitySelector::from_input(&new_input());
-                            let mut new_sels = selectors_for_keydown.clone();
-                            if !new_sels.contains(&selector) {
-                                new_sels.push(selector);
-                                on_change.call(new_sels);
-                            }
-                            new_input.set(String::new());
-                        }
-                    }
-                }
-                button {
-                    class: "btn btn-sm",
-                    onclick: move |_| {
-                        if !new_input().trim().is_empty() {
-                            let selector = AbilitySelector::from_input(&new_input());
-                            let mut new_sels = selectors_for_click.clone();
-                            if !new_sels.contains(&selector) {
-                                new_sels.push(selector);
-                                on_change.call(new_sels);
-                            }
-                            new_input.set(String::new());
-                        }
-                    },
-                    "Add"
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Mitigation Type Editor
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Editor for an optional list of mitigation type filters on DamageTaken triggers.
-/// Renders chips for selected types and a dropdown to add more.
-/// An empty list means "any hit result" (no filtering).
-#[component]
-pub fn MitigationTypeEditor(
-    selected: Vec<MitigationType>,
-    on_change: EventHandler<Vec<MitigationType>>,
-) -> Element {
-    let mut pending = use_signal(|| MitigationType::Miss);
-
-    let selected_for_add = selected.clone();
-
-    rsx! {
-        div { class: "flex-col gap-xs items-start",
-            span { class: "text-sm text-secondary text-left", "Mitigation (optional)" }
-
-            // Selected type chips
-            if !selected.is_empty() {
-                div { class: "flex flex-wrap gap-xs",
-                    for (idx, m) in selected.iter().enumerate() {
-                        {
-                            let selected_clone = selected.clone();
-                            let label = m.display_name();
-                            rsx! {
-                                span { class: "chip",
-                                    "{label}"
-                                    button {
-                                        class: "chip-remove",
-                                        onclick: move |_| {
-                                            let mut next = selected_clone.clone();
-                                            next.remove(idx);
-                                            on_change.call(next);
-                                        },
-                                        "×"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Add dropdown + button
-            div { class: "flex gap-xs items-center",
-                select {
-                    class: "select w-md",
-                    onchange: move |e| {
-                        let m = match e.value().as_str() {
-                            "Miss" => MitigationType::Miss,
-                            "Parry" => MitigationType::Parry,
-                            "Dodge" => MitigationType::Dodge,
-                            "Immune" => MitigationType::Immune,
-                            "Resist" => MitigationType::Resist,
-                            "Deflect" => MitigationType::Deflect,
-                            "Shield" => MitigationType::Shield,
-                            "Absorbed" => MitigationType::Absorbed,
-                            "Cover" => MitigationType::Cover,
-                            "Reflected" => MitigationType::Reflected,
-                            _ => MitigationType::Miss,
-                        };
-                        pending.set(m);
-                    },
-                    for m in MitigationType::ALL {
-                        option { value: "{m:?}", selected: *m == *pending.read(), "{m.display_name()}" }
-                    }
-                }
-                button {
-                    class: "btn btn-sm",
-                    onclick: move |_| {
-                        let m = *pending.read();
-                        if !selected_for_add.contains(&m) {
-                            let mut next = selected_for_add.clone();
-                            next.push(m);
-                            on_change.call(next);
-                        }
-                    },
-                    "Add"
-                }
-            }
-        }
-    }
-}
-
-/// Editor for a list of entity selectors (NPC ID, roster alias, or name)
-#[component]
-pub fn EntitySelectorEditor(
-    label: &'static str,
-    selectors: Vec<EntitySelector>,
-    on_change: EventHandler<Vec<EntitySelector>>,
-) -> Element {
-    let mut new_input = use_signal(String::new);
-
-    let selectors_for_keydown = selectors.clone();
-    let selectors_for_click = selectors.clone();
-
-    rsx! {
-        div { class: "flex-col gap-xs items-start",
-            if !label.is_empty() {
-                span { class: "text-sm text-secondary text-left", "{label}" }
-            }
-
-            // Selector chips
-            div { class: "flex flex-wrap gap-xs",
-                for (idx, sel) in selectors.iter().enumerate() {
-                    {
-                        let selectors_clone = selectors.clone();
-                        let display = sel.display();
-                        rsx! {
-                            span { class: "chip",
-                                "{display}"
-                                button {
-                                    class: "chip-remove",
-                                    onclick: move |_| {
-                                        let mut new_sels = selectors_clone.clone();
-                                        new_sels.remove(idx);
-                                        on_change.call(new_sels);
-                                    },
-                                    "×"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Add new selector
-            div { class: "flex gap-xs",
-                input {
-                    r#type: "text",
-                    class: "input-inline w-lg",
-                    placeholder: "ID or Name (Enter)",
-                    value: "{new_input}",
-                    oninput: move |e| new_input.set(e.value()),
-                    onkeydown: move |e| {
-                        if e.key() == Key::Enter && !new_input().trim().is_empty() {
-                            let selector = EntitySelector::from_input(&new_input());
-                            let mut new_sels = selectors_for_keydown.clone();
-                            if !new_sels.contains(&selector) {
-                                new_sels.push(selector);
-                                on_change.call(new_sels);
-                            }
-                            new_input.set(String::new());
-                        }
-                    }
-                }
-                button {
-                    class: "btn btn-sm",
-                    onclick: move |_| {
-                        if !new_input().trim().is_empty() {
-                            let selector = EntitySelector::from_input(&new_input());
-                            let mut new_sels = selectors_for_click.clone();
-                            if !new_sels.contains(&selector) {
-                                new_sels.push(selector);
-                                on_change.call(new_sels);
-                            }
-                            new_input.set(String::new());
-                        }
-                    },
-                    "Add"
                 }
             }
         }

@@ -185,8 +185,7 @@ impl ActiveEffect {
         alert_text: Option<String>,
         alert_on_expire: bool,
     ) -> Self {
-        let expires_at = duration
-            .map(|d| event_timestamp + chrono::Duration::milliseconds(d.as_millis() as i64));
+        let expires_at = duration.map(|d| event_timestamp + chrono::Duration::milliseconds(d.as_millis() as i64));
 
         let (display_text, display_template) = Self::resolve_display(&display_text, source_name, target_name, 1);
 
@@ -218,10 +217,7 @@ impl ActiveEffect {
             audio_played: false,
             countdown_announced: [false; 10],
             countdown_start: audio.countdown_start,
-            countdown_voice: audio
-                .countdown_voice
-                .clone()
-                .unwrap_or_else(|| "Amy".to_string()),
+            countdown_voice: audio.countdown_voice.clone().unwrap_or_else(|| "Amy".to_string()),
             audio_file: audio.file.clone(),
             audio_offset: audio.offset,
             audio_enabled: audio.enabled,
@@ -247,10 +243,15 @@ impl ActiveEffect {
     ///
     /// With `from_application`, the initial application counts as a proc so the
     /// modifier is gated until `icd` seconds after `applied_at`.
-    pub fn modifier_icd_ready(&self, mod_idx: usize, icd: Option<f32>, from_application: bool, now: NaiveDateTime) -> bool {
+    pub fn modifier_icd_ready(
+        &self,
+        mod_idx: usize,
+        icd: Option<f32>,
+        from_application: bool,
+        now: NaiveDateTime,
+    ) -> bool {
         let Some(icd) = icd else { return true };
-        let last = self.modifier_last_proc[mod_idx]
-            .or(if from_application { Some(self.applied_at) } else { None });
+        let last = self.modifier_last_proc[mod_idx].or(if from_application { Some(self.applied_at) } else { None });
         match last {
             Some(last) => (now - last).num_milliseconds() as f32 / 1000.0 >= icd,
             None => true,
@@ -262,8 +263,7 @@ impl ActiveEffect {
         self.last_refreshed_at = event_timestamp;
 
         if let Some(d) = duration {
-            self.expires_at =
-                Some(event_timestamp + chrono::Duration::milliseconds(d.as_millis() as i64));
+            self.expires_at = Some(event_timestamp + chrono::Duration::milliseconds(d.as_millis() as i64));
             self.duration = Some(d);
         }
 
@@ -284,8 +284,7 @@ impl ActiveEffect {
     /// this does NOT update `last_refreshed_at`, so the stale-removal window
     /// (which guards against DOT reapplication) isn't affected.
     pub fn refresh_duration(&mut self, event_timestamp: NaiveDateTime, duration: Duration) {
-        self.expires_at =
-            Some(event_timestamp + chrono::Duration::milliseconds(duration.as_millis() as i64));
+        self.expires_at = Some(event_timestamp + chrono::Duration::milliseconds(duration.as_millis() as i64));
         self.duration = Some(duration);
 
         self.removed_at = None;
@@ -397,11 +396,7 @@ impl ActiveEffect {
     }
 
     /// Check if effect is near expiration (within threshold)
-    pub fn is_near_expiration(
-        &self,
-        current_game_time: NaiveDateTime,
-        threshold_secs: f32,
-    ) -> bool {
+    pub fn is_near_expiration(&self, current_game_time: NaiveDateTime, threshold_secs: f32) -> bool {
         self.remaining_secs(current_game_time)
             .map(|r| r <= threshold_secs && r > 0.0)
             .unwrap_or(false)
@@ -610,12 +605,7 @@ impl EffectKey {
     /// Construct a key for a definition, dropping one axis when scope is
     /// `Source` or `Target`. This is the canonical constructor for both
     /// storage and lookup so they always agree.
-    pub fn for_scope(
-        definition_id: &str,
-        scope: RefreshScope,
-        source_entity_id: i64,
-        target_entity_id: i64,
-    ) -> Self {
+    pub fn for_scope(definition_id: &str, scope: RefreshScope, source_entity_id: i64, target_entity_id: i64) -> Self {
         let (s, t) = match scope {
             RefreshScope::Both => (Some(source_entity_id), Some(target_entity_id)),
             RefreshScope::Source => (Some(source_entity_id), None),

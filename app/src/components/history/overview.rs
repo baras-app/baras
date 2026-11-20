@@ -7,9 +7,9 @@ use baras_types::formatting;
 use baras_types::history::{BossNode, PullEnd, PullFilter, PullRow, PullSortKey as SortKey, difficulty_parts};
 
 use super::Backfill;
+use super::charts::{ChartPick, PullCharts};
 use super::operations::{tier_class, tier_label};
 use super::scroll::{save_scroll, use_paged, use_restore_scroll};
-use super::charts::{ChartPick, PullCharts};
 use super::toolbar::{HistoryToolbar, SubsetChips};
 use crate::api;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
@@ -102,7 +102,10 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
     // A finished re-scan changes every count
     let backfill = props.backfill;
     use_effect(move || {
-        if matches!(*backfill.event.read(), Some(baras_types::history::BackfillEvent::Done { .. })) {
+        if matches!(
+            *backfill.event.read(),
+            Some(baras_types::history::BackfillEvent::Done { .. })
+        ) {
             overview.restart();
         }
     });
@@ -118,11 +121,22 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
     let search = boss_search.read().to_lowercase();
     let hits: Vec<&BossNode> = bosses
         .iter()
-        .filter(|n| search.is_empty() || n.boss.to_lowercase().contains(&search) || n.operation.to_lowercase().contains(&search))
+        .filter(|n| {
+            search.is_empty() || n.boss.to_lowercase().contains(&search) || n.operation.to_lowercase().contains(&search)
+        })
         .collect();
     // Operations / Flashpoints / Other, each an operation → boss tree
     let groups: Vec<(usize, Vec<(&str, Vec<&BossNode>)>)> = (0..super::CONTENT_GROUPS.len())
-        .map(|g| (g, group_by_operation(hits.iter().copied().filter(|n| super::content_group(n.is_operation, n.is_flashpoint) == g))))
+        .map(|g| {
+            (
+                g,
+                group_by_operation(
+                    hits.iter()
+                        .copied()
+                        .filter(|n| super::content_group(n.is_operation, n.is_flashpoint) == g),
+                ),
+            )
+        })
         .filter(|(_, tree)| !tree.is_empty())
         .collect();
     let closed_groups = use_signal(std::collections::HashSet::<usize>::new);
@@ -145,7 +159,10 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
     });
     let pulls_read = pulls.read();
     let rows: &[PullRow] = pulls_read.as_ref().and_then(|p| p.as_deref()).unwrap_or(&[]);
-    use_restore_scroll(&[OV_RAIL, OV_MAIN, OV_TABLE], !loading && (current_node.is_none() || pulls_read.is_some()));
+    use_restore_scroll(
+        &[OV_RAIL, OV_MAIN, OV_TABLE],
+        !loading && (current_node.is_none() || pulls_read.is_some()),
+    );
 
     // Header cards
     let kills = rows.iter().filter(|r| r.success).count();
@@ -167,12 +184,21 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
         "—".into()
     };
     // Average time to kill: clears only; wipes would drag it toward the wipe point
-    let avg_ttk = (kills > 0).then(|| rows.iter().filter(|r| r.success).map(|r| r.duration_seconds).sum::<i64>() / kills as i64);
+    let avg_ttk = (kills > 0).then(|| {
+        rows.iter()
+            .filter(|r| r.success)
+            .map(|r| r.duration_seconds)
+            .sum::<i64>()
+            / kills as i64
+    });
     let max_dps = rows.iter().filter_map(|r| r.dps).max();
 
     let key = *sort_key.read();
     let picked = pick.read().clone();
-    let mut visible: Vec<&PullRow> = rows.iter().filter(|r| picked.as_ref().is_none_or(|p| p.matches(r))).collect();
+    let mut visible: Vec<&PullRow> = rows
+        .iter()
+        .filter(|r| picked.as_ref().is_none_or(|p| p.matches(r)))
+        .collect();
     visible.sort_by(|a, b| {
         let ord = match key {
             SortKey::Date => a.timestamp.cmp(&b.timestamp),
@@ -183,7 +209,12 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
         if *sort_desc.read() { ord.reverse() } else { ord }
     });
     // The table renders a page at a time; a new boss, filter, pick or sort starts over
-    let page_key = format!("{current:?}|{key:?}|{}|{}|{}", *sort_desc.read(), rows.len(), visible.len());
+    let page_key = format!(
+        "{current:?}|{key:?}|{}|{}|{}",
+        *sort_desc.read(),
+        rows.len(),
+        visible.len()
+    );
     let paged = use_paged(&page_key);
     let shown = visible.len().min(paged.limit(&page_key));
     let total = visible.len();
@@ -205,7 +236,10 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
             "sortable-header sorted asc"
         }
     };
-    let fmt_opt = move |n: Option<i64>| n.map(|v| formatting::format_compact(v, eu)).unwrap_or_else(|| "-".into());
+    let fmt_opt = move |n: Option<i64>| {
+        n.map(|v| formatting::format_compact(v, eu))
+            .unwrap_or_else(|| "-".into())
+    };
 
     let collapsed = props.state.read().history.sidebar_collapsed;
     rsx! {

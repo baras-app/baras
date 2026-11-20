@@ -12,6 +12,7 @@ use baras_core::library::{LibraryMut, LibraryView};
 use baras_types::history::{ArchiveReport, CleanupEvent, CleanupPlan, CleanupReport};
 use tauri::{AppHandle, Emitter};
 
+use crate::state::MutexExt;
 use crate::state::SharedState;
 
 /// The pull index, brought up to date with the history directory. Links
@@ -19,12 +20,17 @@ use crate::state::SharedState;
 /// way, so the one pass that loads a file never drops them. Locks the index,
 /// then briefly the metadata: every caller takes them in that order.
 pub fn pull_index<'a>(shared: &'a SharedState, log_dir: &Path) -> std::sync::MutexGuard<'a, PullIndex> {
-    let mut index = shared.pull_index.lock().unwrap_or_else(|p| p.into_inner());
+    let mut index = shared.pull_index.locked();
     match index.refresh(log_dir) {
         Ok(report) if !report.legacy_parsely.is_empty() => {
-            let mut meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
-            let links = report.legacy_parsely.iter().map(|(f, ms, l)| (f.as_str(), *ms, l.as_str()));
-            if meta.merge_legacy_parsely(links) && let Err(e) = meta.save() {
+            let mut meta = shared.library_meta.locked();
+            let links = report
+                .legacy_parsely
+                .iter()
+                .map(|(f, ms, l)| (f.as_str(), *ms, l.as_str()));
+            if meta.merge_legacy_parsely(links)
+                && let Err(e) = meta.save()
+            {
                 tracing::warn!(error = %e, "Failed to save migrated Parsely links");
             }
         }
@@ -60,7 +66,7 @@ pub async fn plan(shared: &Arc<SharedState>, live: Option<&Path>) -> CleanupPlan
     tokio::task::block_in_place(|| {
         let archived = baras_core::library::archived_logs();
         let pulls = pull_index(&shared, &log_dir);
-        let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        let meta = shared.library_meta.locked();
         let view = LibraryView {
             directory: &directory,
             areas: disk_areas.as_ref().unwrap_or(&areas),
@@ -91,7 +97,12 @@ pub async fn run(shared: &Arc<SharedState>, app: &AppHandle) -> CleanupReport {
 /// Archive then delete the given logs. Each log is compressed with no lock
 /// held and swapped out under the locks afterwards, so the Library and the
 /// directory watcher keep working through a long run.
-pub async fn apply(shared: &Arc<SharedState>, app: &AppHandle, archive: &[PathBuf], delete: &[PathBuf]) -> CleanupReport {
+pub async fn apply(
+    shared: &Arc<SharedState>,
+    app: &AppHandle,
+    archive: &[PathBuf],
+    delete: &[PathBuf],
+) -> CleanupReport {
     let total = (archive.len() + delete.len()) as u32;
     let progress = |current: u32, path: &Path| {
         let file = path.file_name().and_then(|f| f.to_str()).unwrap_or("").to_string();
@@ -109,14 +120,20 @@ pub async fn apply(shared: &Arc<SharedState>, app: &AppHandle, archive: &[PathBu
             }
         };
         let live = live_path(shared).await;
-        with_library(shared, live.as_deref(), |lib| baras_core::library::commit(lib, compressed, &mut archived)).await;
+        with_library(shared, live.as_deref(), |lib| {
+            baras_core::library::commit(lib, compressed, &mut archived)
+        })
+        .await;
         let _ = app.emit("log-files-changed", ());
     }
     if let Some(path) = delete.first() {
         progress(archive.len() as u32 + 1, path);
     }
     let live = live_path(shared).await;
-    let deleted = with_library(shared, live.as_deref(), |lib| baras_core::library::delete(lib, delete, true)).await;
+    let deleted = with_library(shared, live.as_deref(), |lib| {
+        baras_core::library::delete(lib, delete, true)
+    })
+    .await;
     let mut failed = archived.failed;
     failed.extend(deleted.failed);
     let report = CleanupReport {
@@ -127,7 +144,12 @@ pub async fn apply(shared: &Arc<SharedState>, app: &AppHandle, archive: &[PathBu
         failed,
     };
     if report.archived > 0 || report.deleted > 0 {
-        tracing::info!(archived = report.archived, deleted = report.deleted, bytes_freed = report.bytes_freed, "Log cleanup");
+        tracing::info!(
+            archived = report.archived,
+            deleted = report.deleted,
+            bytes_freed = report.bytes_freed,
+            "Log cleanup"
+        );
         let directory = shared.directory_index.read().await;
         let areas = shared.area_cache.read().await;
         save_log_caches(app, &directory, &areas);
@@ -140,8 +162,13 @@ pub async fn apply(shared: &Arc<SharedState>, app: &AppHandle, archive: &[PathBu
 pub async fn with_library<T>(shared: &SharedState, live: Option<&Path>, f: impl FnOnce(&mut LibraryMut<'_>) -> T) -> T {
     let mut directory = shared.directory_index.write().await;
     let mut areas = shared.area_cache.write().await;
-    let mut meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
-    let mut lib = LibraryMut { directory: &mut directory, areas: &mut areas, meta: &mut meta, live };
+    let mut meta = shared.library_meta.locked();
+    let mut lib = LibraryMut {
+        directory: &mut directory,
+        areas: &mut areas,
+        meta: &mut meta,
+        live,
+    };
     f(&mut lib)
 }
 

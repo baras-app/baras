@@ -23,7 +23,11 @@ pub fn ensure_loaded() {
     }
     *LOAD_STARTED.write() = true;
     spawn(async move {
-        let map = api::get_mirror_abilities().await.into_iter().map(|m| (m.id, m)).collect();
+        let map = api::get_mirror_abilities()
+            .await
+            .into_iter()
+            .map(|m| (m.id, m))
+            .collect();
         *MIRROR_MAP.write() = map;
     });
 }
@@ -35,7 +39,11 @@ fn swap_for(id: i64) -> Option<MirrorAbility> {
         AbilityNaming::Republic => false,
         AbilityNaming::Imperial => true,
     };
-    MIRROR_MAP.read().get(&id).filter(|m| m.is_imperial != want_imperial).cloned()
+    MIRROR_MAP
+        .read()
+        .get(&id)
+        .filter(|m| m.is_imperial != want_imperial)
+        .cloned()
 }
 
 /// Ability id to use for icons under the current naming preference.

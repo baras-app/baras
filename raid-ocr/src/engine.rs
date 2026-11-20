@@ -22,16 +22,14 @@ const RECOGNITION_MODEL_URLS: &[&str] = &[
     "https://raw.githubusercontent.com/baras-app/ocr-models/main/text-recognition.rten",
 ];
 
-const RECOGNITION_MODEL_SHA256: &str =
-    "e484866d4cce403175bd8d00b128feb08ab42e208de30e42cd9889d8f1735a6e";
+const RECOGNITION_MODEL_SHA256: &str = "e484866d4cce403175bd8d00b128feb08ab42e208de30e42cd9889d8f1735a6e";
 
 const DETECTION_MODEL_URLS: &[&str] = &[
     "https://ocrs-models.s3-accelerate.amazonaws.com/text-detection.rten",
     "https://raw.githubusercontent.com/baras-app/ocr-models/main/text-detection.rten",
 ];
 
-const DETECTION_MODEL_SHA256: &str =
-    "f15cfb56bd02c4bf478a20343986504a1f01e1665c2b3a0ad66340f054b1b5ca";
+const DETECTION_MODEL_SHA256: &str = "f15cfb56bd02c4bf478a20343986504a1f01e1665c2b3a0ad66340f054b1b5ca";
 
 const MIN_MODEL_BYTES: u64 = 1_000_000;
 
@@ -70,7 +68,7 @@ impl std::error::Error for OcrError {}
 
 /// Where downloaded models are cached.
 fn models_dir() -> Option<PathBuf> {
-    dirs::config_dir().map(|p| p.join("baras").join("models"))
+    baras_core::paths::config_dir().map(|p| p.join("models"))
 }
 
 /// Where the downloaded recognition model is cached.
@@ -92,10 +90,8 @@ pub fn model_is_present() -> bool {
 
 /// Download whichever models are not already cached.
 pub async fn ensure_model() -> Result<(), OcrError> {
-    let recognition =
-        model_path().ok_or_else(|| OcrError::ModelUnavailable("no config directory".into()))?;
-    let detection = detection_model_path()
-        .ok_or_else(|| OcrError::ModelUnavailable("no config directory".into()))?;
+    let recognition = model_path().ok_or_else(|| OcrError::ModelUnavailable("no config directory".into()))?;
+    let detection = detection_model_path().ok_or_else(|| OcrError::ModelUnavailable("no config directory".into()))?;
 
     ensure_one(
         &recognition,
@@ -104,22 +100,11 @@ pub async fn ensure_model() -> Result<(), OcrError> {
         RECOGNITION_MODEL_SHA256,
     )
     .await?;
-    ensure_one(
-        &detection,
-        "detection",
-        DETECTION_MODEL_URLS,
-        DETECTION_MODEL_SHA256,
-    )
-    .await
+    ensure_one(&detection, "detection", DETECTION_MODEL_URLS, DETECTION_MODEL_SHA256).await
 }
 
 /// Download one model if the cached copy is missing or unreadable.
-async fn ensure_one(
-    path: &std::path::Path,
-    kind: &str,
-    urls: &[&str],
-    sha256: &str,
-) -> Result<(), OcrError> {
+async fn ensure_one(path: &std::path::Path, kind: &str, urls: &[&str], sha256: &str) -> Result<(), OcrError> {
     // A cached file of plausible size is trusted: it was hash-checked before it
     // was written, and `engine()` reports one that fails to load.
     if let Ok(metadata) = std::fs::metadata(path)
@@ -128,8 +113,7 @@ async fn ensure_one(
         return Ok(());
     }
     if path.exists() {
-        std::fs::remove_file(path)
-            .map_err(|e| OcrError::ModelUnavailable(format!("cannot replace {path:?}: {e}")))?;
+        std::fs::remove_file(path).map_err(|e| OcrError::ModelUnavailable(format!("cannot replace {path:?}: {e}")))?;
     }
 
     if let Some(parent) = path.parent() {
@@ -168,23 +152,16 @@ async fn ensure_one(
     // Write beside the target and rename, so an interrupted download cannot
     // leave a truncated file where a model is expected.
     let temp = path.with_extension("part");
-    std::fs::write(&temp, &bytes)
-        .map_err(|e| OcrError::ModelUnavailable(format!("cannot write model: {e}")))?;
+    std::fs::write(&temp, &bytes).map_err(|e| OcrError::ModelUnavailable(format!("cannot write model: {e}")))?;
     if let Err(e) = std::fs::rename(&temp, path) {
         let _ = std::fs::remove_file(&temp);
-        return Err(OcrError::ModelUnavailable(format!(
-            "cannot finalize model: {e}"
-        )));
+        return Err(OcrError::ModelUnavailable(format!("cannot finalize model: {e}")));
     }
 
     Ok(())
 }
 
-async fn fetch_model(
-    client: &reqwest::Client,
-    url: &str,
-    sha256: &str,
-) -> Result<Vec<u8>, String> {
+async fn fetch_model(client: &reqwest::Client, url: &str, sha256: &str) -> Result<Vec<u8>, String> {
     let bytes = client
         .get(url)
         .send()
@@ -208,13 +185,11 @@ async fn fetch_model(
 }
 
 fn hex(bytes: &[u8]) -> String {
-    bytes
-        .iter()
-        .fold(String::with_capacity(bytes.len() * 2), |mut out, b| {
-            use std::fmt::Write;
-            let _ = write!(out, "{b:02x}");
-            out
-        })
+    bytes.iter().fold(String::with_capacity(bytes.len() * 2), |mut out, b| {
+        use std::fmt::Write;
+        let _ = write!(out, "{b:02x}");
+        out
+    })
 }
 
 /// Process-wide engine, built once on first use.
@@ -228,8 +203,7 @@ fn load(path: Option<PathBuf>, kind: &str) -> Result<Model, OcrError> {
             "{kind} model has not been downloaded"
         )));
     }
-    Model::load_file(&path)
-        .map_err(|e| OcrError::ModelUnavailable(format!("cannot load {path:?}: {e}")))
+    Model::load_file(&path).map_err(|e| OcrError::ModelUnavailable(format!("cannot load {path:?}: {e}")))
 }
 
 fn engine() -> Result<Arc<OcrEngine>, OcrError> {
@@ -314,8 +288,7 @@ pub fn recognize_many(crops: &[&PreparedCrop]) -> Result<Vec<String>, OcrError> 
 /// black, which both models read as "nothing here".
 fn pack(crops: &[&PreparedCrop]) -> (PreparedCrop, Vec<u32>) {
     let width = crops.iter().map(|c| c.width).max().unwrap_or(0);
-    let height = crops.iter().map(|c| c.height).sum::<u32>()
-        + BATCH_GAP * crops.len().saturating_sub(1) as u32;
+    let height = crops.iter().map(|c| c.height).sum::<u32>() + BATCH_GAP * crops.len().saturating_sub(1) as u32;
     let mut gray = vec![0u8; (width * height) as usize];
     let mut tops = Vec::with_capacity(crops.len());
     let mut top = 0u32;
@@ -323,20 +296,12 @@ fn pack(crops: &[&PreparedCrop]) -> (PreparedCrop, Vec<u32>) {
         for row in 0..crop.height {
             let from = (row * crop.width) as usize;
             let to = ((top + row) * width) as usize;
-            gray[to..to + crop.width as usize]
-                .copy_from_slice(&crop.gray[from..from + crop.width as usize]);
+            gray[to..to + crop.width as usize].copy_from_slice(&crop.gray[from..from + crop.width as usize]);
         }
         tops.push(top);
         top += crop.height + BATCH_GAP;
     }
-    (
-        PreparedCrop {
-            width,
-            height,
-            gray,
-        },
-        tops,
-    )
+    (PreparedCrop { width, height, gray }, tops)
 }
 
 /// Columns the detection model is confident hold text, for many crops.
@@ -411,11 +376,7 @@ fn detect_batch(crops: &[&PreparedCrop], batch: &[usize], out: &mut [Option<Opti
 ///
 /// The mask stays in here: naming its type would mean depending on
 /// `rten-tensor` directly, and every caller wants spans anyway.
-fn detect(
-    engine: &OcrEngine,
-    crop: &PreparedCrop,
-    regions: &[Region],
-) -> Result<Vec<Option<Span>>, OcrError> {
+fn detect(engine: &OcrEngine, crop: &PreparedCrop, regions: &[Region]) -> Result<Vec<Option<Span>>, OcrError> {
     let rgb = crop.to_rgb();
     let source = ImageSource::from_bytes(&rgb, (crop.width, crop.height))
         .map_err(|e| OcrError::Recognition(format!("bad image source: {e}")))?;

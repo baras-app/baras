@@ -314,10 +314,7 @@ pub fn assign_rows_explained(
                 .collect()
         })
         .collect();
-    let scores: Vec<Vec<f32>> = parts
-        .iter()
-        .map(|row| row.iter().map(|p| p.total).collect())
-        .collect();
+    let scores: Vec<Vec<f32>> = parts.iter().map(|row| row.iter().map(|p| p.total).collect()).collect();
 
     let assigned = solve_assignment(&scores, config.min_confidence);
 
@@ -331,10 +328,7 @@ pub fn assign_rows_explained(
         // "closest was X at 0.58" says more than "no match".
         let best_idx = best_by(&parts[row_idx], |p| p.total)
             .filter(|&i| parts[row_idx][i].total > 0.0)
-            .or_else(|| {
-                best_by(&parts[row_idx], |p| p.name_score)
-                    .filter(|&i| parts[row_idx][i].name_score > 0.0)
-            });
+            .or_else(|| best_by(&parts[row_idx], |p| p.name_score).filter(|&i| parts[row_idx][i].name_score > 0.0));
         let best = best_idx.map(|i| parts[row_idx][i].clone());
         // Named, not just scored: a tie needs both sides to be diagnosable.
         let runner_up_idx = best_idx.and_then(|best_idx| {

@@ -131,10 +131,7 @@ fn unidentified_middle_character_keeps_a_strong_match() {
 
 #[test]
 fn unidentified_character_does_not_choose_between_lookalikes() {
-    let candidates = build(&[
-        ("Catzoon", 100_000, 100_000),
-        ("Carzoon", 100_000, 100_000),
-    ]);
+    let candidates = build(&[("Catzoon", 100_000, 100_000), ("Carzoon", 100_000, 100_000)]);
     let rows = vec![row(0, Some("CA?ZOON"), None, None)];
 
     assert!(assign_rows(&rows, &candidates, &MatchConfig::default()).is_empty());
@@ -144,10 +141,7 @@ fn unidentified_character_does_not_choose_between_lookalikes() {
 fn a_full_read_beats_a_prefix_candidate() {
     // ALPHA also fits the reading if RHO were junk, but the exact match must
     // lead by enough to assign.
-    let candidates = build(&[
-        ("Alpha", 100_000, 100_000),
-        ("Alpharho", 100_000, 100_000),
-    ]);
+    let candidates = build(&[("Alpha", 100_000, 100_000), ("Alpharho", 100_000, 100_000)]);
     let rows = vec![row(0, Some("ALPHARHO"), None, None)];
 
     let result = assign_rows(&rows, &candidates, &MatchConfig::default());
@@ -159,10 +153,7 @@ fn a_full_read_beats_a_prefix_candidate() {
 #[test]
 fn a_prefix_read_cannot_choose_between_a_name_and_its_extension() {
     // A frame showing ALPHA really could be Alpharho with its tail occluded.
-    let candidates = build(&[
-        ("Alpha", 100_000, 100_000),
-        ("Alpharho", 100_000, 100_000),
-    ]);
+    let candidates = build(&[("Alpha", 100_000, 100_000), ("Alpharho", 100_000, 100_000)]);
     let rows = vec![row(0, Some("ALPHA"), None, None)];
 
     assert!(assign_rows(&rows, &candidates, &MatchConfig::default()).is_empty());
@@ -181,10 +172,7 @@ fn trailing_marker_noise_does_not_hide_a_name() {
 
 #[test]
 fn returns_exact_log_spelling_not_ocr_output() {
-    let candidates = build(&[
-        ("@Tést Alpha#1", 19_996, 400_000),
-        ("@Brav'à#2", 31_922, 435_110),
-    ]);
+    let candidates = build(&[("@Tést Alpha#1", 19_996, 400_000), ("@Brav'à#2", 31_922, 435_110)]);
     // OCR cannot emit the accented characters at all.
     let rows = vec![
         row(0, Some("TEST ALPHA"), Some(19_996), None),
@@ -194,10 +182,7 @@ fn returns_exact_log_spelling_not_ocr_output() {
     let result = assign_rows(&rows, &candidates, &MatchConfig::default());
 
     assert_eq!(result.len(), 2);
-    assert_eq!(
-        result[0].name, "@Tést Alpha#1",
-        "accent must come from the log"
-    );
+    assert_eq!(result[0].name, "@Tést Alpha#1", "accent must come from the log");
     assert_eq!(result[1].name, "@Brav'à#2");
 }
 
@@ -222,10 +207,7 @@ fn health_value_alone_never_assigns_a_player() {
 fn name_alone_resolves_when_health_is_hidden() {
     // The user has the numeric health display switched off.
     let candidates = healer_pov_group();
-    let rows = vec![
-        row(0, Some("CHARLIE"), None, None),
-        row(1, Some("HOTEL"), None, None),
-    ];
+    let rows = vec![row(0, Some("CHARLIE"), None, None), row(1, Some("HOTEL"), None, None)];
 
     let result = assign_rows(&rows, &candidates, &MatchConfig::default());
 
@@ -317,10 +299,7 @@ fn ambiguous_read_leaves_the_row_unassigned() {
 
     let result = assign_rows(&rows, &candidates, &MatchConfig::default());
 
-    assert!(
-        result.is_empty(),
-        "a signal shared by all candidates decides nothing"
-    );
+    assert!(result.is_empty(), "a signal shared by all candidates decides nothing");
 }
 
 #[test]
@@ -408,14 +387,7 @@ fn health_cannot_resolve_a_row_with_a_short_name_fragment() {
 fn empty_inputs_are_handled() {
     let candidates = healer_pov_group();
     assert!(assign_rows(&[], &candidates, &MatchConfig::default()).is_empty());
-    assert!(
-        assign_rows(
-            &[row(0, Some("HOTEL"), None, None)],
-            &[],
-            &MatchConfig::default()
-        )
-        .is_empty()
-    );
+    assert!(assign_rows(&[row(0, Some("HOTEL"), None, None)], &[], &MatchConfig::default()).is_empty());
 }
 
 #[test]
@@ -457,10 +429,7 @@ fn candidate_set_ignores_stale_health() {
 
 #[test]
 fn two_near_ties_are_not_resolved_by_elimination() {
-    let candidates = build(&[
-        ("@Alpha One#1", 100_000, 100_000),
-        ("@Alpha Only#2", 100_000, 100_000),
-    ]);
+    let candidates = build(&[("@Alpha One#1", 100_000, 100_000), ("@Alpha Only#2", 100_000, 100_000)]);
     let rows = vec![
         row(0, Some("ALPHA ON"), None, None),
         row(1, Some("ALPHA ON"), None, None),

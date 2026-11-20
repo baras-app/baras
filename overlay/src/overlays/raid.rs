@@ -33,12 +33,7 @@ impl PlayerRole {
         if lower.contains("tank")
             || matches!(
                 lower.as_str(),
-                "immortal"
-                    | "darkness"
-                    | "shield specialist"
-                    | "shield tech"
-                    | "defense"
-                    | "kinetic combat"
+                "immortal" | "darkness" | "shield specialist" | "shield tech" | "defense" | "kinetic combat"
             )
         {
             PlayerRole::Tank
@@ -245,11 +240,7 @@ impl RaidFrame {
     /// Apply or refresh an effect
     pub fn apply_effect(&mut self, effect: RaidEffect, max_effects: usize) {
         // Check if effect already exists
-        if let Some(existing) = self
-            .effects
-            .iter_mut()
-            .find(|e| e.effect_id == effect.effect_id)
-        {
+        if let Some(existing) = self.effects.iter_mut().find(|e| e.effect_id == effect.effect_id) {
             // Refresh: update expiry, duration, and take higher stack count
             existing.expires_at = effect.expires_at;
             existing.duration = effect.duration;
@@ -355,24 +346,6 @@ impl RaidGridLayout {
         }
     }
 
-    /// Create a layout for the given player count
-    pub fn for_player_count(count: u8) -> Self {
-        match count {
-            0..=4 => Self {
-                columns: 1,
-                rows: 4,
-            },
-            5..=8 => Self {
-                columns: 2,
-                rows: 4,
-            },
-            _ => Self {
-                columns: 4,
-                rows: 4,
-            },
-        }
-    }
-
     /// Total number of slots
     pub fn capacity(&self) -> u8 {
         self.columns * self.rows
@@ -381,10 +354,7 @@ impl RaidGridLayout {
 
 impl Default for RaidGridLayout {
     fn default() -> Self {
-        Self {
-            columns: 2,
-            rows: 4,
-        }
+        Self { columns: 2, rows: 4 }
     }
 }
 
@@ -468,8 +438,7 @@ impl RaidOverlayConfig {
 
     /// Get the clamped effect vertical offset
     pub fn effect_vertical_offset(&self) -> f32 {
-        self.effect_vertical_offset
-            .clamp(EFFECT_OFFSET_MIN, EFFECT_OFFSET_MAX)
+        self.effect_vertical_offset.clamp(EFFECT_OFFSET_MIN, EFFECT_OFFSET_MAX)
     }
 
     /// Get the clamped effect horizontal offset
@@ -535,12 +504,7 @@ struct RaidSlotGeometry {
     frame_height: f32,
 }
 
-fn raid_slot_geometry(
-    width: u32,
-    height: u32,
-    layout: RaidGridLayout,
-    frame_spacing: f32,
-) -> RaidSlotGeometry {
+fn raid_slot_geometry(width: u32, height: u32, layout: RaidGridLayout, frame_spacing: f32) -> RaidSlotGeometry {
     let width = width as f32;
     let height = height as f32;
     let columns = layout.columns.max(1) as f32;
@@ -646,7 +610,7 @@ impl RaidOverlay {
             swap_state: SwapState::default(),
             config,
             overflow_count: 0,
-            needs_render: true,                            // Initial render needed
+            needs_render: true, // Initial render needed
             pulse_since: Instant::now(),
             last_render: Instant::now() - RENDER_INTERVAL, // Allow immediate first render
             pending_registry_actions: Vec::new(),
@@ -727,10 +691,7 @@ impl RaidOverlay {
 
     fn detect_button_hit_bounds(&self) -> (f32, f32, f32, f32) {
         let (x, y, w, h) = self.detect_button_bounds();
-        let padding = self
-            .frame
-            .scaled(DETECT_BUTTON_HIT_PADDING)
-            .clamp(4.0, 8.0);
+        let padding = self.frame.scaled(DETECT_BUTTON_HIT_PADDING).clamp(4.0, 8.0);
         let left = (x - padding).max(0.0);
         let top = (y - padding).max(0.0);
         let right = (x + w + padding).min(self.frame.width() as f32);
@@ -761,8 +722,7 @@ impl RaidOverlay {
 
     fn hit_test_clear_all_button(&self, px: f32, py: f32) -> bool {
         let (x, y, w, h) = self.clear_all_button_bounds();
-        h >= w * 2.0
-            && px >= x && px < x + w && py >= y && py < y + h
+        h >= w * 2.0 && px >= x && px < x + w && py >= y && py < y + h
     }
 
     /// Find which slot (if any) contains the given point
@@ -785,10 +745,14 @@ impl RaidOverlay {
 
     /// Slot whose clear button contains the point (occupied frames only)
     fn clear_button_slot_at(&self, px: f32, py: f32) -> Option<u8> {
-        self.frames.iter().filter(|f| !f.is_empty()).map(|f| f.slot).find(|&slot| {
-            let (bx, by, size) = self.clear_button_rect(slot);
-            px >= bx && px < bx + size && py >= by && py < by + size
-        })
+        self.frames
+            .iter()
+            .filter(|f| !f.is_empty())
+            .map(|f| f.slot)
+            .find(|&slot| {
+                let (bx, by, size) = self.clear_button_rect(slot);
+                px >= bx && px < bx + size && py >= by && py < by + size
+            })
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -882,12 +846,8 @@ impl RaidOverlay {
         self.frame.end_frame();
         std::thread::sleep(std::time::Duration::from_millis(BLANK_SETTLE_MS));
 
-        let result = crate::capture::capture_region(
-            self.frame.x(),
-            self.frame.y(),
-            self.frame.width(),
-            self.frame.height(),
-        );
+        let result =
+            crate::capture::capture_region(self.frame.x(), self.frame.y(), self.frame.width(), self.frame.height());
 
         self.needs_render = true;
 
@@ -1019,8 +979,8 @@ impl RaidOverlay {
                 // Only render on state change (click, data update, etc.),
                 // unless a frame is pulsing and needs the clock.
                 let pulsing = self.frames.iter().any(|f| f.ambiguous);
-                if !self.needs_render && !(pulsing && now.duration_since(self.last_render) >= RENDER_INTERVAL)
-                {
+                let pulse_due = pulsing && now.duration_since(self.last_render) >= RENDER_INTERVAL;
+                if !self.needs_render && !pulse_due {
                     return;
                 }
             }
@@ -1076,14 +1036,8 @@ impl RaidOverlay {
     fn render_detect_button(&mut self) {
         let (x, y, w, h) = self.detect_button_bounds();
 
-        self.frame.fill_rounded_rect(
-            x,
-            y,
-            w,
-            h,
-            (w * 0.25).max(2.0),
-            Color::from_rgba8(20, 24, 32, 150),
-        );
+        self.frame
+            .fill_rounded_rect(x, y, w, h, (w * 0.25).max(2.0), Color::from_rgba8(20, 24, 32, 150));
 
         let inset = w * 0.22;
         let lens_size = (w - inset * 2.0) * 0.78;
@@ -1146,8 +1100,6 @@ impl RaidOverlay {
         self.frame.measure_text(text, font_size).0 <= max_width
     }
 
-
-
     /// Break a message into lines that fit `max_width`.
     ///
     /// Breaks at commas if possible, otherwise spaces.
@@ -1191,7 +1143,7 @@ impl RaidOverlay {
         wrapped
     }
 
-    /// Break on spaces. 
+    /// Break on spaces.
     // A too-long word will overflow.
     fn wrap_words(&mut self, text: &str, font_size: f32, max_width: f32) -> Vec<String> {
         let mut lines = Vec::new();
@@ -1245,14 +1197,8 @@ impl RaidOverlay {
         let x = self.frame.width() as f32 - width - 3.0;
         let y = button_y + button_height + 3.0;
 
-        self.frame.fill_rounded_rect(
-            x,
-            y,
-            width,
-            height,
-            4.0,
-            Color::from_rgba8(20, 24, 32, 225),
-        );
+        self.frame
+            .fill_rounded_rect(x, y, width, height, 4.0, Color::from_rgba8(20, 24, 32, 225));
         for (i, line) in lines.iter().enumerate() {
             self.frame.draw_text_styled(
                 line,
@@ -1404,22 +1350,13 @@ impl RaidOverlay {
         };
 
         // Render class icon (white silhouette with drop shadow) if enabled
-        if show_class {
-            if let Some(name) = class_icon_name {
-                // Check width: don't overflow the frame
-                if cursor_x + icon_size <= x + self.frame_width() - 2.0 {
-                    if let Some(icon) = crate::class_icons::get_white_class_icon(name) {
-                        self.frame.draw_image_with_shadow(
-                            &icon.rgba,
-                            icon.width,
-                            icon.height,
-                            cursor_x,
-                            icon_y,
-                            icon_size,
-                            icon_size,
-                        );
-                    }
-                }
+        if show_class && let Some(name) = class_icon_name {
+            // Check width: don't overflow the frame
+            if cursor_x + icon_size <= x + self.frame_width() - 2.0
+                && let Some(icon) = crate::class_icons::get_white_class_icon(name)
+            {
+                self.frame
+                    .draw_image_with_shadow(icon, cursor_x, icon_y, icon_size, icon_size);
             }
         }
 
@@ -1497,14 +1434,8 @@ impl RaidOverlay {
 
             if !has_icon {
                 // Dark background (always visible even when fill is empty)
-                self.frame.fill_rounded_rect(
-                    ex,
-                    ey,
-                    effect_size,
-                    effect_size,
-                    corner_radius,
-                    colors::effect_bar_bg(),
-                );
+                self.frame
+                    .fill_rounded_rect(ex, ey, effect_size, effect_size, corner_radius, colors::effect_bar_bg());
 
                 // Calculate fill based on remaining duration
                 let fill_percent = effect.fill_percent();
@@ -1533,11 +1464,7 @@ impl RaidOverlay {
 
                     // Bottom corners follow the square's rounding so no fill pokes
                     // past it; the top edge stays square while partially depleted
-                    let top_radius = if fill_height >= size_px {
-                        corner_radius
-                    } else {
-                        0.0
-                    };
+                    let top_radius = if fill_height >= size_px { corner_radius } else { 0.0 };
                     self.frame.fill_corner_rounded_rect(
                         ex.round(),
                         fill_y,
@@ -1555,13 +1482,8 @@ impl RaidOverlay {
             let progress = effect.fill_percent();
             let overlay_height = effect_size * (1.0 - progress);
             if overlay_height > 1.0 {
-                self.frame.fill_rect(
-                    ex,
-                    ey,
-                    effect_size,
-                    overlay_height,
-                    Color::from_rgba8(0, 0, 0, 140),
-                );
+                self.frame
+                    .fill_rect(ex, ey, effect_size, overlay_height, Color::from_rgba8(0, 0, 0, 140));
             }
 
             // Thin border outline for visibility; opt-in colored borders use the
@@ -1577,15 +1499,8 @@ impl RaidOverlay {
             } else {
                 colors::effect_bar_border()
             };
-            self.frame.stroke_rounded_rect(
-                ex,
-                ey,
-                effect_size,
-                effect_size,
-                corner_radius,
-                1.0,
-                border_color,
-            );
+            self.frame
+                .stroke_rounded_rect(ex, ey, effect_size, effect_size, corner_radius, 1.0, border_color);
 
             // Stack count if applicable (centered in the effect square)
             if effect.charges > 1 || (effect.show_single_stack && effect.charges >= 1) {
@@ -1593,8 +1508,7 @@ impl RaidOverlay {
                 let stack_font = (effect_size * 0.7).max(8.0);
 
                 // Measure text for proper centering (bold for readability)
-                let (text_w, _) =
-                    self.frame.measure_text_styled(&count, stack_font, true, false);
+                let (text_w, _) = self.frame.measure_text_styled(&count, stack_font, true, false);
 
                 // Center horizontally, position in lower portion of square
                 let text_x = ex + (effect_size - text_w) / 2.0;
@@ -1612,9 +1526,8 @@ impl RaidOverlay {
                 );
 
                 // Draw text on top
-                self.frame.draw_text_styled(
-                    &count, text_x, text_y, stack_font, colors::white(), true, false,
-                );
+                self.frame
+                    .draw_text_styled(&count, text_x, text_y, stack_font, colors::white(), true, false);
             }
         }
 
@@ -1626,8 +1539,7 @@ impl RaidOverlay {
     ///
     /// Slow on purpose: this is a "sort these out" hint, not an alarm.
     fn ambiguous_pulse(&self) -> Color {
-        let phase =
-            (self.pulse_since.elapsed().as_secs_f32() / AMBIGUOUS_PULSE_SECS) * std::f32::consts::TAU;
+        let phase = (self.pulse_since.elapsed().as_secs_f32() / AMBIGUOUS_PULSE_SECS) * std::f32::consts::TAU;
         // 0.35..1.0, so the border never disappears entirely.
         let level = 0.675 + 0.325 * phase.sin();
         let mut color = colors::raid_name_provisional();
@@ -1652,8 +1564,7 @@ impl RaidOverlay {
             colors::raid_empty_slot()
         };
         let corner_radius = (h * 0.1).clamp(2.0, 6.0);
-        self.frame
-            .fill_rounded_rect(x, y, w, h, corner_radius, overlay_color);
+        self.frame.fill_rounded_rect(x, y, w, h, corner_radius, overlay_color);
 
         // Border. An ambiguous frame breathes so the two or three that could
         // not be told apart stand out as a set to sort by hand.
@@ -1721,14 +1632,8 @@ impl RaidOverlay {
         if !raid_frame.is_empty() {
             let (btn_x, btn_y, btn_size) = self.clear_button_rect(raid_frame.slot);
 
-            self.frame.fill_rounded_rect(
-                btn_x,
-                btn_y,
-                btn_size,
-                btn_size,
-                2.0,
-                colors::raid_clear_button(),
-            );
+            self.frame
+                .fill_rounded_rect(btn_x, btn_y, btn_size, btn_size, 2.0, colors::raid_clear_button());
             // Note: draw_text y is baseline
             let btn_font = btn_size * 0.7;
             let text_x = btn_x + btn_size * 0.3;
@@ -1748,8 +1653,7 @@ impl RaidOverlay {
         let x = self.frame.width() as f32 - 24.0;
         let y = self.frame.height() as f32 - 16.0;
 
-        self.frame
-            .draw_text_glowed(&text, x, y, 10.0, colors::raid_overflow());
+        self.frame.draw_text_glowed(&text, x, y, 10.0, colors::raid_overflow());
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1763,8 +1667,7 @@ impl RaidOverlay {
         // Clear All pill on the same edge: a near-miss must clear one slot,
         // never the whole roster.
         if let Some(slot) = self.clear_button_slot_at(px, py) {
-            self.pending_registry_actions
-                .push(RaidRegistryAction::ClearSlot(slot));
+            self.pending_registry_actions.push(RaidRegistryAction::ClearSlot(slot));
             self.needs_render = true;
             return;
         }
@@ -1772,8 +1675,7 @@ impl RaidOverlay {
         if self.hit_test_clear_all_button(px, py) {
             self.clear_all_frames();
             self.swap_state.cancel();
-            self.pending_registry_actions
-                .push(RaidRegistryAction::ClearAll);
+            self.pending_registry_actions.push(RaidRegistryAction::ClearAll);
             return;
         }
 
@@ -1783,8 +1685,7 @@ impl RaidOverlay {
                 // Apply swap locally for immediate visual feedback
                 self.swap_frames(a, b);
                 // Queue swap action so the registry stays in sync
-                self.pending_registry_actions
-                    .push(RaidRegistryAction::SwapSlots(a, b));
+                self.pending_registry_actions.push(RaidRegistryAction::SwapSlots(a, b));
             } else {
                 // Selection changed (first click or deselect same slot)
                 self.needs_render = true;
@@ -1807,8 +1708,7 @@ impl Overlay for RaidOverlay {
             // Skip render if both old and new have no players with effects
             let old_has_effects = self.frames.iter().any(|f| !f.effects.is_empty());
             let new_has_effects = raid_data.frames.iter().any(|f| !f.effects.is_empty());
-            let skip_render =
-                !old_has_effects && !new_has_effects && self.frames.len() == raid_data.frames.len();
+            let skip_render = !old_has_effects && !new_has_effects && self.frames.len() == raid_data.frames.len();
             self.set_frames(raid_data.frames);
             !skip_render
         } else {
@@ -1853,13 +1753,9 @@ impl Overlay for RaidOverlay {
             }
         }
         if self.detection_result_rx.is_none()
-            && self
-                .detection_message
-                .as_ref()
-                .is_some_and(|(_, shown_at)| {
-                    shown_at.elapsed()
-                        >= std::time::Duration::from_secs(DETECTION_MESSAGE_SECS)
-                })
+            && self.detection_message.as_ref().is_some_and(|(_, shown_at)| {
+                shown_at.elapsed() >= std::time::Duration::from_secs(DETECTION_MESSAGE_SECS)
+            })
         {
             self.detection_message = None;
             self.needs_render = true;
@@ -1873,8 +1769,7 @@ impl Overlay for RaidOverlay {
         self.refresh_interactive_region();
 
         if let Some((px, py)) = self.frame.take_pending_click() {
-            if self.interaction_mode.shows_detect_button() && self.hit_test_detect_button(px, py)
-            {
+            if self.interaction_mode.shows_detect_button() && self.hit_test_detect_button(px, py) {
                 self.emit_detect_action();
             } else if self.interaction_mode == InteractionMode::Rearrange {
                 self.handle_rearrange_click(px, py);
@@ -1921,6 +1816,10 @@ impl Overlay for RaidOverlay {
     fn needs_render(&self) -> bool {
         self.needs_render
     }
+
+    fn invalidate(&mut self) {
+        self.needs_render = true;
+    }
 }
 
 /// Split a message after each comma, keeping the comma.
@@ -1947,7 +1846,6 @@ fn comma_clauses(text: &str) -> Vec<String> {
     }
     clauses
 }
-
 
 #[cfg(test)]
 mod tests {

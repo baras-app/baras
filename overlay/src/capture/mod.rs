@@ -32,12 +32,7 @@ fn log_backend(backend: &str, direct_supported: bool) {
 mod backend {
     use super::{CaptureError, CapturedImage};
 
-    pub fn capture_region(
-        _x: i32,
-        _y: i32,
-        _width: u32,
-        _height: u32,
-    ) -> Result<CapturedImage, CaptureError> {
+    pub fn capture_region(_x: i32, _y: i32, _width: u32, _height: u32) -> Result<CapturedImage, CaptureError> {
         Err(CaptureError::Unsupported(
             "raid-frame capture is not available on this platform".into(),
         ))
@@ -222,7 +217,9 @@ pub async fn enable_portal() -> Result<(), CaptureError> {
 
 #[cfg(not(target_os = "linux"))]
 pub async fn enable_portal() -> Result<(), CaptureError> {
-    Err(CaptureError::Unsupported("screen cast portal is only available on Linux".into()))
+    Err(CaptureError::Unsupported(
+        "screen cast portal is only available on Linux".into(),
+    ))
 }
 
 impl std::error::Error for CaptureError {}
@@ -230,16 +227,9 @@ impl std::error::Error for CaptureError {}
 /// Capture a screen region in global desktop coordinates.
 ///
 /// The overlay must be hidden first — see the module docs.
-pub fn capture_region(
-    x: i32,
-    y: i32,
-    width: u32,
-    height: u32,
-) -> Result<CapturedImage, CaptureError> {
+pub fn capture_region(x: i32, y: i32, width: u32, height: u32) -> Result<CapturedImage, CaptureError> {
     if width == 0 || height == 0 {
-        return Err(CaptureError::InvalidRegion(format!(
-            "{width}x{height} has no area"
-        )));
+        return Err(CaptureError::InvalidRegion(format!("{width}x{height} has no area")));
     }
     if width > i32::MAX as u32
         || height > i32::MAX as u32
@@ -248,9 +238,7 @@ pub fn capture_region(
             .and_then(|pixels| pixels.checked_mul(4))
             .is_none()
     {
-        return Err(CaptureError::InvalidRegion(format!(
-            "{width}x{height} is too large"
-        )));
+        return Err(CaptureError::InvalidRegion(format!("{width}x{height} is too large")));
     }
     backend::capture_region(x, y, width, height)
 }

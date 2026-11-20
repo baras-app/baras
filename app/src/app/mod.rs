@@ -1,22 +1,30 @@
 #![allow(non_snake_case)]
 
 use dioxus::prelude::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
 use crate::api::{self, BossNotesInfo};
+use crate::components::class_icons::{get_class_icon, get_role_icon};
+use crate::components::toggle_switch::ToggleSwitch;
 use crate::components::{
-    ContributorsModal, DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel,
-    CharactersPanel, CleanupRules, FileOpenBanner, HistoryPanel, LockoutResetSetting, HotkeyInput, NavMenu, OverlayToggle, ParselyUploadModal, NumberInput, ProfileUnsavedHint, AlacrityPill, BossNotesMenu, OpTimerControl, SessionStatusChip, SettingsPanel, SettingsSection, Slider, ToastFrame, ToastSeverity,
-    use_file_opener_provider, use_parsely_upload,
+    AlacrityPill, BossNotesMenu, CharactersPanel, CleanupRules, ContributorsModal, DataExplorerPanel,
+    EffectEditorPanel, EncounterEditorPanel, FileOpenBanner, HistoryPanel, HotkeyInput, LockoutResetSetting, NavMenu,
+    NumberInput, OpTimerControl, OverlayToggle, ParselyUploadModal, ProfileUnsavedHint, SessionStatusChip,
+    SettingsPanel, SettingsSection, Slider, ToastFrame, ToastSeverity, use_file_opener_provider, use_parsely_upload,
     use_parsely_upload_provider, use_toast, use_toast_provider,
 };
-use crate::components::toggle_switch::ToggleSwitch;
-use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::types::{
-    AreaVisitInfo, LogFileInfo, MainTab, MetricType, OverlaySettings, OverlayStatus, OverlayType,
-    SessionInfo, UiSessionState, UpdateInfo, WEB_OVERLAY_URL,
+    AreaVisitInfo, LogFileInfo, MainTab, MetricType, OverlaySettings, OverlayType, SessionInfo, UiSessionState,
+    UpdateInfo, WEB_OVERLAY_URL,
+};
+
+mod helpers;
+
+use helpers::{
+    OVERLAY_CATEGORIES, add_parsely_guild, apply_status, is_linux, is_macos, save_parsely_guild_fields,
+    set_light_theme, set_overlay_enabled,
 };
 
 static CSS: Asset = asset!("/assets/styles.css");
@@ -25,19 +33,6 @@ static HISTORY_CSS: Asset = asset!("/assets/history.css");
 static CHARACTERS_CSS: Asset = asset!("/assets/characters.css");
 static LOGO: Asset = asset!("/assets/logo.png");
 static FONT: Asset = asset!("/assets/StarJedi.ttf");
-
-/// WASM cannot cfg on the host OS, so ask the webview instead.
-fn is_macos() -> bool {
-    web_sys::window()
-        .map(|w| w.navigator().user_agent().unwrap_or_default().contains("Macintosh"))
-        .unwrap_or(false)
-}
-
-fn is_linux() -> bool {
-    web_sys::window()
-        .map(|w| w.navigator().user_agent().unwrap_or_default().contains("Linux"))
-        .unwrap_or(false)
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // App Component
@@ -52,31 +47,8 @@ pub fn App() -> Element {
     let mut parsely_upload = use_parsely_upload();
 
     // Overlay state
-    let mut metric_overlays_enabled = use_signal(|| {
-        MetricType::all()
-            .iter()
-            .map(|ot| (*ot, false))
-            .collect::<HashMap<_, _>>()
-    });
-    let mut personal_enabled = use_signal(|| false);
-    let mut raid_enabled = use_signal(|| false);
-    let mut boss_health_enabled = use_signal(|| false);
-    let mut timers_enabled = use_signal(|| false);
-    let mut timers_b_enabled = use_signal(|| false);
-    let mut challenges_enabled = use_signal(|| false);
-    let mut alerts_enabled = use_signal(|| false);
-    let mut effects_a_enabled = use_signal(|| false);
-    let mut effects_b_enabled = use_signal(|| false);
-    let mut effects_c_enabled = use_signal(|| false);
-    let mut cooldowns_enabled = use_signal(|| false);
-    let mut cooldowns_b_enabled = use_signal(|| false);
-    let mut dot_tracker_enabled = use_signal(|| false);
-    let mut enemy_frames_enabled = use_signal(|| false);
-    let mut notes_enabled = use_signal(|| false);
-    let mut combat_time_enabled = use_signal(|| false);
-    let mut operation_timer_enabled = use_signal(|| false);
-    let mut ability_queue_enabled = use_signal(|| false);
-    let mut ability_cast_enabled = use_signal(|| false);
+    // Config keys of the enabled overlays
+    let mut overlays_enabled = use_signal(HashSet::<String>::new);
     // Operation timer state from Tauri events
     let mut op_timer_secs = use_signal(|| 0u64);
     let mut op_timer_running = use_signal(|| false);
@@ -99,7 +71,6 @@ pub fn App() -> Element {
     let mut area_bosses = use_signal(Vec::<BossNotesInfo>::new);
     let selected_boss_id = use_signal(|| None::<String>);
 
-
     // File browser state
     let mut file_browser_open = use_signal(|| false);
     let mut log_files = use_signal(Vec::<LogFileInfo>::new);
@@ -112,6 +83,8 @@ pub fn App() -> Element {
     // UI Session State - unified state that persists across tab switches
     let mut ui_state = use_signal(UiSessionState::default);
     crate::shortcuts::use_app_shortcuts(ui_state);
+    // Render reads only this, so explorer filter and sort writes to `ui_state` don't re-render App
+    let active_tab = use_memo(move || ui_state.read().active_tab);
 
     // Other UI state (not part of session persistence)
     let mut overlay_settings = use_signal(OverlaySettings::default);
@@ -213,11 +186,9 @@ pub fn App() -> Element {
             profile_names.set(config.profiles.iter().map(|p| p.name.clone()).collect());
             active_profile.set(config.active_profile_name);
             // Auto-create a "Default" profile for new users
-            if config.profiles.is_empty() {
-                if api::save_profile("Default").await.is_ok() {
-                    profile_names.set(vec!["Default".to_string()]);
-                    active_profile.set(Some("Default".to_string()));
-                }
+            if config.profiles.is_empty() && api::save_profile("Default").await.is_ok() {
+                profile_names.set(vec!["Default".to_string()]);
+                active_profile.set(Some("Default".to_string()));
             }
             hide_small_log_files.set(config.hide_small_log_files);
             ocr_debug_dump.set(config.ocr_debug_dump);
@@ -239,6 +210,7 @@ pub fn App() -> Element {
             ui_state.write().data_explorer.show_only_bosses = config.show_only_bosses;
             ui_state.write().history.filter.flashpoints = config.raid_summaries_include_flashpoints;
             ui_state.write().data_explorer.auto_live = config.data_explorer_auto_live;
+            ui_state.write().data_explorer.overview_columns = config.overview_columns.clone();
             ui_state.write().combat_log.show_ids = config.show_log_ids;
             ui_state.write().european_number_format = config.european_number_format;
         }
@@ -260,27 +232,8 @@ pub fn App() -> Element {
 
         if let Some(status) = api::get_overlay_status().await {
             apply_status(
-                &status,
-                &mut metric_overlays_enabled,
-                &mut personal_enabled,
-                &mut raid_enabled,
-                &mut boss_health_enabled,
-                &mut timers_enabled,
-                &mut timers_b_enabled,
-                &mut challenges_enabled,
-                &mut alerts_enabled,
-                &mut effects_a_enabled,
-                &mut effects_b_enabled,
-                &mut effects_c_enabled,
-                &mut cooldowns_enabled,
-                &mut cooldowns_b_enabled,
-                &mut dot_tracker_enabled,
-                &mut notes_enabled,
-                &mut combat_time_enabled,
-                &mut operation_timer_enabled,
-                &mut ability_queue_enabled,
-                &mut enemy_frames_enabled,
-                &mut ability_cast_enabled,
+                status,
+                &mut overlays_enabled,
                 &mut overlays_visible,
                 &mut move_mode,
                 &mut rearrange_mode,
@@ -292,44 +245,32 @@ pub fn App() -> Element {
     });
 
     // Listen for file changes
-    use_future(move || async move {
-        let closure = Closure::new(move |event: JsValue| {
-            if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
-                && let Some(path) = payload.as_string()
-            {
-                opener.loaded(&path);
-                // Use try_write to handle signal being dropped when component unmounts
-                let _ = active_file.try_write().map(|mut w| *w = path);
-            }
-        });
-        api::tauri_listen("active-file-changed", &closure).await;
-        closure.forget();
+    api::use_tauri_event("active-file-changed", move |event: JsValue| {
+        if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
+            && let Some(path) = payload.as_string()
+        {
+            opener.loaded(&path);
+            // Use try_write to handle signal being dropped when component unmounts
+            let _ = active_file.try_write().map(|mut w| *w = path);
+        }
     });
 
-    use_future(move || async move {
-        let closure = Closure::new(move |_event: JsValue| {
-            let _ = screen_capture_error.try_write().map(|mut value| *value = None);
-            let _ = screen_capture_permission_open
-                .try_write()
-                .map(|mut value| *value = true);
-        });
-        api::tauri_listen("screen-capture-permission-required", &closure).await;
-        closure.forget();
+    api::use_tauri_event("screen-capture-permission-required", move |_event: JsValue| {
+        let _ = screen_capture_error.try_write().map(|mut value| *value = None);
+        let _ = screen_capture_permission_open
+            .try_write()
+            .map(|mut value| *value = true);
     });
 
     // Listen for log file changes (event-driven from watcher)
-    use_future(move || async move {
-        let closure = Closure::new(move |_event: JsValue| {
-            // Use spawn_local for JS callbacks (no Dioxus runtime context available)
-            spawn_local(async move {
-                let result = api::get_log_files().await;
-                if let Ok(files) = serde_wasm_bindgen::from_value::<Vec<LogFileInfo>>(result) {
-                    let _ = log_files.try_write().map(|mut w| *w = files);
-                }
-            });
+    api::use_tauri_event("log-files-changed", move |_event: JsValue| {
+        // Use spawn_local for JS callbacks (no Dioxus runtime context available)
+        spawn_local(async move {
+            let result = api::get_log_files().await;
+            if let Ok(files) = serde_wasm_bindgen::from_value::<Vec<LogFileInfo>>(result) {
+                let _ = log_files.try_write().map(|mut w| *w = files);
+            }
         });
-        api::tauri_listen("log-files-changed", &closure).await;
-        closure.forget();
     });
 
     // Listen for session updates (event-driven from backend signals)
@@ -365,34 +306,30 @@ pub fn App() -> Element {
     });
 
     // Listen for profile auto-switch events (role-based default profiles)
-    use_future(move || async move {
-        let closure = Closure::new(move |_event: JsValue| {
-            spawn_local(async move {
-                // Refresh profile state from backend
-                let names = api::get_profile_names().await;
-                let active = api::get_active_profile().await;
-                profile_names.set(names);
-                active_profile.set(active);
-                profile_dirty.set(false);
-                // Refresh overlay settings to match the newly loaded profile
-                if let Some(cfg) = api::get_config().await {
-                    overlay_settings.set(cfg.overlay_settings);
-                }
-                api::refresh_overlay_settings().await;
-                if let Some(status) = api::get_overlay_status().await {
-                    apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
-                        &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,
-                        &mut timers_b_enabled, &mut challenges_enabled, &mut alerts_enabled,
-                        &mut effects_a_enabled, &mut effects_b_enabled, &mut effects_c_enabled,
-                        &mut cooldowns_enabled, &mut cooldowns_b_enabled, &mut dot_tracker_enabled, &mut notes_enabled,
-                        &mut combat_time_enabled, &mut operation_timer_enabled,
-                        &mut ability_queue_enabled, &mut enemy_frames_enabled, &mut ability_cast_enabled,
-                        &mut overlays_visible, &mut move_mode, &mut rearrange_mode, &mut auto_hidden);
-                }
-            });
+    api::use_tauri_event("profile-auto-switched", move |_event: JsValue| {
+        spawn_local(async move {
+            // Refresh profile state from backend
+            let names = api::get_profile_names().await;
+            let active = api::get_active_profile().await;
+            profile_names.set(names);
+            active_profile.set(active);
+            profile_dirty.set(false);
+            // Refresh overlay settings to match the newly loaded profile
+            if let Some(cfg) = api::get_config().await {
+                overlay_settings.set(cfg.overlay_settings);
+            }
+            api::refresh_overlay_settings().await;
+            if let Some(status) = api::get_overlay_status().await {
+                apply_status(
+                    status,
+                    &mut overlays_enabled,
+                    &mut overlays_visible,
+                    &mut move_mode,
+                    &mut rearrange_mode,
+                    &mut auto_hidden,
+                );
+            }
         });
-        api::tauri_listen("profile-auto-switched", &closure).await;
-        closure.forget();
     });
 
     // Periodic refresh for live session duration (every 60 seconds)
@@ -415,193 +352,159 @@ pub fn App() -> Element {
             let closure = Closure::<dyn Fn(web_sys::Event)>::new(move |_event: web_sys::Event| {
                 spawn_local(async move {
                     let global = js_sys::global();
-                    if let Ok(data) = js_sys::Reflect::get(&global, &"__parsely_upload_result".into()) {
-                        if let Some(data_str) = data.as_string() {
-                            // Parse format: "path|success|message"
-                            let parts: Vec<&str> = data_str.splitn(3, '|').collect();
-                            if parts.len() == 3 {
-                                let path = parts[0].to_string();
-                                let success = parts[1] == "true";
-                                let message = parts[2].to_string();
-                                let _ = upload_status.try_write().map(|mut w| {
-                                    w.insert(path, (success, message));
-                                });
-                            }
-                            // Clear after reading
-                            js_sys::Reflect::delete_property(&global, &"__parsely_upload_result".into()).ok();
+                    if let Ok(data) = js_sys::Reflect::get(&global, &"__parsely_upload_result".into())
+                        && let Some(data_str) = data.as_string()
+                    {
+                        // Parse format: "path|success|message"
+                        let parts: Vec<&str> = data_str.splitn(3, '|').collect();
+                        if parts.len() == 3 {
+                            let path = parts[0].to_string();
+                            let success = parts[1] == "true";
+                            let message = parts[2].to_string();
+                            let _ = upload_status.try_write().map(|mut w| {
+                                w.insert(path, (success, message));
+                            });
                         }
+                        // Clear after reading
+                        js_sys::Reflect::delete_property(&global, &"__parsely_upload_result".into()).ok();
                     }
                 });
             });
-            let _ = window.add_event_listener_with_callback(
-                "parsely-upload-complete",
-                closure.as_ref().unchecked_ref()
-            );
+            let _ =
+                window.add_event_listener_with_callback("parsely-upload-complete", closure.as_ref().unchecked_ref());
             closure.forget();
         }
     });
 
     // Listen for session ended (player logged out, data preserved for upload)
-    use_future(move || async move {
-        let closure = Closure::new(move |_event: JsValue| {
-            let _ = session_ended.try_write().map(|mut w| *w = true);
-        });
-        api::tauri_listen("session-ended", &closure).await;
-        closure.forget();
+    api::use_tauri_event("session-ended", move |_event: JsValue| {
+        let _ = session_ended.try_write().map(|mut w| *w = true);
     });
 
     // Listen for new session started (reset UI state for fresh start)
-    use_future(move || async move {
-        let closure = Closure::new(move |_event: JsValue| {
-            // Reset session-specific state when a new file starts being parsed.
-            // Preserves user preferences like show_only_bosses, show_ids, etc.
-            let _ = ui_state.try_write().map(|mut w| w.reset_session());
-            // Clear the "session ended" flag — a new session starting means
-            // the previous logout/empty-file state is no longer relevant.
-            let _ = session_ended.try_write().map(|mut w| *w = false);
-        });
-        api::tauri_listen("new-session-started", &closure).await;
-        closure.forget();
+    api::use_tauri_event("new-session-started", move |_event: JsValue| {
+        // Reset session-specific state when a new file starts being parsed.
+        // Preserves user preferences like show_only_bosses, show_ids, etc.
+        let _ = ui_state.try_write().map(|mut w| w.reset_session());
+        // Clear the "session ended" flag — a new session starting means
+        // the previous logout/empty-file state is no longer relevant.
+        let _ = session_ended.try_write().map(|mut w| *w = false);
     });
 
     // Listen for encounter focus requests (History tab → Data Explorer). Fires after
     // the file has loaded, so it lands after the new-session reset above. The Data
     // Explorer reads the selection from ui_state when it mounts on the tab switch.
-    use_future(move || async move {
-        let closure = Closure::new(move |event: JsValue| {
-            if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
-                && let Some(id) = payload.as_f64()
-            {
-                let _ = ui_state.try_write().map(|mut state| {
-                    state.data_explorer.selected_encounter = Some(id as u32);
-                    state.active_tab = MainTab::DataExplorer;
-                });
-            }
-        });
-        api::tauri_listen("select-encounter", &closure).await;
-        closure.forget();
+    api::use_tauri_event("select-encounter", move |event: JsValue| {
+        if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
+            && let Some(id) = payload.as_f64()
+        {
+            let _ = ui_state.try_write().map(|mut state| {
+                state.data_explorer.selected_encounter = Some(id as u32);
+                state.active_tab = MainTab::DataExplorer;
+            });
+        }
     });
 
     // Listen for app updates
-    use_future(move || async move {
-        let closure = Closure::new(move |event: JsValue| {
-            if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
-                && let Ok(info) = serde_wasm_bindgen::from_value::<UpdateInfo>(payload)
-            {
-                let _ = update_available.try_write().map(|mut w| *w = Some(info));
-            }
-        });
-        api::tauri_listen("update-available", &closure).await;
-        closure.forget();
+    api::use_tauri_event("update-available", move |event: JsValue| {
+        if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
+            && let Ok(info) = serde_wasm_bindgen::from_value::<UpdateInfo>(payload)
+        {
+            let _ = update_available.try_write().map(|mut w| *w = Some(info));
+        }
     });
 
     // Listen for update failures
     let mut update_failed_toast = use_toast();
-    use_future(move || async move {
-        let closure = Closure::new(move |event: JsValue| {
-            if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
-                && let Some(msg) = payload.as_string()
-            {
-                update_failed_toast
-                    .show(format!("Update failed: {}", msg), ToastSeverity::Critical);
-            }
-            // Reset installing state so user can retry
-            let _ = update_installing.try_write().map(|mut w| *w = false);
-        });
-        api::tauri_listen("update-failed", &closure).await;
-        closure.forget();
+    api::use_tauri_event("update-failed", move |event: JsValue| {
+        if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
+            && let Some(msg) = payload.as_string()
+        {
+            update_failed_toast.show(format!("Update failed: {}", msg), ToastSeverity::Critical);
+        }
+        // Reset installing state so user can retry
+        let _ = update_installing.try_write().map(|mut w| *w = false);
     });
 
     // Listen for hotkeys unavailable (Wayland portal failure)
     let mut hotkeys_toast = use_toast();
-    use_future(move || async move {
-        let closure = Closure::new(move |event: JsValue| {
-            if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
-                && let Some(msg) = payload.as_string()
-            {
-                hotkeys_toast.show(
-                    format!("Global hotkeys unavailable: {}. Configure shortcuts in compositor settings.", msg),
-                    ToastSeverity::Normal
-                );
-            }
-        });
-        api::tauri_listen("hotkeys-unavailable", &closure).await;
-        closure.forget();
+    api::use_tauri_event("hotkeys-unavailable", move |event: JsValue| {
+        if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
+            && let Some(msg) = payload.as_string()
+        {
+            hotkeys_toast.show(
+                format!(
+                    "Global hotkeys unavailable: {}. Configure shortcuts in compositor settings.",
+                    msg
+                ),
+                ToastSeverity::Normal,
+            );
+        }
     });
 
     // Listen for overlay status changes (from hotkeys or other sources)
     // This ensures UI buttons stay in sync when overlay state changes
-    use_future(move || async move {
-        let closure = Closure::new(move |_event: JsValue| {
-            // Use spawn_local for JS callbacks (no Dioxus runtime context available)
-            spawn_local(async move {
-                if let Some(status) = api::get_overlay_status().await {
-                    // Use try_write for signals - safe outside Dioxus runtime context
-                    let _ = overlays_visible.try_write().map(|mut w| *w = status.overlays_visible);
-                    let _ = move_mode.try_write().map(|mut w| *w = status.move_mode);
-                    let _ = rearrange_mode.try_write().map(|mut w| *w = status.rearrange_mode);
-                    let _ = auto_hidden.try_write().map(|mut w| *w = status.auto_hidden);
-                }
-            });
+    api::use_tauri_event("overlay-status-changed", move |_event: JsValue| {
+        // Use spawn_local for JS callbacks (no Dioxus runtime context available)
+        spawn_local(async move {
+            if let Some(status) = api::get_overlay_status().await {
+                // Use try_write for signals - safe outside Dioxus runtime context
+                let _ = overlays_visible.try_write().map(|mut w| *w = status.overlays_visible);
+                let _ = move_mode.try_write().map(|mut w| *w = status.move_mode);
+                let _ = rearrange_mode.try_write().map(|mut w| *w = status.rearrange_mode);
+                let _ = auto_hidden.try_write().map(|mut w| *w = status.auto_hidden);
+            }
         });
-        api::tauri_listen("overlay-status-changed", &closure).await;
-        closure.forget();
     });
 
     // Backend emits this only when locking persisted a position that actually changed
-    use_future(move || async move {
-        let closure = Closure::new(move |_event: JsValue| {
-            spawn_local(async move {
-                let dirty = api::is_profile_dirty().await;
-                let _ = profile_dirty.try_write().map(|mut w| *w = dirty);
-            });
+    api::use_tauri_event("overlay-positions-changed", move |_event: JsValue| {
+        spawn_local(async move {
+            let dirty = api::is_profile_dirty().await;
+            let _ = profile_dirty.try_write().map(|mut w| *w = dirty);
         });
-        api::tauri_listen("overlay-positions-changed", &closure).await;
-        closure.forget();
     });
 
     // Listen for operation timer tick events
-    use_future(move || async move {
-        let closure = Closure::new(move |event: JsValue| {
-            // event.payload has { elapsed_secs, is_running, operation_name }
-            if let Some(payload) = js_sys::Reflect::get(&event, &"payload".into()).ok() {
-                // try_write: this runs outside the Dioxus runtime, where .set() can panic
-                if let Some(secs) = js_sys::Reflect::get(&payload, &"elapsed_secs".into()).ok().and_then(|v| v.as_f64()) {
-                    let _ = op_timer_secs.try_write().map(|mut w| *w = secs as u64);
-                }
-                if let Some(running) = js_sys::Reflect::get(&payload, &"is_running".into()).ok().and_then(|v| v.as_bool()) {
-                    let _ = op_timer_running.try_write().map(|mut w| *w = running);
-                }
-                let name = js_sys::Reflect::get(&payload, &"operation_name".into()).ok()
-                    .and_then(|v| v.as_string());
-                let _ = op_timer_name.try_write().map(|mut w| *w = name);
+    api::use_tauri_event("operation-timer-tick", move |event: JsValue| {
+        // event.payload has { elapsed_secs, is_running, operation_name }
+        if let Ok(payload) = js_sys::Reflect::get(&event, &"payload".into()) {
+            // try_write: this runs outside the Dioxus runtime, where .set() can panic
+            if let Some(secs) = js_sys::Reflect::get(&payload, &"elapsed_secs".into())
+                .ok()
+                .and_then(|v| v.as_f64())
+            {
+                let _ = op_timer_secs.try_write().map(|mut w| *w = secs as u64);
             }
-        });
-        api::tauri_listen("operation-timer-tick", &closure).await;
-        closure.forget();
+            if let Some(running) = js_sys::Reflect::get(&payload, &"is_running".into())
+                .ok()
+                .and_then(|v| v.as_bool())
+            {
+                let _ = op_timer_running.try_write().map(|mut w| *w = running);
+            }
+            let name = js_sys::Reflect::get(&payload, &"operation_name".into())
+                .ok()
+                .and_then(|v| v.as_string());
+            let _ = op_timer_name.try_write().map(|mut w| *w = name);
+        }
     });
 
     // Listen for auto-hidden toast events (from hotkey/tray show while auto-hidden)
-    use_future(move || async move {
-        let closure = Closure::new(move |_event: JsValue| {
-            spawn_local(async move {
-                let mut toast = use_toast();
-                toast.show("Overlays are currently auto-hidden".to_string(), ToastSeverity::Normal);
-            });
+    api::use_tauri_event("overlays-auto-hidden-toast", move |_event: JsValue| {
+        spawn_local(async move {
+            let mut toast = use_toast();
+            toast.show("Overlays are currently auto-hidden".to_string(), ToastSeverity::Normal);
         });
-        api::tauri_listen("overlays-auto-hidden-toast", &closure).await;
-        closure.forget();
     });
 
     // Check for changelog on startup
     use_future(move || async move {
-        if let Some(response) = api::get_changelog().await {
-            if response.should_show {
-                if let Some(html) = response.html {
-                    changelog_html.set(html);
-                    changelog_open.set(true);
-                }
-            }
+        if let Some(response) = api::get_changelog(false).await
+            && response.should_show
+            && let Some(html) = response.html
+        {
+            changelog_html.set(html);
+            changelog_open.set(true);
         }
     });
 
@@ -609,46 +512,16 @@ pub fn App() -> Element {
     // Computed Values
     // ─────────────────────────────────────────────────────────────────────────
 
-    let enabled_map = metric_overlays_enabled();
-    let personal_on = personal_enabled();
-    let raid_on = raid_enabled();
-    let boss_health_on = boss_health_enabled();
-    let timers_on = timers_enabled();
-    let timers_b_on = timers_b_enabled();
-    let challenges_on = challenges_enabled();
-    let alerts_on = alerts_enabled();
-    let effects_a_on = effects_a_enabled();
-    let effects_b_on = effects_b_enabled();
-    let effects_c_on = effects_c_enabled();
-    let cooldowns_on = cooldowns_enabled();
-    let cooldowns_b_on = cooldowns_b_enabled();
-    let dot_tracker_on = dot_tracker_enabled();
-    let notes_on = notes_enabled();
-    let combat_time_on = combat_time_enabled();
-    let operation_timer_on = operation_timer_enabled();
-    let ability_queue_on = ability_queue_enabled();
-    let enemy_frames_on = enemy_frames_enabled();
-    let ability_cast_on = ability_cast_enabled();
-    let any_enabled = enabled_map.values().any(|&v| v)
-        || personal_on
-        || raid_on
-        || boss_health_on
-        || timers_on
-        || timers_b_on
-        || challenges_on
-        || alerts_on
-        || effects_a_on
-        || effects_b_on
-        || effects_c_on
-        || cooldowns_on
-        || cooldowns_b_on
-        || dot_tracker_on
-        || notes_on
-        || combat_time_on
-        || operation_timer_on
-        || ability_queue_on
-        || enemy_frames_on
-        || ability_cast_on;
+    let enabled_set = overlays_enabled();
+    let is_on = |key: &str| enabled_set.contains(key);
+    let raid_on = is_on("raid");
+    let pvp_metrics = MetricType::pvp();
+    let any_enabled = OVERLAY_CATEGORIES
+        .iter()
+        .flat_map(|(_, defs)| defs.iter())
+        .any(|d| is_on(d.key))
+        || MetricType::all().iter().any(|m| is_on(m.config_key()))
+        || is_on("enemy_frames");
     let is_visible = overlays_visible();
     let is_move_mode = move_mode();
     let is_rearrange = rearrange_mode();
@@ -685,15 +558,13 @@ pub fn App() -> Element {
     });
 
     // Enabled counts for the category card headers on the Overlays page
-    let count_on = |flags: &[bool]| flags.iter().filter(|on| **on).count();
-    let general_on = count_on(&[personal_on, raid_on, alerts_on, combat_time_on, operation_timer_on, ability_cast_on]);
-    let encounter_on = count_on(&[boss_health_on, challenges_on, timers_on, timers_b_on, notes_on, ability_queue_on]);
-    let effects_on = count_on(&[effects_a_on, effects_b_on, effects_c_on, cooldowns_on, cooldowns_b_on, dot_tracker_on]);
-    let pvp_metrics = MetricType::pvp();
-    let metric_on = |m: &MetricType| enabled_map.get(m).copied().unwrap_or(false);
-    let metrics_on = MetricType::all().iter().filter(|m| !pvp_metrics.contains(m) && metric_on(m)).count();
+    let metrics_on = MetricType::all()
+        .iter()
+        .filter(|m| !pvp_metrics.contains(m) && is_on(m.config_key()))
+        .count();
     let metrics_total = MetricType::all().len() - pvp_metrics.len();
-    let pvp_on = usize::from(enemy_frames_on) + pvp_metrics.iter().filter(|m| metric_on(m)).count();
+    let enemy_frames_on = is_on("enemy_frames");
+    let pvp_on = usize::from(enemy_frames_on) + pvp_metrics.iter().filter(|m| is_on(m.config_key())).count();
     let pvp_total = 1 + pvp_metrics.len();
 
     // Session status chip actions (shared by every session bar variant)
@@ -738,14 +609,14 @@ pub fn App() -> Element {
                     div { class: "header-nav",
                         div { class: "header-tabs",
                             button {
-                                class: if ui_state.read().active_tab == MainTab::DataExplorer { "tab-btn active" } else { "tab-btn" },
+                                class: if active_tab() == MainTab::DataExplorer { "tab-btn active" } else { "tab-btn" },
                                 title: "Pull breakdowns for currently selected file",
                                 onclick: move |_| ui_state.write().active_tab = MainTab::DataExplorer,
                                 i { class: "fa-solid fa-magnifying-glass-chart" }
                                 span { class: "tab-label", " Analysis" }
                             }
                             button {
-                                class: if ui_state.read().active_tab == MainTab::Overlays { "tab-btn active" } else { "tab-btn" },
+                                class: if active_tab() == MainTab::Overlays { "tab-btn active" } else { "tab-btn" },
                                 title: "Enable, arrange and customize overlays",
                                 onclick: move |_| ui_state.write().active_tab = MainTab::Overlays,
                                 i { class: "fa-solid fa-layer-group" }
@@ -756,7 +627,7 @@ pub fn App() -> Element {
                                 (MainTab::Effects, "fa-solid fa-heart-pulse", "Effects", "HoTs, DoTs, DCDs and other effects that are tracked across all encounters"),
                             ] {
                                 button {
-                                    class: if ui_state.read().active_tab == tab { "tab-btn active" } else { "tab-btn" },
+                                    class: if active_tab() == tab { "tab-btn active" } else { "tab-btn" },
                                     title: tip,
                                     onclick: move |_| ui_state.write().active_tab = tab,
                                     i { class: icon }
@@ -779,7 +650,7 @@ pub fn App() -> Element {
                                 (MainTab::Settings, "fa-solid fa-gear", "Settings", "Log directory, hotkeys, audio and application options"),
                             ] {
                                 button {
-                                    class: if ui_state.read().active_tab == tab { "tab-btn active" } else { "tab-btn" },
+                                    class: if active_tab() == tab { "tab-btn active" } else { "tab-btn" },
                                     title: tip,
                                     onclick: move |_| ui_state.write().active_tab = tab,
                                     i { class: icon }
@@ -800,10 +671,10 @@ pub fn App() -> Element {
                                         EventHandler::new(|_| { spawn(api::open_url("https://github.com/baras-app/baras")); })),
                                     ("fa-solid fa-heart", "Contributors".into(), "The people behind BARAS",
                                         EventHandler::new(move |_| contributors_open.set(true))),
-                                    ("fa-solid fa-scroll", format!("Changelog (v{})", app_version()), "What changed in this version",
+                                    ("fa-solid fa-scroll", format!("Changelog (v{})", app_version()), "Release notes for every version",
                                         EventHandler::new(move |_| {
                                             spawn(async move {
-                                                if let Some(html) = api::get_changelog().await.and_then(|r| r.html) {
+                                                if let Some(html) = api::get_changelog(true).await.and_then(|r| r.html) {
                                                     changelog_html.set(html);
                                                 }
                                                 changelog_open.set(true);
@@ -966,14 +837,7 @@ pub fn App() -> Element {
                                                 }
                                                 profile_dirty.set(false);
                                                 if let Some(status) = api::get_overlay_status().await {
-                                                    apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
-                                                        &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,
-                                                        &mut timers_b_enabled, &mut challenges_enabled, &mut alerts_enabled,
-                                                        &mut effects_a_enabled, &mut effects_b_enabled, &mut effects_c_enabled,
-                                                        &mut cooldowns_enabled, &mut cooldowns_b_enabled, &mut dot_tracker_enabled, &mut notes_enabled,
-                                                        &mut combat_time_enabled, &mut operation_timer_enabled,
-                                                        &mut ability_queue_enabled, &mut enemy_frames_enabled, &mut ability_cast_enabled,
-                                                        &mut overlays_visible, &mut move_mode, &mut rearrange_mode, &mut auto_hidden);
+                                                    apply_status(status, &mut overlays_enabled, &mut overlays_visible, &mut move_mode, &mut rearrange_mode, &mut auto_hidden);
                                                 }
                                             }
                                         });
@@ -1068,7 +932,7 @@ pub fn App() -> Element {
                                             player_discipline: session_info().and_then(|s| s.player_discipline),
                                         }
                                         OpTimerControl { op_timer_secs, op_timer_running, live: live_tailing }
-                                        if notes_enabled() {
+                                        if is_on("notes") {
                                             BossNotesMenu { area_bosses, selected_boss_id }
                                         }
 
@@ -1088,8 +952,8 @@ pub fn App() -> Element {
                                                                 let p = path.clone();
                                                                 move |e| {
                                                                     e.stop_propagation();
-                                                                    let filename = p.split('/').last()
-                                                                        .or_else(|| p.split('\\').last())
+                                                                    let filename = p.split('/').next_back()
+                                                                        .or_else(|| p.split('\\').next_back())
                                                                         .unwrap_or("combat.txt")
                                                                         .to_string();
                                                                     parsely_upload.open_file(p.clone(), filename);
@@ -1181,7 +1045,7 @@ pub fn App() -> Element {
                 // ─────────────────────────────────────────────────────────────
                 // Overlays Tab
                 // ─────────────────────────────────────────────────────────────
-                if ui_state.read().active_tab == MainTab::Overlays {
+                if active_tab() == MainTab::Overlays {
                     section { class: "overlay-controls",
                         // Global controls as the header of the overlay card
                         div { class: "overlay-toolbar",
@@ -1248,298 +1112,40 @@ pub fn App() -> Element {
 
                         // Overlay categories in columns
                         div { class: "overlay-categories",
-                            div { class: "overlay-category",
-                                div { class: "category-header",
-                                    h4 { class: "category-title", "General" }
-                                    span { class: "category-count", "{general_on} of 6" }
-                                }
-                                div { class: "category-buttons",
-                                    OverlayToggle {
-                                        label: "Personal Stats",
-                                        icon: "fa-solid fa-chart-bar",
-                                        title: "Shows your personal combat statistics",
-                                        active: personal_on,
-                                        tab_key: "personal",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::Personal, personal_on).await {
-                                                personal_enabled.set(!personal_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
+                            for (category, defs) in OVERLAY_CATEGORIES {
+                                div { class: "overlay-category",
+                                    div { class: "category-header",
+                                        h4 { class: "category-title", "{category}" }
+                                        span { class: "category-count",
+                                            "{defs.iter().filter(|d| is_on(d.key)).count()} of {defs.len()}"
+                                        }
                                     }
-                                    OverlayToggle {
-                                        label: "Raid Frames",
-                                        icon: "fa-solid fa-users",
-                                        title: "Displays party/raid member health bars with effect tracking",
-                                        active: raid_on,
-                                        tab_key: "raid",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::Raid, raid_on).await {
-                                                raid_enabled.set(!raid_on);
-                                                if raid_on { rearrange_mode.set(false); }
-                                                profile_dirty.set(api::is_profile_dirty().await);
+                                    div { class: "category-buttons",
+                                        for def in defs {
+                                            {
+                                                let (kind, key) = (def.kind, def.key);
+                                                let on = is_on(key);
+                                                rsx! {
+                                                    OverlayToggle {
+                                                        key: "{key}",
+                                                        label: def.label,
+                                                        icon: def.icon,
+                                                        title: def.title,
+                                                        active: on,
+                                                        tab_key: def.has_settings.then_some(key),
+                                                        on_toggle: move |_| { spawn(async move {
+                                                            if api::toggle_overlay(kind, on).await {
+                                                                set_overlay_enabled(&mut overlays_enabled, key, !on);
+                                                                if on && key == "raid" { rearrange_mode.set(false); }
+                                                                profile_dirty.set(api::is_profile_dirty().await);
+                                                            }
+                                                        }); },
+                                                        on_settings: open_overlay_settings,
+                                                        drawer_overlay: drawer_overlay.clone(),
+                                                    }
+                                                }
                                             }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Alerts",
-                                        icon: "fa-solid fa-bell",
-                                        title: "Shows combat alerts and notifications",
-                                        active: alerts_on,
-                                        tab_key: "alerts",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::Alerts, alerts_on).await {
-                                                alerts_enabled.set(!alerts_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Combat Time",
-                                        icon: "fa-solid fa-stopwatch",
-                                        title: "Displays the current encounter combat time",
-                                        active: combat_time_on,
-                                        tab_key: "combat_time",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::CombatTime, combat_time_on).await {
-                                                combat_time_enabled.set(!combat_time_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Op Timer",
-                                        icon: "fa-solid fa-hourglass-half",
-                                        title: "Displays a persistent timer for the entire operation run",
-                                        active: operation_timer_on,
-                                        tab_key: "operation_timer",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::OperationTimer, operation_timer_on).await {
-                                                operation_timer_enabled.set(!operation_timer_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Abilities Cast",
-                                        icon: "fa-solid fa-list-ol",
-                                        title: "Lists the abilities you recently cast",
-                                        active: ability_cast_on,
-                                        tab_key: "ability_cast",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::AbilityCast, ability_cast_on).await {
-                                                ability_cast_enabled.set(!ability_cast_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                }
-                            }
-                            div { class: "overlay-category",
-                                div { class: "category-header",
-                                    h4 { class: "category-title", "Encounter" }
-                                    span { class: "category-count", "{encounter_on} of 6" }
-                                }
-                                div { class: "category-buttons",
-                                    OverlayToggle {
-                                        label: "Boss Health",
-                                        icon: "fa-solid fa-heart-pulse",
-                                        title: "Shows boss health bars and cast timers",
-                                        active: boss_health_on,
-                                        tab_key: "boss_health",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::BossHealth, boss_health_on).await {
-                                                boss_health_enabled.set(!boss_health_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Challenges",
-                                        icon: "fa-solid fa-trophy",
-                                        title: "Tracks raid challenge objectives and progress",
-                                        active: challenges_on,
-                                        tab_key: "challenges",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::Challenges, challenges_on).await {
-                                                challenges_enabled.set(!challenges_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Timers A",
-                                        icon: "fa-solid fa-clock",
-                                        title: "Displays encounter-specific timers and phase markers (Group A)",
-                                        active: timers_on,
-                                        tab_key: "timers_a",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::TimersA, timers_on).await {
-                                                timers_enabled.set(!timers_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Timers B",
-                                        icon: "fa-solid fa-clock",
-                                        title: "Displays encounter-specific timers and phase markers (Group B)",
-                                        active: timers_b_on,
-                                        tab_key: "timers_b",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::TimersB, timers_b_on).await {
-                                                timers_b_enabled.set(!timers_b_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Notes",
-                                        icon: "fa-solid fa-note-sticky",
-                                        title: "Displays encounter notes written in the Encounter Editor",
-                                        active: notes_on,
-                                        tab_key: "notes",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::Notes, notes_on).await {
-                                                notes_enabled.set(!notes_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Ability Queue",
-                                        icon: "fa-solid fa-layer-group",
-                                        title: "Displays GCD bar, queued/ready abilities, and active ability countdowns",
-                                        active: ability_queue_on,
-                                        tab_key: None,
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::AbilityQueue, ability_queue_on).await {
-                                                ability_queue_enabled.set(!ability_queue_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                }
-                            }
-                            div { class: "overlay-category",
-                                div { class: "category-header",
-                                    h4 { class: "category-title", "Effects" }
-                                    span { class: "category-count", "{effects_on} of 6" }
-                                }
-                                div { class: "category-buttons",
-                                    OverlayToggle {
-                                        label: "Effects A",
-                                        icon: "fa-solid fa-bolt",
-                                        title: "Displays tracked buffs and effects (Group A)",
-                                        active: effects_a_on,
-                                        tab_key: "effects_a",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::EffectsA, effects_a_on).await {
-                                                effects_a_enabled.set(!effects_a_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Effects B",
-                                        icon: "fa-solid fa-bolt",
-                                        title: "Displays tracked buffs and effects (Group B)",
-                                        active: effects_b_on,
-                                        tab_key: "effects_b",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::EffectsB, effects_b_on).await {
-                                                effects_b_enabled.set(!effects_b_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Effects C",
-                                        icon: "fa-solid fa-bolt",
-                                        title: "Displays tracked buffs and effects (Group C)",
-                                        active: effects_c_on,
-                                        tab_key: "effects_c",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::EffectsC, effects_c_on).await {
-                                                effects_c_enabled.set(!effects_c_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Cooldowns A",
-                                        icon: "fa-solid fa-rotate",
-                                        title: "Tracks ability cooldowns (Group A)",
-                                        active: cooldowns_on,
-                                        tab_key: "cooldowns",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::Cooldowns, cooldowns_on).await {
-                                                cooldowns_enabled.set(!cooldowns_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "Cooldowns B",
-                                        icon: "fa-solid fa-rotate",
-                                        title: "Tracks ability cooldowns (Group B)",
-                                        active: cooldowns_b_on,
-                                        tab_key: "cooldowns_b",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::CooldownsB, cooldowns_b_on).await {
-                                                cooldowns_b_enabled.set(!cooldowns_b_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
-                                    }
-                                    OverlayToggle {
-                                        label: "DOT Tracker",
-                                        icon: "fa-solid fa-fire",
-                                        title: "Tracks damage-over-time effects on targets",
-                                        active: dot_tracker_on,
-                                        tab_key: "dot_tracker",
-                                        on_toggle: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::DotTracker, dot_tracker_on).await {
-                                                dot_tracker_enabled.set(!dot_tracker_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
-                                            }
-                                        }); },
-                                        on_settings: open_overlay_settings,
-                                        drawer_overlay: drawer_overlay.clone(),
+                                        }
                                     }
                                 }
                             }
@@ -1552,20 +1158,18 @@ pub fn App() -> Element {
                                     for mt in MetricType::all().iter().filter(|mt| !MetricType::pvp().contains(mt)) {
                                         {
                                             let ot = *mt;
-                                            let is_on = enabled_map.get(&ot).copied().unwrap_or(false);
+                                            let on = is_on(ot.config_key());
                                             rsx! {
                                                 OverlayToggle {
                                                     key: "{ot.config_key()}",
                                                     label: ot.label(),
                                                     icon: ot.icon_class(),
                                                     title: "",
-                                                    active: is_on,
+                                                    active: on,
                                                     tab_key: ot.config_key(),
                                                     on_toggle: move |_| { spawn(async move {
-                                                        if api::toggle_overlay(OverlayType::Metric(ot), is_on).await {
-                                                            let mut map = metric_overlays_enabled();
-                                                            map.insert(ot, !is_on);
-                                                            metric_overlays_enabled.set(map);
+                                                        if api::toggle_overlay(OverlayType::Metric(ot), on).await {
+                                                            set_overlay_enabled(&mut overlays_enabled, ot.config_key(), !on);
                                                             profile_dirty.set(api::is_profile_dirty().await);
                                                         }
                                                     }); },
@@ -1591,7 +1195,7 @@ pub fn App() -> Element {
                                         tab_key: "enemy_frames",
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::EnemyFrames, enemy_frames_on).await {
-                                                enemy_frames_enabled.set(!enemy_frames_on);
+                                                set_overlay_enabled(&mut overlays_enabled, "enemy_frames", !enemy_frames_on);
                                                 profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
@@ -1601,20 +1205,18 @@ pub fn App() -> Element {
                                     for mt in MetricType::pvp() {
                                         {
                                             let ot = *mt;
-                                            let is_on = enabled_map.get(&ot).copied().unwrap_or(false);
+                                            let on = is_on(ot.config_key());
                                             rsx! {
                                                 OverlayToggle {
                                                     key: "{ot.config_key()}",
                                                     label: ot.label(),
                                                     icon: ot.icon_class(),
                                                     title: "Show your DTPS over the past 20 seconds by source. Optionally enable total DTPS by source for the entire fight",
-                                                    active: is_on,
+                                                    active: on,
                                                     tab_key: ot.config_key(),
                                                     on_toggle: move |_| { spawn(async move {
-                                                        if api::toggle_overlay(OverlayType::Metric(ot), is_on).await {
-                                                            let mut map = metric_overlays_enabled();
-                                                            map.insert(ot, !is_on);
-                                                            metric_overlays_enabled.set(map);
+                                                        if api::toggle_overlay(OverlayType::Metric(ot), on).await {
+                                                            set_overlay_enabled(&mut overlays_enabled, ot.config_key(), !on);
                                                             profile_dirty.set(api::is_profile_dirty().await);
                                                         }
                                                     }); },
@@ -1634,7 +1236,7 @@ pub fn App() -> Element {
                 // ─────────────────────────────────────────────────────────────
                 // Encounter Editor Tab
                 // ─────────────────────────────────────────────────────────────
-                if ui_state.read().active_tab == MainTab::EncounterBuilder {
+                if active_tab() == MainTab::EncounterBuilder {
                     EncounterEditorPanel {
                         state: ui_state,
                     }
@@ -1643,7 +1245,7 @@ pub fn App() -> Element {
                 // ─────────────────────────────────────────────────────────────
                 // Effects Tab
                 // ─────────────────────────────────────────────────────────────
-                if ui_state.read().active_tab == MainTab::Effects {
+                if active_tab() == MainTab::Effects {
                     EffectEditorPanel {
                         state: ui_state,
                     }
@@ -1652,7 +1254,7 @@ pub fn App() -> Element {
                 // ─────────────────────────────────────────────────────────────
                 // Settings Tab
                 // ─────────────────────────────────────────────────────────────
-                if ui_state.read().active_tab == MainTab::Settings {
+                if active_tab() == MainTab::Settings {
                     section { class: "settings-page",
                         div { class: "settings-header",
                             h3 { "Settings" }
@@ -1723,11 +1325,10 @@ pub fn App() -> Element {
                                         minimize_to_tray.set(checked);
                                         let mut toast = use_toast();
                                         spawn(async move {
-                                            if let Some(mut cfg) = api::get_config().await {
+                                            if let Err(err) = api::patch_config(|cfg| {
                                                 cfg.minimize_to_tray = checked;
-                                                if let Err(err) = api::update_config(&cfg).await {
-                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                }
+                                            }).await {
+                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                                             }
                                         });
                                     }
@@ -1907,11 +1508,10 @@ pub fn App() -> Element {
                                         audio_enabled.set(checked);
                                         let mut toast = use_toast();
                                         spawn(async move {
-                                            if let Some(mut cfg) = api::get_config().await {
+                                            if let Err(err) = api::patch_config(|cfg| {
                                                 cfg.audio.enabled = checked;
-                                                if let Err(err) = api::update_config(&cfg).await {
-                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                }
+                                            }).await {
+                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                                             }
                                         });
                                     }
@@ -1931,11 +1531,10 @@ pub fn App() -> Element {
                                     audio_volume.set(val);
                                     let mut toast = use_toast();
                                     spawn(async move {
-                                        if let Some(mut cfg) = api::get_config().await {
+                                        if let Err(err) = api::patch_config(|cfg| {
                                             cfg.audio.volume = val;
-                                            if let Err(err) = api::update_config(&cfg).await {
-                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                            }
+                                        }).await {
+                                            toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                                         }
                                     });
                                 },
@@ -1951,11 +1550,10 @@ pub fn App() -> Element {
                                         audio_tts_enabled.set(checked);
                                         let mut toast = use_toast();
                                         spawn(async move {
-                                            if let Some(mut cfg) = api::get_config().await {
+                                            if let Err(err) = api::patch_config(|cfg| {
                                                 cfg.audio.tts_enabled = checked;
-                                                if let Err(err) = api::update_config(&cfg).await {
-                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                }
+                                            }).await {
+                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                                             }
                                         });
                                     }
@@ -2149,11 +1747,10 @@ pub fn App() -> Element {
                                         ocr_debug_dump.set(checked);
                                         let mut toast = use_toast();
                                         spawn(async move {
-                                            if let Some(mut cfg) = api::get_config().await {
+                                            if let Err(err) = api::patch_config(|cfg| {
                                                 cfg.ocr_debug_dump = checked;
-                                                if let Err(err) = api::update_config(&cfg).await {
-                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                }
+                                            }).await {
+                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                                             }
                                         });
                                     }
@@ -2172,11 +1769,10 @@ pub fn App() -> Element {
                                         ocr_debug_max_dumps.set(count);
                                         let mut toast = use_toast();
                                         spawn(async move {
-                                            if let Some(mut cfg) = api::get_config().await {
+                                            if let Err(err) = api::patch_config(|cfg| {
                                                 cfg.ocr_debug_max_dumps = count;
-                                                if let Err(err) = api::update_config(&cfg).await {
-                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                }
+                                            }).await {
+                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                                             }
                                         });
                                     }
@@ -2193,7 +1789,7 @@ pub fn App() -> Element {
                 // ─────────────────────────────────────────────────────────────
                 // History Tab
                 // ─────────────────────────────────────────────────────────────
-                if let Some(view) = ui_state.read().active_tab.history_view() {
+                if let Some(view) = active_tab().history_view() {
                     HistoryPanel {
                         european: *european_number_format.read(),
                         state: ui_state,
@@ -2204,14 +1800,14 @@ pub fn App() -> Element {
                 // ─────────────────────────────────────────────────────────────
                 // Characters Tab
                 // ─────────────────────────────────────────────────────────────
-                if ui_state.read().active_tab == MainTab::Characters {
+                if active_tab() == MainTab::Characters {
                     CharactersPanel {}
                 }
 
                 // ─────────────────────────────────────────────────────────────
                 // Data Explorer Tab
                 // ─────────────────────────────────────────────────────────────
-                if ui_state.read().active_tab == MainTab::DataExplorer {
+                if active_tab() == MainTab::DataExplorer {
                     ErrorBoundary {
                         handle_error: |_errors: ErrorContext| {
                             rsx! {
@@ -2240,15 +1836,13 @@ pub fn App() -> Element {
             }
 
             // Overlay settings: docked beside the Overlays page whenever it is open
-            if ui_state.read().active_tab == MainTab::Overlays {
+            if active_tab() == MainTab::Overlays {
                 SettingsPanel {
                     settings: overlay_settings,
                     selected_tab: selected_overlay_tab,
                     profile_names: profile_names,
                     active_profile: active_profile,
-                    metric_overlays_enabled: metric_overlays_enabled,
-                    personal_enabled: personal_enabled,
-                    raid_enabled: raid_enabled,
+                    overlays_enabled,
                     overlays_visible: overlays_visible,
                     profile_dirty: profile_dirty,
                     section: settings_section,
@@ -2275,11 +1869,10 @@ pub fn App() -> Element {
                                     hide_small_log_files.set(checked);
                                     let mut toast = use_toast();
                                     spawn(async move {
-                                        if let Some(mut cfg) = api::get_config().await {
+                                        if let Err(err) = api::patch_config(|cfg| {
                                             cfg.hide_small_log_files = checked;
-                                            if let Err(err) = api::update_config(&cfg).await {
-                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                            }
+                                        }).await {
+                                            toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                                         }
                                     });
                                 },
@@ -2331,7 +1924,7 @@ pub fn App() -> Element {
                                     let day = f.day_of_week.to_lowercase();
                                     terms.iter().all(|term| {
                                         // Also check area names for operation search
-                                        let areas_match = f.areas.as_ref().map_or(false, |areas| {
+                                        let areas_match = f.areas.as_ref().is_some_and(|areas| {
                                             areas.iter().any(|a| {
                                                 a.display.to_lowercase().contains(term)
                                                     || a.area_name.to_lowercase().contains(term)
@@ -2618,134 +2211,3 @@ pub fn App() -> Element {
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Parsely Guild Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Apply the theme now and persist it (header toggle and Settings checkbox)
-fn set_light_theme(mut light_theme: Signal<bool>, on: bool) {
-    light_theme.set(on);
-    crate::utils::apply_theme(on);
-    let mut toast = use_toast();
-    spawn(async move {
-        if let Some(mut cfg) = api::get_config().await {
-            cfg.light_theme = on;
-            if let Err(err) = api::update_config(&cfg).await {
-                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-            }
-        }
-    });
-}
-
-/// Persist guild fields (`guilds` + `selected_guild`) to the config without
-/// touching unrelated parsely settings. Used by add/remove handlers so the
-/// chip list stays in sync with what the upload modal sees.
-fn save_parsely_guild_fields(
-    guilds: Vec<String>,
-    selected: Option<String>,
-    mut save_status: Signal<String>,
-) {
-    let mut toast = use_toast();
-    spawn(async move {
-        if let Some(mut cfg) = api::get_config().await {
-            cfg.parsely.guilds = guilds;
-            cfg.parsely.selected_guild = selected;
-            match api::update_config(&cfg).await {
-                Ok(_) => save_status.set("Saved!".to_string()),
-                Err(err) => toast.show(
-                    format!("Failed to save guilds: {}", err),
-                    ToastSeverity::Normal,
-                ),
-            }
-        }
-    });
-}
-
-/// Add the trimmed guild input to the list and persist guild fields to config.
-/// No-op if the input is empty or already present.
-fn add_parsely_guild(
-    mut input: Signal<String>,
-    mut guilds: Signal<Vec<String>>,
-    mut selected: Signal<Option<String>>,
-    save_status: Signal<String>,
-) {
-    let trimmed = input.read().trim().to_string();
-    if trimmed.is_empty() || guilds.read().iter().any(|g| g == &trimmed) {
-        return;
-    }
-    guilds.write().push(trimmed.clone());
-    if selected.read().is_none() {
-        selected.set(Some(trimmed));
-    }
-    input.set(String::new());
-
-    save_parsely_guild_fields(
-        guilds.read().clone(),
-        selected.read().clone(),
-        save_status,
-    );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[allow(clippy::too_many_arguments)]
-fn apply_status(
-    status: &OverlayStatus,
-    metric_overlays_enabled: &mut Signal<HashMap<MetricType, bool>>,
-    personal_enabled: &mut Signal<bool>,
-    raid_enabled: &mut Signal<bool>,
-    boss_health_enabled: &mut Signal<bool>,
-    timers_enabled: &mut Signal<bool>,
-    timers_b_enabled: &mut Signal<bool>,
-    challenges_enabled: &mut Signal<bool>,
-    alerts_enabled: &mut Signal<bool>,
-    effects_a_enabled: &mut Signal<bool>,
-    effects_b_enabled: &mut Signal<bool>,
-    effects_c_enabled: &mut Signal<bool>,
-    cooldowns_enabled: &mut Signal<bool>,
-    cooldowns_b_enabled: &mut Signal<bool>,
-    dot_tracker_enabled: &mut Signal<bool>,
-    notes_enabled: &mut Signal<bool>,
-    combat_time_enabled: &mut Signal<bool>,
-    operation_timer_enabled: &mut Signal<bool>,
-    ability_queue_enabled: &mut Signal<bool>,
-    enemy_frames_enabled: &mut Signal<bool>,
-    ability_cast_enabled: &mut Signal<bool>,
-    overlays_visible: &mut Signal<bool>,
-    move_mode: &mut Signal<bool>,
-    rearrange_mode: &mut Signal<bool>,
-    auto_hidden: &mut Signal<bool>,
-) {
-    let map: HashMap<MetricType, bool> = MetricType::all()
-        .iter()
-        .map(|ot| (*ot, status.enabled.contains(&ot.config_key().to_string())))
-        .collect();
-    metric_overlays_enabled.set(map);
-    personal_enabled.set(status.personal_enabled);
-    raid_enabled.set(status.raid_enabled);
-    boss_health_enabled.set(status.boss_health_enabled);
-    timers_enabled.set(status.timers_enabled);
-    timers_b_enabled.set(status.timers_b_enabled);
-    challenges_enabled.set(status.challenges_enabled);
-    alerts_enabled.set(status.alerts_enabled);
-    effects_a_enabled.set(status.effects_a_enabled);
-    effects_b_enabled.set(status.effects_b_enabled);
-    effects_c_enabled.set(status.effects_c_enabled);
-    cooldowns_enabled.set(status.cooldowns_enabled);
-    cooldowns_b_enabled.set(status.cooldowns_b_enabled);
-    dot_tracker_enabled.set(status.dot_tracker_enabled);
-    notes_enabled.set(status.notes_enabled);
-    combat_time_enabled.set(status.combat_time_enabled);
-    operation_timer_enabled.set(status.operation_timer_enabled);
-    ability_queue_enabled.set(status.ability_queue_enabled);
-    enemy_frames_enabled.set(status.enemy_frames_enabled);
-    ability_cast_enabled.set(status.ability_cast_enabled);
-    overlays_visible.set(status.overlays_visible);
-    move_mode.set(status.move_mode);
-    rearrange_mode.set(status.rearrange_mode);
-    auto_hidden.set(status.auto_hidden);
-}
-

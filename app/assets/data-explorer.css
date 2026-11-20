@@ -602,7 +602,11 @@
 .tab-content-area {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow-x: auto;
+  /* Always scroll vertically, so the scrollbar's width is always taken: content
+     (table columns) doesn't reflow sideways as its height crosses the viewport.
+     scrollbar-gutter: stable would be the quiet way, but WebKitGTK ignores it */
+  overflow-y: scroll;
   display: flex;
   flex-direction: column;
 }
@@ -718,10 +722,27 @@
   border-radius: var(--radius-md);
 }
 
+/* Fixed layout: number columns sized for their widest formatted value
+   ("123.45M", "100.0%"); the name takes the rest and truncates */
 .npc-health-table {
   border-collapse: collapse;
   font-size: 13px;
   width: 100%;
+  table-layout: fixed;
+}
+
+.npc-health-table thead th.num {
+  width: 84px;
+}
+
+.npc-health-table thead th.num:last-child {
+  width: 72px;
+}
+
+.npc-health-table td:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .npc-health-table tbody tr:last-child td {
@@ -883,6 +904,73 @@
   flex-shrink: 0;
 }
 
+/* Anchors the column menu, which can't live inside the scrolling box */
+.overview-table-wrap {
+  position: relative;
+}
+
+/* Columns button in the Name header cell */
+.overview-columns-btn {
+  margin-left: 0.6em;
+  padding: 0.15em 0.35em;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.overview-columns-btn:hover {
+  color: var(--text-primary);
+  background: var(--blue-alpha-8);
+}
+
+.overview-columns-list {
+  top: 30px;
+  left: 8px;
+  max-height: 70vh;
+  overflow-y: auto;
+  white-space: nowrap;
+}
+
+.overview-columns-row {
+  display: flex;
+  align-items: center;
+  gap: 0.15em;
+}
+
+.overview-columns-row .nav-menu-item {
+  flex: 1;
+}
+
+.overview-columns-desc {
+  margin-left: auto;
+  padding-left: 1.5em;
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+.overview-columns-move {
+  padding: 0.3em 0.5em;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.8em;
+  cursor: pointer;
+}
+
+.overview-columns-move:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--blue-alpha-8);
+}
+
+.overview-columns-move:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
 /* Card around the table; it scrolls sideways itself when the columns overflow */
 .overview-table-box {
   overflow-x: auto;
@@ -928,7 +1016,15 @@
 .overview-table {
   width: 100%;
   border-collapse: collapse;
+  /* Column widths come from the <colgroup> (name, death, num columns) only;
+     the table grows past 100% and the box scrolls when they don't fit */
+  table-layout: fixed;
   font-size: 12px;
+}
+
+/* Widest compact value ("123.45M") in the 14px mono font, plus cell padding */
+.overview-table col.num-col {
+  width: 76px;
 }
 
 .overview-table tbody tr:last-child td {
@@ -948,18 +1044,11 @@
   white-space: nowrap;
 }
 
-.overview-table th.section-header {
-  text-align: center;
-  border-bottom: 2px solid var(--border-subtle);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
 .overview-table tr.sub-header th {
   font-size: 10px;
   font-weight: 500;
   color: var(--text-muted);
+  border-bottom: 2px solid var(--border-subtle);
 }
 
 .overview-table tr.sub-header th.sortable {
@@ -978,7 +1067,10 @@
 .overview-table .name-col {
   font-weight: 500;
   color: var(--text-primary);
-  min-width: 120px;
+  /* Fixed, so long names truncate instead of widening the column or wrapping */
+  width: 190px;
+  min-width: 190px;
+  max-width: 190px;
 }
 
 .overview-table th.name-col {
@@ -989,10 +1081,21 @@
 }
 
 .overview-table .name-with-icon {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8px;
   font-size: 14px;
+  min-width: 0;
+  /* Clamp the name's min-content so a long name can't widen the column
+     (cells ignore max-width); 190px column minus 16px padding */
+  max-width: 174px;
+}
+
+.overview-table .name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .overview-table .class-icon {
@@ -1052,9 +1155,18 @@
    Deaths column (overview table)
    ───────────────────────────────────────────────────────────────────────────── */
 
+/* The badge has a fixed width (fits "12:34") and the column is that plus the
+   cell padding, so the column is the same width with or without a death */
+.overview-table {
+  --death-badge-w: 68px;
+}
+
 .overview-table .death-col {
-  min-width: 52px;
+  width: calc(var(--death-badge-w) + 16px);
   white-space: nowrap;
+  line-height: 0; /* no text strut: the badge alone sets the line box */
+  padding-top: 0;
+  padding-bottom: 0;
   text-align: left;
   font-family: var(--font-mono);
   font-size: 11px;
@@ -1068,8 +1180,16 @@
 .overview-table .death-badge {
   display: inline-flex;
   align-items: center;
+  vertical-align: middle;
   gap: 5px;
-  padding: 2px 7px;
+  /* Fixed height; its cell drops the vertical padding instead, so the badge
+     (22px) stays under the number cells' height (16px line + 12px padding) */
+  height: 22px;
+  width: var(--death-badge-w);
+  justify-content: center;
+  overflow: hidden;
+  line-height: 1;
+  padding: 0 6px;
   font: inherit;
   color: var(--text-secondary);
   background: rgba(var(--fg-rgb), 0.05);
@@ -1393,6 +1513,9 @@
 
 .recap-table {
   width: 100%;
+  /* Number columns sized for their header or widest value ("123.45K");
+     the name column takes the rest and truncates */
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 11px;
@@ -1440,11 +1563,14 @@
 }
 
 .recap-table td:first-child {
-  width: 100%;
-  max-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.recap-table th.col-count { width: 48px; }
+.recap-table th.col-val { width: 60px; }
+.recap-table th.col-wide { width: 80px; }
+.recap-table th.col-type { width: 72px; }
 
 .recap-ability {
   color: var(--text-primary);
@@ -1719,6 +1845,28 @@
   pointer-events: none;
 }
 
+/* Spinners only appear once a load has run long enough to be worth showing,
+   so quick loads don't blink one in and out */
+.charts-loading,
+.effects-loading {
+  opacity: 0;
+  animation: spinner-late 0s linear 0.3s forwards;
+}
+
+@keyframes spinner-late {
+  to { opacity: 1; }
+}
+
+/* Rows of the previous selection, held while the next ones load */
+.effect-table-wrapper {
+  transition: opacity 0.15s;
+}
+
+.effect-table-wrapper.stale {
+  opacity: 0.5;
+  transition-delay: 0.3s;
+}
+
 .effects-loading {
   display: flex;
   justify-content: center;
@@ -1824,12 +1972,14 @@
   font-size: 11px;
 }
 
+/* Sized to fit the header with its sort arrow ("UPTIME ▼"), which never
+   wraps: the header keeps one height whichever column is sorted */
 .effect-table .col-apps {
-  width: 46px;
+  width: 56px;
 }
 
 .effect-table .col-uptime {
-  width: 58px;
+  width: 70px;
 }
 
 .effect-table .col-pct {
@@ -1848,6 +1998,7 @@
 }
 
 .effect-table th {
+  white-space: nowrap;
   font-weight: 600;
   color: var(--text-muted);
   font-size: 10px;
@@ -2411,8 +2562,9 @@
 }
 
 .rotation-anchor-select {
-  /* Everything else from the base select, which themes it (and keeps its chevron) */
-  min-width: 200px;
+  /* Everything else from the base select, which themes it (and keeps its chevron).
+     Fixed width: auto-sizing to the longest option grows it as the list loads */
+  width: 260px;
 }
 
 .rotation-placeholder {
@@ -2625,19 +2777,14 @@
   background: hsl(320, 60%, 55%);
 } /* Effect Uptime - magenta */
 
-.usage-section {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  overflow-y: auto;
-}
-
 .usage-table-container {
   overflow-x: auto;
 }
 
 .usage-table {
   width: 100%;
+  /* The 7 number columns plus room for the ability name */
+  min-width: calc(7 * 95px + 220px);
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -2701,6 +2848,19 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+}
+
+.ability-name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ability-id-muted,
+.shield-badge {
+  flex-shrink: 0;
 }
 
 .ability-id-muted {
@@ -2772,12 +2932,40 @@
 }
 
 .uptime-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
   color: var(--text-secondary);
 }
 
-.uptime-title strong {
+/* A name with its icon (discipline or effect), in the titles */
+.uptime-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.uptime-who strong {
   color: var(--text-primary);
   font-weight: 600;
+  white-space: nowrap;
+}
+
+.uptime-class-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.uptime-arrow {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.uptime-every {
+  color: var(--text-muted);
 }
 
 .uptime-empty {
@@ -2788,8 +2976,13 @@
 
 .uptime-table-box {
   overflow: auto;
+  /* Capped so the timeline under it keeps its room; the rows scroll */
+  max-height: min(45vh, 24em);
+  flex-shrink: 0;
 }
 
+/* Effect names stay put while scrolling sideways, target names while
+   scrolling down; the corner sits over both */
 .uptime-table .name-col {
   position: sticky;
   left: 0;
@@ -2799,19 +2992,38 @@
   white-space: nowrap;
 }
 
-.uptime-table .name-col.npc {
-  color: var(--text-secondary);
+.uptime-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-dark);
 }
 
-.uptime-table th.uptime-effect {
+.uptime-table thead th.name-col {
+  z-index: 2;
+}
+
+/* Always room for two lines of target name (12px × 1.2 line-height, plus the
+   span's 2px margin and the cell padding), so the header keeps one height
+   whichever targets the source hit */
+.uptime-table thead th {
+  height: 44px;
+}
+
+/* Fixed layout (from .overview-table) takes these widths from the header */
+.uptime-table th.uptime-target {
   vertical-align: bottom;
-  max-width: 7em;
+  width: 84px;
   font-weight: 500;
   text-transform: none;
   letter-spacing: 0;
 }
 
-.uptime-effect span {
+.uptime-table th.uptime-target.npc {
+  color: var(--text-muted);
+}
+
+.uptime-target span {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -2833,17 +3045,17 @@
 }
 
 .uptime-row .name-col,
-.uptime-table th.uptime-effect,
+.uptime-table th.uptime-target,
 .uptime-cell:not(.none) {
   cursor: pointer;
 }
 
-.uptime-table th.uptime-effect:hover,
-.uptime-table th.uptime-effect.picked {
+.uptime-table th.uptime-target:hover,
+.uptime-table th.uptime-target.picked {
   color: var(--swtor-blue);
 }
 
-.uptime-table th.uptime-effect.picked {
+.uptime-table th.uptime-target.picked {
   box-shadow: inset 0 -2px 0 var(--swtor-blue);
 }
 
@@ -2873,13 +3085,18 @@
 }
 
 .uptime-timeline-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 2px;
   color: var(--text-secondary);
 }
 
-.uptime-timeline-title strong {
-  color: var(--text-primary);
-  font-weight: 600;
+/* Effect name and source → target read as two parts */
+.uptime-timeline-title > .uptime-who:first-child:has(+ .uptime-who + .uptime-arrow) {
+  margin-right: 8px;
 }
 
 .uptime-lane {
@@ -2966,8 +3183,12 @@
 }
 
 /* The ability table has no wrapper of its own: frame the table itself.
-   Separate borders let the radius show; spacing 0 keeps the rows flush. */
+   Separate borders let the radius show; spacing 0 keeps the rows flush.
+   Fixed layout: widths come from the header row, sized for each column's
+   header word or widest formatted value ("123.45K", "100.0%"), so columns
+   never resize with the data; the name truncates. */
 .ability-table {
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
   background: var(--well-bg);
@@ -3021,6 +3242,39 @@
 .effect-table thead tr,
 .effect-table tbody tr {
   border-bottom: none;
+}
+
+/* Nothing in the column shrinks when the content outgrows it (the controls
+   were squeezed to their min-height under a long table, pulling it up)... */
+.ability-section > * {
+  flex-shrink: 0;
+}
+
+/* ...except the table, which takes what's left under the controls and
+   scrolls there */
+.ability-section > .ability-table-scroll {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.ability-table th:first-child { width: 220px; }
+.ability-table th.num { width: 64px; }
+.ability-table th.col-val { width: 80px; }
+.ability-table th.col-pct { width: 72px; }
+.ability-table th.col-pct-bar { width: 110px; }
+.ability-table th.col-dmg-type { width: 90px; }
+.ability-table th.col-avg { width: 88px; }
+.ability-table th.col-wide { width: 112px; }
+
+.ability-table td.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.ability-table td:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Totals keep their rule but sit on the card, not a lighter band */

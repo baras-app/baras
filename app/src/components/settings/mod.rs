@@ -19,6 +19,7 @@ mod metric;
 mod metrics_global;
 mod notes;
 mod operation_timer;
+mod overrides;
 mod personal;
 mod profiles;
 mod raid;
@@ -26,7 +27,6 @@ mod timers;
 mod widgets;
 
 use dioxus::prelude::*;
-use std::collections::HashMap;
 
 use crate::api;
 use crate::components::profile_unsaved::{OVERLAY_DRAFT_DIRTY, OVERLAY_SAVE_REQUEST};
@@ -43,12 +43,11 @@ use dot_tracker::DotTrackerTab;
 use draft::use_settings_draft;
 use effects::{EffectsGroup, EffectsTab};
 use enemy_frames::EnemyFramesTab;
-use frame_style::FrameOverrideSection;
 use global::GlobalTab;
 use metric::MetricTab;
-use metrics_global::MetricsGlobalSection;
 use notes::NotesTab;
 use operation_timer::OperationTimerTab;
+use overrides::OverridesSection;
 use personal::PersonalTab;
 use profiles::ProfilesSection;
 use raid::RaidTab;
@@ -65,29 +64,38 @@ pub enum SettingsSection {
 
 /// Non-metric overlays as the selector groups them: `(group, [(label, tab key)])`
 const OVERLAY_GROUPS: &[(&str, &[(&str, &str)])] = &[
-    ("General", &[
-        ("Personal Stats", "personal"),
-        ("Raid Frames", "raid"),
-        ("Alerts", "alerts"),
-        ("Combat Time", "combat_time"),
-        ("Op Timer", "operation_timer"),
-        ("Abilities Cast", "ability_cast"),
-    ]),
-    ("Encounters", &[
-        ("Boss Health", "boss_health"),
-        ("Timers A", "timers_a"),
-        ("Timers B", "timers_b"),
-        ("Challenges", "challenges"),
-        ("Notes", "notes"),
-    ]),
-    ("Effects", &[
-        ("Effects A", "effects_a"),
-        ("Effects B", "effects_b"),
-        ("Effects C", "effects_c"),
-        ("Cooldowns A", "cooldowns"),
-        ("Cooldowns B", "cooldowns_b"),
-        ("DOT Tracker", "dot_tracker"),
-    ]),
+    (
+        "General",
+        &[
+            ("Personal Stats", "personal"),
+            ("Raid Frames", "raid"),
+            ("Alerts", "alerts"),
+            ("Combat Time", "combat_time"),
+            ("Op Timer", "operation_timer"),
+            ("Abilities Cast", "ability_cast"),
+        ],
+    ),
+    (
+        "Encounters",
+        &[
+            ("Boss Health", "boss_health"),
+            ("Timers A", "timers_a"),
+            ("Timers B", "timers_b"),
+            ("Challenges", "challenges"),
+            ("Notes", "notes"),
+        ],
+    ),
+    (
+        "Effects",
+        &[
+            ("Effects A", "effects_a"),
+            ("Effects B", "effects_b"),
+            ("Effects C", "effects_c"),
+            ("Cooldowns A", "cooldowns"),
+            ("Cooldowns B", "cooldowns_b"),
+            ("DOT Tracker", "dot_tracker"),
+        ],
+    ),
     ("PvP", &[("Enemy Frames", "enemy_frames")]),
 ];
 
@@ -98,7 +106,11 @@ fn overlay_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>)> {
     if let Some((_, pvp)) = groups.iter_mut().find(|(g, _)| *g == "PvP") {
         pvp.extend(MetricType::pvp().iter().map(metric));
     }
-    let metrics = MetricType::all().iter().filter(|m| !MetricType::pvp().contains(m)).map(metric).collect();
+    let metrics = MetricType::all()
+        .iter()
+        .filter(|m| !MetricType::pvp().contains(m))
+        .map(metric)
+        .collect();
     groups.push(("Metrics", metrics));
     groups
 }
@@ -117,9 +129,7 @@ pub fn SettingsPanel(
     selected_tab: Signal<String>,
     profile_names: Signal<Vec<String>>,
     active_profile: Signal<Option<String>>,
-    metric_overlays_enabled: Signal<HashMap<MetricType, bool>>,
-    personal_enabled: Signal<bool>,
-    raid_enabled: Signal<bool>,
+    overlays_enabled: Signal<std::collections::HashSet<String>>,
     overlays_visible: Signal<bool>,
     profile_dirty: Signal<bool>,
     /// Which top tab shows; lifted so a control-panel gear can switch to Overlays
@@ -143,7 +153,6 @@ pub fn SettingsPanel(
             *d = false;
         }
     });
-    let mut metrics_global_open = use_signal(|| false);
     let mut toast = use_toast();
 
     let tab = selected_tab();
@@ -167,15 +176,13 @@ pub fn SettingsPanel(
                 config.overlay_settings.frame_style = new_settings.frame_style;
                 config.overlay_settings.frame_overrides = new_settings.frame_overrides.clone();
                 config.overlay_settings.personal_overlay = new_settings.personal_overlay.clone();
-                config.overlay_settings.metric_show_empty_bars =
-                    new_settings.metric_show_empty_bars;
-                config.overlay_settings.metric_stack_from_bottom =
-                    new_settings.metric_stack_from_bottom;
+                config.overlay_settings.metric_show_empty_bars = new_settings.metric_show_empty_bars;
+                config.overlay_settings.metric_stack_from_bottom = new_settings.metric_stack_from_bottom;
                 config.overlay_settings.metric_scaling_factor = new_settings.metric_scaling_factor;
                 config.overlay_settings.metric_bar_spacing = new_settings.metric_bar_spacing;
+                config.overlay_settings.metric_bar_radius = new_settings.metric_bar_radius;
                 config.overlay_settings.metric_font_scale = new_settings.metric_font_scale;
-                config.overlay_settings.metric_gradient_intensity =
-                    new_settings.metric_gradient_intensity;
+                config.overlay_settings.metric_gradient_intensity = new_settings.metric_gradient_intensity;
                 config.overlay_settings.metric_dynamic_background = new_settings.metric_dynamic_background;
                 config.overlay_settings.metric_show_background_bar = new_settings.metric_show_background_bar;
                 config.overlay_settings.class_icon_mode = new_settings.class_icon_mode;
@@ -258,9 +265,7 @@ pub fn SettingsPanel(
                 profile_names,
                 active_profile,
                 profile_dirty,
-                metric_overlays_enabled,
-                personal_enabled,
-                raid_enabled,
+                overlays_enabled,
                 overlays_visible,
             }
         },
@@ -300,15 +305,12 @@ pub fn SettingsPanel(
                     TabButton { label: "Profiles", active: section() == SettingsSection::Profiles, onclick: move |_| section.set(SettingsSection::Profiles) }
                     TabButton { label: "Global", active: section() == SettingsSection::Global, onclick: move |_| section.set(SettingsSection::Global) }
                 }
-                if section() == SettingsSection::Overlays {
+                if showing_overlays {
                     div { class: "setting-row overlay-select-row",
                         label { "Overlay" }
                         select {
                             value: "{tab}",
-                            onchange: move |e: Event<FormData>| {
-                                selected_tab.set(e.value());
-                                metrics_global_open.set(false);
-                            },
+                            onchange: move |e: Event<FormData>| selected_tab.set(e.value()),
                             for (group, items) in overlay_groups.iter() {
                                 optgroup { label: "{group}",
                                     for (label, key) in items.iter() {
@@ -320,12 +322,13 @@ pub fn SettingsPanel(
                     }
                     h4 { class: "overlay-options-title", "{overlay_label(&tab)} Options" }
                 }
-                // Shared by every metric overlay, so it sits above whichever one is selected
-                if showing_overlays && is_metric_tab {
-                    MetricsGlobalSection { draft, open: metrics_global_open }
-                }
                 if showing_overlays {
-                    FrameOverrideSection { draft, tab_key: selected_tab }
+                    OverridesSection {
+                        draft,
+                        tab_key: selected_tab,
+                        is_metric: is_metric_tab,
+                        on_open_global: move |_| section.set(SettingsSection::Global),
+                    }
                 }
                 {tab_content}
             }

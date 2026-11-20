@@ -23,10 +23,12 @@ use crate::types::UiSessionState;
 
 const LIB_TABLE: &str = "hist-lib-table";
 
-
 /// Content multi-select: one entry per tag, keyed by its label
 fn tag_entries() -> Vec<Entry> {
-    ContentTag::ALL.iter().map(|t| (t.label().to_string(), vec![t.label().to_string()])).collect()
+    ContentTag::ALL
+        .iter()
+        .map(|t| (t.label().to_string(), vec![t.label().to_string()]))
+        .collect()
 }
 
 pub fn fmt_bytes(b: u64) -> String {
@@ -45,9 +47,16 @@ fn matches(row: &LibraryRow, tags: &[ContentTag], favorites_only: bool, search: 
     let content_ok = tags.is_empty() || tags.iter().any(|t| row.content.contains(t));
     let search_ok = search.is_empty()
         || row.filename.to_lowercase().contains(search)
-        || row.character.as_deref().is_some_and(|c| c.to_lowercase().contains(search))
+        || row
+            .character
+            .as_deref()
+            .is_some_and(|c| c.to_lowercase().contains(search))
         || row.areas.iter().any(|a| a.to_lowercase().contains(search))
-        || row.tags.iter().chain(row.run_tags.iter()).any(|t| t.to_lowercase().contains(search))
+        || row
+            .tags
+            .iter()
+            .chain(row.run_tags.iter())
+            .any(|t| t.to_lowercase().contains(search))
         || row.note.to_lowercase().contains(search);
     content_ok && (!favorites_only || row.favorite) && search_ok
 }
@@ -71,7 +80,10 @@ struct CardStats {
 }
 
 fn needs_scan(status: LogStatus) -> bool {
-    matches!(status, LogStatus::Stale | LogStatus::NoHistory | LogStatus::ArchivedStale)
+    matches!(
+        status,
+        LogStatus::Stale | LogStatus::NoHistory | LogStatus::ArchivedStale
+    )
 }
 
 const LOCATIONS: [&str; 2] = ["Current", "Archived"];
@@ -104,7 +116,12 @@ fn status_text(status: LogStatus) -> &'static str {
 }
 
 #[component]
-pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Signal<Option<CleanupEvent>>, status: Resource<HistoryStatus>) -> Element {
+pub fn LibraryTab(
+    state: Signal<UiSessionState>,
+    backfill: Backfill,
+    cleanup: Signal<Option<CleanupEvent>>,
+    status: Resource<HistoryStatus>,
+) -> Element {
     let mut toast = use_toast();
     let opener = use_file_opener();
     let mut uploader = use_parsely_upload();
@@ -133,26 +150,28 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
     // backend announces every log added or removed (cleanup, watcher). Both
     // callbacks run outside the Dioxus runtime, so they only bump a signal.
     let mut changes = use_signal(|| 0u32);
-    use_future(move || async move {
-        let closure = Closure::<dyn FnMut()>::new(move || {
-            let _ = changes.try_write().map(|mut w| *w += 1);
-        });
-        if let Some(w) = web_sys::window() {
-            let _ = w.add_event_listener_with_callback("parsely-upload-complete", closure.as_ref().unchecked_ref());
-        }
-        closure.forget();
-        let closure = Closure::new(move |_: JsValue| {
-            let _ = changes.try_write().map(|mut w| *w += 1);
-        });
-        api::tauri_listen("log-files-changed", &closure).await;
-        closure.forget();
-        // Opening a historical log or resuming live tailing moves the pin
-        let closure = Closure::new(move |_: JsValue| {
-            let _ = changes.try_write().map(|mut w| *w += 1);
-        });
-        api::tauri_listen("session-updated", &closure).await;
-        closure.forget();
+    let mut bump = move || {
+        let _ = changes.try_write().map(|mut w| *w += 1);
+    };
+    let parsely_listener = use_hook(|| {
+        let callback = Closure::<dyn FnMut()>::new(bump)
+            .into_js_value()
+            .unchecked_into::<js_sys::Function>();
+        web_sys::window()?
+            .add_event_listener_with_callback("parsely-upload-complete", &callback)
+            .ok()?;
+        Some(callback)
     });
+    use_drop(move || {
+        if let Some(callback) = &parsely_listener
+            && let Some(window) = web_sys::window()
+        {
+            let _ = window.remove_event_listener_with_callback("parsely-upload-complete", callback);
+        }
+    });
+    api::use_tauri_event("log-files-changed", move |_| bump());
+    // Opening a historical log or resuming live tailing moves the pin
+    api::use_tauri_event("session-updated", move |_| bump());
     use_effect(move || {
         if *changes.read() > 0 {
             rows.restart();
@@ -182,7 +201,11 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
     use_restore_scroll(&[LIB_TABLE], !loading);
 
     // Every tag in use, for the tag inputs' completion list
-    let mut known_tags: Vec<&str> = all.iter().flat_map(|r| r.tags.iter().chain(r.run_tags.iter())).map(String::as_str).collect();
+    let mut known_tags: Vec<&str> = all
+        .iter()
+        .flat_map(|r| r.tags.iter().chain(r.run_tags.iter()))
+        .map(String::as_str)
+        .collect();
     known_tags.sort_unstable();
     known_tags.dedup();
 
@@ -199,7 +222,11 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
     let day_stats = super::heatmap::day_stats(filtered.iter().copied());
     let visible: Vec<&LibraryRow> = filtered
         .into_iter()
-        .filter(|r| picked_days.as_ref().is_none_or(|d| super::heatmap::in_range(&r.date, d)))
+        .filter(|r| {
+            picked_days
+                .as_ref()
+                .is_none_or(|d| super::heatmap::in_range(&r.date, d))
+        })
         .collect();
     // The cards total what the table lists, day pick included
     let mut stats = CardStats::default();
@@ -235,9 +262,21 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
         let sel = selected.read();
         all.iter().filter(|r| sel.contains(&r.path)).collect()
     };
-    let can_archive: Vec<String> = picked.iter().filter(|r| !r.status.is_archived() && !r.open).map(|r| r.path.clone()).collect();
-    let can_restore: Vec<String> = picked.iter().filter(|r| r.status.is_archived()).map(|r| r.filename.clone()).collect();
-    let can_delete: Vec<(String, String)> = picked.iter().filter(|r| !r.open).map(|r| (r.path.clone(), r.filename.clone())).collect();
+    let can_archive: Vec<String> = picked
+        .iter()
+        .filter(|r| !r.status.is_archived() && !r.open)
+        .map(|r| r.path.clone())
+        .collect();
+    let can_restore: Vec<String> = picked
+        .iter()
+        .filter(|r| r.status.is_archived())
+        .map(|r| r.filename.clone())
+        .collect();
+    let can_delete: Vec<(String, String)> = picked
+        .iter()
+        .filter(|r| !r.open)
+        .map(|r| (r.path.clone(), r.filename.clone()))
+        .collect();
     let all_visible_picked = !visible.is_empty() && visible.iter().all(|r| selected.read().contains(&r.path));
     let visible_paths: Vec<String> = visible.iter().map(|r| r.path.clone()).collect();
     let cleaning = matches!(*cleanup.read(), Some(CleanupEvent::Progress { .. }));

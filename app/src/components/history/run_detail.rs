@@ -51,7 +51,11 @@ fn RunTimeline(detail: RunDetail) -> Element {
         let dur = p.duration_seconds * 1000;
         let class = if p.success { "kill" } else { "wipe" };
         let what = if p.success { "Kill" } else { "Wipe" };
-        segs.push((pct(dur), class, format!("{} · {what} · {}", p.boss, fmt_secs(p.duration_seconds))));
+        segs.push((
+            pct(dur),
+            class,
+            format!("{} · {what} · {}", p.boss, fmt_secs(p.duration_seconds)),
+        ));
         cursor = (p.start_ms + dur).max(cursor);
     }
 
@@ -142,13 +146,27 @@ pub fn RunDetailView(
             }
             let mut tags = tags.clone();
             tags.push(value);
-            save(RunMeta { tags, note: note.clone(), hidden });
+            save(RunMeta {
+                tags,
+                note: note.clone(),
+                hidden,
+            });
         }
     };
 
     let between = run.span_secs - run.pull_secs;
-    let pull_pct = if run.span_secs > 0 { run.pull_secs * 100 / run.span_secs } else { 0 };
-    let fmt_opt = move |n: i64| if n > 0 { formatting::format_compact(n, eu) } else { "-".into() };
+    let pull_pct = if run.span_secs > 0 {
+        run.pull_secs * 100 / run.span_secs
+    } else {
+        0
+    };
+    let fmt_opt = move |n: i64| {
+        if n > 0 {
+            formatting::format_compact(n, eu)
+        } else {
+            "-".into()
+        }
+    };
     let fmt_pct = move |p: f32| formatting::format_decimal(p, 1, eu);
     let date = short_ts(&run.started);
 

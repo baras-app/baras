@@ -24,7 +24,16 @@ pub struct OverlayToggleProps {
 
 #[component]
 pub fn OverlayToggle(props: OverlayToggleProps) -> Element {
-    let OverlayToggleProps { label, icon, title, active, tab_key, on_toggle, on_settings, drawer_overlay } = props;
+    let OverlayToggleProps {
+        label,
+        icon,
+        title,
+        active,
+        tab_key,
+        on_toggle,
+        on_settings,
+        drawer_overlay,
+    } = props;
     let gear_open = tab_key.is_some_and(|key| key == drawer_overlay);
     let gear_class = match (active, gear_open) {
         (true, true) => "btn btn-overlay-gear btn-active open",

@@ -42,7 +42,12 @@ fn generate_off_gcd_set(out_dir: &str) {
         builder.entry(*id);
     }
 
-    writeln!(file, "pub static OFF_GCD_ABILITIES: phf::Set<i64> = {};", builder.build()).unwrap();
+    writeln!(
+        file,
+        "pub static OFF_GCD_ABILITIES: phf::Set<i64> = {};",
+        builder.build()
+    )
+    .unwrap();
 }
 
 fn generate_interrupt_abilities_set(out_dir: &str) {
@@ -102,13 +107,16 @@ fn generate_attack_types_map(out_dir: &str) {
         builder.entry(*id, at);
     }
 
-    writeln!(file, "pub static ATTACK_TYPES: phf::Map<i64, &'static str> = {};", builder.build())
-        .unwrap();
+    writeln!(
+        file,
+        "pub static ATTACK_TYPES: phf::Map<i64, &'static str> = {};",
+        builder.build()
+    )
+    .unwrap();
 }
 
 fn generate_alacrity_buffs_map(out_dir: &str) {
-    let csv = fs::read_to_string("data/alacrity_abilities.csv")
-        .expect("failed to read alacrity_abilities.csv");
+    let csv = fs::read_to_string("data/alacrity_abilities.csv").expect("failed to read alacrity_abilities.csv");
 
     // BTreeMap for deterministic output (sorted by key)
     let mut entries = BTreeMap::new();
@@ -132,9 +140,7 @@ fn generate_alacrity_buffs_map(out_dir: &str) {
         };
         entries.insert(
             id,
-            format!(
-                "AlacrityBuff {{ amount: {amount}f32, is_stack: {is_stack}, duration_secs: {duration_secs}f32 }}"
-            ),
+            format!("AlacrityBuff {{ amount: {amount}f32, is_stack: {is_stack}, duration_secs: {duration_secs}f32 }}"),
         );
     }
 
@@ -146,8 +152,12 @@ fn generate_alacrity_buffs_map(out_dir: &str) {
         builder.entry(*id, buff);
     }
 
-    writeln!(file, "pub static ALACRITY_BUFFS: phf::Map<i64, AlacrityBuff> = {};", builder.build())
-        .unwrap();
+    writeln!(
+        file,
+        "pub static ALACRITY_BUFFS: phf::Map<i64, AlacrityBuff> = {};",
+        builder.build()
+    )
+    .unwrap();
 }
 
 fn generate_discipline_abilities_map(out_dir: &str) {
@@ -247,6 +257,10 @@ fn generate_mirror_abilities_map(out_dir: &str) {
         builder.entry(*id, entry);
     }
 
-    writeln!(file, "pub static MIRROR_ABILITIES: phf::Map<i64, MirrorAbility> = {};", builder.build())
-        .unwrap();
+    writeln!(
+        file,
+        "pub static MIRROR_ABILITIES: phf::Map<i64, MirrorAbility> = {};",
+        builder.build()
+    )
+    .unwrap();
 }

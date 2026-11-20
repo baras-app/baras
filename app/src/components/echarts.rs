@@ -84,7 +84,10 @@ pub fn get_chart(element_id: &str) -> Option<JsValue> {
 
 /// `target[name]` when it is a function
 fn method(target: &JsValue, name: &str) -> Option<js_sys::Function> {
-    js_sys::Reflect::get(target, &JsValue::from_str(name)).ok()?.dyn_into().ok()
+    js_sys::Reflect::get(target, &JsValue::from_str(name))
+        .ok()?
+        .dyn_into()
+        .ok()
 }
 
 fn call0(target: &JsValue, name: &str) {
@@ -124,7 +127,9 @@ pub fn set_chart_option(chart: &JsValue, option: &JsValue) {
 
 /// JSON → plain JS objects (not Maps), ready for `setOption`.
 pub fn json_to_js(option: &serde_json::Value) -> Option<JsValue> {
-    option.serialize(&serde_wasm_bindgen::Serializer::json_compatible()).ok()
+    option
+        .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+        .ok()
 }
 
 /// Put a JS function at `path` (e.g. a label formatter), which JSON cannot
@@ -132,7 +137,9 @@ pub fn json_to_js(option: &serde_json::Value) -> Option<JsValue> {
 pub fn set_js_fn(obj: &JsValue, path: &[&str], args: &str, body: &str) {
     let mut cur = obj.clone();
     for key in &path[..path.len() - 1] {
-        let next = js_sys::Reflect::get(&cur, &JsValue::from_str(key)).ok().filter(|v| v.is_object());
+        let next = js_sys::Reflect::get(&cur, &JsValue::from_str(key))
+            .ok()
+            .filter(|v| v.is_object());
         cur = match next {
             Some(v) => v,
             None => {
@@ -256,7 +263,11 @@ pub fn apply_brush_config(obj: &js_sys::Object) {
     // Style for the brush selection rectangle
     let brush_style = js_sys::Object::new();
     js_set(&brush_style, "color", &JsValue::from_str("rgba(100, 200, 255, 0.15)"));
-    js_set(&brush_style, "borderColor", &JsValue::from_str("rgba(100, 200, 255, 0.6)"));
+    js_set(
+        &brush_style,
+        "borderColor",
+        &JsValue::from_str("rgba(100, 200, 255, 0.6)"),
+    );
     js_set(&brush_style, "borderWidth", &JsValue::from_f64(1.0));
     js_set(&brush, "brushStyle", &brush_style);
 

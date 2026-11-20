@@ -285,10 +285,7 @@ pub struct EffectDefinition {
     pub alert_text: Option<String>,
 
     /// When to trigger the alert
-    #[serde(
-        default,
-        skip_serializing_if = "crate::serde_defaults::is_alert_trigger_none"
-    )]
+    #[serde(default, skip_serializing_if = "crate::serde_defaults::is_alert_trigger_none")]
     pub alert_on: AlertTrigger,
 
     /// When `alert_on == Countdown`, the trailing window (in seconds, 0..10)
@@ -409,10 +406,7 @@ impl EffectDefinition {
     /// Check if an ability cast matches this definition's trigger
     pub fn matches_ability_cast(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
         if let Trigger::AbilityCast { abilities, .. } = &self.trigger {
-            abilities.is_empty()
-                || abilities
-                    .iter()
-                    .any(|s| s.matches(ability_id, ability_name))
+            abilities.is_empty() || abilities.iter().any(|s| s.matches(ability_id, ability_name))
         } else {
             false
         }
@@ -427,11 +421,7 @@ impl EffectDefinition {
 
     /// Find the RefreshAbility entry that matches the given ability.
     /// Returns None if no match found.
-    pub fn find_refresh_ability(
-        &self,
-        ability_id: u64,
-        ability_name: Option<&str>,
-    ) -> Option<&RefreshAbility> {
+    pub fn find_refresh_ability(&self, ability_id: u64, ability_name: Option<&str>) -> Option<&RefreshAbility> {
         self.refresh_abilities
             .iter()
             .find(|r| r.matches(ability_id, ability_name))
@@ -446,9 +436,7 @@ impl EffectDefinition {
         if self.disciplines.is_empty() {
             return true;
         }
-        discipline
-            .map(|d| self.disciplines.contains(d))
-            .unwrap_or(true)
+        discipline.map(|d| self.disciplines.contains(d)).unwrap_or(true)
     }
 
     /// Icon ability ID for uptime placeholders: explicit icon_ability_id,
@@ -466,12 +454,10 @@ impl EffectDefinition {
             }
             Trigger::AbilityCast { abilities, .. }
             | Trigger::DamageTaken { abilities, .. }
-            | Trigger::HealingTaken { abilities, .. } => {
-                abilities.iter().find_map(|s| match s {
-                    AbilitySelector::Id(id) => Some(*id),
-                    AbilitySelector::Name(_) => None,
-                })
-            }
+            | Trigger::HealingTaken { abilities, .. } => abilities.iter().find_map(|s| match s {
+                AbilitySelector::Id(id) => Some(*id),
+                AbilitySelector::Name(_) => None,
+            }),
             _ => None,
         }
         .unwrap_or(0)

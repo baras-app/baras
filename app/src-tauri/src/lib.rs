@@ -77,9 +77,7 @@ fn spawn_auto_show_overlays(overlay_state: SharedOverlayState, service_handle: S
 
         // Seed the game_running state before any overlay decisions.
         // The continuous process monitor will take over once tailing starts.
-        let game_running = service::process_monitor::is_game_running()
-            .await
-            .unwrap_or(true); // safe default: assume running if check fails
+        let game_running = service::process_monitor::is_game_running().await.unwrap_or(true); // safe default: assume running if check fails
         service_handle
             .shared
             .game_running
@@ -89,12 +87,10 @@ fn spawn_auto_show_overlays(overlay_state: SharedOverlayState, service_handle: S
         // The initial file parse may have completed during our delay, revealing a stale
         // or empty session. In that case, skip showing overlays and mark the auto-hide
         // as active so they restore when the session becomes live.
-        if config.overlay_settings.hide_when_not_live {
-            if service_handle.shared.is_session_not_live().await {
-                service_handle.shared.auto_hide.set_session_not_live(true);
-                service_handle.shared.auto_hide.set_not_live(true);
-                return;
-            }
+        if config.overlay_settings.hide_when_not_live && service_handle.shared.is_session_not_live().await {
+            service_handle.shared.auto_hide.set_session_not_live(true);
+            service_handle.shared.auto_hide.set_not_live(true);
+            return;
         }
 
         // Use OverlayManager to show all enabled overlays
@@ -133,8 +129,10 @@ pub fn run() {
     let mut builder = tauri::Builder::default();
 
     // Single instance plugin - must be registered FIRST to catch duplicate launches early
+    // A redirected config directory is a development copy: let it run beside
+    // the installed one instead of handing focus to it.
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
-    {
+    if !baras_core::paths::is_overridden() {
         builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             // Focus existing window when second instance attempts to launch
             if let Some(window) = app.get_webview_window("main") {
@@ -209,11 +207,7 @@ pub fn run() {
                 spawn_auto_show_overlays(overlay_state.clone(), handle.clone());
 
                 // Register global hotkeys (not supported on Wayland)
-                hotkeys::spawn_register_hotkeys(
-                    app.handle().clone(),
-                    overlay_state.clone(),
-                    handle,
-                );
+                hotkeys::spawn_register_hotkeys(app.handle().clone(), overlay_state.clone(), handle);
 
                 // Set up system tray
                 let _ = tray::setup_tray(app.handle());
@@ -235,11 +229,7 @@ pub fn run() {
                 let minimize_to_tray = window
                     .app_handle()
                     .try_state::<ServiceHandle>()
-                    .map(|handle| {
-                        tauri::async_runtime::block_on(async {
-                            handle.config().await.minimize_to_tray
-                        })
-                    })
+                    .map(|handle| tauri::async_runtime::block_on(async { handle.config().await.minimize_to_tray }))
                     .unwrap_or(true);
 
                 if minimize_to_tray {
@@ -272,24 +262,18 @@ pub fn run() {
             commands::preview_overlay_entry,
             commands::set_web_overlay_enabled,
             commands::clear_raid_registry,
-            commands::swap_raid_slots,
-            commands::remove_raid_slot,
             commands::start_operation_timer,
             commands::stop_operation_timer,
             commands::reset_operation_timer,
             commands::enable_screen_capture,
             // Service commands
             commands::get_log_files,
-            commands::start_tailing,
-            commands::stop_tailing,
             commands::refresh_log_index,
             commands::restart_watcher,
             commands::get_log_directory_size,
             commands::get_log_file_count,
             commands::refresh_file_sizes,
-            commands::get_tailing_status,
             commands::get_watching_status,
-            commands::get_current_metrics,
             commands::get_config,
             commands::update_config,
             commands::is_wayland_session,
@@ -410,10 +394,8 @@ pub fn run() {
             commands::query_ability_usage,
             commands::query_damage_taken_summary,
             commands::query_encounter_timeline,
-            commands::list_encounter_files,
             // Updater
             #[cfg(desktop)]
-            updater::check_update,
             #[cfg(desktop)]
             updater::install_update,
             // Changelog

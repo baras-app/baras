@@ -3,7 +3,7 @@
 //! Icons are embedded at compile time and decoded on first access.
 
 use std::collections::HashMap;
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 
 /// Decoded RGBA icon with dimensions
 pub struct ClassIcon {
@@ -34,28 +34,13 @@ impl Role {
 // Embed all class icons at compile time
 static ICON_DATA: &[(&str, &[u8])] = &[
     ("assassin", include_bytes!("../assets/class/assassin.png")),
-    (
-        "bountyhunter",
-        include_bytes!("../assets/class/bountyhunter.png"),
-    ),
+    ("bountyhunter", include_bytes!("../assets/class/bountyhunter.png")),
     ("commando", include_bytes!("../assets/class/commando.png")),
     ("guardian", include_bytes!("../assets/class/guardian.png")),
-    (
-        "gunslinger",
-        include_bytes!("../assets/class/gunslinger.png"),
-    ),
-    (
-        "jediconsular",
-        include_bytes!("../assets/class/jediconsular.png"),
-    ),
-    (
-        "jediknight",
-        include_bytes!("../assets/class/jediknight.png"),
-    ),
-    (
-        "juggernaut",
-        include_bytes!("../assets/class/juggernaut.png"),
-    ),
+    ("gunslinger", include_bytes!("../assets/class/gunslinger.png")),
+    ("jediconsular", include_bytes!("../assets/class/jediconsular.png")),
+    ("jediknight", include_bytes!("../assets/class/jediknight.png")),
+    ("juggernaut", include_bytes!("../assets/class/juggernaut.png")),
     ("marauder", include_bytes!("../assets/class/marauder.png")),
     ("mercenary", include_bytes!("../assets/class/mercenary.png")),
     ("operative", include_bytes!("../assets/class/operative.png")),
@@ -64,14 +49,8 @@ static ICON_DATA: &[(&str, &[u8])] = &[
     ("scoundrel", include_bytes!("../assets/class/scoundrel.png")),
     ("sentinel", include_bytes!("../assets/class/sentinel.png")),
     ("shadow", include_bytes!("../assets/class/shadow.png")),
-    (
-        "sithsorcerer",
-        include_bytes!("../assets/class/sithsorcerer.png"),
-    ),
-    (
-        "sithwarrior",
-        include_bytes!("../assets/class/sithwarrior.png"),
-    ),
+    ("sithsorcerer", include_bytes!("../assets/class/sithsorcerer.png")),
+    ("sithwarrior", include_bytes!("../assets/class/sithwarrior.png")),
     ("smuggler", include_bytes!("../assets/class/smuggler.png")),
     ("sniper", include_bytes!("../assets/class/sniper.png")),
     ("sorcerer", include_bytes!("../assets/class/sorcerer.png")),
@@ -84,22 +63,34 @@ static DECODED_ICONS: OnceLock<HashMap<String, ClassIcon>> = OnceLock::new();
 
 // Embed discipline icons at compile time
 static DISCIPLINE_ICON_DATA: &[(&str, &[u8])] = &[
-    ("advanced-prototype", include_bytes!("../assets/discipline/advanced-prototype.png")),
+    (
+        "advanced-prototype",
+        include_bytes!("../assets/discipline/advanced-prototype.png"),
+    ),
     ("annihilation", include_bytes!("../assets/discipline/annihilation.png")),
     ("arsenal", include_bytes!("../assets/discipline/arsenal.png")),
-    ("assault-specialist", include_bytes!("../assets/discipline/assault-specialist.png")),
+    (
+        "assault-specialist",
+        include_bytes!("../assets/discipline/assault-specialist.png"),
+    ),
     ("balance", include_bytes!("../assets/discipline/balance.png")),
     ("bodyguard", include_bytes!("../assets/discipline/bodyguard.png")),
     ("carnage", include_bytes!("../assets/discipline/carnage.png")),
     ("combat", include_bytes!("../assets/discipline/combat.png")),
     ("combat-medic", include_bytes!("../assets/discipline/combat-medic.png")),
     ("concealment", include_bytes!("../assets/discipline/concealment.png")),
-    ("concentration", include_bytes!("../assets/discipline/concentration.png")),
+    (
+        "concentration",
+        include_bytes!("../assets/discipline/concentration.png"),
+    ),
     ("corruption", include_bytes!("../assets/discipline/corruption.png")),
     ("darkness", include_bytes!("../assets/discipline/darkness.png")),
     ("deception", include_bytes!("../assets/discipline/deception.png")),
     ("defense", include_bytes!("../assets/discipline/defense.png")),
-    ("dirty-fighting", include_bytes!("../assets/discipline/dirty-fighting.png")),
+    (
+        "dirty-fighting",
+        include_bytes!("../assets/discipline/dirty-fighting.png"),
+    ),
     ("engineering", include_bytes!("../assets/discipline/engineering.png")),
     ("focus", include_bytes!("../assets/discipline/focus.png")),
     ("fury", include_bytes!("../assets/discipline/fury.png")),
@@ -107,8 +98,14 @@ static DISCIPLINE_ICON_DATA: &[(&str, &[u8])] = &[
     ("hatred", include_bytes!("../assets/discipline/hatred.png")),
     ("immortal", include_bytes!("../assets/discipline/immortal.png")),
     ("infiltration", include_bytes!("../assets/discipline/infiltration.png")),
-    ("innovative-ordnance", include_bytes!("../assets/discipline/innovative-ordnance.png")),
-    ("kinetic-combat", include_bytes!("../assets/discipline/kinetic-combat.png")),
+    (
+        "innovative-ordnance",
+        include_bytes!("../assets/discipline/innovative-ordnance.png"),
+    ),
+    (
+        "kinetic-combat",
+        include_bytes!("../assets/discipline/kinetic-combat.png"),
+    ),
     ("lethality", include_bytes!("../assets/discipline/lethality.png")),
     ("lightning", include_bytes!("../assets/discipline/lightning.png")),
     ("madness", include_bytes!("../assets/discipline/madness.png")),
@@ -124,7 +121,10 @@ static DISCIPLINE_ICON_DATA: &[(&str, &[u8])] = &[
     ("seer", include_bytes!("../assets/discipline/seer.png")),
     ("serenity", include_bytes!("../assets/discipline/serenity.png")),
     ("sharpshooter", include_bytes!("../assets/discipline/sharpshooter.png")),
-    ("shield-specialist", include_bytes!("../assets/discipline/shield-specialist.png")),
+    (
+        "shield-specialist",
+        include_bytes!("../assets/discipline/shield-specialist.png"),
+    ),
     ("shield-tech", include_bytes!("../assets/discipline/shield-tech.png")),
     ("tactics", include_bytes!("../assets/discipline/tactics.png")),
     ("telekinetics", include_bytes!("../assets/discipline/telekinetics.png")),
@@ -246,132 +246,61 @@ fn get_discipline_icons() -> &'static HashMap<String, ClassIcon> {
 
 /// Get a discipline icon by name as raw RGBA (e.g., "lightning", "lightning.png").
 /// Returns `None` if the discipline is unknown.
-pub fn get_discipline_icon(name: &str) -> Option<ClassIcon> {
+pub fn get_discipline_icon(name: &str) -> Option<&'static ClassIcon> {
     let key = name.strip_suffix(".png").unwrap_or(name);
-    let base = get_discipline_icons().get(key)?;
-    Some(ClassIcon { rgba: base.rgba.clone(), width: base.width, height: base.height })
+    get_discipline_icons().get(key)
 }
 
-/// Get a class icon with role-based tinting applied
-pub fn get_tinted_class_icon(name: &str, role: Role) -> Option<ClassIcon> {
-    let base = get_class_icon(name)?;
-    let (tr, tg, tb) = role.tint_color();
+/// Recolored copies of the decoded icons, built once each and kept for the
+/// process: keyed by the source icon's address plus the variant.
+static DERIVED_ICONS: OnceLock<Mutex<HashMap<(usize, [u8; 4]), &'static ClassIcon>>> = OnceLock::new();
 
-    // Apply tint by multiplying each pixel's color with the tint
-    let mut tinted = base.rgba.clone();
-    for chunk in tinted.chunks_exact_mut(4) {
-        // Multiply blend: result = (original * tint) / 255
-        chunk[0] = ((chunk[0] as u16 * tr as u16) / 255) as u8;
-        chunk[1] = ((chunk[1] as u16 * tg as u16) / 255) as u8;
-        chunk[2] = ((chunk[2] as u16 * tb as u16) / 255) as u8;
-        // Keep alpha unchanged
-    }
+fn derived(base: &'static ClassIcon, variant: [u8; 4], recolor: impl Fn(&mut [u8])) -> &'static ClassIcon {
+    let mut icons = DERIVED_ICONS
+        .get_or_init(Default::default)
+        .lock()
+        .unwrap_or_else(|p| p.into_inner());
+    icons
+        .entry((std::ptr::from_ref(base) as usize, variant))
+        .or_insert_with(|| {
+            let mut rgba = base.rgba.clone();
+            for px in rgba.as_chunks_mut::<4>().0 {
+                recolor(px);
+            }
+            Box::leak(Box::new(ClassIcon {
+                rgba,
+                width: base.width,
+                height: base.height,
+            }))
+        })
+}
 
-    Some(ClassIcon {
-        rgba: tinted,
-        width: base.width,
-        height: base.height,
+/// Visible pixels set to one color, alpha preserved
+fn silhouette(base: &'static ClassIcon, (r, g, b): (u8, u8, u8)) -> &'static ClassIcon {
+    derived(base, [1, r, g, b], |px| {
+        if px[3] > 0 {
+            px[..3].copy_from_slice(&[r, g, b]);
+        }
+    })
+}
+
+/// Black copy at reduced alpha, drawn around an icon as its outline
+pub fn shadow_of(icon: &'static ClassIcon) -> &'static ClassIcon {
+    derived(icon, [0; 4], |px| {
+        px[3] = (px[3] as u16 * 180 / 255) as u8;
+        px[..3].fill(0);
     })
 }
 
 /// Get a class icon as a role-colored silhouette (preserves alpha, all visible pixels
 /// set to the role's light tint color). Useful for overlays where icons sit on colored bars.
-pub fn get_role_colored_class_icon(name: &str, role: Role) -> Option<ClassIcon> {
-    let base = get_class_icon(name)?;
-    let (r, g, b) = role.tint_color();
-
-    let mut result = base.rgba.clone();
-    for chunk in result.chunks_exact_mut(4) {
-        if chunk[3] > 0 {
-            chunk[0] = r;
-            chunk[1] = g;
-            chunk[2] = b;
-        }
-    }
-
-    Some(ClassIcon {
-        rgba: result,
-        width: base.width,
-        height: base.height,
-    })
+pub fn get_role_colored_class_icon(name: &str, role: Role) -> Option<&'static ClassIcon> {
+    Some(silhouette(get_class_icon(name)?, role.tint_color()))
 }
 
 /// Get a class icon as a white silhouette (preserves alpha, all visible pixels white)
-pub fn get_white_class_icon(name: &str) -> Option<ClassIcon> {
-    let base = get_class_icon(name)?;
-
-    let mut result = base.rgba.clone();
-    for chunk in result.chunks_exact_mut(4) {
-        // Make all visible pixels white, preserve alpha
-        if chunk[3] > 0 {
-            chunk[0] = 255;
-            chunk[1] = 255;
-            chunk[2] = 255;
-        }
-    }
-
-    Some(ClassIcon {
-        rgba: result,
-        width: base.width,
-        height: base.height,
-    })
-}
-
-/// Get a class icon with role-based tinting and white outline
-pub fn get_outlined_tinted_icon(name: &str, role: Role) -> Option<ClassIcon> {
-    let tinted = get_tinted_class_icon(name, role)?;
-    let width = tinted.width as usize;
-    let height = tinted.height as usize;
-    let mut result = tinted.rgba.clone();
-
-    // Find pixels within N pixels of transparent edge and make them white
-    let outline_thickness = 2;
-
-    for y in 0..height {
-        for x in 0..width {
-            let idx = (y * width + x) * 4;
-            let alpha = tinted.rgba[idx + 3];
-
-            // Skip transparent pixels
-            if alpha < 128 {
-                continue;
-            }
-
-            // Check if any pixel within outline_thickness is transparent
-            let mut is_near_edge = false;
-            'outer: for dy in -(outline_thickness as i32)..=(outline_thickness as i32) {
-                for dx in -(outline_thickness as i32)..=(outline_thickness as i32) {
-                    let nx = x as i32 + dx;
-                    let ny = y as i32 + dy;
-
-                    // Out of bounds counts as edge
-                    if nx < 0 || ny < 0 || nx >= width as i32 || ny >= height as i32 {
-                        is_near_edge = true;
-                        break 'outer;
-                    }
-
-                    let nidx = (ny as usize * width + nx as usize) * 4;
-                    if tinted.rgba[nidx + 3] < 128 {
-                        is_near_edge = true;
-                        break 'outer;
-                    }
-                }
-            }
-
-            if is_near_edge {
-                // Make edge pixel white
-                result[idx] = 255;
-                result[idx + 1] = 255;
-                result[idx + 2] = 255;
-            }
-        }
-    }
-
-    Some(ClassIcon {
-        rgba: result,
-        width: tinted.width,
-        height: tinted.height,
-    })
+pub fn get_white_class_icon(name: &str) -> Option<&'static ClassIcon> {
+    Some(silhouette(get_class_icon(name)?, (255, 255, 255)))
 }
 
 /// Decode PNG data to RGBA
@@ -417,9 +346,5 @@ fn decode_png(data: &[u8]) -> Option<ClassIcon> {
         png::ColorType::Indexed => return None,
     };
 
-    Some(ClassIcon {
-        rgba,
-        width,
-        height,
-    })
+    Some(ClassIcon { rgba, width, height })
 }

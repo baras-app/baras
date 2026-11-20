@@ -10,10 +10,7 @@ use crate::types::{AreaListItem, BossEditItem, NewAreaRequest};
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[component]
-pub fn NewAreaForm(
-    on_create: EventHandler<NewAreaRequest>,
-    on_cancel: EventHandler<()>,
-) -> Element {
+pub fn NewAreaForm(on_create: EventHandler<NewAreaRequest>, on_cancel: EventHandler<()>) -> Element {
     let mut name = use_signal(String::new);
     let mut area_id = use_signal(String::new);
     let mut area_type = use_signal(|| "operation".to_string());
@@ -104,20 +101,10 @@ pub fn NewAreaForm(
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[component]
-pub fn NewBossForm(
-    area: AreaListItem,
-    on_create: EventHandler<BossEditItem>,
-    on_cancel: EventHandler<()>,
-) -> Element {
+pub fn NewBossForm(area: AreaListItem, on_create: EventHandler<BossEditItem>, on_cancel: EventHandler<()>) -> Element {
     let mut id = use_signal(String::new);
     let mut name = use_signal(String::new);
-    let mut difficulties = use_signal(|| {
-        vec![
-            "story".to_string(),
-            "veteran".to_string(),
-            "master".to_string(),
-        ]
-    });
+    let mut difficulties = use_signal(|| vec!["story".to_string(), "veteran".to_string(), "master".to_string()]);
 
     let can_create = !id().is_empty() && !name().is_empty();
     let area_name = area.name.clone();

@@ -9,9 +9,11 @@ pub fn ToggleSwitch(
     checked: bool,
     #[props(default)] title: String,
     /// Extra class on the label, for placement (e.g. "history-switch")
-    #[props(default = "")] class: &'static str,
+    #[props(default = "")]
+    class: &'static str,
     /// Keep the click from reaching a clickable parent (a switch inside a button)
-    #[props(default = false)] stop_propagation: bool,
+    #[props(default = false)]
+    stop_propagation: bool,
     on_change: EventHandler<bool>,
 ) -> Element {
     rsx! {

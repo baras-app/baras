@@ -1,6 +1,8 @@
 //! Effect Uptime tab: everything the sidebar's selected source applied, as a
-//! table of targets (rows) × effects (columns), uptime % per cell. Answers
+//! table of effects (rows) × targets (columns), uptime % per cell. Answers
 //! "my HoT on each tank", "my DoTs on the boss vs adds", "did the debuff stay up".
+
+use std::collections::HashMap;
 
 use dioxus::prelude::*;
 
@@ -8,6 +10,7 @@ use baras_types::formatting;
 
 use crate::api::{self, EffectUptimeCell, TimeRange};
 use crate::components::ability_icon::AbilityIcon;
+use crate::components::class_icons::get_class_icon;
 
 #[derive(Clone, Copy, PartialEq)]
 enum Targets {
@@ -24,20 +27,26 @@ pub fn EffectUptimeView(
     selected_source: Option<String>,
     /// Instance id when the source is one NPC spawn among same-named copies
     selected_source_id: Option<i64>,
+    /// Name → discipline icon, from the overview
+    icons: Memo<HashMap<String, String>>,
     european: bool,
 ) -> Element {
     let mut targets = use_signal(|| Targets::All);
-    // Timeline selection: a row (target), a column (effect), or a cell (both;
+    // Timeline selection: a row (effect), a column (target), or a cell (both;
     // shown as the target's timeline with that effect emphasised)
     let mut picked_target = use_signal(|| None::<String>);
     let mut picked_effect = use_signal(|| None::<i64>);
-    let selector = selected_source.clone().map(|n| selected_source_id.map_or(n, |id| format!("id:{id}")));
+    let selector = selected_source
+        .clone()
+        .map(|n| selected_source_id.map_or(n, |id| format!("id:{id}")));
 
-    let cells = use_resource(use_reactive!(|(encounter_idx, time_range, duration_secs, selector)| async move {
-        let source = selector?;
-        let tr = (time_range.end > 0.0).then_some(time_range);
-        api::query_effect_uptime_by_target(encounter_idx, &source, tr.as_ref(), duration_secs).await
-    }));
+    let cells = use_resource(use_reactive!(
+        |(encounter_idx, time_range, duration_secs, selector)| async move {
+            let source = selector?;
+            let tr = (time_range.end > 0.0).then_some(time_range);
+            api::query_effect_uptime_by_target(encounter_idx, &source, tr.as_ref(), duration_secs).await
+        }
+    ));
 
     let Some(source) = selected_source else {
         return rsx! { div { class: "uptime-empty", "Pick a source in the sidebar to see the effects it applied" } };
@@ -54,7 +63,7 @@ pub fn EffectUptimeView(
         })
         .collect();
 
-    // Columns: effects by total uptime across targets; rows: the source
+    // Rows: effects by total uptime across targets; columns: the source
     // itself first, then players, then NPCs, each by name
     let mut effects: Vec<(i64, &str, i64, f32)> = Vec::new();
     for c in &visible {
@@ -64,10 +73,10 @@ pub fn EffectUptimeView(
         }
     }
     effects.sort_by(|a, b| b.3.total_cmp(&a.3));
-    let mut rows: Vec<(&str, &str)> = Vec::new();
+    let mut target_cols: Vec<(&str, &str)> = Vec::new();
     for c in &visible {
-        if !rows.iter().any(|r| r.0 == c.target_name) {
-            rows.push((&c.target_name, &c.target_type));
+        if !target_cols.iter().any(|r| r.0 == c.target_name) {
+            target_cols.push((&c.target_name, &c.target_type));
         }
     }
     let rank = |(name, kind): &(&str, &str)| match *kind {
@@ -75,10 +84,15 @@ pub fn EffectUptimeView(
         "Npc" => 2,
         _ => 1,
     };
-    rows.sort_by(|a, b| rank(a).cmp(&rank(b)).then(a.0.cmp(b.0)));
-    let cell = |target: &str, effect: i64| visible.iter().find(|c| c.target_name == target && c.effect_id == effect);
+    target_cols.sort_by(|a, b| rank(a).cmp(&rank(b)).then(a.0.cmp(b.0)));
+    let cell = |target: &str, effect: i64| {
+        visible
+            .iter()
+            .find(|c| c.target_name == target && c.effect_id == effect)
+    };
     let picked = picked_target();
-    let picked_col = picked_effect().filter(|_| picked.is_none());
+    let picked_row = picked_effect().filter(|_| picked.is_none());
+    let picked_col = picked.as_deref().filter(|_| picked_effect().is_none());
     let timeline: Vec<EffectUptimeCell> = visible
         .iter()
         .filter(|c| match (&picked, picked_effect()) {
@@ -89,27 +103,58 @@ pub fn EffectUptimeView(
         })
         .map(|c| (*c).clone())
         .collect();
-    let effect_name = |e: i64| effects.iter().find(|x| x.0 == e).map_or_else(String::new, |x| x.1.to_string());
-    // (title prefix, subject) of the timeline
-    let subject = match (&picked, picked_effect()) {
-        (Some(t), Some(e)) => Some(("Timeline of", format!("{} on {t}", effect_name(e)))),
-        (Some(t), None) => Some(("Timeline on", t.clone())),
-        (None, Some(e)) => Some(("Timeline of", effect_name(e))),
+    let icons = icons.read();
+    // Name with its discipline icon (players; NPCs have none)
+    let who = |name: &str| {
+        let icon = icons.get(name).and_then(|i| get_class_icon(i)).copied();
+        rsx! {
+            span { class: "uptime-who",
+                if let Some(src) = icon {
+                    img { class: "uptime-class-icon", src, alt: "" }
+                }
+                strong { "{name}" }
+            }
+        }
+    };
+    let effect = |e: i64| {
+        let (name, ability) = effects.iter().find(|x| x.0 == e).map_or(("", 0), |x| (x.1, x.2));
+        rsx! {
+            span { class: "uptime-who",
+                AbilityIcon { ability_id: e, fallback_id: (ability != 0).then_some(ability), size: 16 }
+                strong { "{name}" }
+            }
+        }
+    };
+    // Timeline heading: the effect when one is picked, then source → target(s)
+    let arrow = rsx! { i { class: "fa-solid fa-arrow-right uptime-arrow" } };
+    let title = match (&picked, picked_effect()) {
+        (Some(t), Some(e)) => Some(rsx! { {effect(e)} {who(&source)} {arrow} {who(t)} }),
+        (Some(t), None) => Some(rsx! { {who(&source)} {arrow} {who(t)} }),
+        (None, Some(e)) => Some(rsx! {
+            {effect(e)}
+            {who(&source)}
+            {arrow}
+            span { class: "uptime-every", "every target" }
+        }),
         _ => None,
     };
-    let (range_start, range_end) = if time_range.end > 0.0 { (time_range.start, time_range.end) } else { (0.0, duration_secs) };
+    let (range_start, range_end) = if time_range.end > 0.0 {
+        (time_range.start, time_range.end)
+    } else {
+        (0.0, duration_secs)
+    };
 
     rsx! {
         div { class: "uptime-view",
             div { class: "uptime-toolbar",
-                span { class: "uptime-title", "Effects applied by " strong { "{source}" } }
+                span { class: "uptime-title", "Effects applied by " {who(&source)} }
                 div { class: "filter-pills ml-auto", title: "Targets",
                     for (label, t) in [("All", Targets::All), ("Players", Targets::Players), ("NPCs", Targets::Npcs)] {
                         button { class: if shown == t { "seg active" } else { "seg" }, onclick: move |_| targets.set(t), "{label}" }
                     }
                 }
             }
-            if rows.is_empty() {
+            if effects.is_empty() {
                 div { class: "uptime-empty",
                     if cells.read().is_none() { "Loading…" } else { "No effects applied by {source} on these targets" }
                 }
@@ -118,40 +163,47 @@ pub fn EffectUptimeView(
                     table { class: "overview-table uptime-table",
                         thead {
                             tr {
-                                th { class: "name-col", "Target" }
-                                for (id, name, ability, _) in effects.iter().copied() {
+                                th { class: "name-col", "Effect" }
+                                for (target, kind) in target_cols.iter().copied() {
                                     th {
-                                        class: if picked_col == Some(id) { "uptime-effect picked" } else { "uptime-effect" },
+                                        class: match (picked_col == Some(target), kind == "Npc") {
+                                            (true, _) => "uptime-target picked",
+                                            (false, true) => "uptime-target npc",
+                                            _ => "uptime-target",
+                                        },
+                                        title: "Show when each effect was up on {target}",
+                                        onclick: {
+                                            let t = target.to_string();
+                                            move |_| {
+                                                let same = picked_target.peek().as_deref() == Some(t.as_str())
+                                                    && picked_effect.peek().is_none();
+                                                picked_target.set((!same).then(|| t.clone()));
+                                                picked_effect.set(None);
+                                            }
+                                        },
+                                        span { "{target}" }
+                                    }
+                                }
+                            }
+                        }
+                        tbody {
+                            for (id, name, ability, _) in effects.iter().copied() {
+                                tr {
+                                    class: if picked_row == Some(id) { "uptime-row picked" } else { "uptime-row" },
+                                    td {
+                                        class: "name-col",
                                         title: "{name}: show it on every target",
                                         onclick: move |_| {
                                             let same = picked_target.peek().is_none() && *picked_effect.peek() == Some(id);
                                             picked_target.set(None);
                                             picked_effect.set((!same).then_some(id));
                                         },
-                                        AbilityIcon { ability_id: id, fallback_id: (ability != 0).then_some(ability), size: 18 }
-                                        span { "{name}" }
+                                        span { class: "name-with-icon",
+                                            AbilityIcon { ability_id: id, fallback_id: (ability != 0).then_some(ability), size: 18 }
+                                            span { class: "name-text", "{name}" }
+                                        }
                                     }
-                                }
-                            }
-                        }
-                        tbody {
-                            for (target, kind) in rows.iter().copied() {
-                                tr {
-                                    class: if picked.as_deref() == Some(target) { "uptime-row picked" } else { "uptime-row" },
-                                    td {
-                                        class: if kind == "Npc" { "name-col npc" } else { "name-col" },
-                                        title: "Show when each effect was up on {target}",
-                                        onclick: {
-                                            let t = target.to_string();
-                                            move |_| {
-                                                let same = picked_target.peek().as_deref() == Some(t.as_str());
-                                                picked_target.set((!same).then(|| t.clone()));
-                                                picked_effect.set(None);
-                                            }
-                                        },
-                                        "{target}"
-                                    }
-                                    for (id, name, _, _) in effects.iter().copied() {
+                                    for (target, _) in target_cols.iter().copied() {
                                         if let Some(c) = cell(target, id) {
                                             td {
                                                 class: if picked.as_deref() == Some(target) && picked_effect() == Some(id) { "num uptime-cell picked" } else { "num uptime-cell" },
@@ -175,13 +227,13 @@ pub fn EffectUptimeView(
                         }
                     }
                 }
-                if let Some((prefix, subject)) = subject {
-                    UptimeTimeline { prefix, subject, by_target: picked.is_none(), cells: timeline, range_start, range_end }
+                if let Some(title) = title {
+                    UptimeTimeline { title, by_target: picked.is_none(), cells: timeline, range_start, range_end }
                 } else {
                     div { class: "usage-timeline-container",
                         div { class: "usage-timeline-hint",
                             i { class: "fa-solid fa-bars-progress" }
-                            " Click a target, an effect or a cell above to see when effects were up"
+                            " Click an effect, a target or a cell above to see when effects were up"
                         }
                     }
                 }
@@ -195,9 +247,8 @@ pub fn EffectUptimeView(
 /// the one clicked cell.
 #[component]
 fn UptimeTimeline(
-    prefix: &'static str,
-    /// The picked target, effect, or "effect on target"
-    subject: String,
+    /// The picked effect and/or source → target(s)
+    title: Element,
     by_target: bool,
     cells: Vec<EffectUptimeCell>,
     range_start: f32,
@@ -212,10 +263,7 @@ fn UptimeTimeline(
 
     rsx! {
         div { class: "uptime-timeline",
-            div { class: "uptime-timeline-title",
-                "{prefix} "
-                strong { "{subject}" }
-            }
+            div { class: "uptime-timeline-title", {title} }
             for c in lanes {
                 div { class: "uptime-lane",
                     if by_target {

@@ -148,11 +148,7 @@ impl X11Overlay {
     }
 
     /// Create a shared memory buffer for efficient pixel transfer
-    fn create_shm_buffer(
-        conn: &RustConnection,
-        width: u32,
-        height: u32,
-    ) -> Result<ShmBuffer, PlatformError> {
+    fn create_shm_buffer(conn: &RustConnection, width: u32, height: u32) -> Result<ShmBuffer, PlatformError> {
         let size = (width * height * 4) as usize;
 
         // Create anonymous shared memory
@@ -202,8 +198,7 @@ impl X11Overlay {
 
         // Create new buffer
         self.shm_buffer = Self::create_shm_buffer(&self.conn, self.width, self.height)?;
-        self.pixel_data
-            .resize((self.width * self.height * 4) as usize, 0);
+        self.pixel_data.resize((self.width * self.height * 4) as usize, 0);
 
         Ok(())
     }
@@ -274,15 +269,13 @@ impl X11Overlay {
     }
 
     fn is_in_resize_corner(&self, x: i32, y: i32) -> bool {
-        x > (self.width as i32 - RESIZE_CORNER_SIZE)
-            && y > (self.height as i32 - RESIZE_CORNER_SIZE)
+        x > (self.width as i32 - RESIZE_CORNER_SIZE) && y > (self.height as i32 - RESIZE_CORNER_SIZE)
     }
 }
 
 impl OverlayPlatform for X11Overlay {
     fn new(config: OverlayConfig) -> Result<Self, PlatformError> {
-        let (conn, screen_num) =
-            x11rb::connect(None).map_err(|e| PlatformError::ConnectionFailed(e.to_string()))?;
+        let (conn, screen_num) = x11rb::connect(None).map_err(|e| PlatformError::ConnectionFailed(e.to_string()))?;
 
         // Intern atoms
         let atoms = AtomCollection::new(&conn)
@@ -310,32 +303,18 @@ impl OverlayPlatform for X11Overlay {
             .ok_or_else(|| PlatformError::UnsupportedFeature("32-bit ARGB visual".into()))?;
 
         // Create colormap for 32-bit visual
-        let colormap = conn
-            .generate_id()
-            .map_err(|e| PlatformError::Other(e.to_string()))?;
+        let colormap = conn.generate_id().map_err(|e| PlatformError::Other(e.to_string()))?;
         conn.create_colormap(ColormapAlloc::NONE, colormap, root, visual)
             .map_err(|e| PlatformError::Other(e.to_string()))?;
 
         // Resolve absolute position
         let monitors = get_all_monitors();
-        let (raw_x, raw_y) = super::resolve_absolute_position(
-            config.x,
-            config.y,
-            config.target_monitor_id.as_deref(),
-            &monitors,
-        );
-        let (abs_x, abs_y) = super::ensure_visible_on_monitor(
-            raw_x,
-            raw_y,
-            config.width,
-            config.height,
-            &monitors,
-        );
+        let (raw_x, raw_y) =
+            super::resolve_absolute_position(config.x, config.y, config.target_monitor_id.as_deref(), &monitors);
+        let (abs_x, abs_y) = super::ensure_visible_on_monitor(raw_x, raw_y, config.width, config.height, &monitors);
 
         // Create window
-        let window = conn
-            .generate_id()
-            .map_err(|e| PlatformError::Other(e.to_string()))?;
+        let window = conn.generate_id().map_err(|e| PlatformError::Other(e.to_string()))?;
 
         let win_aux = CreateWindowAux::new()
             .background_pixel(0)
@@ -368,9 +347,7 @@ impl OverlayPlatform for X11Overlay {
         .map_err(|e| PlatformError::Other(e.to_string()))?;
 
         // Create graphics context
-        let gc = conn
-            .generate_id()
-            .map_err(|e| PlatformError::Other(e.to_string()))?;
+        let gc = conn.generate_id().map_err(|e| PlatformError::Other(e.to_string()))?;
         conn.create_gc(gc, window, &CreateGCAux::new())
             .map_err(|e| PlatformError::Other(e.to_string()))?;
 
@@ -416,10 +393,7 @@ impl OverlayPlatform for X11Overlay {
             .conn
             .map_window(window)
             .map_err(|e| PlatformError::Other(e.to_string()))?;
-        overlay
-            .conn
-            .flush()
-            .map_err(|e| PlatformError::Other(e.to_string()))?;
+        overlay.conn.flush().map_err(|e| PlatformError::Other(e.to_string()))?;
 
         Ok(overlay)
     }
@@ -475,10 +449,9 @@ impl OverlayPlatform for X11Overlay {
         // Recreate SHM buffer for new size
         let _ = self.recreate_shm_buffer();
 
-        let _ = self.conn.configure_window(
-            self.window,
-            &ConfigureWindowAux::new().width(width).height(height),
-        );
+        let _ = self
+            .conn
+            .configure_window(self.window, &ConfigureWindowAux::new().width(width).height(height));
 
         if !self.click_through {
             self.update_input_shape();
@@ -522,8 +495,7 @@ impl OverlayPlatform for X11Overlay {
     }
 
     fn pending_size(&self) -> Option<(u32, u32)> {
-        self.is_resizing
-            .then_some((self.pending_width, self.pending_height))
+        self.is_resizing.then_some((self.pending_width, self.pending_height))
     }
 
     fn is_interactive(&self) -> bool {
@@ -536,8 +508,7 @@ impl OverlayPlatform for X11Overlay {
 
     fn commit(&mut self) {
         // Convert RGBA to BGRA directly into SHM buffer
-        let shm_slice =
-            unsafe { std::slice::from_raw_parts_mut(self.shm_buffer.ptr, self.shm_buffer.size) };
+        let shm_slice = unsafe { std::slice::from_raw_parts_mut(self.shm_buffer.ptr, self.shm_buffer.size) };
 
         for (i, chunk) in self.pixel_data.chunks(4).enumerate() {
             let offset = i * 4;
@@ -638,10 +609,8 @@ impl OverlayPlatform for X11Overlay {
                         }
                     }
                 }
-                x11rb::protocol::Event::LeaveNotify(_) => {
-                    if !self.is_resizing {
-                        self.in_resize_corner = false;
-                    }
+                x11rb::protocol::Event::LeaveNotify(_) if !self.is_resizing => {
+                    self.in_resize_corner = false;
                 }
                 x11rb::protocol::Event::DestroyNotify(e) if e.window == self.window => {
                     self.running = false;

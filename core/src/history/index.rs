@@ -21,10 +21,10 @@ use super::meta::LibraryMeta;
 use super::pvp::pvp_rows;
 use super::record::PullRecord;
 use super::runs::{BuiltRun, RunSource, apply_meta, build_runs, run_matches};
-use crate::game_data::{game_version_at, server_name};
 use super::store::{HISTORY_VERSION, HistoryHeader, LogHistory, history_file_name};
 use super::{DUMMY_GROUP, difficulty_parts, history_dir};
 use crate::encounter::PhaseType;
+use crate::game_data::{game_version_at, server_name};
 
 struct IndexedLog {
     modified: SystemTime,
@@ -72,11 +72,7 @@ impl PullIndex {
             if path.extension().is_none_or(|e| e != "json") {
                 continue;
             }
-            let Some(name) = path
-                .file_name()
-                .and_then(|f| f.to_str())
-                .map(str::to_string)
-            else {
+            let Some(name) = path.file_name().and_then(|f| f.to_str()).map(str::to_string) else {
                 continue;
             };
             let modified = entry.metadata()?.modified()?;
@@ -88,9 +84,7 @@ impl PullIndex {
                 Ok(loaded) => {
                     let history = loaded.history;
                     for (start_ms, link) in loaded.legacy_parsely {
-                        report
-                            .legacy_parsely
-                            .push((history.filename.clone(), start_ms, link));
+                        report.legacy_parsely.push((history.filename.clone(), start_ms, link));
                     }
                     let log_path = history.log_path(log_dir);
                     let stale = is_stale(&history, &log_path);
@@ -101,11 +95,12 @@ impl PullIndex {
                         .map(|p| row_from(&history, p))
                         .collect();
                     let pvp = pvp_rows(&history);
-                    let server = rows.iter().map(|r| r.server.clone()).find(|s| !s.is_empty()).unwrap_or_default();
-                    let started_ms = history
-                        .started_at
-                        .map(|t| t.and_utc().timestamp_millis())
-                        .unwrap_or(0);
+                    let server = rows
+                        .iter()
+                        .map(|r| r.server.clone())
+                        .find(|s| !s.is_empty())
+                        .unwrap_or_default();
+                    let started_ms = history.started_at.map(|t| t.and_utc().timestamp_millis()).unwrap_or(0);
                     self.logs.insert(
                         name,
                         IndexedLog {
@@ -144,7 +139,12 @@ impl PullIndex {
         if known.is_empty() {
             return;
         }
-        for row in self.logs.values_mut().flat_map(|l| l.rows.iter_mut()).filter(|r| r.area_id == 0) {
+        for row in self
+            .logs
+            .values_mut()
+            .flat_map(|l| l.rows.iter_mut())
+            .filter(|r| r.area_id == 0)
+        {
             if let Some(id) = known.get(&row.operation) {
                 row.area_id = *id;
             }
@@ -192,19 +192,21 @@ impl PullIndex {
         };
         let mut keyed: Vec<(usize, BossNode)> = counts
             .into_iter()
-            .map(|((operation, boss), (pulls, kills, area_id, is_operation, is_flashpoint))| {
-                (
-                    order(area_id, boss),
-                    BossNode {
-                        operation: operation.to_string(),
-                        boss: boss.to_string(),
-                        pulls,
-                        kills,
-                        is_operation,
-                        is_flashpoint,
-                    },
-                )
-            })
+            .map(
+                |((operation, boss), (pulls, kills, area_id, is_operation, is_flashpoint))| {
+                    (
+                        order(area_id, boss),
+                        BossNode {
+                            operation: operation.to_string(),
+                            boss: boss.to_string(),
+                            pulls,
+                            kills,
+                            is_operation,
+                            is_flashpoint,
+                        },
+                    )
+                },
+            )
             .collect();
         keyed.sort_by(|(oa, a), (ob, b)| {
             (a.operation == DUMMY_GROUP, &a.operation, oa, &a.boss).cmp(&(
@@ -320,7 +322,13 @@ impl PullIndex {
             .into_iter()
             .map(|(_, log)| {
                 let (path, archived) = log.location();
-                RunSource { rows: &log.rows, visits: &log.visits, timer_starts: &log.timer_starts, path, archived }
+                RunSource {
+                    rows: &log.rows,
+                    visits: &log.visits,
+                    timer_starts: &log.timer_starts,
+                    path,
+                    archived,
+                }
             })
             .collect();
         let mut runs = build_runs(&sources, catalog);
@@ -337,7 +345,11 @@ impl PullIndex {
         if meta.run_tags().is_empty() {
             return out;
         }
-        for run in self.built_runs(catalog, meta).into_iter().filter(|r| !r.summary.tags.is_empty()) {
+        for run in self
+            .built_runs(catalog, meta)
+            .into_iter()
+            .filter(|r| !r.summary.tags.is_empty())
+        {
             for r in run.rows {
                 out.insert((r.filename.as_str(), r.start_ms), run.summary.tags.clone());
             }
@@ -382,7 +394,9 @@ impl PullIndex {
     /// Instanced visits recorded for one log; these include an area a
     /// resumed log never named with an `AreaEntered` line.
     pub fn visits_for(&self, log_filename: &str) -> &[InstanceVisit] {
-        self.logs.get(history_file_name(log_filename).as_str()).map_or(&[], |l| l.visits.as_slice())
+        self.logs
+            .get(history_file_name(log_filename).as_str())
+            .map_or(&[], |l| l.visits.as_slice())
     }
 
     fn rows(&self) -> impl Iterator<Item = &PullRow> {
@@ -394,7 +408,10 @@ impl PullIndex {
     pub fn pvp_matches(&self) -> Vec<PvpMatchRow> {
         let mut out = Vec::new();
         for log in self.logs.values().filter(|l| !l.pvp.is_empty()) {
-            let path = log.log_path.is_file().then(|| log.log_path.to_string_lossy().into_owned());
+            let path = log
+                .log_path
+                .is_file()
+                .then(|| log.log_path.to_string_lossy().into_owned());
             out.extend(log.pvp.iter().cloned().map(|mut m| {
                 m.path = path.clone();
                 m
@@ -428,15 +445,23 @@ pub struct LogRef<'a> {
 impl IndexedLog {
     /// `(path, archived)`: the log on disk, else whether the archive has it
     fn location(&self) -> (Option<String>, bool) {
-        let path = self.log_path.is_file().then(|| self.log_path.to_string_lossy().into_owned());
+        let path = self
+            .log_path
+            .is_file()
+            .then(|| self.log_path.to_string_lossy().into_owned());
         let archived = path.is_none()
-            && self.rows.first().is_some_and(|r| crate::library::archived_log(&r.filename).is_some());
+            && self
+                .rows
+                .first()
+                .is_some_and(|r| crate::library::archived_log(&r.filename).is_some());
         (path, archived)
     }
 }
 
 fn tags_of<'a>(pull_tags: &'a HashMap<(&'a str, i64), Vec<String>>, r: &'a PullRow) -> &'a [String] {
-    pull_tags.get(&(r.filename.as_str(), r.start_ms)).map_or(&[], Vec::as_slice)
+    pull_tags
+        .get(&(r.filename.as_str(), r.start_ms))
+        .map_or(&[], Vec::as_slice)
 }
 
 /// Old store version, or the log (in the directory or the archive) no longer
@@ -474,34 +499,24 @@ fn matches(r: &PullRow, f: &PullFilter) -> bool {
 /// ISO timestamps compare lexicographically, so day bounds need no parsing
 fn in_date_range(timestamp: &str, f: &PullFilter) -> bool {
     let day = timestamp.get(..10).unwrap_or(timestamp);
-    (f.date_from.is_empty() || day >= f.date_from.as_str())
-        && (f.date_to.is_empty() || day <= f.date_to.as_str())
+    (f.date_from.is_empty() || day >= f.date_from.as_str()) && (f.date_to.is_empty() || day <= f.date_to.as_str())
 }
 
 fn distinct<'a>(it: impl Iterator<Item = &'a str>) -> Vec<String> {
-    let mut v: Vec<String> = it
-        .collect::<HashSet<_>>()
-        .into_iter()
-        .map(str::to_string)
-        .collect();
+    let mut v: Vec<String> = it.collect::<HashSet<_>>().into_iter().map(str::to_string).collect();
     v.sort();
     v
 }
 
 fn row_from(log: &LogHistory, p: &PullRecord) -> PullRow {
-    let character = log
-        .character_name
-        .clone()
-        .unwrap_or_else(|| "Unknown".into());
+    let character = log.character_name.clone().unwrap_or_else(|| "Unknown".into());
     let me = p.roster.iter().find(|m| m.name == character);
     let (operation, boss) = if p.kind == PhaseType::DummyParse {
         (DUMMY_GROUP.to_string(), DUMMY_GROUP.to_string())
     } else {
         (
             p.area_name.clone(),
-            p.boss_name
-                .clone()
-                .unwrap_or_else(|| p.display_name.clone()),
+            p.boss_name.clone().unwrap_or_else(|| p.display_name.clone()),
         )
     };
     let progress = p.progress.as_ref();

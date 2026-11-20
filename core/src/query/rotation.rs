@@ -71,7 +71,9 @@ impl EncounterQuery<'_> {
             "SELECT combat_time_secs, ability_id, ability_name \
              FROM events WHERE effect_id = {} AND source_name = '{}'{} \
              ORDER BY combat_time_secs ASC, line_number ASC",
-            effect_id::ABILITYACTIVATE, escaped, time_filter
+            effect_id::ABILITYACTIVATE,
+            escaped,
+            time_filter
         );
 
         let batches = self.sql(&sql).await?;
@@ -127,12 +129,7 @@ impl EncounterQuery<'_> {
         // 6. Compute cycle start times for time-range fallback
         let starts: Vec<f32> = cycles
             .iter()
-            .map(|c| {
-                c.slots
-                    .first()
-                    .map(|s| s.gcd_ability.time_secs)
-                    .unwrap_or(0.0)
-            })
+            .map(|c| c.slots.first().map(|s| s.gcd_ability.time_secs).unwrap_or(0.0))
             .collect();
 
         // 7. Attribute each damage/heal event to a cycle:
@@ -199,10 +196,10 @@ fn group_into_gcd_slots(events: &[RotationEvent]) -> Vec<GcdSlot> {
     }
 
     // Trailing off-GCD abilities with no following GCD — attach to last slot
-    if !pending_off_gcd.is_empty() {
-        if let Some(last) = slots.last_mut() {
-            last.off_gcd.extend(pending_off_gcd);
-        }
+    if !pending_off_gcd.is_empty()
+        && let Some(last) = slots.last_mut()
+    {
+        last.off_gcd.extend(pending_off_gcd);
     }
 
     slots
@@ -222,8 +219,8 @@ fn split_into_cycles(slots: Vec<GcdSlot>, anchor_id: i64) -> Vec<RotationCycle> 
     };
 
     for slot in slots {
-        let is_anchor = slot.gcd_ability.ability_id == anchor_id
-            || slot.off_gcd.iter().any(|e| e.ability_id == anchor_id);
+        let is_anchor =
+            slot.gcd_ability.ability_id == anchor_id || slot.off_gcd.iter().any(|e| e.ability_id == anchor_id);
 
         if is_anchor && !current_slots.is_empty() {
             let mut cycle = empty_cycle();
@@ -265,11 +262,7 @@ fn build_cast_index(cycles: &[RotationCycle]) -> HashMap<i64, Vec<(f32, usize)>>
 
 /// Find the cycle index for a damage/heal event by looking up the most recent
 /// cast of the same ability_id at or before the event time.
-fn find_cast_cycle(
-    cast_index: &HashMap<i64, Vec<(f32, usize)>>,
-    ability_id: i64,
-    event_time: f32,
-) -> Option<usize> {
+fn find_cast_cycle(cast_index: &HashMap<i64, Vec<(f32, usize)>>, ability_id: i64, event_time: f32) -> Option<usize> {
     let casts = cast_index.get(&ability_id)?;
     // Binary search for the last cast at or before event_time
     let pos = casts.partition_point(|(t, _)| *t <= event_time);

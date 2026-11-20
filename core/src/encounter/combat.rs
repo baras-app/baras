@@ -24,9 +24,9 @@ use crate::{effect_type_id, is_boss};
 
 use super::challenge::ChallengeTracker;
 use super::effect_instance::EffectInstance;
-use super::pvp_faction::{PvpFaction, PvpFactionTracker, PvpOutcome};
 use super::entity_info::{NpcInfo, PlayerInfo};
 use super::metrics::MetricAccumulator;
+use super::pvp_faction::{PvpFaction, PvpFactionTracker, PvpOutcome};
 use super::{EncounterState, OverlayHealthEntry};
 
 /// Processing mode for the encounter
@@ -433,12 +433,7 @@ impl CombatEncounter {
     }
 
     /// Set the area context for this encounter (including AreaEntered line number)
-    pub fn set_area(
-        &mut self,
-        area_id: Option<i64>,
-        area_name: Option<String>,
-        area_entered_line: Option<u64>,
-    ) {
+    pub fn set_area(&mut self, area_id: Option<i64>, area_name: Option<String>, area_entered_line: Option<u64>) {
         self.area_id = area_id;
         self.area_name = area_name;
         self.area_entered_line = area_entered_line;
@@ -506,7 +501,8 @@ impl CombatEncounter {
     /// Keyed by (log_id, entity_name, shield_idx) so that shields on different entity
     /// definitions with the same slot index remain independent.
     pub fn activate_shield(&mut self, npc_log_id: i64, entity_name: &str, shield_idx: usize, total: i64) {
-        self.boss_shields.insert((npc_log_id, entity_name.to_string(), shield_idx), (total, total));
+        self.boss_shields
+            .insert((npc_log_id, entity_name.to_string(), shield_idx), (total, total));
         if let Some(npc) = self.npcs.get_mut(&npc_log_id) {
             npc.is_displayed = true;
         }
@@ -514,7 +510,8 @@ impl CombatEncounter {
 
     /// Deactivate a specific boss shield by NPC instance and entity definition name.
     pub fn deactivate_shield(&mut self, npc_log_id: i64, entity_name: &str, shield_idx: usize) {
-        self.boss_shields.remove(&(npc_log_id, entity_name.to_string(), shield_idx));
+        self.boss_shields
+            .remove(&(npc_log_id, entity_name.to_string(), shield_idx));
     }
 
     /// Absorb damage across all active shields for a given NPC instance.
@@ -540,10 +537,7 @@ impl CombatEncounter {
     /// Get boss health entries for overlay display. `disciplines` is the
     /// session-level registry (source of truth for player roles); the
     /// encounter's own player records are the fallback.
-    pub fn get_boss_health(
-        &self,
-        disciplines: &HashMap<i64, PlayerInfo>,
-    ) -> Vec<OverlayHealthEntry> {
+    pub fn get_boss_health(&self, disciplines: &HashMap<i64, PlayerInfo>) -> Vec<OverlayHealthEntry> {
         let Some(def) = self.active_boss_definition() else {
             return Vec::new();
         };
@@ -572,14 +566,14 @@ impl CombatEncounter {
                             .filter(|m| {
                                 // Difficulty tier filter (empty = all)
                                 (m.difficulties.is_empty()
-                                    || self.difficulty.as_ref().map_or(true, |d| {
+                                    || self.difficulty.as_ref().is_none_or(|d| {
                                         m.difficulties
                                             .iter()
                                             .any(|key| d.matches_config_key(key))
                                     }))
                                 // Group size filter (None = all sizes)
-                                && m.group_size.map_or(true, |req_size| {
-                                    self.difficulty.map_or(true, |d| d.group_size() == req_size)
+                                && m.group_size.is_none_or(|req_size| {
+                                    self.difficulty.is_none_or(|d| d.group_size() == req_size)
                                 })
                                 // Encounter state conditions (empty = always shown)
                                 && self.evaluate_conditions(&m.conditions)
@@ -594,14 +588,14 @@ impl CombatEncounter {
                             .iter()
                             .enumerate()
                             .filter_map(|(idx, shield_def)| {
-                                self.boss_shields
-                                    .get(&(npc.log_id, e.name.clone(), idx))
-                                    .map(|&(remaining, effective_total)| super::ActiveShield {
+                                self.boss_shields.get(&(npc.log_id, e.name.clone(), idx)).map(
+                                    |&(remaining, effective_total)| super::ActiveShield {
                                         label: shield_def.label.clone(),
                                         remaining,
                                         total: effective_total,
                                         icon_ability_id: shield_def.icon_id(),
-                                    })
+                                    },
+                                )
                             })
                             .collect()
                     })
@@ -628,7 +622,7 @@ impl CombatEncounter {
             })
             .collect();
 
-        entries.sort_by(|a, b| a.first_seen_at.cmp(&b.first_seen_at));
+        entries.sort_by_key(|a| a.first_seen_at);
         entries
     }
 
@@ -694,12 +688,7 @@ impl CombatEncounter {
 
     /// Modify a counter (increment, decrement, or set_value)
     /// Returns (old_value, new_value)
-    pub fn modify_counter(
-        &mut self,
-        counter_id: &str,
-        decrement: bool,
-        set_value: Option<u32>,
-    ) -> (u32, u32) {
+    pub fn modify_counter(&mut self, counter_id: &str, decrement: bool, set_value: Option<u32>) -> (u32, u32) {
         let old_value = self.get_counter(counter_id);
         let new_value = if let Some(val) = set_value {
             val
@@ -723,11 +712,7 @@ impl CombatEncounter {
     }
 
     /// Reset multiple counters to their initial values
-    pub fn reset_counters_to_initial(
-        &mut self,
-        counter_ids: &[String],
-        definitions: &[CounterDefinition],
-    ) {
+    pub fn reset_counters_to_initial(&mut self, counter_ids: &[String], definitions: &[CounterDefinition]) {
         for id in counter_ids {
             let initial = definitions
                 .iter()
@@ -800,51 +785,7 @@ impl CombatEncounter {
 
     /// Evaluate a single state condition against current encounter state.
     pub fn evaluate_condition(&self, condition: &crate::dsl::Condition) -> bool {
-        use crate::dsl::Condition;
-        match condition {
-            Condition::PhaseActive { phase_ids } => self.is_in_any_phase(phase_ids),
-
-            Condition::CounterCompare {
-                counter_id,
-                operator,
-                value,
-            } => {
-                let current = self.get_counter(counter_id);
-                operator.evaluate(current, *value)
-            }
-
-            Condition::CounterCompareCounter {
-                counter_id,
-                operator,
-                other_counter_id,
-            } => {
-                let left = self.get_counter(counter_id);
-                let right = self.get_counter(other_counter_id);
-                operator.evaluate(left, right)
-            }
-
-            Condition::TimerTimeRemaining {
-                timer_id,
-                operator,
-                value,
-            } => {
-                // If the timer is not active, the condition is always false
-                match self.timer_remaining.get(timer_id) {
-                    Some(&remaining) => operator.evaluate_f32(remaining, *value),
-                    None => false,
-                }
-            }
-
-            Condition::AllOf { conditions } => {
-                conditions.iter().all(|c| self.evaluate_condition(c))
-            }
-
-            Condition::AnyOf { conditions } => {
-                conditions.iter().any(|c| self.evaluate_condition(c))
-            }
-
-            Condition::Not { condition } => !self.evaluate_condition(condition),
-        }
+        self.evaluate_condition_with_timer_snapshot(condition, &self.timer_remaining)
     }
 
     /// Evaluate a single condition using an overridden timer_remaining snapshot.
@@ -900,9 +841,7 @@ impl CombatEncounter {
                 .iter()
                 .any(|c| self.evaluate_condition_with_timer_snapshot(c, timer_snapshot)),
 
-            Condition::Not { condition } => {
-                !self.evaluate_condition_with_timer_snapshot(condition, timer_snapshot)
-            }
+            Condition::Not { condition } => !self.evaluate_condition_with_timer_snapshot(condition, timer_snapshot),
         }
     }
 
@@ -920,24 +859,12 @@ impl CombatEncounter {
         phases: &[String],
         counter_condition: Option<&CounterCondition>,
     ) -> bool {
-        // Check new-style conditions
-        if !conditions.iter().all(|c| self.evaluate_condition(c)) {
-            return false;
-        }
-
-        // Check legacy phases
-        if !phases.is_empty() && !self.is_in_any_phase(phases) {
-            return false;
-        }
-
-        // Check legacy counter condition
-        if let Some(cond) = counter_condition {
-            if !self.check_counter_condition(cond) {
-                return false;
-            }
-        }
-
-        true
+        self.evaluate_merged_conditions_with_timer_snapshot(
+            conditions,
+            phases,
+            counter_condition,
+            &self.timer_remaining,
+        )
     }
 
     /// Evaluate merged conditions with an overridden timer_remaining snapshot.
@@ -966,10 +893,10 @@ impl CombatEncounter {
         }
 
         // Check legacy counter condition
-        if let Some(cond) = counter_condition {
-            if !self.check_counter_condition(cond) {
-                return false;
-            }
+        if let Some(cond) = counter_condition
+            && !self.check_counter_condition(cond)
+        {
+            return false;
         }
 
         true
@@ -1108,13 +1035,7 @@ impl CombatEncounter {
         // Boss IDs: `npcs` is append-only and `is_boss` is fixed per entry, so a
         // length change is the only way the boss set can change.
         if self.boss_ids_cache_len != self.npcs.len() {
-            self.boss_ids_cache = Arc::new(
-                self.npcs
-                    .values()
-                    .filter(|n| n.is_boss)
-                    .map(|n| n.log_id)
-                    .collect(),
-            );
+            self.boss_ids_cache = Arc::new(self.npcs.values().filter(|n| n.is_boss).map(|n| n.log_id).collect());
             self.boss_ids_cache_len = self.npcs.len();
         }
 
@@ -1229,14 +1150,12 @@ impl CombatEncounter {
             .players
             .values()
             .filter(|p| {
-                self.enter_combat_time.is_none_or(|combat_start| {
-                    p.last_seen_at.is_some_and(|seen| seen >= combat_start)
-                })
+                self.enter_combat_time
+                    .is_none_or(|combat_start| p.last_seen_at.is_some_and(|seen| seen >= combat_start))
             })
             .collect();
 
-        self.all_players_dead =
-            !dominated_players.is_empty() && dominated_players.iter().all(|p| p.is_dead);
+        self.all_players_dead = !dominated_players.is_empty() && dominated_players.iter().all(|p| p.is_dead);
 
         if self.all_players_dead && self.victory_triggered && self.wipe_revokes_victory() {
             self.victory_triggered = false;
@@ -1266,9 +1185,9 @@ impl CombatEncounter {
         let (mut enemy_total, mut enemy_dead) = (0u32, 0u32);
         for (id, player) in &self.players {
             // Only players seen during this round's combat
-            let in_combat = self.enter_combat_time.is_none_or(|start| {
-                player.last_seen_at.is_some_and(|seen| seen >= start)
-            });
+            let in_combat = self
+                .enter_combat_time
+                .is_none_or(|start| player.last_seen_at.is_some_and(|seen| seen >= start));
             if !in_combat {
                 continue;
             }
@@ -1298,33 +1217,33 @@ impl CombatEncounter {
         if self.all_players_dead {
             return true;
         }
-        
+
         // For boss encounters with kill targets defined
         if let Some(def_idx) = self.active_boss_idx() {
             let def = &self.boss_definitions()[def_idx];
-            let kill_target_ids: HashSet<i64> = def.kill_targets()
-                .flat_map(|e| e.ids.iter().copied())
-                .collect();
-            
+            let kill_target_ids: HashSet<i64> = def.kill_targets().flat_map(|e| e.ids.iter().copied()).collect();
+
             if !kill_target_ids.is_empty() {
                 // Find all NPC instances that match kill target class IDs
-                let kill_target_instances: Vec<_> = self.npcs.values()
+                let kill_target_instances: Vec<_> = self
+                    .npcs
+                    .values()
                     .filter(|npc| kill_target_ids.contains(&npc.class_id))
                     .collect();
-                
+
                 // If we've seen kill targets and any are still alive, it's a wipe
                 if !kill_target_instances.is_empty() {
                     // Consider a kill target dead if either:
                     // - is_dead flag is set (received death event), OR
                     // - current_hp <= 0 (handles game race condition where death event is never logged)
-                    let all_kill_targets_dead = kill_target_instances.iter().all(|npc| {
-                        npc.is_dead || npc.current_hp <= 0
-                    });
+                    let all_kill_targets_dead = kill_target_instances
+                        .iter()
+                        .all(|npc| npc.is_dead || npc.current_hp <= 0);
                     return !all_kill_targets_dead;
                 }
             }
         }
-        
+
         // Fall back to all_players_dead for non-boss encounters
         false
     }
@@ -1332,14 +1251,8 @@ impl CombatEncounter {
     /// Update last-known positions for the event's entities.
     /// Called once per event, before any trigger evaluation.
     pub fn update_entity_positions(&mut self, event: &CombatEvent) {
-        let src = event
-            .source_entity
-            .position
-            .filter(|_| event.source_entity.log_id != 0);
-        let tgt = event
-            .target_entity
-            .position
-            .filter(|_| event.target_entity.log_id != 0);
+        let src = event.source_entity.position.filter(|_| event.source_entity.log_id != 0);
+        let tgt = event.target_entity.position.filter(|_| event.target_entity.log_id != 0);
         if src.is_none() && tgt.is_none() {
             return;
         }
@@ -1369,9 +1282,7 @@ impl CombatEncounter {
 
         // For TARGETSET/TARGETCLEARED, track the source entity (player, NPC, or companion)
         // so we can set their current target before the entity lookup
-        if event.effect.effect_id == effect_id::TARGETSET
-            || event.effect.effect_id == effect_id::TARGETCLEARED
-        {
+        if event.effect.effect_id == effect_id::TARGETSET || event.effect.effect_id == effect_id::TARGETCLEARED {
             self.try_track_entity(&event.source_entity, event.timestamp);
             return;
         }
@@ -1433,8 +1344,7 @@ impl CombatEncounter {
                     return;
                 }
 
-                let pending_target =
-                    self.pending_npc_targets.remove(&entity.log_id).unwrap_or(0);
+                let pending_target = self.pending_npc_targets.remove(&entity.log_id).unwrap_or(0);
                 self.npcs.entry(entity.log_id).or_insert_with(|| NpcInfo {
                     name: entity.name,
                     entity_type: entity.entity_type,
@@ -1453,10 +1363,7 @@ impl CombatEncounter {
     }
 
     pub fn is_active(&self) -> bool {
-        matches!(
-            self.state,
-            EncounterState::InCombat | EncounterState::PostCombat { .. }
-        )
+        matches!(self.state, EncounterState::InCombat | EncounterState::PostCombat { .. })
     }
 
     pub fn get_entity_name(&self, id: i64) -> Option<IStr> {
@@ -1581,19 +1488,14 @@ impl CombatEncounter {
                 | defense_type::RESIST
                 | defense_type::DEFLECT
         );
-        let is_natural_shield = defense_type == defense_type::SHIELD
-            && event.details.dmg_effective == event.details.dmg_amount;
+        let is_natural_shield =
+            defense_type == defense_type::SHIELD && event.details.dmg_effective == event.details.dmg_amount;
 
         // Source accumulation
         {
-            let source = self
-                .accumulated_data
-                .entry(event.source_entity.log_id)
-                .or_default();
+            let source = self.accumulated_data.entry(event.source_entity.log_id).or_default();
 
-            if event.details.dmg_amount > 0
-                && event.source_entity.log_id != event.target_entity.log_id
-            {
+            if event.details.dmg_amount > 0 && event.source_entity.log_id != event.target_entity.log_id {
                 source.damage_dealt += event.details.dmg_amount as i64;
                 source.damage_dealt_effective += event.details.dmg_effective as i64;
                 source.damage_hit_count += 1;
@@ -1638,10 +1540,7 @@ impl CombatEncounter {
 
         // Target accumulation
         {
-            let target = self
-                .accumulated_data
-                .entry(event.target_entity.log_id)
-                .or_default();
+            let target = self.accumulated_data.entry(event.target_entity.log_id).or_default();
 
             // Count all incoming attacks (hits + full avoidances) for defense %.
             if is_defense || event.details.dmg_amount > 0 {
@@ -1684,11 +1583,8 @@ impl CombatEncounter {
             && event.target_entity.log_id == local_player_id
             && event.source_entity.log_id != local_player_id
         {
-            self.incoming_damage.record(
-                event.timestamp,
-                event.source_entity.log_id,
-                event.details.dmg_effective,
-            );
+            self.incoming_damage
+                .record(event.timestamp, event.source_entity.log_id, event.details.dmg_effective);
         }
     }
 
@@ -1759,20 +1655,19 @@ impl CombatEncounter {
                 };
 
                 // Look up discipline info from session-level registry (source of truth)
-                let (discipline, discipline_name, class_name) =
-                    if let Some(player) = player_disciplines.get(id) {
-                        let disc = Discipline::from_guid(player.discipline_id);
-                        let disc_name = if player.discipline_name.is_empty() {
-                            None
-                        } else {
-                            Some(player.discipline_name.clone())
-                        };
-                        // Derive class_name from Discipline enum (English) for CSS matching
-                        let cls_name = disc.map(|d| format!("{:?}", d.class()));
-                        (disc, disc_name, cls_name)
+                let (discipline, discipline_name, class_name) = if let Some(player) = player_disciplines.get(id) {
+                    let disc = Discipline::from_guid(player.discipline_id);
+                    let disc_name = if player.discipline_name.is_empty() {
+                        None
                     } else {
-                        (None, None, None)
+                        Some(player.discipline_name.clone())
                     };
+                    // Derive class_name from Discipline enum (English) for CSS matching
+                    let cls_name = disc.map(|d| format!("{:?}", d.class()));
+                    (disc, disc_name, cls_name)
+                } else {
+                    (None, None, None)
+                };
 
                 Some(EntityMetrics {
                     entity_id: *id,
@@ -1791,8 +1686,7 @@ impl CombatEncounter {
                     total_healing: acc.healing_done + acc.shielding_given,
                     total_healing_effective: acc.healing_effective + acc.shielding_given,
                     hps: ((acc.healing_done + acc.shielding_given) * 1000 / duration_ms) as i32,
-                    ehps: ((acc.healing_effective + acc.shielding_given) * 1000 / duration_ms)
-                        as i32,
+                    ehps: ((acc.healing_effective + acc.shielding_given) * 1000 / duration_ms) as i32,
                     heal_crit_pct,
                     effective_heal_pct,
                     abs: (acc.shielding_given * 1000 / duration_ms) as i32,
@@ -1817,7 +1711,7 @@ impl CombatEncounter {
             })
             .collect();
 
-        stats.sort_by(|a, b| b.dps.cmp(&a.dps));
+        stats.sort_by_key(|x| std::cmp::Reverse(x.dps));
         Some(stats)
     }
 }

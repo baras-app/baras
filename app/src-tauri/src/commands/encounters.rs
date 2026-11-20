@@ -13,10 +13,10 @@ use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
 
 use baras_core::boss::{
-    AreaType, BossEncounterDefinition, BossTimerDefinition, BossWithPath, ChallengeDefinition,
-    CounterDefinition, EntityDefinition, PhaseDefinition, find_custom_file, load_area_config,
-    load_bosses_from_file, load_bosses_with_custom, load_bosses_with_paths, merge_boss_definition,
-    save_bosses_to_file, save_bosses_to_file_with_area,
+    AreaType, BossEncounterDefinition, BossTimerDefinition, BossWithPath, ChallengeDefinition, CounterDefinition,
+    EntityDefinition, PhaseDefinition, find_custom_file, load_area_config, load_bosses_from_file,
+    load_bosses_with_custom, load_bosses_with_paths, merge_boss_definition, save_bosses_to_file,
+    save_bosses_to_file_with_area,
 };
 use baras_core::timers::{TimerPreferences, boss_counter_key, boss_phase_key, boss_timer_key};
 
@@ -109,16 +109,13 @@ impl EncounterItem {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 pub(crate) fn get_user_encounters_dir() -> Option<PathBuf> {
-    dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"))
+    baras_core::paths::config_dir().map(|p| p.join("definitions").join("encounters"))
 }
 
 pub(crate) fn get_bundled_encounters_dir(app_handle: &AppHandle) -> Option<PathBuf> {
     app_handle
         .path()
-        .resolve(
-            "definitions/encounters",
-            tauri::path::BaseDirectory::Resource,
-        )
+        .resolve("definitions/encounters", tauri::path::BaseDirectory::Resource)
         .ok()
 }
 
@@ -132,8 +129,7 @@ pub(crate) fn ensure_user_dir() -> Result<PathBuf, String> {
 
 /// Load all bosses from bundled + user directories with custom overlays merged.
 fn load_all_bosses(app_handle: &AppHandle) -> Result<Vec<BossWithPath>, String> {
-    let bundled_dir = get_bundled_encounters_dir(app_handle)
-        .ok_or("Could not find bundled encounter definitions")?;
+    let bundled_dir = get_bundled_encounters_dir(app_handle).ok_or("Could not find bundled encounter definitions")?;
     let user_dir = ensure_user_dir()?;
 
     // Load bundled with custom overlays merged (uses loader.rs)
@@ -148,11 +144,7 @@ fn load_all_bosses(app_handle: &AppHandle) -> Result<Vec<BossWithPath>, String> 
     for bwp in &mut results {
         if let Some(custom_path) = find_custom_file(&bwp.file_path, &user_dir) {
             if seen_custom_files.insert(custom_path.clone()) {
-                custom_overlay_sources.push((
-                    custom_path.clone(),
-                    bwp.file_path.clone(),
-                    bwp.category.clone(),
-                ));
+                custom_overlay_sources.push((custom_path.clone(), bwp.file_path.clone(), bwp.category.clone()));
             }
 
             if let Ok(custom_bosses) = load_bosses_from_file(&custom_path) {
@@ -168,8 +160,7 @@ fn load_all_bosses(app_handle: &AppHandle) -> Result<Vec<BossWithPath>, String> 
     // Pass 2: Append new bosses from custom overlay files that don't exist in bundled.
     // Use the bundled file_path so get_custom_path_if_bundled correctly routes saves
     // back to the _custom.toml overlay.
-    let bundled_ids: std::collections::HashSet<String> =
-        results.iter().map(|b| b.boss.id.clone()).collect();
+    let bundled_ids: std::collections::HashSet<String> = results.iter().map(|b| b.boss.id.clone()).collect();
 
     for (custom_path, bundled_path, category) in &custom_overlay_sources {
         if let Ok(custom_bosses) = load_bosses_from_file(custom_path) {
@@ -188,19 +179,15 @@ fn load_all_bosses(app_handle: &AppHandle) -> Result<Vec<BossWithPath>, String> 
     // Add user-only files (not _custom.toml, no bundled counterpart)
     if user_dir.exists() {
         for bwp in load_bosses_with_paths(&user_dir)? {
-            let filename = bwp
-                .file_path
-                .file_name()
-                .unwrap_or_default()
-                .to_string_lossy();
+            let filename = bwp.file_path.file_name().unwrap_or_default().to_string_lossy();
             if filename.ends_with("_custom.toml") {
                 continue;
             }
             // Check if this has a bundled counterpart
-            if let Ok(rel) = bwp.file_path.strip_prefix(&user_dir) {
-                if bundled_dir.join(rel).exists() {
-                    continue;
-                }
+            if let Ok(rel) = bwp.file_path.strip_prefix(&user_dir)
+                && bundled_dir.join(rel).exists()
+            {
+                continue;
             }
             results.push(bwp);
         }
@@ -214,12 +201,8 @@ fn get_custom_path_if_bundled(file_path: &Path, app_handle: &AppHandle) -> Optio
     let bundled_dir = get_bundled_encounters_dir(app_handle)?;
     let user_dir = get_user_encounters_dir()?;
 
-    let canonical_file = file_path
-        .canonicalize()
-        .unwrap_or_else(|_| file_path.to_path_buf());
-    let canonical_bundled = bundled_dir
-        .canonicalize()
-        .unwrap_or_else(|_| bundled_dir.clone());
+    let canonical_file = file_path.canonicalize().unwrap_or_else(|_| file_path.to_path_buf());
+    let canonical_bundled = bundled_dir.canonicalize().unwrap_or_else(|_| bundled_dir.clone());
 
     if canonical_file.starts_with(&canonical_bundled) {
         // Build custom path: user_dir/relative_path/stem_custom.toml
@@ -315,12 +298,7 @@ fn load_file_with_custom(file_path: &Path) -> Result<Vec<BossWithPath>, String> 
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /// Check if an item exists in a custom overlay file by type and ID.
-fn item_exists_in_custom_by_type(
-    custom_path: &Path,
-    boss_id: &str,
-    item_type: &str,
-    item_id: &str,
-) -> bool {
+fn item_exists_in_custom_by_type(custom_path: &Path, boss_id: &str, item_type: &str, item_id: &str) -> bool {
     if !custom_path.exists() {
         return false;
     }
@@ -344,14 +322,8 @@ fn item_exists_in_custom_by_type(
 }
 
 /// Delete an item from a custom overlay file.
-fn delete_item_from_custom(
-    custom_path: &Path,
-    boss_id: &str,
-    item_type: &str,
-    item_id: &str,
-) -> Result<(), String> {
-    let mut bosses = load_bosses_from_file(custom_path)
-        .map_err(|e| format!("Failed to load custom file: {}", e))?;
+fn delete_item_from_custom(custom_path: &Path, boss_id: &str, item_type: &str, item_id: &str) -> Result<(), String> {
+    let mut bosses = load_bosses_from_file(custom_path).map_err(|e| format!("Failed to load custom file: {}", e))?;
 
     for boss in &mut bosses {
         if boss.id == boss_id {
@@ -376,8 +348,7 @@ fn delete_item_from_custom(
     });
 
     if bosses.is_empty() {
-        std::fs::remove_file(custom_path)
-            .map_err(|e| format!("Failed to delete empty custom file: {}", e))?;
+        std::fs::remove_file(custom_path).map_err(|e| format!("Failed to delete empty custom file: {}", e))?;
     } else {
         save_bosses_to_file(&bosses, custom_path)?;
     }
@@ -408,7 +379,9 @@ fn save_item_to_custom_file(
     let item_for_save: EncounterItem = match item {
         EncounterItem::Timer(t) => {
             let mut t = t.clone();
-            let bundled = bundled_boss.as_ref().and_then(|b| b.timers.iter().find(|x| x.id == t.id));
+            let bundled = bundled_boss
+                .as_ref()
+                .and_then(|b| b.timers.iter().find(|x| x.id == t.id));
             if let Some(b) = bundled {
                 t.enabled = b.enabled;
                 t.audio.enabled = b.audio.enabled;
@@ -421,14 +394,20 @@ fn save_item_to_custom_file(
         }
         EncounterItem::Phase(p) => {
             let mut p = p.clone();
-            if let Some(b) = bundled_boss.as_ref().and_then(|b| b.phases.iter().find(|x| x.id == p.id)) {
+            if let Some(b) = bundled_boss
+                .as_ref()
+                .and_then(|b| b.phases.iter().find(|x| x.id == p.id))
+            {
                 p.enabled = b.enabled;
             }
             EncounterItem::Phase(p)
         }
         EncounterItem::Counter(c) => {
             let mut c = c.clone();
-            if let Some(b) = bundled_boss.as_ref().and_then(|b| b.counters.iter().find(|x| x.id == c.id)) {
+            if let Some(b) = bundled_boss
+                .as_ref()
+                .and_then(|b| b.counters.iter().find(|x| x.id == c.id))
+            {
                 c.enabled = b.enabled;
             }
             EncounterItem::Counter(c)
@@ -454,9 +433,7 @@ fn save_item_to_custom_file(
             EncounterItem::Challenge(_) => "challenge",
             EncounterItem::Entity(_) => "entity",
         };
-        if custom_path.exists()
-            && item_exists_in_custom_by_type(custom_path, boss_id, item_type, item.id())
-        {
+        if custom_path.exists() && item_exists_in_custom_by_type(custom_path, boss_id, item_type, item.id()) {
             return delete_item_from_custom(custom_path, boss_id, item_type, item.id());
         }
         return Ok(());
@@ -499,7 +476,7 @@ fn save_item_to_custom_file(
 // ═══════════════════════════════════════════════════════════════════════════════
 
 fn timer_preferences_path() -> Option<PathBuf> {
-    dirs::config_dir().map(|p| p.join("baras").join("timer_preferences.toml"))
+    baras_core::paths::config_dir().map(|p| p.join("timer_preferences.toml"))
 }
 
 fn load_timer_preferences() -> TimerPreferences {
@@ -546,10 +523,7 @@ fn counter_eq_ignoring_prefs(a: &CounterDefinition, b: &CounterDefinition) -> bo
 
 /// Get bosses for an area file with timer preferences merged.
 #[tauri::command]
-pub async fn fetch_area_bosses(
-    app_handle: AppHandle,
-    file_path: String,
-) -> Result<Vec<BossWithPathResponse>, String> {
+pub async fn fetch_area_bosses(app_handle: AppHandle, file_path: String) -> Result<Vec<BossWithPathResponse>, String> {
     let path = PathBuf::from(&file_path);
 
     debug!(file_path = %file_path, path_exists = path.exists(), "fetch_area_bosses called");
@@ -574,7 +548,12 @@ pub async fn fetch_area_bosses(
         let challenges = originals.iter().map(|b| (b.id.clone(), b.challenges.clone())).collect();
         (timers, phases, counters, challenges)
     } else {
-        (std::collections::HashMap::new(), std::collections::HashMap::new(), std::collections::HashMap::new(), std::collections::HashMap::new())
+        (
+            std::collections::HashMap::new(),
+            std::collections::HashMap::new(),
+            std::collections::HashMap::new(),
+            std::collections::HashMap::new(),
+        )
     };
 
     let mut bosses = load_file_with_custom(&path)?;
@@ -605,18 +584,18 @@ pub async fn fetch_area_bosses(
         }
         for phase in &mut bwp.boss.phases {
             let key = boss_phase_key(&bwp.boss.area_name, &bwp.boss.name, &phase.id);
-            if let Some(p) = prefs.get_phase(&key) {
-                if let Some(v) = p.enabled {
-                    phase.enabled = v;
-                }
+            if let Some(p) = prefs.get_phase(&key)
+                && let Some(v) = p.enabled
+            {
+                phase.enabled = v;
             }
         }
         for counter in &mut bwp.boss.counters {
             let key = boss_counter_key(&bwp.boss.area_name, &bwp.boss.name, &counter.id);
-            if let Some(p) = prefs.get_counter(&key) {
-                if let Some(v) = p.enabled {
-                    counter.enabled = v;
-                }
+            if let Some(p) = prefs.get_counter(&key)
+                && let Some(v) = p.enabled
+            {
+                counter.enabled = v;
             }
         }
     }
@@ -762,12 +741,7 @@ pub async fn create_encounter_item(
             boss_with_path.boss.challenges.push(c.clone());
         }
         EncounterItem::Entity(e) => {
-            if boss_with_path
-                .boss
-                .entities
-                .iter()
-                .any(|x| x.name == e.name)
-            {
+            if boss_with_path.boss.entities.iter().any(|x| x.name == e.name) {
                 return Err(format!("Entity '{}' already exists", e.name));
             }
             boss_with_path.boss.entities.push(e.clone());
@@ -815,11 +789,7 @@ pub async fn update_encounter_item(
     match &item {
         EncounterItem::Timer(t) => {
             let mut prefs = load_timer_preferences();
-            let key = boss_timer_key(
-                &boss_with_path.boss.area_name,
-                &boss_with_path.boss.name,
-                &t.id,
-            );
+            let key = boss_timer_key(&boss_with_path.boss.area_name, &boss_with_path.boss.name, &t.id);
             prefs.update_enabled(&key, t.enabled);
             prefs.update_audio_enabled(&key, t.audio.enabled);
             // Convert roles: all 3 present → None (default), otherwise Some(filtered)
@@ -839,21 +809,13 @@ pub async fn update_encounter_item(
         }
         EncounterItem::Phase(p) => {
             let mut prefs = load_timer_preferences();
-            let key = boss_phase_key(
-                &boss_with_path.boss.area_name,
-                &boss_with_path.boss.name,
-                &p.id,
-            );
+            let key = boss_phase_key(&boss_with_path.boss.area_name, &boss_with_path.boss.name, &p.id);
             prefs.update_phase_enabled(&key, p.enabled);
             save_timer_preferences(&prefs)?;
         }
         EncounterItem::Counter(c) => {
             let mut prefs = load_timer_preferences();
-            let key = boss_counter_key(
-                &boss_with_path.boss.area_name,
-                &boss_with_path.boss.name,
-                &c.id,
-            );
+            let key = boss_counter_key(&boss_with_path.boss.area_name, &boss_with_path.boss.name, &c.id);
             prefs.update_counter_enabled(&key, c.enabled);
             save_timer_preferences(&prefs)?;
         }
@@ -933,11 +895,7 @@ pub async fn set_all_timer_roles(
     let mut prefs = load_timer_preferences();
 
     for timer in &boss_with_path.boss.timers {
-        let key = boss_timer_key(
-            &boss_with_path.boss.area_name,
-            &boss_with_path.boss.name,
-            &timer.id,
-        );
+        let key = boss_timer_key(&boss_with_path.boss.area_name, &boss_with_path.boss.name, &timer.id);
         prefs.update_roles(&key, roles_option.clone());
     }
     save_timer_preferences(&prefs)?;
@@ -973,10 +931,7 @@ pub async fn delete_encounter_item(
         if item_exists_in_custom_by_type(&custom_path, &boss_id, &item_type, &item_id) {
             delete_item_from_custom(&custom_path, &boss_id, &item_type, &item_id)?;
         } else {
-            return Err(format!(
-                "Cannot delete bundled {}s. Disable them instead.",
-                item_type
-            ));
+            return Err(format!("Cannot delete bundled {}s. Disable them instead.", item_type));
         }
     } else {
         // User file - load just this file, delete, save
@@ -1101,8 +1056,7 @@ pub struct AreaListItem {
 /// Get area index - list of all encounter areas with boss/timer counts.
 #[tauri::command]
 pub async fn get_area_index(app_handle: AppHandle) -> Result<Vec<AreaListItem>, String> {
-    let bundled_dir = get_bundled_encounters_dir(&app_handle)
-        .ok_or("Could not find bundled encounter definitions")?;
+    let bundled_dir = get_bundled_encounters_dir(&app_handle).ok_or("Could not find bundled encounter definitions")?;
     let user_dir = get_user_encounters_dir();
 
     let mut areas = Vec::new();
@@ -1111,10 +1065,10 @@ pub async fn get_area_index(app_handle: AppHandle) -> Result<Vec<AreaListItem>, 
     scan_areas_recursive(&bundled_dir, user_dir.as_deref(), &mut areas)?;
 
     // Scan user directory for custom areas (not _custom.toml overlays)
-    if let Some(ref user_dir) = user_dir {
-        if user_dir.exists() {
-            scan_user_only_areas(user_dir, &bundled_dir, &mut areas)?;
-        }
+    if let Some(ref user_dir) = user_dir
+        && user_dir.exists()
+    {
+        scan_user_only_areas(user_dir, &bundled_dir, &mut areas)?;
     }
 
     // Sort by name
@@ -1122,11 +1076,7 @@ pub async fn get_area_index(app_handle: AppHandle) -> Result<Vec<AreaListItem>, 
     Ok(areas)
 }
 
-fn scan_areas_recursive(
-    dir: &Path,
-    user_dir: Option<&Path>,
-    areas: &mut Vec<AreaListItem>,
-) -> Result<(), String> {
+fn scan_areas_recursive(dir: &Path, user_dir: Option<&Path>, areas: &mut Vec<AreaListItem>) -> Result<(), String> {
     if !dir.exists() {
         return Ok(());
     }
@@ -1168,13 +1118,8 @@ fn scan_areas_recursive(
     Ok(())
 }
 
-fn scan_user_only_areas(
-    user_dir: &Path,
-    bundled_dir: &Path,
-    areas: &mut Vec<AreaListItem>,
-) -> Result<(), String> {
-    let entries =
-        std::fs::read_dir(user_dir).map_err(|e| format!("Failed to read user directory: {}", e))?;
+fn scan_user_only_areas(user_dir: &Path, bundled_dir: &Path, areas: &mut Vec<AreaListItem>) -> Result<(), String> {
+    let entries = std::fs::read_dir(user_dir).map_err(|e| format!("Failed to read user directory: {}", e))?;
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -1191,10 +1136,10 @@ fn scan_user_only_areas(
             }
 
             // Check if this has a bundled counterpart
-            if let Ok(rel) = path.strip_prefix(user_dir) {
-                if bundled_dir.join(rel).exists() {
-                    continue; // Already included from bundled scan
-                }
+            if let Ok(rel) = path.strip_prefix(user_dir)
+                && bundled_dir.join(rel).exists()
+            {
+                continue; // Already included from bundled scan
             }
 
             // User-only area file
@@ -1362,15 +1307,15 @@ pub async fn create_boss(
     Ok(boss)
 }
 
-/// Update boss notes.
-/// For bundled areas, notes are written to the `_custom.toml` overlay.
-#[tauri::command]
-pub async fn update_boss_notes(
-    app_handle: AppHandle,
-    service: State<'_, ServiceHandle>,
+/// Change one field of a boss. A bundled boss gets the change written to its
+/// custom overlay file (creating a stub entry there if needed); a user file is
+/// edited in place.
+async fn patch_boss(
+    app_handle: &AppHandle,
+    service: &ServiceHandle,
     boss_id: String,
     file_path: String,
-    notes: Option<String>,
+    patch: impl Fn(&mut BossEncounterDefinition),
 ) -> Result<(), String> {
     let file_path_buf = PathBuf::from(&file_path);
 
@@ -1378,8 +1323,7 @@ pub async fn update_boss_notes(
         return Err(format!("Area file not found: {}", file_path));
     }
 
-    if let Some(custom_path) = get_custom_path_if_bundled(&file_path_buf, &app_handle) {
-        // Bundled area: save notes to custom overlay with [area] header
+    if let Some(custom_path) = get_custom_path_if_bundled(&file_path_buf, app_handle) {
         let area_config = load_area_config(&file_path_buf).ok().flatten();
 
         let mut custom_bosses = if custom_path.exists() {
@@ -1388,15 +1332,14 @@ pub async fn update_boss_notes(
             Vec::new()
         };
 
-        // Find or create the boss entry in the custom file
         if let Some(boss) = custom_bosses.iter_mut().find(|b| b.id == boss_id) {
-            boss.notes = notes;
+            patch(boss);
         } else {
-            let stub = BossEncounterDefinition {
+            let mut stub = BossEncounterDefinition {
                 id: boss_id.clone(),
-                notes,
                 ..Default::default()
             };
+            patch(&mut stub);
             custom_bosses.push(stub);
         }
 
@@ -1405,20 +1348,29 @@ pub async fn update_boss_notes(
         }
         save_bosses_to_file_with_area(&custom_bosses, &custom_path, area_config)?;
     } else {
-        // User file: load, update, save directly
         let mut bosses = load_bosses_from_file(&file_path_buf)?;
         let boss = bosses
             .iter_mut()
             .find(|b| b.id == boss_id)
             .ok_or_else(|| format!("Boss '{}' not found", boss_id))?;
-        boss.notes = notes;
+        patch(boss);
         save_bosses_to_file(&bosses, &file_path_buf)?;
     }
 
-    // Trigger definition reload
     let _ = service.reload_timer_definitions().await;
-
     Ok(())
+}
+
+/// Update notes on a boss definition
+#[tauri::command]
+pub async fn update_boss_notes(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    boss_id: String,
+    file_path: String,
+    notes: Option<String>,
+) -> Result<(), String> {
+    patch_boss(&app_handle, &service, boss_id, file_path, |b| b.notes = notes.clone()).await
 }
 
 /// Toggle a boss definition's enabled state
@@ -1430,57 +1382,10 @@ pub async fn update_boss_enabled(
     file_path: String,
     enabled: bool,
 ) -> Result<(), String> {
-    let file_path_buf = PathBuf::from(&file_path);
-
-    if !file_path_buf.exists() {
-        return Err(format!("Area file not found: {}", file_path));
-    }
-
-    if let Some(custom_path) = get_custom_path_if_bundled(&file_path_buf, &app_handle) {
-        // Bundled area: save enabled state to custom overlay with [area] header
-        let area_config = load_area_config(&file_path_buf).ok().flatten();
-
-        let mut custom_bosses = if custom_path.exists() {
-            load_bosses_from_file(&custom_path).unwrap_or_default()
-        } else {
-            Vec::new()
-        };
-
-        // Find or create the boss entry in the custom file
-        if let Some(boss) = custom_bosses.iter_mut().find(|b| b.id == boss_id) {
-            boss.enabled = enabled;
-        } else {
-            let stub = BossEncounterDefinition {
-                id: boss_id.clone(),
-                enabled,
-                ..Default::default()
-            };
-            custom_bosses.push(stub);
-        }
-
-        if let Some(parent) = custom_path.parent() {
-            std::fs::create_dir_all(parent).ok();
-        }
-        save_bosses_to_file_with_area(&custom_bosses, &custom_path, area_config)?;
-    } else {
-        // User file: load, update, save directly
-        let mut bosses = load_bosses_from_file(&file_path_buf)?;
-        let boss = bosses
-            .iter_mut()
-            .find(|b| b.id == boss_id)
-            .ok_or_else(|| format!("Boss '{}' not found", boss_id))?;
-        boss.enabled = enabled;
-        save_bosses_to_file(&bosses, &file_path_buf)?;
-    }
-
-    // Trigger definition reload
-    let _ = service.reload_timer_definitions().await;
-
-    Ok(())
+    patch_boss(&app_handle, &service, boss_id, file_path, |b| b.enabled = enabled).await
 }
 
-/// Update a boss definition's is_final_boss flag
-/// When the final boss of an operation is killed, the operations timer auto-stops.
+/// Mark whether a boss is the final boss of its area
 #[tauri::command]
 pub async fn update_boss_is_final_boss(
     app_handle: AppHandle,
@@ -1489,53 +1394,10 @@ pub async fn update_boss_is_final_boss(
     file_path: String,
     is_final_boss: bool,
 ) -> Result<(), String> {
-    let file_path_buf = PathBuf::from(&file_path);
-
-    if !file_path_buf.exists() {
-        return Err(format!("Area file not found: {}", file_path));
-    }
-
-    if let Some(custom_path) = get_custom_path_if_bundled(&file_path_buf, &app_handle) {
-        // Bundled area: save to custom overlay with [area] header
-        let area_config = load_area_config(&file_path_buf).ok().flatten();
-
-        let mut custom_bosses = if custom_path.exists() {
-            load_bosses_from_file(&custom_path).unwrap_or_default()
-        } else {
-            Vec::new()
-        };
-
-        // Find or create the boss entry in the custom file
-        if let Some(boss) = custom_bosses.iter_mut().find(|b| b.id == boss_id) {
-            boss.is_final_boss = is_final_boss;
-        } else {
-            let stub = BossEncounterDefinition {
-                id: boss_id.clone(),
-                is_final_boss,
-                ..Default::default()
-            };
-            custom_bosses.push(stub);
-        }
-
-        if let Some(parent) = custom_path.parent() {
-            std::fs::create_dir_all(parent).ok();
-        }
-        save_bosses_to_file_with_area(&custom_bosses, &custom_path, area_config)?;
-    } else {
-        // User file: load, update, save directly
-        let mut bosses = load_bosses_from_file(&file_path_buf)?;
-        let boss = bosses
-            .iter_mut()
-            .find(|b| b.id == boss_id)
-            .ok_or_else(|| format!("Boss '{}' not found", boss_id))?;
-        boss.is_final_boss = is_final_boss;
-        save_bosses_to_file(&bosses, &file_path_buf)?;
-    }
-
-    // Trigger definition reload
-    let _ = service.reload_timer_definitions().await;
-
-    Ok(())
+    patch_boss(&app_handle, &service, boss_id, file_path, |b| {
+        b.is_final_boss = is_final_boss
+    })
+    .await
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1556,18 +1418,13 @@ pub struct BossNotesInfo {
 /// Get list of bosses with notes status for the current area
 /// Returns empty list if no area is loaded
 #[tauri::command]
-pub async fn get_area_bosses_for_notes(
-    service: State<'_, ServiceHandle>,
-) -> Result<Vec<BossNotesInfo>, String> {
+pub async fn get_area_bosses_for_notes(service: State<'_, ServiceHandle>) -> Result<Vec<BossNotesInfo>, String> {
     service.get_area_bosses_for_notes().await
 }
 
 /// Send notes for a specific boss to the overlay
 #[tauri::command]
-pub async fn select_boss_notes(
-    service: State<'_, ServiceHandle>,
-    boss_id: String,
-) -> Result<(), String> {
+pub async fn select_boss_notes(service: State<'_, ServiceHandle>, boss_id: String) -> Result<(), String> {
     service.select_boss_notes(&boss_id).await
 }
 
@@ -1627,16 +1484,14 @@ pub async fn export_encounter_toml(
     let area = load_area_config(&path).ok().flatten();
     let config = BossConfig { area, bosses };
 
-    let toml = toml::to_string(&config)
-        .map_err(|e| format!("Failed to serialize: {}", e))?;
+    let toml = toml::to_string(&config).map_err(|e| format!("Failed to serialize: {}", e))?;
     Ok(ExportResult { toml, is_bundled })
 }
 
 /// Read a file's text content (for import flow — frontend needs file content after dialog).
 #[tauri::command]
 pub async fn read_import_file(path: String) -> Result<String, String> {
-    std::fs::read_to_string(&path)
-        .map_err(|e| format!("Failed to read {}: {}", path, e))
+    std::fs::read_to_string(&path).map_err(|e| format!("Failed to read {}: {}", path, e))
 }
 
 /// Write exported TOML content to a file path (chosen by save dialog on frontend).
@@ -1644,8 +1499,7 @@ pub async fn read_import_file(path: String) -> Result<String, String> {
 pub async fn save_export_file(path: String, content: String) -> Result<(), String> {
     let p = PathBuf::from(&path);
     if let Some(parent) = p.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create directory: {}", e))?;
+        std::fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory: {}", e))?;
     }
     std::fs::write(&p, content).map_err(|e| format!("Failed to write file: {}", e))
 }
@@ -1687,8 +1541,7 @@ pub async fn preview_import_encounter(
     toml_content: String,
     target_file_path: Option<String>,
 ) -> Result<ImportPreview, String> {
-    let config: BossConfig = toml::from_str(&toml_content)
-        .map_err(|e| format!("Invalid TOML: {}", e))?;
+    let config: BossConfig = toml::from_str(&toml_content).map_err(|e| format!("Invalid TOML: {}", e))?;
 
     let source_area_name = config.area.as_ref().map(|a| a.name.clone());
 
@@ -1706,19 +1559,16 @@ pub async fn preview_import_encounter(
     // Check area_id mismatch when importing into an existing area
     if let Some(ref tp) = target_file_path {
         let target_path = PathBuf::from(tp);
-        if let Some(source_area) = config.area.as_ref() {
-            if let Ok(Some(target_area)) = load_area_config(&target_path) {
-                if source_area.area_id != 0
-                    && target_area.area_id != 0
-                    && source_area.area_id != target_area.area_id
-                {
-                    errors.push(format!(
-                        "Area mismatch: source is \"{}\" (ID {}) but target is \"{}\" (ID {})",
-                        source_area.name, source_area.area_id,
-                        target_area.name, target_area.area_id,
-                    ));
-                }
-            }
+        if let Some(source_area) = config.area.as_ref()
+            && let Ok(Some(target_area)) = load_area_config(&target_path)
+            && source_area.area_id != 0
+            && target_area.area_id != 0
+            && source_area.area_id != target_area.area_id
+        {
+            errors.push(format!(
+                "Area mismatch: source is \"{}\" (ID {}) but target is \"{}\" (ID {})",
+                source_area.name, source_area.area_id, target_area.name, target_area.area_id,
+            ));
         }
     }
 
@@ -1728,10 +1578,7 @@ pub async fn preview_import_encounter(
     let existing_bosses: Vec<BossEncounterDefinition> = if let Some(ref tp) = target_file_path {
         let path = PathBuf::from(tp);
         if path.exists() {
-            load_file_with_custom(&path)?
-                .into_iter()
-                .map(|b| b.boss)
-                .collect()
+            load_file_with_custom(&path)?.into_iter().map(|b| b.boss).collect()
         } else {
             Vec::new()
         }
@@ -1748,7 +1595,11 @@ pub async fn preview_import_encounter(
             let display_name = if !imported.name.is_empty() {
                 imported.name.clone()
             } else if let Some(e) = existing {
-                if !e.name.is_empty() { e.name.clone() } else { imported.id.clone() }
+                if !e.name.is_empty() {
+                    e.name.clone()
+                } else {
+                    imported.id.clone()
+                }
             } else {
                 imported.id.clone()
             };
@@ -1759,21 +1610,56 @@ pub async fn preview_import_encounter(
                 let mut to_add = Vec::new();
                 let mut unchanged = 0usize;
 
-                diff_items(&imported.timers, &existing.timers,
-                    |t| &t.id, |t| &t.name, "timer",
-                    &mut to_replace, &mut to_add, &mut unchanged);
-                diff_items(&imported.phases, &existing.phases,
-                    |p| &p.id, |p| &p.name, "phase",
-                    &mut to_replace, &mut to_add, &mut unchanged);
-                diff_items(&imported.counters, &existing.counters,
-                    |c| &c.id, |c| &c.name, "counter",
-                    &mut to_replace, &mut to_add, &mut unchanged);
-                diff_items(&imported.challenges, &existing.challenges,
-                    |c| &c.id, |c| &c.name, "challenge",
-                    &mut to_replace, &mut to_add, &mut unchanged);
-                diff_items(&imported.entities, &existing.entities,
-                    |e| &e.name, |e| &e.name, "entity",
-                    &mut to_replace, &mut to_add, &mut unchanged);
+                diff_items(
+                    &imported.timers,
+                    &existing.timers,
+                    |t| &t.id,
+                    |t| &t.name,
+                    "timer",
+                    &mut to_replace,
+                    &mut to_add,
+                    &mut unchanged,
+                );
+                diff_items(
+                    &imported.phases,
+                    &existing.phases,
+                    |p| &p.id,
+                    |p| &p.name,
+                    "phase",
+                    &mut to_replace,
+                    &mut to_add,
+                    &mut unchanged,
+                );
+                diff_items(
+                    &imported.counters,
+                    &existing.counters,
+                    |c| &c.id,
+                    |c| &c.name,
+                    "counter",
+                    &mut to_replace,
+                    &mut to_add,
+                    &mut unchanged,
+                );
+                diff_items(
+                    &imported.challenges,
+                    &existing.challenges,
+                    |c| &c.id,
+                    |c| &c.name,
+                    "challenge",
+                    &mut to_replace,
+                    &mut to_add,
+                    &mut unchanged,
+                );
+                diff_items(
+                    &imported.entities,
+                    &existing.entities,
+                    |e| &e.name,
+                    |e| &e.name,
+                    "entity",
+                    &mut to_replace,
+                    &mut to_add,
+                    &mut unchanged,
+                );
 
                 ImportBossPreview {
                     boss_id: imported.id.clone(),
@@ -1787,19 +1673,39 @@ pub async fn preview_import_encounter(
                 // New boss — all items are adds
                 let mut to_add = Vec::new();
                 for t in &imported.timers {
-                    to_add.push(ImportItemDiff { item_type: "timer".into(), name: t.name.clone(), id: t.id.clone() });
+                    to_add.push(ImportItemDiff {
+                        item_type: "timer".into(),
+                        name: t.name.clone(),
+                        id: t.id.clone(),
+                    });
                 }
                 for p in &imported.phases {
-                    to_add.push(ImportItemDiff { item_type: "phase".into(), name: p.name.clone(), id: p.id.clone() });
+                    to_add.push(ImportItemDiff {
+                        item_type: "phase".into(),
+                        name: p.name.clone(),
+                        id: p.id.clone(),
+                    });
                 }
                 for c in &imported.counters {
-                    to_add.push(ImportItemDiff { item_type: "counter".into(), name: c.name.clone(), id: c.id.clone() });
+                    to_add.push(ImportItemDiff {
+                        item_type: "counter".into(),
+                        name: c.name.clone(),
+                        id: c.id.clone(),
+                    });
                 }
                 for c in &imported.challenges {
-                    to_add.push(ImportItemDiff { item_type: "challenge".into(), name: c.name.clone(), id: c.id.clone() });
+                    to_add.push(ImportItemDiff {
+                        item_type: "challenge".into(),
+                        name: c.name.clone(),
+                        id: c.id.clone(),
+                    });
                 }
                 for e in &imported.entities {
-                    to_add.push(ImportItemDiff { item_type: "entity".into(), name: e.name.clone(), id: e.name.clone() });
+                    to_add.push(ImportItemDiff {
+                        item_type: "entity".into(),
+                        name: e.name.clone(),
+                        id: e.name.clone(),
+                    });
                 }
 
                 ImportBossPreview {
@@ -1866,8 +1772,7 @@ pub async fn import_encounter_toml(
     toml_content: String,
     target_file_path: Option<String>,
 ) -> Result<(), String> {
-    let config: BossConfig = toml::from_str(&toml_content)
-        .map_err(|e| format!("Invalid TOML: {}", e))?;
+    let config: BossConfig = toml::from_str(&toml_content).map_err(|e| format!("Invalid TOML: {}", e))?;
 
     if config.bosses.is_empty() {
         return Err("No boss definitions found".to_string());
@@ -1876,10 +1781,13 @@ pub async fn import_encounter_toml(
     match target_file_path {
         None => {
             // New area — write a new file in user encounters dir
-            let area = config.area.as_ref()
+            let area = config
+                .area
+                .as_ref()
                 .ok_or("Import file has no [area] header — cannot create new area")?;
             let user_dir = ensure_user_dir()?;
-            let filename: String = area.name
+            let filename: String = area
+                .name
                 .to_lowercase()
                 .chars()
                 .map(|c| if c.is_alphanumeric() { c } else { '_' })
@@ -1890,10 +1798,8 @@ pub async fn import_encounter_toml(
                 .join("_");
             let file_path = user_dir.join(format!("{}.toml", filename));
 
-            let content = toml::to_string(&config)
-                .map_err(|e| format!("Failed to serialize: {}", e))?;
-            std::fs::write(&file_path, content)
-                .map_err(|e| format!("Failed to write file: {}", e))?;
+            let content = toml::to_string(&config).map_err(|e| format!("Failed to serialize: {}", e))?;
+            std::fs::write(&file_path, content).map_err(|e| format!("Failed to write file: {}", e))?;
         }
         Some(ref tp) => {
             let file_path = PathBuf::from(tp);

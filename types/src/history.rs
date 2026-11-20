@@ -14,8 +14,8 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 
 pub use library::{
-    ArchiveReport, CleanupCandidate, CleanupPlan, CleanupReport, ContentTag, DeleteReport,
-    HistoryStatus, LOG_NOTE_MAX, LibraryRow, LogCleanup, LogStatus,
+    ArchiveReport, CleanupCandidate, CleanupPlan, CleanupReport, ContentTag, DeleteReport, HistoryStatus, LOG_NOTE_MAX,
+    LibraryRow, LogCleanup, LogStatus,
 };
 pub use meta::{LogMeta, ParselyUpload, PullMeta};
 pub use progress::{BossHpRecord, PhaseRef, PullDeath, PullEnd, PullProgress};
@@ -173,12 +173,15 @@ pub fn class_mirror(name: &str) -> Option<(&'static str, &'static str)> {
 
 /// The mirror pair a discipline belongs to, as (Imperial, Republic)
 pub fn discipline_mirror(name: &str) -> Option<(&'static str, &'static str)> {
-    DISCIPLINE_MIRRORS.iter().copied().find(|(i, r)| *i == name || *r == name)
+    DISCIPLINE_MIRRORS
+        .iter()
+        .copied()
+        .find(|(i, r)| *i == name || *r == name)
 }
 
 /// Row filter applied server-side to both the tree and the pull list.
 /// Empty strings mean "any".
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct PullFilter {
     /// Logging characters to keep; empty = any
     #[serde(default)]
@@ -220,28 +223,6 @@ pub struct PullFilter {
 /// Multi-select filter test: an empty pick list keeps everything
 pub fn keeps(picked: &[String], value: &str) -> bool {
     picked.is_empty() || picked.iter().any(|p| p == value)
-}
-
-impl Default for PullFilter {
-    fn default() -> Self {
-        Self {
-            characters: Vec::new(),
-            role: String::new(),
-            disciplines: Vec::new(),
-            // Nothing narrowed: every difficulty and size
-            tier: String::new(),
-            group_size: String::new(),
-            flashpoints: false,
-            kills_only: false,
-            date_from: String::new(),
-            date_to: String::new(),
-            tags: Vec::new(),
-            servers: Vec::new(),
-            game_versions: Vec::new(),
-            timed_only: false,
-            show_hidden: false,
-        }
-    }
 }
 
 /// Column the History pull table is sorted by.
@@ -346,12 +327,6 @@ pub enum BackfillEvent {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "event", rename_all = "snake_case")]
 pub enum CleanupEvent {
-    Progress {
-        current: u32,
-        total: u32,
-        file: String,
-    },
-    Done {
-        report: CleanupReport,
-    },
+    Progress { current: u32, total: u32, file: String },
+    Done { report: CleanupReport },
 }

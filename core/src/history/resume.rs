@@ -54,7 +54,12 @@ impl AreaResume {
             .chain(std::iter::once(visit.entered.as_str()))
             .filter_map(|t| NaiveDateTime::parse_from_str(t, ISO).ok())
             .max()?;
-        Some(Self { visit, player: history.player?, last_seen, player_seen: false })
+        Some(Self {
+            visit,
+            player: history.player?,
+            last_seen,
+            player_seen: false,
+        })
     }
 
     /// The `AreaEntered` and `DisciplineChanged` the game left out, once the
@@ -65,7 +70,9 @@ impl AreaResume {
         self.player_seen |= sides
             .iter()
             .any(|e| e.entity_type == EntityType::Player && e.log_id == self.player.entity_id);
-        let npc = sides.into_iter().find(|e| e.entity_type == EntityType::Npc && e.log_id != 0)?;
+        let npc = sides
+            .into_iter()
+            .find(|e| e.entity_type == EntityType::Npc && e.log_id != 0)?;
         let gap = (event.timestamp - self.last_seen).num_seconds();
         if npc.log_id / NPC_COUNTER_SPAN != self.visit.prefix || !(0..=MAX_RESUME_GAP_SECS).contains(&gap) {
             return Some(Err(()));

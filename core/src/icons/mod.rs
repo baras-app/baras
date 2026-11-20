@@ -121,11 +121,7 @@ pub const TICK_BIAS_SECS: f32 = 0.030;
 /// # Returns
 /// Adjusted duration in seconds
 #[inline]
-pub fn calculate_effect_duration(
-    base_duration_secs: f32,
-    alacrity_percent: f32,
-    latency_ms: i16,
-) -> f32 {
+pub fn calculate_effect_duration(base_duration_secs: f32, alacrity_percent: f32, latency_ms: i16) -> f32 {
     let alacrity_decimal = alacrity_percent / 100.0;
     let latency_secs = latency_ms as f32 / 1000.0;
     ((base_duration_secs / (1.0 + alacrity_decimal)) + latency_secs + TICK_BIAS_SECS).max(0.0)

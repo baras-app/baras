@@ -4,9 +4,9 @@
 
 use serde::{Deserialize, Serialize};
 
+use super::CounterCondition;
 use super::condition::Condition;
 use super::triggers::Trigger;
-use super::CounterCondition;
 use crate::game_data::Difficulty;
 
 // Re-export Trigger as PhaseTrigger for backward compatibility during migration
@@ -70,9 +70,7 @@ impl PhaseDefinition {
     pub fn is_active_for(&self, difficulty: Option<Difficulty>) -> bool {
         self.enabled
             && (self.difficulties.is_empty()
-                || difficulty.is_some_and(|d| {
-                    self.difficulties.iter().any(|key| d.matches_config_key(key))
-                }))
+                || difficulty.is_some_and(|d| self.difficulties.iter().any(|key| d.matches_config_key(key))))
     }
 }
 
@@ -113,12 +111,14 @@ mod tests {
 
     #[test]
     fn initial_phase_respects_difficulty_and_enabled() {
-        let mut def = crate::dsl::BossEncounterDefinition::default();
-        def.phases = vec![
-            phase("disabled_cs", false, &[], Trigger::CombatStart),
-            phase("story_cs", true, &["story"], Trigger::CombatStart),
-            phase("master_cs", true, &["master"], Trigger::CombatStart),
-        ];
+        let def = crate::dsl::BossEncounterDefinition {
+            phases: vec![
+                phase("disabled_cs", false, &[], Trigger::CombatStart),
+                phase("story_cs", true, &["story"], Trigger::CombatStart),
+                phase("master_cs", true, &["master"], Trigger::CombatStart),
+            ],
+            ..Default::default()
+        };
 
         assert_eq!(
             def.initial_phase(Some(Difficulty::Story8)).map(|p| p.id.as_str()),

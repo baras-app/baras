@@ -4,7 +4,8 @@ use std::collections::HashMap;
 
 use super::*;
 use crate::encounter::{PvpFaction, PvpFactionTracker};
-use crate::game_data::{INTERRUPT_ABILITIES, effect_id, effect_type_id};
+use crate::game_data::{INTERRUPT_ABILITIES, defense_type, effect_id, effect_type_id};
+use crate::is_boss;
 
 impl EncounterQuery<'_> {
     /// Query shield attribution - maps shield source IDs to total shielding given.
@@ -17,10 +18,7 @@ impl EncounterQuery<'_> {
     /// - Multiple shields + full absorb: credit FIRST applied (FIFO)
     /// - Multiple shields + damage through: credit earlier shields with estimated_max,
     ///   LAST shield with actual dmg_absorbed
-    async fn query_shield_attribution(
-        &self,
-        time_range: Option<&TimeRange>,
-    ) -> Result<HashMap<String, f64>, String> {
+    async fn query_shield_attribution(&self, time_range: Option<&TimeRange>) -> Result<HashMap<String, f64>, String> {
         let time_filter = time_range
             .map(|tr| format!("AND {}", tr.sql_filter()))
             .unwrap_or_default();
@@ -72,9 +70,7 @@ impl EncounterQuery<'_> {
 
     /// Get entity ID to name mapping
     async fn get_entity_names(&self) -> Result<HashMap<i64, String>, String> {
-        let batches = self
-            .sql("SELECT DISTINCT source_id, source_name FROM events")
-            .await?;
+        let batches = self.sql("SELECT DISTINCT source_id, source_name FROM events").await?;
 
         let mut names: HashMap<i64, String> = HashMap::new();
         for batch in &batches {
@@ -111,7 +107,7 @@ impl EncounterQuery<'_> {
         };
 
         let batches = self
-            .sql(&format!(
+            .sql(
                 r#"
             SELECT source_id, source_name, target_id, target_name,
                    CAST(dmg_amount AS BIGINT) as dmg
@@ -121,8 +117,8 @@ impl EncounterQuery<'_> {
               AND target_entity_type = 'Player'
               AND source_id != target_id
             ORDER BY line_number
-            "#
-            ))
+            "#,
+            )
             .await?;
 
         let mut tracker = PvpFactionTracker::default();
@@ -164,10 +160,7 @@ impl EncounterQuery<'_> {
         let duration_ms = (duration_secs.unwrap_or(1.0).max(0.001) * 1000.0).round() as i64;
 
         // Query shield attribution
-        let shielding_given = self
-            .query_shield_attribution(time_range)
-            .await
-            .unwrap_or_default();
+        let shielding_given = self.query_shield_attribution(time_range).await.unwrap_or_default();
 
         // Threat floored at 0 per player (matches the group chart)
         let mut threat: HashMap<String, f64> = HashMap::new();
@@ -200,6 +193,8 @@ impl EncounterQuery<'_> {
             damage_dealt AS (
                 SELECT source_name as name,
                        SUM(dmg_amount) as damage_total,
+                       COUNT(*) as hits,
+                       SUM(CASE WHEN is_crit THEN 1 ELSE 0 END) as crits
                 FROM events
                 WHERE dmg_amount > 0 AND source_id != target_id {time_filter}
                 GROUP BY source_name
@@ -207,18 +202,33 @@ impl EncounterQuery<'_> {
             damage_taken AS (
                 SELECT target_name as name,
                        SUM(dmg_amount) as damage_taken_total,
-                       SUM(dmg_absorbed) as absorbed_total
+                       SUM(dmg_absorbed) as absorbed_total,
+                       SUM(dmg_effective) as taken_effective,
+                       COUNT(*) as attacks,
+                       SUM(CASE WHEN dmg_amount > 0 THEN 1 ELSE 0 END) as hits_taken,
+                       SUM(CASE WHEN defense_type_id IN ({miss_ids}) THEN 1 ELSE 0 END) as defended,
+                       SUM(CASE WHEN dmg_amount > 0 AND defense_type_id = {shield} THEN 1 ELSE 0 END) as shielded
                 FROM events
-                WHERE dmg_amount > 0 {time_filter}
+                WHERE (dmg_amount > 0 OR defense_type_id IN ({miss_ids})) {time_filter}
                 GROUP BY target_name
             ),
             healing_done AS (
                 SELECT source_name as name,
                        SUM(heal_amount) as healing_total,
-                       SUM(heal_effective) as healing_effective
+                       SUM(heal_effective) as healing_effective,
+                       COUNT(*) as heals,
+                       SUM(CASE WHEN is_crit THEN 1 ELSE 0 END) as heal_crits
                 FROM events
                 WHERE heal_amount > 0 {time_filter}
                 GROUP BY source_name
+            ),
+            healing_taken AS (
+                SELECT target_name as name,
+                       SUM(heal_amount) as healing_taken_total,
+                       SUM(heal_effective) as healing_taken_effective
+                FROM events
+                WHERE heal_amount > 0 {time_filter}
+                GROUP BY target_name
             ),
             actions AS (
                 SELECT source_name as name,
@@ -244,16 +254,30 @@ impl EncounterQuery<'_> {
                 COALESCE(h.healing_total, 0) as healing_total,
                 COALESCE(h.healing_effective, 0) as healing_effective,
                 COALESCE(a.action_count, 0) as action_count,
-                COALESCE(i.interrupt_count, 0) as interrupt_count
+                COALESCE(i.interrupt_count, 0) as interrupt_count,
+                COALESCE(d.hits, 0) as hits,
+                COALESCE(d.crits, 0) as crits,
+                COALESCE(h.heals, 0) as heals,
+                COALESCE(h.heal_crits, 0) as heal_crits,
+                COALESCE(ht.healing_taken_total, 0) as healing_taken_total,
+                COALESCE(ht.healing_taken_effective, 0) as healing_taken_effective,
+                COALESCE(t.taken_effective, 0) as taken_effective,
+                COALESCE(t.attacks, 0) as attacks,
+                COALESCE(t.hits_taken, 0) as hits_taken,
+                COALESCE(t.defended, 0) as defended,
+                COALESCE(t.shielded, 0) as shielded
             FROM participants p
             LEFT JOIN damage_dealt d ON p.name = d.name
             LEFT JOIN damage_taken t ON p.name = t.name
             LEFT JOIN healing_done h ON p.name = h.name
+            LEFT JOIN healing_taken ht ON p.name = ht.name
             LEFT JOIN actions a ON p.name = a.name
             LEFT JOIN interrupts i ON p.name = i.name
             ORDER BY damage_total DESC
         "#,
                 ability_activate = effect_id::ABILITYACTIVATE,
+                miss_ids = super::breakdown::miss_ids_csv(),
+                shield = defense_type::SHIELD,
                 interrupt_ids = INTERRUPT_ABILITIES
                     .iter()
                     .map(|id| id.to_string())
@@ -262,26 +286,40 @@ impl EncounterQuery<'_> {
             ))
             .await?;
 
-        // Revives (the player is the event's source), per player in time order
-        let revive_batches = self
+        // Damage into bosses, classified like the live boss DPS metric
+        let boss_batches = self
             .sql(&format!(
-                "SELECT source_id, combat_time_secs FROM events \
-                 WHERE effect_id = {} AND source_entity_type IN ('Player', 'Companion') \
-                   AND combat_time_secs IS NOT NULL ORDER BY combat_time_secs ASC",
-                effect_id::REVIVED
+                "SELECT source_name, target_class_id, SUM(dmg_amount) FROM events \
+                 WHERE dmg_amount > 0 AND source_id != target_id {time_filter} \
+                 GROUP BY source_name, target_class_id"
             ))
             .await?;
-        let mut revives: HashMap<i64, Vec<f32>> = HashMap::new();
-        for batch in &revive_batches {
-            let ids = col_i64(batch, 0)?;
-            let times = col_f32(batch, 1)?;
+        let mut boss_damage: HashMap<String, f64> = HashMap::new();
+        for batch in &boss_batches {
+            let names = col_strings(batch, 0)?;
+            let class_ids = col_i64(batch, 1)?;
+            let totals = col_f64(batch, 2)?;
             for i in 0..batch.num_rows() {
-                revives.entry(ids[i]).or_default().push(times[i]);
+                if is_boss(class_ids[i]) {
+                    *boss_damage.entry(names[i].clone()).or_default() += totals[i];
+                }
             }
         }
+        let pct = |part: f64, whole: f64| if whole > 0.0 { part * 100.0 / whole } else { 0.0 };
 
         let mut results = Vec::new();
         for batch in &batches {
+            let hits = col_f64(batch, 9)?;
+            let crits = col_f64(batch, 10)?;
+            let heals = col_f64(batch, 11)?;
+            let heal_crits = col_f64(batch, 12)?;
+            let healing_taken_totals = col_f64(batch, 13)?;
+            let healing_taken_effectives = col_f64(batch, 14)?;
+            let taken_effectives = col_f64(batch, 15)?;
+            let attacks = col_f64(batch, 16)?;
+            let hits_taken = col_f64(batch, 17)?;
+            let defended = col_f64(batch, 18)?;
+            let shielded = col_f64(batch, 19)?;
             let names = col_strings(batch, 0)?;
             let entity_types = col_strings(batch, 1)?;
             let damage_totals = col_f64(batch, 2)?;
@@ -299,11 +337,8 @@ impl EncounterQuery<'_> {
                 // Include shielding in healing totals (shields are pre-emptive healing)
                 let healing_total = healing_totals[i] + shield_total;
                 let healing_effective = healing_effectives[i] + shield_total;
-                let healing_pct = if healing_total > 0.0 {
-                    healing_effective * 100.0 / healing_total
-                } else {
-                    0.0
-                };
+                let healing_pct = pct(healing_effective, healing_total);
+                let boss_damage_total = boss_damage.get(&name).copied().unwrap_or(0.0);
                 results.push(RaidOverviewRow {
                     faction: factions.get(&name).copied(),
                     name,
@@ -328,6 +363,17 @@ impl EncounterQuery<'_> {
                     healing_pct,
                     apm: action_counts[i] * 60000.0 / duration_ms as f64,
                     interrupts: interrupt_counts[i],
+                    damage_crit_pct: pct(crits[i], hits[i]),
+                    boss_damage_total,
+                    boss_dps: boss_damage_total * 1000.0 / duration_ms as f64,
+                    healing_crit_pct: pct(heal_crits[i], heals[i]),
+                    healing_taken_total: healing_taken_totals[i],
+                    htps: healing_taken_totals[i] * 1000.0 / duration_ms as f64,
+                    ehtps: healing_taken_effectives[i] * 1000.0 / duration_ms as f64,
+                    edtps: taken_effectives[i] * 1000.0 / duration_ms as f64,
+                    absorbed_total: absorbed_totals[i],
+                    defense_pct: pct(defended[i], attacks[i]),
+                    shield_pct: pct(shielded[i], hits_taken[i]),
                 });
             }
         }
@@ -437,22 +483,14 @@ impl EncounterQuery<'_> {
     ///
     /// Uses FIRST appearance for max_hp (avoids SWTOR combat log bug where AoE events
     /// can report incorrect max_hp from other entities).
-    pub async fn query_npc_health(
-        &self,
-        time_range: Option<&TimeRange>,
-    ) -> Result<Vec<NpcHealthRow>, String> {
+    pub async fn query_npc_health(&self, time_range: Option<&TimeRange>) -> Result<Vec<NpcHealthRow>, String> {
         let time_filter = time_range
             .map(|tr| format!("AND {}", tr.sql_filter()))
             .unwrap_or_default();
 
         // Death/damage events can trail slightly after combat exit; give a 2s buffer
         let death_time_filter = time_range
-            .map(|tr| {
-                format!(
-                    "AND {}",
-                    TimeRange::new(tr.start, tr.end + 2.0).sql_filter()
-                )
-            })
+            .map(|tr| format!("AND {}", TimeRange::new(tr.start, tr.end + 2.0).sql_filter()))
             .unwrap_or_default();
 
         let batches = self

@@ -109,7 +109,10 @@ impl Class {
     }
 
     pub fn from_name(name: &str) -> Option<Self> {
-        Discipline::all().iter().map(|d| d.class()).find(|c| c.name().eq_ignore_ascii_case(name))
+        Discipline::all()
+            .iter()
+            .map(|d| d.class())
+            .find(|c| c.name().eq_ignore_ascii_case(name))
     }
 
     /// Every role one of this class's disciplines fills, Tank → Healer → DPS
@@ -195,9 +198,7 @@ impl Discipline {
         use Discipline::*;
         match self {
             // Tanks
-            Immortal | Darkness | ShieldTech | Defense | KineticCombat | ShieldSpecialist => {
-                Role::Tank
-            }
+            Immortal | Darkness | ShieldTech | Defense | KineticCombat | ShieldSpecialist => Role::Tank,
             // Healers
             Corruption | Bodyguard | Medicine | Seer | CombatMedic | Sawbones => Role::Healer,
             // DPS (everything else)
@@ -614,8 +615,7 @@ mod tests {
 
         // Roles must win over disciplines for their own names, and untagged
         // strings must resolve to the right variant kind
-        let parsed: Wrapper =
-            toml::from_str(r#"filters = ["Healer", "Deception"]"#).unwrap();
+        let parsed: Wrapper = toml::from_str(r#"filters = ["Healer", "Deception"]"#).unwrap();
         assert_eq!(
             parsed.filters,
             vec![

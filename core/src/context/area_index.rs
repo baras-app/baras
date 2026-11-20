@@ -52,20 +52,21 @@ impl FileAreaEntry {
         let parts: Vec<&str> = self.difficulty_name.split_whitespace().collect();
 
         // Expected format: ["8", "Player", "Master"] or ["16", "Player", "Veteran"]
-        if parts.len() >= 3 && parts[1].eq_ignore_ascii_case("Player") {
-            if let Ok(player_count) = parts[0].parse::<u8>() {
-                let difficulty_word = parts[2..].join(" "); // Handle "Story Mode" etc.
+        if parts.len() >= 3
+            && parts[1].eq_ignore_ascii_case("Player")
+            && let Ok(player_count) = parts[0].parse::<u8>()
+        {
+            let difficulty_word = parts[2..].join(" "); // Handle "Story Mode" etc.
 
-                // Only apply shorthand for 8 and 16 player content
-                if player_count == 8 || player_count == 16 {
-                    let short = match difficulty_word.to_lowercase().as_str() {
-                        "master" => "NiM",
-                        "veteran" => "HM",
-                        "story" => "SM",
-                        _ => return format!("{} {}", self.area_name, self.difficulty_name),
-                    };
-                    return format!("{} {} {}", self.area_name, short, player_count);
-                }
+            // Only apply shorthand for 8 and 16 player content
+            if player_count == 8 || player_count == 16 {
+                let short = match difficulty_word.to_lowercase().as_str() {
+                    "master" => "NiM",
+                    "veteran" => "HM",
+                    "story" => "SM",
+                    _ => return format!("{} {}", self.area_name, self.difficulty_name),
+                };
+                return format!("{} {} {}", self.area_name, short, player_count);
             }
         }
 
@@ -221,10 +222,7 @@ const AREA_ENTERED_MARKER: &str = "{836045448953664}";
 ///
 /// # Returns
 /// Deduplicated list of areas visited in the file
-pub fn extract_areas_from_file(
-    path: &Path,
-    known_area_ids: &HashSet<i64>,
-) -> IoResult<Vec<FileAreaEntry>> {
+pub fn extract_areas_from_file(path: &Path, known_area_ids: &HashSet<i64>) -> IoResult<Vec<FileAreaEntry>> {
     let bytes = fs::read(path)?;
     let mut areas = Vec::new();
     let mut seen: HashSet<(i64, i64)> = HashSet::new(); // (area_id, difficulty_id)
@@ -319,7 +317,7 @@ fn parse_area_entered_line(line: &str) -> Option<FileAreaEntry> {
 
 /// Get the default cache file path
 pub fn default_cache_path() -> Option<PathBuf> {
-    dirs::config_dir().map(|p| p.join("baras").join("area_cache.json"))
+    crate::paths::config_dir().map(|p| p.join("area_cache.json"))
 }
 
 #[cfg(test)]
@@ -450,10 +448,16 @@ mod scan_tests {
     #[test]
     #[ignore]
     fn scan_timing_on_real_log() {
-        let Ok(path) = std::env::var("AREA_SCAN_FILE") else { return };
+        let Ok(path) = std::env::var("AREA_SCAN_FILE") else {
+            return;
+        };
         let known: HashSet<i64> = crate::game_data::pvp_area_ids().collect();
         let t = std::time::Instant::now();
         let areas = extract_areas_from_file(Path::new(&path), &known).unwrap();
-        println!("{:?} in {:?}", areas.iter().map(|a| a.area_name.as_str()).collect::<Vec<_>>(), t.elapsed());
+        println!(
+            "{:?} in {:?}",
+            areas.iter().map(|a| a.area_name.as_str()).collect::<Vec<_>>(),
+            t.elapsed()
+        );
     }
 }

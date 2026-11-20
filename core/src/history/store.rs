@@ -166,8 +166,7 @@ impl LogHistory {
     /// memory and reported as version 0 so the index marks them stale.
     pub fn load(history_file: &Path) -> std::io::Result<Loaded> {
         let bytes = std::fs::read(history_file)?;
-        let header: HistoryHeader =
-            serde_json::from_slice(&bytes).map_err(std::io::Error::other)?;
+        let header: HistoryHeader = serde_json::from_slice(&bytes).map_err(std::io::Error::other)?;
         if header.version >= 1 {
             let history = serde_json::from_slice(&bytes).map_err(std::io::Error::other)?;
             return Ok(Loaded {
@@ -175,8 +174,7 @@ impl LogHistory {
                 legacy_parsely: Vec::new(),
             });
         }
-        let legacy: LegacyLogHistory =
-            serde_json::from_slice(&bytes).map_err(std::io::Error::other)?;
+        let legacy: LegacyLogHistory = serde_json::from_slice(&bytes).map_err(std::io::Error::other)?;
         let pulls: Vec<PullRecord> = legacy.pulls.iter().map(PullRecord::from).collect();
         let legacy_parsely = legacy
             .pulls
@@ -205,9 +203,7 @@ impl LogHistory {
     /// Where the log should be: the stored path, or `log_dir/filename` for
     /// files recorded before paths were stored.
     pub fn log_path(&self, log_dir: &Path) -> PathBuf {
-        self.path
-            .clone()
-            .unwrap_or_else(|| log_dir.join(&self.filename))
+        self.path.clone().unwrap_or_else(|| log_dir.join(&self.filename))
     }
 
     pub fn file(&self) -> std::io::Result<PathBuf> {

@@ -6,16 +6,14 @@
 use crate::components::editor_sort::{ENCOUNTER_SORT_AZ, SortToggle, apply_rank, use_stable_rank};
 use dioxus::prelude::*;
 
-use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
-use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
 use crate::api;
-use crate::types::{
-    BossWithPath, ChallengeColumns, ChallengeDefinition, ChallengeMetric, EncounterItem,
-};
+use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
+use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
+use crate::types::{BossWithPath, ChallengeColumns, ChallengeDefinition, ChallengeMetric, EncounterItem};
 
+use super::InlineNameCreator;
 use super::challenge_form::ChallengeEditForm;
 use super::tabs::EncounterData;
-use super::InlineNameCreator;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Challenges Tab
@@ -49,7 +47,10 @@ pub fn ChallengesTab(
     // Extract challenges from BossWithPath
     let challenges = boss_with_path.boss.challenges.clone();
     // A–Z when toggled; renaming leaves the row in place
-    let rank = use_stable_rank(challenges.iter().map(|x| (x.id.as_str(), x.name.as_str())), ENCOUNTER_SORT_AZ());
+    let rank = use_stable_rank(
+        challenges.iter().map(|x| (x.id.as_str(), x.name.as_str())),
+        ENCOUNTER_SORT_AZ(),
+    );
     let mut sorted_challenges = challenges.clone();
     apply_rank(&mut sorted_challenges, &rank.read(), |x| &x.id);
     let origin_of = |id: &str| {
@@ -161,9 +162,7 @@ fn ChallengeRow(
 
     // Origin classification
     let is_builtin = boss_with_path.builtin_challenge_ids.contains(&challenge.id);
-    let is_modified = boss_with_path
-        .modified_challenge_ids
-        .contains(&challenge.id);
+    let is_modified = boss_with_path.modified_challenge_ids.contains(&challenge.id);
 
     // Clones for enable toggle closure
     let challenge_for_enable = challenge.clone();
@@ -181,18 +180,22 @@ fn ChallengeRow(
                 class: "list-item-header",
                 onclick: move |_| on_toggle.call(()),
 
-                span { class: "font-medium", "{challenge.name}" }
-                if expanded && is_dirty() {
-                    span { class: "unsaved-indicator", title: "Unsaved changes" }
+                div { class: "row-col-name-id",
+                    span { class: "font-medium text-primary truncate", "{challenge.name}" }
+                    if expanded && is_dirty() {
+                        span { class: "unsaved-indicator", title: "Unsaved changes" }
+                    }
+                    span { class: "text-xs text-mono text-muted", title: "{challenge.id}", "{challenge.id}" }
                 }
-                span { class: "text-xs text-mono text-muted", "{challenge.id}" }
-                span { class: "tag", "{metric_label}" }
-                if condition_count > 0 {
-                    span { class: "tag tag-secondary", "{condition_count} conditions" }
+                span { class: "row-col-tags",
+                    if condition_count > 0 {
+                        span { class: "tag tag-secondary", "{condition_count} conditions" }
+                    }
+                    span { class: "tag", "{metric_label}" }
                 }
 
                 // Right side - enable toggle
-                div { class: "flex items-center gap-xs ml-auto shrink-0",
+                div { class: "flex items-center gap-xs shrink-0",
                     span {
                         class: "row-toggle",
                         title: if challenge.enabled { "Disable challenge" } else { "Enable challenge" },
@@ -212,10 +215,7 @@ fn ChallengeRow(
                                 let _ = api::update_encounter_item(&boss_id, &file_path, &item, None).await;
                             });
                         },
-                        span {
-                            class: if challenge.enabled { "text-success" } else { "text-muted" },
-                            if challenge.enabled { "✓" } else { "○" }
-                        }
+                        i { class: if challenge.enabled { "fa-solid fa-power-off text-success" } else { "fa-solid fa-power-off text-muted" } }
                     }
                     OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "challenge" }
                 }
@@ -294,11 +294,7 @@ fn ChallengeRow(
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[component]
-pub fn IdChipEditor(
-    ids: Vec<u64>,
-    placeholder: &'static str,
-    on_change: EventHandler<Vec<u64>>,
-) -> Element {
+pub fn IdChipEditor(ids: Vec<u64>, placeholder: &'static str, on_change: EventHandler<Vec<u64>>) -> Element {
     let mut new_input = use_signal(String::new);
     let ids_for_keydown = ids.clone();
     let ids_for_click = ids.clone();

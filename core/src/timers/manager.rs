@@ -17,13 +17,11 @@ use crate::dsl::{BossEncounterDefinition, EntityDefinition};
 use crate::game_data::{Discipline, Role};
 use crate::signal_processor::{GameSignal, SignalHandler};
 
-use super::matching::{
-    is_definition_active, is_definition_active_with_snapshot, matches_source_target_filters,
-};
+use super::matching::{is_definition_active, is_definition_active_with_snapshot, matches_source_target_filters};
 use super::signal_handlers;
 use super::{ActiveTimer, TimerDefinition, TimerKey, TimerPreferences, TimerTrigger, TriggerContext};
 
-use crate::dsl::TriggerKind;
+use crate::dsl::{TriggerExt, TriggerKind};
 
 // EncounterContext removed: context now read directly from CombatEncounter
 
@@ -292,15 +290,9 @@ impl TimerManager {
     }
 
     /// Load timer preferences from a file
-    pub fn load_preferences(
-        &mut self,
-        path: &std::path::Path,
-    ) -> Result<(), super::PreferencesError> {
+    pub fn load_preferences(&mut self, path: &std::path::Path) -> Result<(), super::PreferencesError> {
         self.preferences = TimerPreferences::load(path)?;
-        tracing::debug!(
-            count = self.preferences.timers.len(),
-            "Loaded timer preferences"
-        );
+        tracing::debug!(count = self.preferences.timers.len(), "Loaded timer preferences");
         Ok(())
     }
 
@@ -391,10 +383,7 @@ impl TimerManager {
                 "Loaded enabled timer definitions"
             );
         } else {
-            tracing::info!(
-                count = self.definitions.len(),
-                "Loaded enabled timer definitions"
-            );
+            tracing::info!(count = self.definitions.len(), "Loaded enabled timer definitions");
         }
 
         // Validate timer chain references
@@ -439,8 +428,7 @@ impl TimerManager {
             // Extract boss timers and convert to TimerDefinition
             for boss_timer in &boss.timers {
                 if boss_timer.enabled {
-                    let timer_def =
-                        boss_timer.to_timer_definition(boss.area_id, &boss.area_name, &boss.name, &boss.id);
+                    let timer_def = boss_timer.to_timer_definition(boss.area_id, &boss.area_name, &boss.name, &boss.id);
 
                     // Check for duplicate ID - warn and skip instead of silent overwrite
                     if let Some(existing) = self.definitions.get(&timer_def.id) {
@@ -456,8 +444,7 @@ impl TimerManager {
                         continue;
                     }
 
-                    self.definitions
-                        .insert(timer_def.id.clone(), Arc::new(timer_def));
+                    self.definitions.insert(timer_def.id.clone(), Arc::new(timer_def));
                     timer_count += 1;
                 }
             }
@@ -474,11 +461,7 @@ impl TimerManager {
                 "Extracted timers from boss definitions"
             );
         } else {
-            tracing::info!(
-                timer_count,
-                boss_count,
-                "Extracted timers from boss definitions"
-            );
+            tracing::info!(timer_count, boss_count, "Extracted timers from boss definitions");
         }
 
         // Validate timer chain references
@@ -514,10 +497,7 @@ impl TimerManager {
         }
 
         if !broken_chains.is_empty() {
-            tracing::warn!(
-                count = broken_chains.len(),
-                "Broken timer chain references found"
-            );
+            tracing::warn!(count = broken_chains.len(), "Broken timer chain references found");
             for (timer_id, missing_ref) in &broken_chains {
                 tracing::warn!(
                     timer_id = %timer_id,
@@ -542,10 +522,7 @@ impl TimerManager {
             for &kind in &kinds_buf {
                 // Deduplicate kinds (AnyOf can produce repeats)
                 if seen.insert(kind) {
-                    self.trigger_index
-                        .entry(kind)
-                        .or_default()
-                        .push(Arc::clone(def));
+                    self.trigger_index.entry(kind).or_default().push(Arc::clone(def));
                 }
             }
         }
@@ -588,10 +565,10 @@ impl TimerManager {
             let interp_time = self.interpolated_game_time().unwrap_or(ts);
 
             // Prune expired GCD
-            if let Some(ref gcd) = self.active_gcd {
-                if gcd.has_expired(interp_time) {
-                    self.active_gcd = None;
-                }
+            if let Some(ref gcd) = self.active_gcd
+                && gcd.has_expired(interp_time)
+            {
+                self.active_gcd = None;
             }
 
             self.process_expirations(interp_time, encounter);
@@ -607,11 +584,11 @@ impl TimerManager {
             }
 
             // Populate batch vectors so accessors return tick's events
-            self.batch_expired.extend(self.expired_this_tick.drain(..));
-            self.batch_started.extend(self.started_this_tick.drain(..));
-            self.batch_canceled.extend(self.canceled_this_tick.drain(..));
-            self.batch_queued.extend(self.queued_this_tick.drain(..));
-            self.batch_removed_queued.extend(self.removed_queued_this_tick.drain(..));
+            self.batch_expired.append(&mut self.expired_this_tick);
+            self.batch_started.append(&mut self.started_this_tick);
+            self.batch_canceled.append(&mut self.canceled_this_tick);
+            self.batch_queued.append(&mut self.queued_this_tick);
+            self.batch_removed_queued.append(&mut self.removed_queued_this_tick);
         }
     }
 
@@ -662,7 +639,11 @@ impl TimerManager {
         let anchor_time = match (self.last_timestamp, self.last_timestamp_instant) {
             (Some(gt), Some(inst)) => {
                 let interp = gt + chrono::Duration::milliseconds(inst.elapsed().as_millis() as i64);
-                if event_timestamp > interp { event_timestamp } else { interp }
+                if event_timestamp > interp {
+                    event_timestamp
+                } else {
+                    interp
+                }
             }
             _ => event_timestamp,
         };
@@ -685,9 +666,7 @@ impl TimerManager {
             for timer in self.active_timers.values() {
                 let remaining = timer.remaining_secs(game_time);
                 if remaining > 0.0 {
-                    let entry = snapshot
-                        .entry(timer.definition_id.clone())
-                        .or_insert(0.0f32);
+                    let entry = snapshot.entry(timer.definition_id.clone()).or_insert(0.0f32);
                     if remaining > *entry {
                         *entry = remaining;
                     }
@@ -699,17 +678,12 @@ impl TimerManager {
 
     /// Build a timer remaining snapshot using an explicit game time.
     /// Use this for replay/validation where the caller controls the clock.
-    pub fn timer_remaining_snapshot_at(
-        &self,
-        game_time: NaiveDateTime,
-    ) -> hashbrown::HashMap<String, f32> {
+    pub fn timer_remaining_snapshot_at(&self, game_time: NaiveDateTime) -> hashbrown::HashMap<String, f32> {
         let mut snapshot = hashbrown::HashMap::new();
         for timer in self.active_timers.values() {
             let remaining = timer.remaining_secs(game_time);
             if remaining > 0.0 {
-                let entry = snapshot
-                    .entry(timer.definition_id.clone())
-                    .or_insert(0.0f32);
+                let entry = snapshot.entry(timer.definition_id.clone()).or_insert(0.0f32);
                 if remaining > *entry {
                     *entry = remaining;
                 }
@@ -876,7 +850,9 @@ impl TimerManager {
         // fresh snapshot from active_timers instead of relying on the
         // encounter's cached snapshot (which may be stale mid-processing).
         if def.conditions.iter().any(|c| c.uses_timer_time_remaining()) {
-            let now = self.last_timestamp.unwrap_or_else(|| chrono::Local::now().naive_local());
+            let now = self
+                .last_timestamp
+                .unwrap_or_else(|| chrono::Local::now().naive_local());
             let snapshot = self.timer_remaining_snapshot_at(now);
             is_definition_active_with_snapshot(def, encounter, &snapshot)
         } else {
@@ -900,8 +876,8 @@ impl TimerManager {
         let role_hidden = !self.preferences.is_role_visible(def, self.current_role);
 
         // Determine if we should fire an alert on start
-        let should_alert_on_start = !role_hidden
-            && (def.is_alert || matches!(def.alert_on, baras_types::AlertTrigger::OnApply));
+        let should_alert_on_start =
+            !role_hidden && (def.is_alert || matches!(def.alert_on, baras_types::AlertTrigger::OnApply));
 
         // Fire start alert if needed (instant alerts always fire, or alert_on == OnApply)
         if should_alert_on_start {
@@ -925,7 +901,7 @@ impl TimerManager {
                 audio_enabled: alert_audio_enabled,
                 audio_file: alert_audio_file,
                 icon_ability_id: def.icon_ability_id,
-                    remaining_secs: None,
+                remaining_secs: None,
             });
         }
 
@@ -1020,16 +996,18 @@ impl TimerManager {
     /// Cancel active timers that have cancel_on_timer matching the started timer ID
     fn cancel_timers_on_start(&mut self, started_timer_id: &str) {
         // Collect keys to cancel - we need the full key for HashMap::remove
-        let keys_to_cancel: Vec<_> = self.active_timers
+        let keys_to_cancel: Vec<_> = self
+            .active_timers
             .iter()
             .filter_map(|(key, timer)| {
                 if let Some(def) = self.definitions.get(&timer.definition_id)
                     && let Some(ref cancel_trigger) = def.cancel_trigger
-                    && cancel_trigger.matches_timer_started(started_timer_id) {
-                        Some(key.clone())
-                    } else {
-                        None
-                    }
+                    && cancel_trigger.matches_timer_started(started_timer_id)
+                {
+                    Some(key.clone())
+                } else {
+                    None
+                }
             })
             .collect();
 
@@ -1041,7 +1019,8 @@ impl TimerManager {
         }
 
         // Also remove queued entries whose queue_remove_trigger matches timer started
-        let keys_to_remove: Vec<_> = self.active_timers
+        let keys_to_remove: Vec<_> = self
+            .active_timers
             .iter()
             .filter_map(|(key, timer)| {
                 if timer.is_queued
@@ -1301,10 +1280,7 @@ impl TimerManager {
             if window <= 0.0 {
                 continue;
             }
-            let remaining = (timer.expires_at - current_time)
-                .num_milliseconds()
-                .max(0) as f32
-                / 1000.0;
+            let remaining = (timer.expires_at - current_time).num_milliseconds().max(0) as f32 / 1000.0;
             if remaining > window {
                 continue;
             }
@@ -1384,7 +1360,7 @@ impl TimerManager {
                             audio_enabled: should_fire_audio,
                             audio_file: timer.audio_file.clone(),
                             icon_ability_id: timer.icon_ability_id,
-                    remaining_secs: None,
+                            remaining_secs: None,
                         });
                     }
 
@@ -1439,7 +1415,7 @@ impl TimerManager {
                         audio_enabled: should_fire_audio,
                         audio_file,
                         icon_ability_id: timer.icon_ability_id,
-                    remaining_secs: None,
+                        remaining_secs: None,
                     });
                 }
                 // Prepare chain to next timer (take ownership of triggers_timer)
@@ -1464,10 +1440,7 @@ impl TimerManager {
             let matching: Vec<_> = self
                 .definitions_for_kind(TriggerKind::TimerExpires)
                 .iter()
-                .filter(|d| {
-                    d.matches_timer_expires(expired_id)
-                        && self.is_definition_active(d, encounter)
-                })
+                .filter(|d| d.matches_timer_expires(expired_id) && self.is_definition_active(d, encounter))
                 .cloned()
                 .collect();
 
@@ -1480,7 +1453,6 @@ impl TimerManager {
         for expired_id in &expired_ids {
             self.cancel_timers_on_expire(expired_id);
         }
-
     }
 
     /// Cancel active timers that have cancel_trigger matching the expired timer ID
@@ -1538,10 +1510,7 @@ impl TimerManager {
         let keys_to_start: Vec<_> = self
             .definitions_for_kind(TriggerKind::TimerCanceled)
             .iter()
-            .filter(|d| {
-                d.matches_timer_canceled(canceled_timer_id)
-                    && self.is_definition_active(d, encounter)
-            })
+            .filter(|d| d.matches_timer_canceled(canceled_timer_id) && self.is_definition_active(d, encounter))
             .cloned()
             .collect();
 
@@ -1645,11 +1614,7 @@ impl SignalHandler for TimerManager {
     /// After each signal, we drain the per-signal vectors into the batch-level vectors
     /// (`batch_expired`, `batch_started`, `batch_canceled`) so the timer feedback loop
     /// in `parser.rs` can see ALL timer events from the entire batch.
-    fn handle_signals(
-        &mut self,
-        signals: &[GameSignal],
-        encounter: Option<&crate::encounter::CombatEncounter>,
-    ) {
+    fn handle_signals(&mut self, signals: &[GameSignal], encounter: Option<&crate::encounter::CombatEncounter>) {
         self.batch_expired.clear();
         self.batch_started.clear();
         self.batch_canceled.clear();
@@ -1658,19 +1623,15 @@ impl SignalHandler for TimerManager {
         for signal in signals {
             self.handle_signal(signal, encounter);
             // Accumulate per-signal events into batch-level vectors
-            self.batch_expired.extend(self.expired_this_tick.drain(..));
-            self.batch_started.extend(self.started_this_tick.drain(..));
-            self.batch_canceled.extend(self.canceled_this_tick.drain(..));
-            self.batch_queued.extend(self.queued_this_tick.drain(..));
-            self.batch_removed_queued.extend(self.removed_queued_this_tick.drain(..));
+            self.batch_expired.append(&mut self.expired_this_tick);
+            self.batch_started.append(&mut self.started_this_tick);
+            self.batch_canceled.append(&mut self.canceled_this_tick);
+            self.batch_queued.append(&mut self.queued_this_tick);
+            self.batch_removed_queued.append(&mut self.removed_queued_this_tick);
         }
     }
 
-    fn handle_signal(
-        &mut self,
-        signal: &GameSignal,
-        encounter: Option<&crate::encounter::CombatEncounter>,
-    ) {
+    fn handle_signal(&mut self, signal: &GameSignal, encounter: Option<&crate::encounter::CombatEncounter>) {
         // ─── Context-setting signals: always process (bypass recency filter) ───
         // These establish context for future timer matching, not trigger timers directly.
         // IMPORTANT: Boss/combat context must be set even if definitions aren't loaded yet,
@@ -1686,8 +1647,7 @@ impl SignalHandler for TimerManager {
                 ..
             } => {
                 if self.local_player_id == Some(*entity_id) {
-                    self.current_role =
-                        Discipline::from_guid(*discipline_id).map(|d| d.role());
+                    self.current_role = Discipline::from_guid(*discipline_id).map(|d| d.role());
                 }
                 return;
             }
@@ -1926,12 +1886,11 @@ impl SignalHandler for TimerManager {
                     *timestamp,
                 );
             }
-            GameSignal::TargetCleared { source_id, .. } => {
+            GameSignal::TargetCleared { source_id, .. }
                 // Clear local player's current target if they cleared their target
-                if self.local_player_id == Some(*source_id) {
+                if self.local_player_id == Some(*source_id) => {
                     self.current_target_id = None;
                 }
-            }
 
             GameSignal::DamageTaken {
                 ability_id,
@@ -2100,7 +2059,6 @@ impl SignalHandler for TimerManager {
                 self.cancel_timers_on_cancel(&timer_id);
             }
         }
-
     }
 
     fn on_encounter_start(&mut self, _encounter_id: u64) {

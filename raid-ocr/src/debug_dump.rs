@@ -11,12 +11,12 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 
-use baras_overlay::capture::CapturedImage;
 use crate::analysis::{Band, BandKind, PreparedCrop};
+use baras_overlay::capture::CapturedImage;
 
 /// Root of the dump tree: `<config>/baras/ocr-debug/`.
 fn dump_root() -> Option<PathBuf> {
-    dirs::config_dir().map(|d| d.join("baras").join("ocr-debug"))
+    baras_core::paths::config_dir().map(|d| d.join("ocr-debug"))
 }
 
 /// Where dumps are written: `<config>/baras/ocr-debug/<timestamp>/`.
@@ -87,11 +87,7 @@ impl DebugDump {
 
     /// Record the whole captured region, so slot alignment can be checked.
     pub fn capture(&mut self, image: &CapturedImage) {
-        let _ = writeln!(
-            self.notes,
-            "capture {}x{} -> capture.png",
-            image.width, image.height
-        );
+        let _ = writeln!(self.notes, "capture {}x{} -> capture.png", image.width, image.height);
         write_rgba(&self.dir.join("capture.png"), image);
     }
 
@@ -112,10 +108,7 @@ impl DebugDump {
                 "  bar top={top} h={height} (borrowed from the grid; not recognized)"
             ),
             Some((top, height)) => writeln!(self.notes, "  bar top={top} h={height}"),
-            None => writeln!(
-                self.notes,
-                "  (slot {slot}: no bar found anywhere in the grid)"
-            ),
+            None => writeln!(self.notes, "  (slot {slot}: no bar found anywhere in the grid)"),
         };
     }
 
@@ -125,14 +118,7 @@ impl DebugDump {
     }
 
     /// Record one crop, its text, and what the caller made of it.
-    pub fn band(
-        &mut self,
-        slot: u8,
-        band: &Band,
-        crop: &PreparedCrop,
-        text: &str,
-        outcome: &str,
-    ) {
+    pub fn band(&mut self, slot: u8, band: &Band, crop: &PreparedCrop, text: &str, outcome: &str) {
         let kind = match band.kind {
             BandKind::Name => "name",
             BandKind::Health => "health",
@@ -190,6 +176,27 @@ fn write_gray(path: &Path, crop: &PreparedCrop) {
     }
 }
 
+/// Write the captured region as RGBA.
+fn write_rgba(path: &Path, image: &CapturedImage) {
+    let expected = image.width as usize * image.height as usize * 4;
+    if image.rgba.len() < expected {
+        tracing::warn!("Skipping malformed debug capture for {path:?}");
+        return;
+    }
+    let result = File::create(path).map_err(|e| e.to_string()).and_then(|file| {
+        let mut encoder = png::Encoder::new(BufWriter::new(file), image.width, image.height);
+        encoder.set_color(png::ColorType::Rgba);
+        encoder.set_depth(png::BitDepth::Eight);
+        encoder
+            .write_header()
+            .and_then(|mut writer| writer.write_image_data(&image.rgba[..expected]))
+            .map_err(|e| e.to_string())
+    });
+    if let Err(e) = result {
+        tracing::warn!("Could not write debug capture {path:?}: {e}");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -235,26 +242,5 @@ mod tests {
         );
 
         assert!(!path.exists(), "a malformed crop must not produce a file");
-    }
-}
-
-/// Write the captured region as RGBA.
-fn write_rgba(path: &Path, image: &CapturedImage) {
-    let expected = image.width as usize * image.height as usize * 4;
-    if image.rgba.len() < expected {
-        tracing::warn!("Skipping malformed debug capture for {path:?}");
-        return;
-    }
-    let result = File::create(path).map_err(|e| e.to_string()).and_then(|file| {
-        let mut encoder = png::Encoder::new(BufWriter::new(file), image.width, image.height);
-        encoder.set_color(png::ColorType::Rgba);
-        encoder.set_depth(png::BitDepth::Eight);
-        encoder
-            .write_header()
-            .and_then(|mut writer| writer.write_image_data(&image.rgba[..expected]))
-            .map_err(|e| e.to_string())
-    });
-    if let Err(e) = result {
-        tracing::warn!("Could not write debug capture {path:?}: {e}");
     }
 }

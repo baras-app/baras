@@ -9,11 +9,10 @@ mod matrix;
 mod settings;
 mod table;
 
-use crate::components::toggle_switch::ToggleSwitch;
 use crate::components::multi_select::{Entry, MultiSelect, class_entries, plain_entries};
+use crate::components::toggle_switch::ToggleSwitch;
 use baras_types::history::keeps;
 use dioxus::prelude::*;
-use wasm_bindgen::prelude::*;
 
 use baras_types::characters::{CharacterRecord, CharacterRow};
 
@@ -52,12 +51,19 @@ fn keeps_any<'a>(picked: &[String], mut values: impl Iterator<Item = &'a str>) -
 }
 
 fn entries(pairs: &[(&str, &str)]) -> Vec<Entry> {
-    pairs.iter().map(|(v, l)| (l.to_string(), vec![v.to_string()])).collect()
+    pairs
+        .iter()
+        .map(|(v, l)| (l.to_string(), vec![v.to_string()]))
+        .collect()
 }
 
 fn matches(row: &CharacterRow, search: &str, filter: &RosterFilter) -> bool {
     let q = search.trim().to_lowercase();
-    let text = || [&row.name, &row.guild, &row.note, &row.server].into_iter().any(|f| f.to_lowercase().contains(&q));
+    let text = || {
+        [&row.name, &row.guild, &row.note, &row.server]
+            .into_iter()
+            .any(|f| f.to_lowercase().contains(&q))
+    };
     (q.is_empty() || text()) && filter.keeps(row)
 }
 
@@ -84,10 +90,14 @@ pub fn CharactersPanel() -> Element {
     let mut editing: Signal<Option<EditTarget>> = use_signal(|| None);
 
     // A pull just landed: lockouts may have changed
-    use_future(move || async move {
-        let closure = Closure::new(move |_: JsValue| roster.restart());
-        api::tauri_listen("history-updated", &closure).await;
-        closure.forget();
+    let mut pulls = use_signal(|| 0u32);
+    api::use_tauri_event("history-updated", move |_| {
+        let _ = pulls.try_write().map(|mut w| *w += 1);
+    });
+    use_effect(move || {
+        if *pulls.read() > 0 {
+            roster.restart();
+        }
     });
 
     let data = roster.read().clone().unwrap_or_default();
@@ -99,7 +109,11 @@ pub fn CharactersPanel() -> Element {
         .filter(|r| r.hidden == *show_hidden.read())
         .filter(|r| matches(r, &search.read(), &filter.read()))
         .collect();
-    let mut rows: Vec<CharacterRow> = pool.iter().filter(|r| locked_for.read().keeps(r)).map(|r| (*r).clone()).collect();
+    let mut rows: Vec<CharacterRow> = pool
+        .iter()
+        .filter(|r| locked_for.read().keeps(r))
+        .map(|r| (*r).clone())
+        .collect();
     sort_rows(&mut rows, *sort_key.read(), *sort_desc.read());
     let total = data.rows.len() - hidden_count;
     let f = filter.read().clone();
@@ -108,7 +122,10 @@ pub fn CharactersPanel() -> Element {
         spawn(async move {
             match api::delete_character(&row.key).await {
                 Ok(true) => {
-                    toast.show(format!("Removed {}. Tick “Hidden” to bring it back.", row.name), ToastSeverity::Normal);
+                    toast.show(
+                        format!("Removed {}. Tick “Hidden” to bring it back.", row.name),
+                        ToastSeverity::Normal,
+                    );
                     roster.restart();
                 }
                 _ => toast.show("Could not remove the character", ToastSeverity::Normal),

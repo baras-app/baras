@@ -35,15 +35,7 @@ pub fn darken_color(color: Color, amount: f32) -> Color {
 /// the paired bar with a small lighter diamond, so icon-less bars read as one
 /// piece with the icon column instead of leaving a hole or a detached gray
 /// block. Shared by every bar layout that reserves an icon column.
-pub fn draw_icon_placeholder(
-    frame: &mut OverlayFrame,
-    x: f32,
-    y: f32,
-    w: f32,
-    h: f32,
-    radius: f32,
-    bar_color: Color,
-) {
+pub fn draw_icon_placeholder(frame: &mut OverlayFrame, x: f32, y: f32, w: f32, h: f32, radius: f32, bar_color: Color) {
     frame.fill_rounded_rect(x, y, w, h, radius, darken_color(bar_color, 0.5));
     frame.fill_diamond(
         x + w / 2.0,
@@ -196,16 +188,7 @@ impl ProgressBar {
 
     /// Draw a fill segment, applying the single-color gradient when enabled.
     /// The gradient spans the rect's own width.
-    fn draw_fill(
-        &self,
-        frame: &mut OverlayFrame,
-        x: f32,
-        y: f32,
-        w: f32,
-        h: f32,
-        radius: f32,
-        color: Color,
-    ) {
+    fn draw_fill(&self, frame: &mut OverlayFrame, x: f32, y: f32, w: f32, h: f32, radius: f32, color: Color) {
         self.draw_fill_span(frame, x, y, w, h, radius, color, x, x + w, self.gradient_intensity);
     }
 
@@ -227,17 +210,7 @@ impl ProgressBar {
         darken: f32,
     ) {
         if self.gradient {
-            frame.fill_rounded_rect_gradient(
-                x,
-                y,
-                w,
-                h,
-                radius,
-                grad_x0,
-                grad_x1,
-                darken_color(color, darken),
-                color,
-            );
+            frame.fill_rounded_rect_gradient(x, y, w, h, radius, grad_x0, grad_x1, darken_color(color, darken), color);
         } else {
             frame.fill_rounded_rect(x, y, w, h, radius, color);
         }
@@ -262,9 +235,7 @@ impl ProgressBar {
         if fill_width > 0.0 {
             if let Some(primary_fraction) = self.split_progress {
                 // Split bar: draw full fill as secondary color, then primary on top
-                let secondary_color = self
-                    .split_color
-                    .unwrap_or_else(|| lighten_color(self.fill_color, 0.4));
+                let secondary_color = self.split_color.unwrap_or_else(|| lighten_color(self.fill_color, 0.4));
                 let primary_width = fill_width * primary_fraction;
 
                 // Secondary fills the full width (so outer corners stay rounded),
@@ -299,11 +270,7 @@ impl ProgressBar {
         let bold = self.bold_text;
 
         // Use smaller font for 3-column layout to fit everything
-        let effective_font_size = if is_three_col {
-            font_size * 0.85
-        } else {
-            font_size
-        };
+        let effective_font_size = if is_three_col { font_size * 0.85 } else { font_size };
 
         let text_y = y + height / 2.0 + effective_font_size / 3.0;
 
@@ -320,16 +287,14 @@ impl ProgressBar {
                 let text = text.as_deref().unwrap_or_default();
                 frame.measure_text_styled(text, effective_font_size, bold, false).0
             };
-            let right_start = (x + name_w + center_w)
-                .min(x + width - measure(&self.right_text) - text_padding * 3.0);
+            let right_start = (x + name_w + center_w).min(x + width - measure(&self.right_text) - text_padding * 3.0);
             let name_w = name_w
                 .min(right_start - x - measure(&self.center_text) - text_padding)
                 .max(0.0);
             (name_w, x + name_w, right_start)
         } else if let Some(ref right) = self.right_text {
             // Measure actual right text width and give the rest to name
-            let (right_width, _) =
-                frame.measure_text_styled(right, effective_font_size, bold, false);
+            let (right_width, _) = frame.measure_text_styled(right, effective_font_size, bold, false);
             let right_reserved = right_width + text_padding * 3.0; // padding on both sides + gap
             let name_w = width - right_reserved;
             (name_w, x + name_w, x + name_w)
@@ -345,15 +310,7 @@ impl ProgressBar {
         let text_color = self.text_color;
         let draw_bar_text = |frame: &mut OverlayFrame, text: &str, tx: f32, ty: f32| {
             if use_glow {
-                frame.draw_text_with_glow(
-                    text,
-                    tx,
-                    ty,
-                    effective_font_size,
-                    text_color,
-                    bold,
-                    false,
-                );
+                frame.draw_text_with_glow(text, tx, ty, effective_font_size, text_color, bold, false);
             } else {
                 // Simple 1px drop shadow
                 frame.draw_text_styled(
@@ -372,18 +329,13 @@ impl ProgressBar {
         // Draw label on the left (truncated to fit, with optional offset for icon)
         let label_start = x + text_padding + self.label_offset;
         let available_for_label = name_width - text_padding * 2.0 - self.label_offset;
-        let display_label = frame.truncate_to_width(
-            &self.label,
-            available_for_label.max(0.0),
-            effective_font_size,
-            bold,
-        );
+        let display_label =
+            frame.truncate_to_width(&self.label, available_for_label.max(0.0), effective_font_size, bold);
         draw_bar_text(frame, &display_label, label_start, text_y);
 
         // Draw right text (rightmost position)
         if let Some(ref right) = self.right_text {
-            let (text_width, _) =
-                frame.measure_text_styled(right, effective_font_size, bold, false);
+            let (text_width, _) = frame.measure_text_styled(right, effective_font_size, bold, false);
             let right_x = x + width - text_width - 8.0 * frame.scale_factor();
             draw_bar_text(frame, right, right_x, text_y);
         }
@@ -392,14 +344,12 @@ impl ProgressBar {
         if let Some(ref center) = self.center_text {
             if is_three_col {
                 // In 3-column mode, position center text right-aligned within its column
-                let (center_width, _) =
-                    frame.measure_text_styled(center, effective_font_size, bold, false);
+                let (center_width, _) = frame.measure_text_styled(center, effective_font_size, bold, false);
                 let center_x = right_start - center_width - text_padding;
                 draw_bar_text(frame, center, center_x, text_y);
             } else {
                 // In 2-column mode (center only), right-align it
-                let (center_width, _) =
-                    frame.measure_text_styled(center, effective_font_size, bold, false);
+                let (center_width, _) = frame.measure_text_styled(center, effective_font_size, bold, false);
                 let center_pos = x + width - center_width - text_padding;
                 draw_bar_text(frame, center, center_pos, text_y);
             }

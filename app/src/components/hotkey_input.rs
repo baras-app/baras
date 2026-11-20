@@ -33,7 +33,10 @@ fn code_to_string(code: Code) -> Option<String> {
         return Some(d.to_string());
     }
     // Numpad digits: keep the full "Numpad8" token (parsed by the shortcut backend)
-    if name.strip_prefix("Numpad").is_some_and(|d| d.len() == 1 && d.chars().all(|c| c.is_ascii_digit())) {
+    if name
+        .strip_prefix("Numpad")
+        .is_some_and(|d| d.len() == 1 && d.chars().all(|c| c.is_ascii_digit()))
+    {
         return Some(name);
     }
     let s = match code {

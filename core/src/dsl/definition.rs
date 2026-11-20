@@ -6,11 +6,9 @@
 use hashbrown::HashSet;
 use serde::{Deserialize, Deserializer, Serialize};
 
-use super::{
-    ChallengeDefinition, Condition, CounterCondition, CounterDefinition, PhaseDefinition, Trigger,
-};
-use crate::dsl::audio::AudioConfig;
+use super::{ChallengeDefinition, Condition, CounterCondition, CounterDefinition, PhaseDefinition, Trigger};
 use crate::combat_log::Position;
+use crate::dsl::audio::AudioConfig;
 use crate::dsl::triggers::{PositionConstraint, matches_position_constraints};
 use crate::game_data::Difficulty;
 use baras_types::{AlertTrigger, EffectSelector};
@@ -93,9 +91,7 @@ impl OperationTimerStart {
     pub fn matches(&self, difficulty: Option<Difficulty>, position: Position) -> bool {
         matches_position_constraints(&self.position, Some(position), Some(position))
             && (self.difficulties.is_empty()
-                || difficulty.is_some_and(|d| {
-                    self.difficulties.iter().any(|key| d.matches_config_key(key))
-                }))
+                || difficulty.is_some_and(|d| self.difficulties.iter().any(|key| d.matches_config_key(key))))
     }
 }
 
@@ -242,17 +238,12 @@ impl ShieldDefinition {
             return self.total;
         };
         for entry in &self.hp {
-            if let Some(req_size) = entry.group_size {
-                if diff.group_size() != req_size {
-                    continue;
-                }
-            }
-            if !entry.difficulties.is_empty()
-                && !entry
-                    .difficulties
-                    .iter()
-                    .any(|d| diff.matches_config_key(d))
+            if let Some(req_size) = entry.group_size
+                && diff.group_size() != req_size
             {
+                continue;
+            }
+            if !entry.difficulties.is_empty() && !entry.difficulties.iter().any(|d| diff.matches_config_key(d)) {
                 continue;
             }
             return entry.total;
@@ -559,10 +550,7 @@ pub struct BossTimerDefinition {
     pub is_alert: bool,
 
     /// When to fire an alert: on timer start, on timer expire, or never
-    #[serde(
-        default,
-        skip_serializing_if = "crate::serde_defaults::is_alert_trigger_none"
-    )]
+    #[serde(default, skip_serializing_if = "crate::serde_defaults::is_alert_trigger_none")]
     pub alert_on: AlertTrigger,
 
     /// Custom alert text (None = use timer name)
@@ -748,10 +736,7 @@ impl BossTimerDefinition {
     ) -> crate::timers::TimerDefinition {
         crate::timers::TimerDefinition {
             id: self.id.clone(),
-            name: self
-                .display_text
-                .clone()
-                .unwrap_or_else(|| self.name.clone()),
+            name: self.display_text.clone().unwrap_or_else(|| self.name.clone()),
             enabled: self.enabled,
             trigger: self.trigger.clone(),
             duration_secs: self.duration_secs,
@@ -804,10 +789,10 @@ impl BossTimerDefinition {
 /// Strip group size suffix from a difficulty key (e.g., "veteran_8" -> "veteran")
 fn strip_group_size_suffix(key: &str) -> &str {
     for suffix in ["_8", "_16", "_4"] {
-        if let Some(base) = key.strip_suffix(suffix) {
-            if matches!(base, "story" | "veteran" | "master") {
-                return base;
-            }
+        if let Some(base) = key.strip_suffix(suffix)
+            && matches!(base, "story" | "veteran" | "master")
+        {
+            return base;
         }
     }
     key
@@ -841,9 +826,7 @@ impl BossEncounterDefinition {
 
     /// Get an entity by name (case-insensitive)
     pub fn entity_by_name(&self, name: &str) -> Option<&EntityDefinition> {
-        self.entities
-            .iter()
-            .find(|e| e.name.eq_ignore_ascii_case(name))
+        self.entities.iter().find(|e| e.name.eq_ignore_ascii_case(name))
     }
 
     /// Get the entity that contains a given NPC ID
@@ -909,11 +892,7 @@ impl BossEncounterDefinition {
     }
 
     pub fn build_indexes(&mut self) {
-        self.all_npc_ids = self
-            .entities
-            .iter()
-            .flat_map(|e| e.ids.iter().copied())
-            .collect();
+        self.all_npc_ids = self.entities.iter().flat_map(|e| e.ids.iter().copied()).collect();
         self.validate_triggers();
     }
 
@@ -922,10 +901,8 @@ impl BossEncounterDefinition {
     fn validate_triggers(&self) {
         // Validate counter triggers
         for counter in &self.counters {
-            let triggers: &[(&str, &crate::dsl::Trigger)] = &[
-                ("increment_on", &counter.increment_on),
-                ("reset_on", &counter.reset_on),
-            ];
+            let triggers: &[(&str, &crate::dsl::Trigger)] =
+                &[("increment_on", &counter.increment_on), ("reset_on", &counter.reset_on)];
             for (field, trigger) in triggers {
                 if let Some(kind) = trigger.contains_unsupported_for_counters_phases() {
                     tracing::warn!(
@@ -937,25 +914,22 @@ impl BossEncounterDefinition {
                     );
                 }
             }
-            if let Some(ref dec_trigger) = counter.decrement_on {
-                if let Some(kind) = dec_trigger.contains_unsupported_for_counters_phases() {
-                    tracing::warn!(
-                        boss = %self.id,
-                        counter = %counter.id,
-                        field = "decrement_on",
-                        trigger_type = %kind,
-                        "Counter trigger type is not supported (only works for timers) and will never fire"
-                    );
-                }
+            if let Some(ref dec_trigger) = counter.decrement_on
+                && let Some(kind) = dec_trigger.contains_unsupported_for_counters_phases()
+            {
+                tracing::warn!(
+                    boss = %self.id,
+                    counter = %counter.id,
+                    field = "decrement_on",
+                    trigger_type = %kind,
+                    "Counter trigger type is not supported (only works for timers) and will never fire"
+                );
             }
         }
 
         // Validate phase triggers
         for phase in &self.phases {
-            if let Some(kind) = phase
-                .start_trigger
-                .contains_unsupported_for_counters_phases()
-            {
+            if let Some(kind) = phase.start_trigger.contains_unsupported_for_counters_phases() {
                 tracing::warn!(
                     boss = %self.id,
                     phase = %phase.id,
@@ -964,29 +938,29 @@ impl BossEncounterDefinition {
                     "Phase trigger type is not supported (only works for timers) and will never fire"
                 );
             }
-            if let Some(ref end_trigger) = phase.end_trigger {
-                if let Some(kind) = end_trigger.contains_unsupported_for_counters_phases() {
-                    tracing::warn!(
-                        boss = %self.id,
-                        phase = %phase.id,
-                        field = "end_trigger",
-                        trigger_type = %kind,
-                        "Phase trigger type is not supported (only works for timers) and will never fire"
-                    );
-                }
+            if let Some(ref end_trigger) = phase.end_trigger
+                && let Some(kind) = end_trigger.contains_unsupported_for_counters_phases()
+            {
+                tracing::warn!(
+                    boss = %self.id,
+                    phase = %phase.id,
+                    field = "end_trigger",
+                    trigger_type = %kind,
+                    "Phase trigger type is not supported (only works for timers) and will never fire"
+                );
             }
         }
 
         // Validate victory trigger
-        if let Some(ref trigger) = self.victory_trigger {
-            if let Some(kind) = trigger.contains_unsupported_for_victory() {
-                tracing::warn!(
-                    boss = %self.id,
-                    field = "victory_trigger",
-                    trigger_type = %kind,
-                    "Victory trigger type is not supported and will never fire"
-                );
-            }
+        if let Some(ref trigger) = self.victory_trigger
+            && let Some(kind) = trigger.contains_unsupported_for_victory()
+        {
+            tracing::warn!(
+                boss = %self.id,
+                field = "victory_trigger",
+                trigger_type = %kind,
+                "Victory trigger type is not supported and will never fire"
+            );
         }
 
         // Validate shield triggers
@@ -1147,7 +1121,11 @@ mod timer_start_tests {
         let t = timer_start("r4_anomaly.toml");
         let vm = Some(Difficulty::Veteran8);
         assert!(t.matches(vm, pos(286.10, 14.86, 427.36)));
-        for safe in [pos(355.53, 17.67, 427.10), pos(292.89, 15.91, 427.10), pos(288.22, 15.46, 427.35)] {
+        for safe in [
+            pos(355.53, 17.67, 427.10),
+            pos(292.89, 15.91, 427.10),
+            pos(288.22, 15.46, 427.35),
+        ] {
             assert!(!t.matches(vm, safe));
         }
         assert!(!t.matches(vm, pos(257.13, 10.68, 397.45)), "lower elevator level");
@@ -1172,10 +1150,18 @@ mod timer_start_tests {
     fn dxun_corridor_master_only() {
         let t = timer_start("dxun.toml");
         let mm = Some(Difficulty::Master8);
-        for crossed in [pos(-337.78, 133.43, 0.40), pos(-334.27, 135.01, 0.0), pos(-331.38, 143.21, 1.01)] {
+        for crossed in [
+            pos(-337.78, 133.43, 0.40),
+            pos(-334.27, 135.01, 0.0),
+            pos(-331.38, 143.21, 1.01),
+        ] {
             assert!(t.matches(mm, crossed));
         }
-        for safe in [pos(-347.05, 153.49, -0.09), pos(-351.65, 154.32, 0.18), pos(-347.04, 156.62, 0.06)] {
+        for safe in [
+            pos(-347.05, 153.49, -0.09),
+            pos(-351.65, 154.32, 0.18),
+            pos(-347.04, 156.62, 0.06),
+        ] {
             assert!(!t.matches(mm, safe));
         }
         assert!(!t.matches(Some(Difficulty::Veteran8), pos(-337.78, 133.43, 0.40)));

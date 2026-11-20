@@ -8,13 +8,13 @@ use baras_types::history::{BackfillEvent, PullFilter, RunSummary};
 use super::Backfill;
 use super::clears::{ClearsTable, summarize};
 use super::overview::short_ts;
+use super::run_detail::{RunDetailView, fmt_secs};
 use super::scroll::{save_scroll, use_restore_scroll};
 use super::toolbar::HistoryToolbar;
-use super::run_detail::{RunDetailView, fmt_secs};
 use crate::api;
+use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::components::toggle_switch::ToggleSwitch;
 use crate::components::{ToastSeverity, use_toast};
-use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::types::UiSessionState;
 
 const OPS_RAIL: &str = "hist-ops-rail";
@@ -97,7 +97,12 @@ enum RunSort {
 /// The runs of one area under the filters, or the newest across all of them
 /// (`show_operation` names each row's operation); a row opens the run's recap
 #[component]
-fn RunTable(operation: String, runs: Vec<RunSummary>, on_pick: EventHandler<RunKey>, #[props(default)] show_operation: bool) -> Element {
+fn RunTable(
+    operation: String,
+    runs: Vec<RunSummary>,
+    on_pick: EventHandler<RunKey>,
+    #[props(default)] show_operation: bool,
+) -> Element {
     let mut sort = use_signal(|| (RunSort::Date, true));
     let (key, desc) = *sort.read();
     let mut rows: Vec<&RunSummary> = runs.iter().collect();
@@ -248,8 +253,11 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
         .and_then(|k| visible.iter().find(|r| key_of(r) == *k))
         .map(|r| r.operation.clone());
     let open_area = area.read().clone();
-    let area_runs: Vec<RunSummary> =
-        visible.iter().filter(|r| Some(&r.operation) == open_area.as_ref()).map(|r| (*r).clone()).collect();
+    let area_runs: Vec<RunSummary> = visible
+        .iter()
+        .filter(|r| Some(&r.operation) == open_area.as_ref())
+        .map(|r| (*r).clone())
+        .collect();
 
     // Reads signals, not render values, so it re-runs on selection and refresh
     let mut detail = use_resource(move || {
@@ -269,13 +277,20 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
     // Operations / Flashpoints, each split by operation
     let groups: Vec<(usize, Vec<(&str, Vec<&RunSummary>)>)> = (0..super::CONTENT_GROUPS.len())
         .map(|g| {
-            let in_group: Vec<&RunSummary> = visible.iter().copied().filter(|r| super::content_group(!r.is_flashpoint, r.is_flashpoint) == g).collect();
+            let in_group: Vec<&RunSummary> = visible
+                .iter()
+                .copied()
+                .filter(|r| super::content_group(!r.is_flashpoint, r.is_flashpoint) == g)
+                .collect();
             (g, group_by_operation(&in_group))
         })
         .filter(|(_, ops)| !ops.is_empty())
         .collect();
     let closed_groups = use_signal(std::collections::HashSet::<usize>::new);
-    use_restore_scroll(&[OPS_RAIL, OPS_MAIN], !loading && (current.is_none() || detail.read().is_some()));
+    use_restore_scroll(
+        &[OPS_RAIL, OPS_MAIN],
+        !loading && (current.is_none() || detail.read().is_some()),
+    );
 
     let collapsed = props.state.read().history.sidebar_collapsed;
     rsx! {
@@ -293,11 +308,10 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
                                 filter.write().flashpoints = checked;
                                 // Remembered across restarts, like "Bosses Only"
                                 spawn(async move {
-                                    if let Some(mut cfg) = api::get_config().await {
+                                    if let Err(err) = api::patch_config(|cfg| {
                                         cfg.raid_summaries_include_flashpoints = checked;
-                                        if let Err(err) = api::update_config(&cfg).await {
-                                            toast.show(format!("Failed to save settings: {err}"), ToastSeverity::Normal);
-                                        }
+                                    }).await {
+                                        toast.show(format!("Failed to save settings: {err}"), ToastSeverity::Normal);
                                     }
                                 });
                             },

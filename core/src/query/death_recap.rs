@@ -80,11 +80,7 @@ impl EncounterQuery<'_> {
     /// death event). The ledger holds damage/heal/death events; effects on
     /// the player come from a second pass over the whole fight, since one
     /// applied long before the window can still be up at the death.
-    pub async fn query_death_recap(
-        &self,
-        player_name: &str,
-        death_time_secs: f32,
-    ) -> Result<DeathRecap, String> {
+    pub async fn query_death_recap(&self, player_name: &str, death_time_secs: f32) -> Result<DeathRecap, String> {
         let lookback_start = (death_time_secs - WINDOW_SECS - 0.5).max(0.0);
         let sql = format!(
             r#"
@@ -284,7 +280,7 @@ impl EncounterQuery<'_> {
                 let from = stack_changes.iter().rposition(|&(t, _)| t <= window_start).unwrap_or(0);
                 stack_changes.drain(..from);
                 let active_at_death = windows.last().is_some_and(|&(_, b)| b >= death_time - DEATH_SLACK_SECS);
-                (!windows.is_empty()).then(|| DeathRecapEffect {
+                (!windows.is_empty()).then_some(DeathRecapEffect {
                     effect_id,
                     effect_name: acc.effect_name,
                     ability_id: acc.ability_id,
@@ -311,18 +307,13 @@ impl EncounterQuery<'_> {
 /// Assemble the recap from classified rows (pure aggregation, no I/O).
 fn build_recap(player_name: &str, requested_death_time: f32, rows: Vec<RecapRow>) -> DeathRecap {
     // Resolve the actual death event closest to the requested time
-    let death = rows
-        .iter()
-        .filter(|r| r.effect_id == effect_id::DEATH)
-        .min_by(|a, b| {
-            let da = (a.time_secs - requested_death_time).abs();
-            let db = (b.time_secs - requested_death_time).abs();
-            da.total_cmp(&db)
-        });
+    let death = rows.iter().filter(|r| r.effect_id == effect_id::DEATH).min_by(|a, b| {
+        let da = (a.time_secs - requested_death_time).abs();
+        let db = (b.time_secs - requested_death_time).abs();
+        da.total_cmp(&db)
+    });
     let death_time = death.map(|r| r.time_secs).unwrap_or(requested_death_time);
-    let phase_name = death
-        .map(|r| r.phase_name.clone())
-        .filter(|p| !p.is_empty());
+    let phase_name = death.map(|r| r.phase_name.clone()).filter(|p| !p.is_empty());
 
     let window_start = (death_time - WINDOW_SECS).max(0.0);
     let window_end = death_time + TRAILING_SECS;
@@ -348,18 +339,16 @@ fn build_recap(player_name: &str, requested_death_time: f32, rows: Vec<RecapRow>
         }
 
         let (kind, value, absorbed) = if r.effect_id == effect_id::DAMAGE {
-            let src = damage_map
-                .entry(r.source_id)
-                .or_insert_with(|| DeathRecapDamageSource {
-                    source_name: r.source_name.clone(),
-                    source_id: r.source_id,
-                    hits: 0,
-                    crits: 0,
-                    total: 0,
-                    max_hit: 0,
-                    absorbed: 0,
-                    abilities: Vec::new(),
-                });
+            let src = damage_map.entry(r.source_id).or_insert_with(|| DeathRecapDamageSource {
+                source_name: r.source_name.clone(),
+                source_id: r.source_id,
+                hits: 0,
+                crits: 0,
+                total: 0,
+                max_hit: 0,
+                absorbed: 0,
+                abilities: Vec::new(),
+            });
             src.hits += 1;
             src.crits += r.is_crit as u32;
             src.total += r.dmg_effective as i64;
@@ -394,9 +383,7 @@ fn build_recap(player_name: &str, requested_death_time: f32, rows: Vec<RecapRow>
                     ability_name: r.ability_name.clone(),
                     source_name: r.source_name.clone(),
                     amount: r.dmg_effective,
-                    overkill: last_hp
-                        .map(|hp| (r.dmg_effective - hp).max(0))
-                        .unwrap_or(0),
+                    overkill: last_hp.map(|hp| (r.dmg_effective - hp).max(0)).unwrap_or(0),
                     is_crit: r.is_crit,
                     damage_type: r.dmg_type.clone(),
                 };
@@ -405,9 +392,7 @@ fn build_recap(player_name: &str, requested_death_time: f32, rows: Vec<RecapRow>
                     if kb_zeroed.is_none() {
                         kb_zeroed = Some(kb);
                     }
-                } else if r.max_hp == 0
-                    && last_hp.is_none_or(|hp| r.dmg_effective >= hp)
-                {
+                } else if r.max_hp == 0 && last_hp.is_none_or(|hp| r.dmg_effective >= hp) {
                     // Post-hit HP unknown — plausible killer only if the damage
                     // could have exceeded the last known remaining HP. A hit the
                     // player demonstrably survived (post-hit HP > 0) never
@@ -418,15 +403,13 @@ fn build_recap(player_name: &str, requested_death_time: f32, rows: Vec<RecapRow>
             }
             (DeathRecapEventKind::Damage, r.dmg_effective, r.dmg_absorbed)
         } else if r.effect_id == effect_id::HEAL {
-            let src = heal_map
-                .entry(r.source_id)
-                .or_insert_with(|| DeathRecapHealSource {
-                    source_name: r.source_name.clone(),
-                    source_id: r.source_id,
-                    casts: 0,
-                    effective: 0,
-                    abilities: Vec::new(),
-                });
+            let src = heal_map.entry(r.source_id).or_insert_with(|| DeathRecapHealSource {
+                source_name: r.source_name.clone(),
+                source_id: r.source_id,
+                casts: 0,
+                effective: 0,
+                abilities: Vec::new(),
+            });
             src.casts += 1;
             src.effective += r.heal_effective as i64;
             let row = find_or_push(
@@ -465,12 +448,20 @@ fn build_recap(player_name: &str, requested_death_time: f32, rows: Vec<RecapRow>
             kind,
             source_name: r.source_name.clone(),
             ability_name: r.ability_name.clone(),
-            ability_id: if kind == DeathRecapEventKind::Death { 0 } else { r.ability_id },
+            ability_id: if kind == DeathRecapEventKind::Death {
+                0
+            } else {
+                r.ability_id
+            },
             value,
             absorbed,
             is_crit: r.is_crit && kind == DeathRecapEventKind::Damage,
             avoided: kind == DeathRecapEventKind::Damage && r.is_avoided(),
-            damage_type: if kind == DeathRecapEventKind::Damage { r.dmg_type.clone() } else { String::new() },
+            damage_type: if kind == DeathRecapEventKind::Damage {
+                r.dmg_type.clone()
+            } else {
+                String::new()
+            },
             hp_pct: last_hp_pct.unwrap_or(0.0),
         });
     }
@@ -483,14 +474,14 @@ fn build_recap(player_name: &str, requested_death_time: f32, rows: Vec<RecapRow>
     downsample(&mut hp_timeline);
 
     let mut damage_rows: Vec<_> = damage_map.into_values().collect();
-    damage_rows.sort_by(|a, b| b.total.cmp(&a.total));
+    damage_rows.sort_by_key(|x| std::cmp::Reverse(x.total));
     for src in &mut damage_rows {
-        src.abilities.sort_by(|a, b| b.total.cmp(&a.total));
+        src.abilities.sort_by_key(|x| std::cmp::Reverse(x.total));
     }
     let mut healing_rows: Vec<_> = heal_map.into_values().collect();
-    healing_rows.sort_by(|a, b| b.effective.cmp(&a.effective));
+    healing_rows.sort_by_key(|x| std::cmp::Reverse(x.effective));
     for src in &mut healing_rows {
-        src.abilities.sort_by(|a, b| b.effective.cmp(&a.effective));
+        src.abilities.sort_by_key(|x| std::cmp::Reverse(x.effective));
     }
 
     if events.len() > MAX_LEDGER_EVENTS {

@@ -8,21 +8,17 @@ use chrono::NaiveDateTime;
 use crate::combat_log::EntityType;
 use crate::context::IStr;
 use crate::dsl::EntityDefinition;
-use crate::dsl::TriggerKind;
+use crate::dsl::{TriggerExt, TriggerKind};
 use crate::encounter::CombatEncounter;
 
 use super::{TimerManager, TriggerContext};
 
 fn make_context(source_name: IStr, target_name: IStr) -> Option<TriggerContext> {
-    let src = crate::context::resolve(source_name);
-    let tgt = crate::context::resolve(target_name);
-    let src = if src.is_empty() { None } else { Some(src.to_string()) };
-    let tgt = if tgt.is_empty() { None } else { Some(tgt.to_string()) };
-    if src.is_none() && tgt.is_none() {
-        None
-    } else {
-        Some(TriggerContext::new(src, tgt))
-    }
+    let named = |name| !crate::context::resolve(name).is_empty();
+    (named(source_name) || named(target_name)).then_some(TriggerContext {
+        source_name,
+        target_name,
+    })
 }
 
 /// Get the entity roster from the current encounter, or empty slice if none.
@@ -89,12 +85,8 @@ pub(super) fn handle_ability(
 
     let ctx = make_context(source_name, target_name);
     for def in matching {
-        let instance_id = if def.per_target {
-            Some(target_id)
-        } else {
-            None
-        };
-        manager.start_timer(&def, timestamp, instance_id, ctx.clone());
+        let instance_id = if def.per_target { Some(target_id) } else { None };
+        manager.start_timer(&def, timestamp, instance_id, ctx);
     }
 
     // Check for cancel triggers on ability cast (entity-filtered)
@@ -179,12 +171,8 @@ pub(super) fn handle_effect_applied(
 
     let ctx = make_context(source_name, target_name);
     for def in matching {
-        let instance_id = if def.per_target {
-            Some(target_id)
-        } else {
-            None
-        };
-        manager.start_timer(&def, timestamp, instance_id, ctx.clone());
+        let instance_id = if def.per_target { Some(target_id) } else { None };
+        manager.start_timer(&def, timestamp, instance_id, ctx);
     }
 
     // Check for cancel triggers on effect applied (entity-filtered)
@@ -268,12 +256,8 @@ pub(super) fn handle_effect_removed(
 
     let ctx = make_context(source_name, target_name);
     for def in matching {
-        let instance_id = if def.per_target {
-            Some(target_id)
-        } else {
-            None
-        };
-        manager.start_timer(&def, timestamp, instance_id, ctx.clone());
+        let instance_id = if def.per_target { Some(target_id) } else { None };
+        manager.start_timer(&def, timestamp, instance_id, ctx);
     }
 
     // Check for cancel triggers on effect removed (entity-filtered)
@@ -328,13 +312,8 @@ pub(super) fn handle_boss_hp_change(
         .definitions_for_kind(TriggerKind::BossHpBelow)
         .iter()
         .filter(|d| {
-            d.matches_boss_hp_threshold(
-                get_entities(encounter),
-                npc_id,
-                Some(npc_name),
-                previous_hp,
-                current_hp,
-            ) && manager.is_definition_active(d, encounter)
+            d.matches_boss_hp_threshold(get_entities(encounter), npc_id, Some(npc_name), previous_hp, current_hp)
+                && manager.is_definition_active(d, encounter)
         })
         .cloned()
         .collect();
@@ -436,8 +415,7 @@ pub(super) fn handle_counter_change(
         .definitions_for_kind(TriggerKind::CounterReaches)
         .iter()
         .filter(|d| {
-            d.matches_counter_reaches(counter_id, old_value, new_value)
-                && manager.is_definition_active(d, encounter)
+            d.matches_counter_reaches(counter_id, old_value, new_value) && manager.is_definition_active(d, encounter)
         })
         .cloned()
         .collect();
@@ -450,9 +428,7 @@ pub(super) fn handle_counter_change(
     let matching_changes: Vec<_> = manager
         .definitions_for_kind(TriggerKind::CounterChanges)
         .iter()
-        .filter(|d| {
-            d.matches_counter_changes(counter_id) && manager.is_definition_active(d, encounter)
-        })
+        .filter(|d| d.matches_counter_changes(counter_id) && manager.is_definition_active(d, encounter))
         .cloned()
         .collect();
 
@@ -504,11 +480,7 @@ pub(super) fn handle_npc_first_seen(
     let npc_name_owned = npc_name.to_string();
     manager.cancel_timers_matching_with_entities(entities, |t, ents| {
         t.matches_npc_appears(ents, npc_id, &npc_name_owned)
-            && crate::dsl::triggers::matches_position_constraints(
-                t.position_constraints(),
-                npc_pos,
-                npc_pos,
-            )
+            && crate::dsl::triggers::matches_position_constraints(t.position_constraints(), npc_pos, npc_pos)
     });
 }
 
@@ -549,11 +521,7 @@ pub(super) fn handle_entity_death(
     let entity_name_owned = entity_name.to_string();
     manager.cancel_timers_matching_with_entities(entities, |t, ents| {
         t.matches_entity_death(ents, npc_id, &entity_name_owned)
-            && crate::dsl::triggers::matches_position_constraints(
-                t.position_constraints(),
-                death_pos,
-                death_pos,
-            )
+            && crate::dsl::triggers::matches_position_constraints(t.position_constraints(), death_pos, death_pos)
     });
 }
 
@@ -601,7 +569,7 @@ pub(super) fn handle_target_set(
 
     let ctx = make_context(source_name, target_name);
     for def in matching {
-        manager.start_timer(&def, timestamp, None, ctx.clone());
+        manager.start_timer(&def, timestamp, None, ctx);
     }
 
     // Check for cancel triggers on target set
@@ -637,7 +605,7 @@ pub(super) fn handle_damage_taken(
         .definitions_for_kind(TriggerKind::DamageTaken)
         .iter()
         .filter(|d| {
-            d.matches_damage_taken(ability_id, Some(&ability_name_str), defense_type_id)
+            d.matches_damage_taken(ability_id, Some(ability_name_str), defense_type_id)
                 && manager.is_definition_active(d, encounter)
                 && manager.matches_source_target_filters(
                     &d.trigger,
@@ -660,12 +628,8 @@ pub(super) fn handle_damage_taken(
 
     let ctx = make_context(source_name, target_name);
     for def in matching {
-        let instance_id = if def.per_target {
-            Some(target_id)
-        } else {
-            None
-        };
-        manager.start_timer(&def, timestamp, instance_id, ctx.clone());
+        let instance_id = if def.per_target { Some(target_id) } else { None };
+        manager.start_timer(&def, timestamp, instance_id, ctx);
     }
 
     // Check for cancel triggers on damage taken (entity-filtered)
@@ -682,7 +646,7 @@ pub(super) fn handle_damage_taken(
         encounter.and_then(|e| e.pvp_faction_context()),
         source_pos,
         target_pos,
-        |t| t.matches_damage_taken(ability_id, Some(&ability_name_str), defense_type_id),
+        |t| t.matches_damage_taken(ability_id, Some(ability_name_str), defense_type_id),
     );
     manager.remove_queued_matching_with_source_target(
         get_entities(encounter),
@@ -697,7 +661,7 @@ pub(super) fn handle_damage_taken(
         encounter.and_then(|e| e.pvp_faction_context()),
         source_pos,
         target_pos,
-        |t| t.matches_damage_taken(ability_id, Some(&ability_name_str), defense_type_id),
+        |t| t.matches_damage_taken(ability_id, Some(ability_name_str), defense_type_id),
     );
 }
 
@@ -727,7 +691,7 @@ pub(super) fn handle_threat_modified(
         .definitions_for_kind(TriggerKind::ThreatModified)
         .iter()
         .filter(|d| {
-            d.matches_threat_modified(ability_id, Some(&ability_name_str), threat)
+            d.matches_threat_modified(ability_id, Some(ability_name_str), threat)
                 && manager.is_definition_active(d, encounter)
                 && manager.matches_source_target_filters(
                     &d.trigger,
@@ -751,26 +715,38 @@ pub(super) fn handle_threat_modified(
     let ctx = make_context(source_name, target_name);
     for def in matching {
         let instance_id = if def.per_target { Some(target_id) } else { None };
-        manager.start_timer(&def, timestamp, instance_id, ctx.clone());
+        manager.start_timer(&def, timestamp, instance_id, ctx);
     }
 
     manager.cancel_timers_matching_with_source_target(
         get_entities(encounter),
-        source_id, source_type, source_name, source_npc_id,
-        target_id, target_type, target_name, target_npc_id,
+        source_id,
+        source_type,
+        source_name,
+        source_npc_id,
+        target_id,
+        target_type,
+        target_name,
+        target_npc_id,
         encounter.and_then(|e| e.pvp_faction_context()),
         source_pos,
         target_pos,
-        |t| t.matches_threat_modified(ability_id, Some(&ability_name_str), threat),
+        |t| t.matches_threat_modified(ability_id, Some(ability_name_str), threat),
     );
     manager.remove_queued_matching_with_source_target(
         get_entities(encounter),
-        source_id, source_type, source_name, source_npc_id,
-        target_id, target_type, target_name, target_npc_id,
+        source_id,
+        source_type,
+        source_name,
+        source_npc_id,
+        target_id,
+        target_type,
+        target_name,
+        target_npc_id,
         encounter.and_then(|e| e.pvp_faction_context()),
         source_pos,
         target_pos,
-        |t| t.matches_threat_modified(ability_id, Some(&ability_name_str), threat),
+        |t| t.matches_threat_modified(ability_id, Some(ability_name_str), threat),
     );
 }
 
@@ -799,7 +775,7 @@ pub(super) fn handle_healing_taken(
         .definitions_for_kind(TriggerKind::HealingTaken)
         .iter()
         .filter(|d| {
-            d.matches_healing_taken(ability_id, Some(&ability_name_str))
+            d.matches_healing_taken(ability_id, Some(ability_name_str))
                 && manager.is_definition_active(d, encounter)
                 && manager.matches_source_target_filters(
                     &d.trigger,
@@ -822,12 +798,8 @@ pub(super) fn handle_healing_taken(
 
     let ctx = make_context(source_name, target_name);
     for def in matching {
-        let instance_id = if def.per_target {
-            Some(target_id)
-        } else {
-            None
-        };
-        manager.start_timer(&def, timestamp, instance_id, ctx.clone());
+        let instance_id = if def.per_target { Some(target_id) } else { None };
+        manager.start_timer(&def, timestamp, instance_id, ctx);
     }
 
     // Check for cancel triggers on healing taken (entity-filtered)
@@ -844,7 +816,7 @@ pub(super) fn handle_healing_taken(
         encounter.and_then(|e| e.pvp_faction_context()),
         source_pos,
         target_pos,
-        |t| t.matches_healing_taken(ability_id, Some(&ability_name_str)),
+        |t| t.matches_healing_taken(ability_id, Some(ability_name_str)),
     );
     manager.remove_queued_matching_with_source_target(
         get_entities(encounter),
@@ -859,7 +831,7 @@ pub(super) fn handle_healing_taken(
         encounter.and_then(|e| e.pvp_faction_context()),
         source_pos,
         target_pos,
-        |t| t.matches_healing_taken(ability_id, Some(&ability_name_str)),
+        |t| t.matches_healing_taken(ability_id, Some(ability_name_str)),
     );
 }
 
@@ -872,10 +844,7 @@ pub(super) fn handle_healing_taken(
 /// which ignores already-active timers. Start timestamps are backdated to
 /// `enter_combat_time + threshold` so remaining duration is correct regardless
 /// of when definitions loaded or when this is first evaluated.
-pub(super) fn handle_combat_time_triggers(
-    manager: &mut TimerManager,
-    encounter: Option<&CombatEncounter>,
-) {
+pub(super) fn handle_combat_time_triggers(manager: &mut TimerManager, encounter: Option<&CombatEncounter>) {
     if !manager.in_combat {
         return;
     }

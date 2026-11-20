@@ -1,18 +1,13 @@
 //! Linux capture: Wayland where the session offers it, X11 otherwise.
 
-mod wayland;
-mod x11;
 #[cfg(target_os = "linux")]
 mod portal;
+mod wayland;
+mod x11;
 
 use super::{CaptureError, CapturedImage, log_timing};
 
-pub fn capture_region(
-    x: i32,
-    y: i32,
-    width: u32,
-    height: u32,
-) -> Result<CapturedImage, CaptureError> {
+pub fn capture_region(x: i32, y: i32, width: u32, height: u32) -> Result<CapturedImage, CaptureError> {
     // Keyed on the session, not on the overlay backend. On GNOME the overlay is
     // an Xwayland window, but only the compositor can read the screen, because
     // an X11 GetImage cannot see native Wayland surfaces.
@@ -143,9 +138,6 @@ mod tests {
             None
         );
         // A compositor that reported nothing usable.
-        assert_eq!(
-            device_region((0, 0, 100, 100), (0, 0), (0, 0), (1920, 1080)),
-            None
-        );
+        assert_eq!(device_region((0, 0, 100, 100), (0, 0), (0, 0), (1920, 1080)), None);
     }
 }

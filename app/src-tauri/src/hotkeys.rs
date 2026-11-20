@@ -21,11 +21,11 @@ pub fn is_wayland() -> bool {
 }
 
 /// Convert Tauri key format to XDG shortcuts format
-/// 
+///
 /// Per XDG shortcuts spec:
 /// - Modifiers are uppercase: CTRL, ALT, SHIFT, LOGO
 /// - Keys are lowercase: a, w, return
-/// 
+///
 /// Examples:
 /// - "CommandOrControl+Shift+H" -> "CTRL+SHIFT+h"
 /// - "Alt+F1" -> "ALT+f1"
@@ -39,7 +39,7 @@ fn convert_key_format(tauri_key: &str) -> String {
             // Map known modifiers to uppercase XDG format
             match part_lower.as_str() {
                 "commandorcontrol" | "control" | "ctrl" => "CTRL",
-                "command" | "super" | "meta" => "LOGO",  // LOGO is the XDG name for Super/Windows key
+                "command" | "super" | "meta" => "LOGO", // LOGO is the XDG name for Super/Windows key
                 "alt" => "ALT",
                 "shift" => "SHIFT",
                 // Numpad digits use XKB keysym names in the portal spec
@@ -50,14 +50,15 @@ fn convert_key_format(tauri_key: &str) -> String {
                         None => key.to_owned(),
                     };
                 }
-            }.to_owned()
+            }
+            .to_owned()
         })
         .collect::<Vec<_>>()
         .join("+")
 }
 
 /// Try to register global shortcuts via XDG portal (Wayland)
-/// 
+///
 /// This function creates a portal session, binds shortcuts, and listens for activation signals.
 /// It runs indefinitely until an error occurs or the app closes.
 #[cfg(target_os = "linux")]
@@ -67,21 +68,21 @@ async fn try_portal_shortcuts(
     service_handle: ServiceHandle,
 ) -> Result<(), ashpd::Error> {
     use ashpd::desktop::global_shortcuts::{GlobalShortcuts, NewShortcut};
-    
+
     let config = service_handle.config().await;
     let hotkeys = &config.hotkeys;
-    
+
     // Build list of shortcuts to register
     // Store converted keys so we can pass references
     let mut converted_keys = Vec::new();
     let mut shortcuts = Vec::new();
-    
+
     if let Some(ref key) = hotkeys.toggle_visibility {
         let converted = convert_key_format(key);
         converted_keys.push(converted);
         shortcuts.push(
             NewShortcut::new("toggle-visibility", "Toggle overlay visibility")
-                .preferred_trigger(converted_keys.last().unwrap().as_str())
+                .preferred_trigger(converted_keys.last().unwrap().as_str()),
         );
     }
     if let Some(ref key) = hotkeys.toggle_move_mode {
@@ -89,7 +90,7 @@ async fn try_portal_shortcuts(
         converted_keys.push(converted);
         shortcuts.push(
             NewShortcut::new("toggle-move-mode", "Toggle move mode")
-                .preferred_trigger(converted_keys.last().unwrap().as_str())
+                .preferred_trigger(converted_keys.last().unwrap().as_str()),
         );
     }
     if let Some(ref key) = hotkeys.toggle_rearrange_mode {
@@ -97,7 +98,7 @@ async fn try_portal_shortcuts(
         converted_keys.push(converted);
         shortcuts.push(
             NewShortcut::new("toggle-rearrange", "Toggle rearrange mode")
-                .preferred_trigger(converted_keys.last().unwrap().as_str())
+                .preferred_trigger(converted_keys.last().unwrap().as_str()),
         );
     }
     if let Some(ref key) = hotkeys.toggle_operation_timer {
@@ -105,15 +106,14 @@ async fn try_portal_shortcuts(
         converted_keys.push(converted);
         shortcuts.push(
             NewShortcut::new("toggle-operation-timer", "Toggle operation timer")
-                .preferred_trigger(converted_keys.last().unwrap().as_str())
+                .preferred_trigger(converted_keys.last().unwrap().as_str()),
         );
     }
     if let Some(ref key) = hotkeys.toggle_live_mode {
         let converted = convert_key_format(key);
         converted_keys.push(converted);
         shortcuts.push(
-            NewShortcut::new("toggle-live-mode", "Go live")
-                .preferred_trigger(converted_keys.last().unwrap().as_str())
+            NewShortcut::new("toggle-live-mode", "Go live").preferred_trigger(converted_keys.last().unwrap().as_str()),
         );
     }
     if let Some(ref key) = hotkeys.detect_raid_names {
@@ -121,7 +121,7 @@ async fn try_portal_shortcuts(
         converted_keys.push(converted);
         shortcuts.push(
             NewShortcut::new("detect-raid-names", "Detect raid frame names")
-                .preferred_trigger(converted_keys.last().unwrap().as_str())
+                .preferred_trigger(converted_keys.last().unwrap().as_str()),
         );
     }
 
@@ -129,7 +129,7 @@ async fn try_portal_shortcuts(
         info!("No hotkeys configured, skipping portal registration");
         return Ok(());
     }
-    
+
     // xdg-desktop-portal 1.18+ rejects GlobalShortcuts sessions from
     // non-sandboxed apps without an app id; registration is a no-op in a sandbox.
     // Best-effort: requires a matching .desktop entry, and older portals lack
@@ -141,18 +141,15 @@ async fn try_portal_shortcuts(
     // Create portal connection and session
     let portal = GlobalShortcuts::new().await?;
     let session = portal.create_session(Default::default()).await?;
-    
+
     // Bind shortcuts (may show user permission dialog on first run)
     let _response = portal
         .bind_shortcuts(&session, &shortcuts, None, Default::default())
         .await?
         .response()?;
-    
-    info!(
-        "Registered {} global shortcuts via portal",
-        shortcuts.len()
-    );
-    
+
+    info!("Registered {} global shortcuts via portal", shortcuts.len());
+
     // Spawn a dedicated task to listen for activation signals
     // This is critical - the stream must be polled in a separate task
     tauri::async_runtime::spawn(async move {
@@ -164,7 +161,7 @@ async fn try_portal_shortcuts(
                     let shortcut_id = activation.shortcut_id();
                     let state = overlay_state.clone();
                     let handle = service_handle.clone();
-                    
+
                     match shortcut_id {
                         "toggle-visibility" => {
                             tauri::async_runtime::spawn(async move {
@@ -201,7 +198,7 @@ async fn try_portal_shortcuts(
                         }
                     }
                 }
-                
+
                 warn!("Global shortcuts activation stream ended");
             }
             Err(e) => {
@@ -209,7 +206,7 @@ async fn try_portal_shortcuts(
             }
         }
     });
-    
+
     Ok(())
 }
 
@@ -223,15 +220,15 @@ pub fn spawn_register_hotkeys(
     #[cfg(target_os = "linux")]
     if is_wayland() {
         info!("Detected Wayland, attempting to register shortcuts via XDG portal");
-        
+
         let app = app_handle.clone();
         let state = overlay_state.clone();
         let handle = service_handle.clone();
-        
+
         tauri::async_runtime::spawn(async move {
             // Small delay to ensure everything is initialized
             tokio::time::sleep(std::time::Duration::from_millis(300)).await;
-            
+
             if let Err(e) = try_portal_shortcuts(app.clone(), state, handle).await {
                 let error_msg = format!("{}", e);
                 warn!(
@@ -239,14 +236,14 @@ pub fn spawn_register_hotkeys(
                      Hotkeys will not work. Configure shortcuts in your compositor settings instead.",
                     error_msg
                 );
-                
+
                 // Emit event to frontend so user sees a helpful message
                 let _ = app.emit("hotkeys-unavailable", error_msg);
             }
         });
         return;
     }
-    
+
     use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 
     tauri::async_runtime::spawn(async move {
@@ -264,17 +261,15 @@ pub fn spawn_register_hotkeys(
                 let state = overlay_state.clone();
                 let handle = service_handle.clone();
 
-                if let Err(e) =
-                    global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
-                        if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                            let state = state.clone();
-                            let handle = handle.clone();
-                            tauri::async_runtime::spawn(async move {
-                                toggle_visibility_hotkey(state, handle).await;
-                            });
-                        }
-                    })
-                {
+                if let Err(e) = global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
+                    if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        let state = state.clone();
+                        let handle = handle.clone();
+                        tauri::async_runtime::spawn(async move {
+                            toggle_visibility_hotkey(state, handle).await;
+                        });
+                    }
+                }) {
                     error!(error = %e, hotkey = %key_str, "Failed to register visibility hotkey");
                 } else {
                     info!(hotkey = %key_str, "Registered visibility hotkey");
@@ -290,17 +285,15 @@ pub fn spawn_register_hotkeys(
                 let state = overlay_state.clone();
                 let handle = service_handle.clone();
 
-                if let Err(e) =
-                    global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
-                        if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                            let state = state.clone();
-                            let handle = handle.clone();
-                            tauri::async_runtime::spawn(async move {
-                                toggle_move_mode_hotkey(state, handle).await;
-                            });
-                        }
-                    })
-                {
+                if let Err(e) = global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
+                    if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        let state = state.clone();
+                        let handle = handle.clone();
+                        tauri::async_runtime::spawn(async move {
+                            toggle_move_mode_hotkey(state, handle).await;
+                        });
+                    }
+                }) {
                     error!(error = %e, hotkey = %key_str, "Failed to register move mode hotkey");
                 } else {
                     info!(hotkey = %key_str, "Registered move mode hotkey");
@@ -316,17 +309,15 @@ pub fn spawn_register_hotkeys(
                 let state = overlay_state.clone();
                 let handle = service_handle.clone();
 
-                if let Err(e) =
-                    global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
-                        if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                            let state = state.clone();
-                            let handle = handle.clone();
-                            tauri::async_runtime::spawn(async move {
-                                toggle_rearrange_mode_hotkey(state, handle).await;
-                            });
-                        }
-                    })
-                {
+                if let Err(e) = global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
+                    if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        let state = state.clone();
+                        let handle = handle.clone();
+                        tauri::async_runtime::spawn(async move {
+                            toggle_rearrange_mode_hotkey(state, handle).await;
+                        });
+                    }
+                }) {
                     error!(error = %e, hotkey = %key_str, "Failed to register rearrange mode hotkey");
                 } else {
                     info!(hotkey = %key_str, "Registered rearrange mode hotkey");
@@ -341,16 +332,14 @@ pub fn spawn_register_hotkeys(
             if let Ok(shortcut) = key_str.parse::<Shortcut>() {
                 let handle = service_handle.clone();
 
-                if let Err(e) =
-                    global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
-                        if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                            let handle = handle.clone();
-                            tauri::async_runtime::spawn(async move {
-                                toggle_operation_timer_hotkey(handle).await;
-                            });
-                        }
-                    })
-                {
+                if let Err(e) = global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
+                    if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        let handle = handle.clone();
+                        tauri::async_runtime::spawn(async move {
+                            toggle_operation_timer_hotkey(handle).await;
+                        });
+                    }
+                }) {
                     error!(error = %e, hotkey = %key_str, "Failed to register operation timer hotkey");
                 } else {
                     info!(hotkey = %key_str, "Registered operation timer hotkey");
@@ -365,16 +354,14 @@ pub fn spawn_register_hotkeys(
             if let Ok(shortcut) = key_str.parse::<Shortcut>() {
                 let handle = service_handle.clone();
 
-                if let Err(e) =
-                    global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
-                        if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                            let handle = handle.clone();
-                            tauri::async_runtime::spawn(async move {
-                                toggle_live_mode_hotkey(handle).await;
-                            });
-                        }
-                    })
-                {
+                if let Err(e) = global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
+                    if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        let handle = handle.clone();
+                        tauri::async_runtime::spawn(async move {
+                            toggle_live_mode_hotkey(handle).await;
+                        });
+                    }
+                }) {
                     error!(error = %e, hotkey = %key_str, "Failed to register go live hotkey");
                 } else {
                     info!(hotkey = %key_str, "Registered go live hotkey");
@@ -391,16 +378,14 @@ pub fn spawn_register_hotkeys(
             if let Ok(shortcut) = key_str.parse::<Shortcut>() {
                 let state = overlay_state.clone();
 
-                if let Err(e) =
-                    global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
-                        if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                            let state = state.clone();
-                            tauri::async_runtime::spawn(async move {
-                                detect_raid_names_hotkey(state).await;
-                            });
-                        }
-                    })
-                {
+                if let Err(e) = global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
+                    if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        let state = state.clone();
+                        tauri::async_runtime::spawn(async move {
+                            detect_raid_names_hotkey(state).await;
+                        });
+                    }
+                }) {
                     error!(error = %e, hotkey = %key_str, "Failed to register raid name detection hotkey");
                 } else {
                     info!(hotkey = %key_str, "Registered raid name detection hotkey");
@@ -416,14 +401,8 @@ pub fn spawn_register_hotkeys(
 ///
 /// If auto-hide is active, show_all() records intent but does not spawn overlays.
 /// A toast event is emitted so the frontend can inform the user.
-async fn toggle_visibility_hotkey(
-    overlay_state: SharedOverlayState,
-    service_handle: ServiceHandle,
-) {
-    let any_running = overlay_state
-        .lock()
-        .map(|s| s.any_running())
-        .unwrap_or(false);
+async fn toggle_visibility_hotkey(overlay_state: SharedOverlayState, service_handle: ServiceHandle) {
+    let any_running = overlay_state.lock().map(|s| s.any_running()).unwrap_or(false);
 
     if any_running {
         let _ = OverlayManager::hide_all(&overlay_state, &service_handle).await;
@@ -432,9 +411,7 @@ async fn toggle_visibility_hotkey(
         // active the spawn is a no-op; emit toast so user knows why.
         let _ = OverlayManager::show_all(&overlay_state, &service_handle).await;
         if service_handle.shared.auto_hide.is_auto_hidden() {
-            let _ = service_handle
-                .app_handle
-                .emit("overlays-auto-hidden-toast", ());
+            let _ = service_handle.app_handle.emit("overlays-auto-hidden-toast", ());
         }
     }
 }
@@ -516,7 +493,7 @@ async fn detect_raid_names_hotkey(overlay_state: SharedOverlayState) {
             return;
         }
 
-        state.get_raid_tx().cloned()
+        state.get_tx(OverlayType::Raid).cloned()
     };
 
     if let Some(tx) = raid_tx {
@@ -538,7 +515,7 @@ async fn toggle_rearrange_mode_hotkey(overlay_state: SharedOverlayState, service
 
         let new_mode = !state.rearrange_mode;
         state.set_rearrange_mode(new_mode);
-        let tx = state.get_raid_tx().cloned();
+        let tx = state.get_tx(OverlayType::Raid).cloned();
         (tx, new_mode)
     };
 

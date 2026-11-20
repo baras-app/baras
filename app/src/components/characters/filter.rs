@@ -44,7 +44,10 @@ pub struct LockFilter {
 
 impl LockFilter {
     pub fn keeps(&self, row: &CharacterRow) -> bool {
-        let mut hits = self.picks.iter().map(|((k, t), boss)| hit(self.free, progress(row, k, t), *boss));
+        let mut hits = self
+            .picks
+            .iter()
+            .map(|((k, t), boss)| hit(self.free, progress(row, k, t), *boss));
         self.picks.is_empty() || if self.free { hits.all(|h| h) } else { hits.any(|h| h) }
     }
 
@@ -66,12 +69,18 @@ impl LockFilter {
 
 /// The modes an operation has (every mode when the area has no definition)
 fn modes_of(op: &OperationRef) -> impl Iterator<Item = &'static str> + '_ {
-    TIERS.into_iter().filter(|t| op.tiers.is_empty() || op.tiers.iter().any(|tb| tb.tier == *t))
+    TIERS
+        .into_iter()
+        .filter(|t| op.tiers.is_empty() || op.tiers.iter().any(|tb| tb.tier == *t))
 }
 
 /// Not a component: borrows the roster rather than cloning it into props.
 /// Counts are over `rows`, the characters the toolbar filters keep.
-pub fn lock_filter_block(operations: &[OperationRef], rows: &[&CharacterRow], mut filter: Signal<LockFilter>) -> Element {
+pub fn lock_filter_block(
+    operations: &[OperationRef],
+    rows: &[&CharacterRow],
+    mut filter: Signal<LockFilter>,
+) -> Element {
     if operations.is_empty() {
         return rsx! {};
     }
@@ -81,11 +90,14 @@ pub fn lock_filter_block(operations: &[OperationRef], rows: &[&CharacterRow], mu
         rows.iter().filter(|r| hit(free, progress(r, key, tier), boss)).count()
     };
     // Picked (operation, mode) pairs that have a boss list, with their narrowing
-    let strips = operations.iter().flat_map(|op| op.tiers.iter().map(move |tb| (op, tb))).filter_map(|(op, tb)| {
-        let pick = (operation_key(op.area_id, &op.name), tb.tier.clone());
-        let picked = *f.picks.get(&pick)?;
-        Some((op, tb, pick, picked))
-    });
+    let strips = operations
+        .iter()
+        .flat_map(|op| op.tiers.iter().map(move |tb| (op, tb)))
+        .filter_map(|(op, tb)| {
+            let pick = (operation_key(op.area_id, &op.name), tb.tier.clone());
+            let picked = *f.picks.get(&pick)?;
+            Some((op, tb, pick, picked))
+        });
     let noun = if free { "free" } else { "locked out" };
 
     rsx! {

@@ -21,7 +21,6 @@ mod scroll;
 mod toolbar;
 
 use dioxus::prelude::*;
-use wasm_bindgen::prelude::*;
 
 use baras_types::history::{BackfillEvent, CleanupEvent, HistoryStatus, HistorySubTab, PullFilter};
 
@@ -110,59 +109,59 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
 
     // Tauri callbacks run outside the Dioxus runtime, so the listener only
     // writes the signal; the toast happens in the effect below.
-    let backfill = Backfill { event: use_signal(|| None::<BackfillEvent>), history: use_signal(|| 0u32), toast };
-    use_future(move || async move {
-        let mut version = backfill.history;
-        let closure = Closure::new(move |_: JsValue| {
-            let _ = version.try_write().map(|mut w| *w += 1);
-        });
-        api::tauri_listen("history-updated", &closure).await;
-        closure.forget();
+    let backfill = Backfill {
+        event: use_signal(|| None::<BackfillEvent>),
+        history: use_signal(|| 0u32),
+        toast,
+    };
+    let mut version = backfill.history;
+    api::use_tauri_event("history-updated", move |_| {
+        let _ = version.try_write().map(|mut w| *w += 1);
     });
-    use_future(move || async move {
-        let mut event = backfill.event;
-        let closure = Closure::new(move |ev: JsValue| {
-            let Ok(payload) = js_sys::Reflect::get(&ev, &JsValue::from_str("payload")) else {
-                return;
-            };
-            if let Ok(parsed) = serde_wasm_bindgen::from_value::<BackfillEvent>(payload) {
-                let _ = event.try_write().map(|mut w| *w = Some(parsed));
-            }
-        });
-        api::tauri_listen("history-backfill", &closure).await;
-        closure.forget();
+    let mut event = backfill.event;
+    api::use_tauri_payload("history-backfill", move |parsed: BackfillEvent| {
+        let _ = event.try_write().map(|mut w| *w = Some(parsed));
     });
     use_effect(move || {
-        if let Some(BackfillEvent::Done { pulls, logs, failed, skipped, cancelled, .. }) = *backfill.event.read() {
+        if let Some(BackfillEvent::Done {
+            pulls,
+            logs,
+            failed,
+            skipped,
+            cancelled,
+            ..
+        }) = *backfill.event.read()
+        {
             let msg = if cancelled {
                 "Re-scan cancelled; logs already scanned kept their history".to_string()
             } else {
-                format!("Re-scan complete: {pulls} pulls across {logs} logs, {skipped} already current, {failed} failed")
+                format!(
+                    "Re-scan complete: {pulls} pulls across {logs} logs, {skipped} already current, {failed} failed"
+                )
             };
             toast.show(msg, ToastSeverity::Normal);
         }
     });
 
     // Cleanup progress (startup or on demand) for Log Management, same shape
-    let cleanup: Signal<Option<CleanupEvent>> = use_signal(|| None);
-    use_future(move || async move {
-        let mut cleanup = cleanup;
-        let closure = Closure::new(move |ev: JsValue| {
-            let Ok(payload) = js_sys::Reflect::get(&ev, &JsValue::from_str("payload")) else {
-                return;
-            };
-            if let Ok(parsed) = serde_wasm_bindgen::from_value::<CleanupEvent>(payload) {
-                let _ = cleanup.try_write().map(|mut w| *w = Some(parsed));
-            }
-        });
-        api::tauri_listen("log-cleanup", &closure).await;
-        closure.forget();
+    let mut cleanup: Signal<Option<CleanupEvent>> = use_signal(|| None);
+    api::use_tauri_payload("log-cleanup", move |parsed: CleanupEvent| {
+        let _ = cleanup.try_write().map(|mut w| *w = Some(parsed));
     });
     use_effect(move || {
         if let Some(CleanupEvent::Done { report: r }) = &*cleanup.read() {
-            let failed = if r.failed.is_empty() { String::new() } else { format!(", {} failed", r.failed.len()) };
+            let failed = if r.failed.is_empty() {
+                String::new()
+            } else {
+                format!(", {} failed", r.failed.len())
+            };
             toast.show(
-                format!("Archived {} and deleted {} logs, freed {}{failed}", r.archived, r.deleted, library::fmt_bytes(r.bytes_freed)),
+                format!(
+                    "Archived {} and deleted {} logs, freed {}{failed}",
+                    r.archived,
+                    r.deleted,
+                    library::fmt_bytes(r.bytes_freed)
+                ),
                 ToastSeverity::Normal,
             );
         }
@@ -285,7 +284,11 @@ pub(super) fn content_group(is_operation: bool, is_flashpoint: bool) -> usize {
 fn ContentGroupHeader(group: usize, count: usize, closed: Signal<std::collections::HashSet<usize>>) -> Element {
     let (title, icon) = CONTENT_GROUPS[group];
     let is_closed = closed.read().contains(&group);
-    let chevron = if is_closed { "fa-chevron-right" } else { "fa-chevron-down" };
+    let chevron = if is_closed {
+        "fa-chevron-right"
+    } else {
+        "fa-chevron-down"
+    };
     rsx! {
         div {
             class: "sidebar-group-header",

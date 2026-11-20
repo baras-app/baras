@@ -31,8 +31,6 @@ pub async fn is_game_running() -> Option<bool> {
 /// Windows: use `tasklist` to check for `swtor.exe` / `swtor_RC*.exe`
 #[cfg(target_os = "windows")]
 async fn is_game_running_windows() -> Option<bool> {
-    use std::os::windows::process::CommandExt;
-
     // tasklist only allows a trailing wildcard, so filter broadly on `swtor*` and
     // whitelist exact names below. CSV rows start with `"<image name>"`.
     let output = tokio::process::Command::new("tasklist")

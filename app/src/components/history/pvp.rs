@@ -47,7 +47,10 @@ impl PvpFilter {
     }
 
     fn active(&self) -> usize {
-        [&self.characters, &self.maps, &self.disciplines, &self.servers].iter().filter(|v| !v.is_empty()).count()
+        [&self.characters, &self.maps, &self.disciplines, &self.servers]
+            .iter()
+            .filter(|v| !v.is_empty())
+            .count()
             + usize::from(!self.person.is_empty())
     }
 }
@@ -79,7 +82,13 @@ fn tally<'a>(rows: &'a [PvpMatchRow], keys: impl Fn(&'a PvpMatchRow) -> Vec<(&'a
             let t = match out.iter_mut().find(|t| t.name == k) {
                 Some(t) => t,
                 None => {
-                    out.push(Tally { name: k.to_string(), icon: icon.map(str::to_string), matches: 0, wins: 0, losses: 0 });
+                    out.push(Tally {
+                        name: k.to_string(),
+                        icon: icon.map(str::to_string),
+                        matches: 0,
+                        wins: 0,
+                        losses: 0,
+                    });
                     out.last_mut().unwrap()
                 }
             };
@@ -140,11 +149,15 @@ fn result(r: &PvpMatchRow) -> (String, &'static str) {
     }
 }
 
-fn names<'a>(r: &'a PvpMatchRow, friendly: bool) -> Vec<&'a str> {
-    r.players.iter().filter(|p| p.friendly == friendly).map(|p| p.name.as_str()).collect()
+fn names(r: &PvpMatchRow, friendly: bool) -> Vec<&str> {
+    r.players
+        .iter()
+        .filter(|p| p.friendly == friendly)
+        .map(|p| p.name.as_str())
+        .collect()
 }
 
-fn keyed<'a>(names: Vec<&'a str>) -> Vec<(&'a str, Option<&'a str>)> {
+fn keyed(names: Vec<&str>) -> Vec<(&str, Option<&str>)> {
     names.into_iter().map(|n| (n, None)).collect()
 }
 
@@ -181,7 +194,9 @@ pub fn PvpTab(european: bool, backfill: Backfill) -> Element {
     let maps = distinct(pool.iter().map(|r| r.map.as_str()));
     let disciplines = distinct(pool.iter().filter_map(|r| r.discipline.as_deref()));
     let servers = distinct(pool.iter().map(|r| r.server.as_str()));
-    let (wz_count, arena_count) = all.iter().fold((0, 0), |(w, a), r| if r.arena { (w, a + 1) } else { (w + 1, a) });
+    let (wz_count, arena_count) = all
+        .iter()
+        .fold((0, 0), |(w, a), r| if r.arena { (w, a + 1) } else { (w + 1, a) });
 
     // Value boxes
     let total = rows.len();
@@ -189,16 +204,28 @@ pub fn PvpTab(european: bool, backfill: Backfill) -> Element {
     let losses = rows.iter().filter(|r| r.won == Some(false)).count() as u32;
 
     let map_board = tally(&rows, |r| vec![(r.map.as_str(), None)]);
-    let disc_board = tally(&rows, |r| r.discipline.as_deref().map(|d| (d, r.discipline_icon.as_deref())).into_iter().collect());
+    let disc_board = tally(&rows, |r| {
+        r.discipline
+            .as_deref()
+            .map(|d| (d, r.discipline_icon.as_deref()))
+            .into_iter()
+            .collect()
+    });
     let mut mates = tally(&rows, |r| keyed(names(r, true)));
     let mut foes = tally(&rows, |r| keyed(names(r, false)));
     mates.truncate(PEOPLE);
     foes.truncate(PEOPLE);
-    let record_rate = win_rate(wins, losses).map(|p| format!("{p} %")).unwrap_or_else(|| "—".into());
+    let record_rate = win_rate(wins, losses)
+        .map(|p| format!("{p} %"))
+        .unwrap_or_else(|| "—".into());
 
     let heat = heat_days(&rows, is_arena);
     // Literal branches inside rsx props become formatted Strings; these are &'static str
-    let (heat_title, heat_legend) = if is_arena { ("Arena matches", "win") } else { ("Warzone matches", "pvp") };
+    let (heat_title, heat_legend) = if is_arena {
+        ("Arena matches", "win")
+    } else {
+        ("Warzone matches", "pvp")
+    };
     let limit = paged.limit("pvp");
 
     let mut set = move |apply: fn(&mut PvpFilter, String), v: String| {
@@ -222,7 +249,11 @@ pub fn PvpTab(european: bool, backfill: Backfill) -> Element {
         pick(|f| &mut f.disciplines, v);
     };
     let pick_person = move |name: String| {
-        let v = if filter.read().person == name { String::new() } else { name };
+        let v = if filter.read().person == name {
+            String::new()
+        } else {
+            name
+        };
         set(|f, v| f.person = v, v);
     };
 
@@ -418,7 +449,8 @@ fn Board(
     rows: Vec<Tally>,
     record: bool,
     /// Names shown as picked
-    #[props(default)] active: Vec<String>,
+    #[props(default)]
+    active: Vec<String>,
     #[props(default)] on_pick: Option<EventHandler<String>>,
 ) -> Element {
     rsx! {

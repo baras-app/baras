@@ -13,7 +13,11 @@ fn category_sql(category: LogEventCategory) -> String {
     use LogEventCategory as C;
     let event_in = |ids: &[i64]| {
         let ids: Vec<String> = ids.iter().map(i64::to_string).collect();
-        format!("(effect_type_id = {} AND effect_id IN ({}))", effect_type_id::EVENT, ids.join(", "))
+        format!(
+            "(effect_type_id = {} AND effect_id IN ({}))",
+            effect_type_id::EVENT,
+            ids.join(", ")
+        )
     };
     match category {
         C::Damage => format!("effect_id = {}", effect_id::DAMAGE),
@@ -35,7 +39,11 @@ fn category_sql(category: LogEventCategory) -> String {
         C::Targeting => event_in(&[effect_id::TARGETSET, effect_id::TARGETCLEARED]),
         C::Threat => event_in(&[effect_id::MODIFYTHREAT, effect_id::TAUNT]),
         C::Charges => format!("effect_type_id = {}", effect_type_id::MODIFYCHARGES),
-        C::Resources => format!("effect_type_id IN ({}, {})", effect_type_id::SPEND, effect_type_id::RESTORE),
+        C::Resources => format!(
+            "effect_type_id IN ({}, {})",
+            effect_type_id::SPEND,
+            effect_type_id::RESTORE
+        ),
         C::Combat => event_in(&[
             effect_id::ENTERCOMBAT,
             effect_id::EXITCOMBAT,
@@ -43,8 +51,11 @@ fn category_sql(category: LogEventCategory) -> String {
             effect_id::REVIVED,
         ]),
         C::Other => {
-            let named: Vec<String> =
-                LogEventCategory::ALL.into_iter().filter(|c| *c != C::Other).map(category_sql).collect();
+            let named: Vec<String> = LogEventCategory::ALL
+                .into_iter()
+                .filter(|c| *c != C::Other)
+                .map(category_sql)
+                .collect();
             format!("NOT ({})", named.join(" OR "))
         }
     }
@@ -104,18 +115,18 @@ impl EncounterQuery<'_> {
         if let Some(target) = target_filter {
             where_clauses.push(entity_filter_sql("target", target));
         }
-        if let Some(search) = search_filter {
-            if !search.is_empty() {
-                where_clauses.push(build_search_clause(search));
-            }
+        if let Some(search) = search_filter
+            && !search.is_empty()
+        {
+            where_clauses.push(build_search_clause(search));
         }
         if let Some(tr) = time_range {
             where_clauses.push(tr.sql_filter());
         }
-        if let Some(filters) = event_filters {
-            if let Some(filter_clause) = build_event_filter_clause(filters) {
-                where_clauses.push(filter_clause);
-            }
+        if let Some(filters) = event_filters
+            && let Some(filter_clause) = build_event_filter_clause(filters)
+        {
+            where_clauses.push(filter_clause);
         }
 
         let where_clause = where_clauses.join(" AND ");
@@ -289,18 +300,18 @@ impl EncounterQuery<'_> {
         if let Some(target) = target_filter {
             where_clauses.push(entity_filter_sql("target", target));
         }
-        if let Some(search) = search_filter {
-            if !search.is_empty() {
-                where_clauses.push(build_search_clause(search));
-            }
+        if let Some(search) = search_filter
+            && !search.is_empty()
+        {
+            where_clauses.push(build_search_clause(search));
         }
         if let Some(tr) = time_range {
             where_clauses.push(tr.sql_filter());
         }
-        if let Some(filters) = event_filters {
-            if let Some(filter_clause) = build_event_filter_clause(filters) {
-                where_clauses.push(filter_clause);
-            }
+        if let Some(filters) = event_filters
+            && let Some(filter_clause) = build_event_filter_clause(filters)
+        {
+            where_clauses.push(filter_clause);
         }
 
         let where_clause = where_clauses.join(" AND ");
@@ -352,16 +363,18 @@ impl EncounterQuery<'_> {
             for i in 0..batch.num_rows() {
                 let name = &names[i];
                 match types[i].as_str() {
-                    "Player" | "Companion" => {
-                        if friendly.last() != Some(name) {
-                            friendly.push(name.clone());
-                        }
+                    "Player" | "Companion" if friendly.last() != Some(name) => {
+                        friendly.push(name.clone());
                     }
                     "Npc" => {
                         if npcs.last() != Some(name) {
                             npcs.push(name.clone());
                         }
-                        spawns.push(NpcSpawn { name: name.clone(), id: ids[i], first_hit_secs: first_hits[i] });
+                        spawns.push(NpcSpawn {
+                            name: name.clone(),
+                            id: ids[i],
+                            first_hit_secs: first_hits[i],
+                        });
                     }
                     _ => {} // Skip Empty, SelfReference
                 }
@@ -377,7 +390,11 @@ impl EncounterQuery<'_> {
             .filter(|sp| counts[sp.name.as_str()] > 1)
             .cloned()
             .collect();
-        Ok(GroupedEntityNames { friendly, npcs, npc_spawns })
+        Ok(GroupedEntityNames {
+            friendly,
+            npcs,
+            npc_spawns,
+        })
     }
 
     /// Find all row positions matching search text (for Find feature).
@@ -416,18 +433,18 @@ impl EncounterQuery<'_> {
         if let Some(target) = target_filter {
             where_clauses.push(entity_filter_sql("target", target));
         }
-        if let Some(search) = search_filter {
-            if !search.is_empty() {
-                where_clauses.push(build_search_clause(search));
-            }
+        if let Some(search) = search_filter
+            && !search.is_empty()
+        {
+            where_clauses.push(build_search_clause(search));
         }
         if let Some(tr) = time_range {
             where_clauses.push(tr.sql_filter());
         }
-        if let Some(filters) = event_filters {
-            if let Some(filter_clause) = build_event_filter_clause(filters) {
-                where_clauses.push(filter_clause);
-            }
+        if let Some(filters) = event_filters
+            && let Some(filter_clause) = build_event_filter_clause(filters)
+        {
+            where_clauses.push(filter_clause);
         }
 
         let base_where = where_clauses.join(" AND ");

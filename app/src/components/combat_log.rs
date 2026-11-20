@@ -5,7 +5,10 @@
 use dioxus::prelude::*;
 use wasm_bindgen::{JsCast, prelude::*};
 
-use crate::api::{self, CombatLogFilters, CombatLogFindMatch, CombatLogRow, CombatLogSortColumn, GroupedEntityNames, NpcSpawn, SortDirection, TimeRange};
+use crate::api::{
+    self, CombatLogFilters, CombatLogFindMatch, CombatLogRow, CombatLogSortColumn, GroupedEntityNames, NpcSpawn,
+    SortDirection, TimeRange,
+};
 use crate::components::ability_icon::AbilityIcon;
 use crate::components::mirror_names::{display_id, display_name};
 use crate::components::multi_select::{MultiSelect, plain_entries};
@@ -86,8 +89,6 @@ fn format_time_absolute(timestamp_ms: i64) -> String {
     format!("{hours:02}:{mins:02}:{secs:02}.{millis:03}")
 }
 
-
-
 /// Get readable event type from effect_type_id and effect_id.
 fn readable_event_type(row: &CombatLogRow) -> &'static str {
     match row.effect_type_id {
@@ -130,7 +131,9 @@ fn format_mmss(secs: f32) -> String {
 /// spawns: "All spawns" (the name) or one instance (`id:N`).
 #[component]
 fn SpawnPicker(filter: Signal<Option<String>>, spawns: Vec<NpcSpawn>) -> Element {
-    let Some(name) = filter_base_name(&filter.read(), &spawns) else { return rsx! {} };
+    let Some(name) = filter_base_name(&filter.read(), &spawns) else {
+        return rsx! {};
+    };
     let mine: Vec<&NpcSpawn> = spawns.iter().filter(|s| s.name == name).collect();
     if mine.is_empty() {
         return rsx! {};
@@ -201,17 +204,6 @@ fn readable_defense_type(id: i64) -> &'static str {
     }
 }
 
-/// Format damage type to a shorter display name.
-fn format_damage_type(dmg_type: &str) -> &str {
-    match dmg_type {
-        "kinetic" => "kinetic",
-        "energy" => "energy",
-        "internal" => "internal",
-        "elemental" => "elemental",
-        _ => dmg_type,
-    }
-}
-
 /// Get CSS class for row based on content.
 fn row_class(row: &CombatLogRow, highlighted_row_idx: Option<u64>) -> String {
     let mut classes = vec!["log-row"];
@@ -267,12 +259,12 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     let format_number = move |n: i32| formatting::format_thousands_eu(&formatting::format_thousands(n), eu);
 
     // Mirror props into signals for reactivity
-    let mut time_range_signal = use_signal(|| props.time_range.clone());
+    let mut time_range_signal = use_signal(|| props.time_range);
     let mut encounter_idx_signal = use_signal(|| props.encounter_idx);
 
     // Update signals when props change (runs on every render with new props)
     if *time_range_signal.read() != props.time_range {
-        time_range_signal.set(props.time_range.clone());
+        time_range_signal.set(props.time_range);
     }
     if *encounter_idx_signal.read() != props.encounter_idx {
         encounter_idx_signal.set(props.encounter_idx);
@@ -284,17 +276,24 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     // - Skip all restore if initial_target override is set (death tracker click)
     let mut state = props.state;
     let should_restore_filters = props.initial_target.is_none();
-    let should_restore_position = props.initial_target.is_none()
-        && state.peek().encounter_idx == props.encounter_idx;
+    let should_restore_position = props.initial_target.is_none() && state.peek().encounter_idx == props.encounter_idx;
 
     // Filter state - restore from saved state (persists across encounters)
     let mut source_filter = use_signal(|| {
-        if should_restore_filters { state.peek().source_filter.clone() } else { None }
+        if should_restore_filters {
+            state.peek().source_filter.clone()
+        } else {
+            None
+        }
     });
     let mut target_filter = use_signal(|| {
         if let Some(ref target) = props.initial_target {
             Some(target.clone())
-        } else if should_restore_filters { state.peek().target_filter.clone() } else { None }
+        } else if should_restore_filters {
+            state.peek().target_filter.clone()
+        } else {
+            None
+        }
     });
     // Search text persists across encounters (like source/target filters)
     let mut search_text = use_signal(|| {
@@ -307,11 +306,22 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
 
     // Event type filter checkboxes (persist across encounters)
     // Event categories shown; empty = all
-    let mut event_categories =
-        use_signal(|| if should_restore_filters { state.peek().event_categories.clone() } else { Vec::new() });
+    let mut event_categories = use_signal(|| {
+        if should_restore_filters {
+            state.peek().event_categories.clone()
+        } else {
+            Vec::new()
+        }
+    });
 
     // Show IDs toggle - NOW PERSISTED!
-    let mut show_ids = use_signal(|| if should_restore_filters { state.peek().show_ids } else { true });
+    let mut show_ids = use_signal(|| {
+        if should_restore_filters {
+            state.peek().show_ids
+        } else {
+            true
+        }
+    });
 
     // Time format toggle: false = M:SS.dd (relative), true = total seconds
     let mut show_absolute_time = use_signal(|| false);
@@ -344,7 +354,11 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
 
     // Virtual scroll state - only restore on same-encounter revisit
     let mut scroll_top = use_signal(|| {
-        if should_restore_position { state.peek().scroll_offset } else { 0.0 }
+        if should_restore_position {
+            state.peek().scroll_offset
+        } else {
+            0.0
+        }
     });
 
     // Track whether we need to restore DOM scroll position after first data load
@@ -420,11 +434,8 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     use_effect(move || {
         let idx = *encounter_idx_signal.read();
         spawn(async move {
-            let (sources, targets) = futures_util::future::join(
-                api::query_source_names(idx),
-                api::query_target_names(idx),
-            )
-            .await;
+            let (sources, targets) =
+                futures_util::future::join(api::query_source_names(idx), api::query_target_names(idx)).await;
             if let Some(sources) = sources {
                 source_names.set(sources);
             }
@@ -444,15 +455,11 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     let on_ready = props.on_ready;
     use_effect(move || {
         let idx = *encounter_idx_signal.read();
-        let tr = time_range_signal.read().clone();
+        let tr = *time_range_signal.read();
         let source = source_filter.read().clone();
         let target = target_filter.read().clone();
         let search = search_debounce.read().clone();
-        let search_opt = if search.is_empty() {
-            None
-        } else {
-            Some(search)
-        };
+        let search_opt = if search.is_empty() { None } else { Some(search) };
         let event_filters = build_event_filters();
         let sort_col = *log_sort_column.read();
         let sort_dir = *log_sort_direction.read();
@@ -509,11 +516,11 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     use_effect(move || {
         let rows_loaded = !rows.read().is_empty();
         let needs_restore = *needs_scroll_restore.peek();
-        
+
         if rows_loaded && needs_restore {
             needs_scroll_restore.set(false);
             let saved_scroll = *scroll_top.peek();
-            
+
             if let Some(window) = web_sys::window()
                 && let Some(doc) = window.document()
                 && let Some(elem) = doc.get_element_by_id("combat-log-scroll")
@@ -553,15 +560,11 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     use_effect(move || {
         let find = find_debounce.read().clone();
         let idx = *encounter_idx_signal.read();
-        let tr = time_range_signal.read().clone();
+        let tr = *time_range_signal.read();
         let source = source_filter.read().clone();
         let target = target_filter.read().clone();
         let search = search_debounce.read().clone();
-        let search_opt = if search.is_empty() {
-            None
-        } else {
-            Some(search)
-        };
+        let search_opt = if search.is_empty() { None } else { Some(search) };
         let event_filters = build_event_filters();
         let sort_col = *log_sort_column.read();
         let sort_dir = *log_sort_direction.read();
@@ -613,7 +616,6 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
             }
         });
     });
-
 
     // Continuously sync state back to parent - this ensures all state persists
     // Using .read() on all values creates subscriptions so this runs on ANY change
@@ -668,7 +670,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
         let need_load = start_idx < offset || end_idx > offset + rows_len;
 
         if need_load && rows_len > 0 {
-            let tr = time_range_signal.read().clone();
+            let tr = *time_range_signal.read();
             let source = source_filter.read().clone();
             let target = target_filter.read().clone();
             let search = search_debounce.read().clone();
@@ -678,11 +680,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
             let sort_dir = *log_sort_direction.peek();
 
             spawn(async move {
-                let search_opt = if search.is_empty() {
-                    None
-                } else {
-                    Some(search)
-                };
+                let search_opt = if search.is_empty() { None } else { Some(search) };
                 let tr_opt = if tr.start == 0.0 && tr.end == 0.0 {
                     None
                 } else {
@@ -790,40 +788,40 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
         let Some(window) = web_sys::window() else { return };
         let Some(document) = window.document() else { return };
 
-        let on_mousemove =
-            Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |e: web_sys::MouseEvent| {
-                let Ok(col_guard) = resizing_col.try_read() else { return };
-                let Some(col_idx) = *col_guard else { return };
-                drop(col_guard);
+        let on_mousemove = Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |e: web_sys::MouseEvent| {
+            let Ok(col_guard) = resizing_col.try_read() else { return };
+            let Some(col_idx) = *col_guard else { return };
+            drop(col_guard);
 
-                let start_x = *resize_start_x.peek();
-                let start_w = *resize_start_width.peek();
-                let new_width = (start_w + e.client_x() as f64 - start_x).max(40.0);
-                match col_idx {
-                    0 => col_time.set(new_width),
-                    1 => col_source.set(new_width),
-                    2 => col_type.set(new_width),
-                    3 => col_target.set(new_width),
-                    4 => col_ability.set(new_width),
-                    5 => col_effect.set(new_width),
-                    6 => col_value.set(new_width),
-                    7 => col_abs.set(new_width),
-                    8 => col_over.set(new_width),
-                    9 => col_mit.set(new_width),
-                    10 => col_dmg_type.set(new_width),
-                    11 => col_threat.set(new_width),
-                    _ => {}
-                }
-            });
+            let start_x = *resize_start_x.peek();
+            let start_w = *resize_start_width.peek();
+            let new_width = (start_w + e.client_x() as f64 - start_x).max(40.0);
+            match col_idx {
+                0 => col_time.set(new_width),
+                1 => col_source.set(new_width),
+                2 => col_type.set(new_width),
+                3 => col_target.set(new_width),
+                4 => col_ability.set(new_width),
+                5 => col_effect.set(new_width),
+                6 => col_value.set(new_width),
+                7 => col_abs.set(new_width),
+                8 => col_over.set(new_width),
+                9 => col_mit.set(new_width),
+                10 => col_dmg_type.set(new_width),
+                11 => col_threat.set(new_width),
+                _ => {}
+            }
+        });
 
-        let on_mouseup =
-            Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |_e: web_sys::MouseEvent| {
-                let Ok(col_guard) = resizing_col.try_read() else { return };
-                if col_guard.is_none() { return };
-                drop(col_guard);
-                let _ = resizing_col.try_write().map(|mut w| *w = None);
-                let _ = js_sys::eval("document.body.style.cursor=''");
-            });
+        let on_mouseup = Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |_e: web_sys::MouseEvent| {
+            let Ok(col_guard) = resizing_col.try_read() else { return };
+            if col_guard.is_none() {
+                return;
+            };
+            drop(col_guard);
+            let _ = resizing_col.try_write().map(|mut w| *w = None);
+            let _ = js_sys::eval("document.body.style.cursor=''");
+        });
 
         let move_func = on_mousemove.as_ref().unchecked_ref::<js_sys::Function>().clone();
         let up_func = on_mouseup.as_ref().unchecked_ref::<js_sys::Function>().clone();
@@ -1265,7 +1263,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                                 div { class: "log-cell log-absorbed", style: "width: {col_abs}px; min-width: {col_abs}px;", "{format_number(row.absorbed)}" }
                                 div { class: "log-cell log-overheal", style: "width: {col_over}px; min-width: {col_over}px;", "{format_number(row.overheal)}" }
                                 div { class: "log-cell log-mitigation", style: "width: {col_mit}px; min-width: {col_mit}px;", "{readable_defense_type(row.defense_type_id)}" }
-                                div { class: "log-cell log-dmg-type", style: "width: {col_dmg_type}px; min-width: {col_dmg_type}px;", "{format_damage_type(&row.damage_type)}" }
+                                div { class: "log-cell log-dmg-type", style: "width: {col_dmg_type}px; min-width: {col_dmg_type}px;", "{row.damage_type}" }
                                 div { class: "log-cell log-threat", style: "width: {col_threat}px; min-width: {col_threat}px;",
                                     {
                                         let threat_str = if row.threat != 0.0 {

@@ -28,8 +28,8 @@ pub fn init() -> Option<tracing_appender::non_blocking::WorkerGuard> {
     let debug_logging = std::env::var("DEBUG_LOGGING").is_ok();
 
     // Get config directory: ~/.config/baras on Linux, %APPDATA%/baras on Windows
-    let log_dir = match dirs::config_dir() {
-        Some(config) => config.join("baras"),
+    let log_dir = match baras_core::paths::config_dir() {
+        Some(dir) => dir,
         None => {
             // Fallback: stdout-only logging
             init_stdout_only(debug_logging);
@@ -40,10 +40,7 @@ pub fn init() -> Option<tracing_appender::non_blocking::WorkerGuard> {
     // Create log directory if needed
     if let Err(e) = std::fs::create_dir_all(&log_dir) {
         // Can't use tracing yet since subscriber not initialized
-        eprintln!(
-            "Failed to create log directory {:?}: {}, using stdout only",
-            log_dir, e
-        );
+        eprintln!("Failed to create log directory {:?}: {}, using stdout only", log_dir, e);
         init_stdout_only(debug_logging);
         return None;
     }
@@ -121,10 +118,7 @@ fn init_stdout_only(debug_logging: bool) {
 
     let filter = EnvFilter::new(filter_directive);
 
-    tracing_subscriber::registry()
-        .with(stdout_layer)
-        .with(filter)
-        .init();
+    tracing_subscriber::registry().with(stdout_layer).with(filter).init();
 
     tracing::info!(debug_logging, "BARAS logging initialized (stdout only)");
 }

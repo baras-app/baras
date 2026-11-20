@@ -14,7 +14,9 @@ use super::library::fmt_bytes;
 
 const DAY_MS: i64 = 86_400_000;
 const WEEKS: i64 = 53;
-const MONTHS: [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS: [&str; 12] = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
 const WEEKDAYS: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 /// Inclusive `YYYY-MM-DD` bounds picked on the calendar
@@ -62,7 +64,13 @@ fn weekday(day: i64) -> i64 {
 
 fn today() -> i64 {
     let now = js_sys::Date::new_0();
-    day_of(&format!("{:04}-{:02}-{:02}", now.get_full_year(), now.get_month() + 1, now.get_date())).unwrap_or(0)
+    day_of(&format!(
+        "{:04}-{:02}-{:02}",
+        now.get_full_year(),
+        now.get_month() + 1,
+        now.get_date()
+    ))
+    .unwrap_or(0)
 }
 
 /// Per-day totals over `rows`, ordered by day
@@ -70,7 +78,10 @@ pub fn day_stats<'a>(rows: impl Iterator<Item = &'a LibraryRow>) -> Vec<DayStat>
     let mut days: HashMap<i64, DayStat> = HashMap::new();
     for r in rows {
         let Some(day) = day_of(&r.date) else { continue };
-        let s = days.entry(day).or_insert_with(|| DayStat { day, ..Default::default() });
+        let s = days.entry(day).or_insert_with(|| DayStat {
+            day,
+            ..Default::default()
+        });
         s.logs += 1;
         s.bytes += r.size;
         s.kills += r.kills;
@@ -106,7 +117,8 @@ fn tone(tags: &[ContentTag]) -> &'static str {
 
 /// Does a `YYYY-MM-DD HH:MM` stamp fall inside the picked range?
 pub fn in_range(date: &str, range: &DayRange) -> bool {
-    date.get(..10).is_some_and(|d| d >= range.0.as_str() && d <= range.1.as_str())
+    date.get(..10)
+        .is_some_and(|d| d >= range.0.as_str() && d <= range.1.as_str())
 }
 
 /// One rendered day: `level` 1–4 picks the shade, `tone` the hue class
@@ -153,8 +165,16 @@ pub fn LogHeatmap(days: Vec<DayStat>, selected: Signal<Option<DayRange>>) -> Ele
                         n => format!(" ({n} archived)"),
                     },
                     fmt_bytes(s.bytes),
-                    if s.kills > 0 { format!(" · {} kills", s.kills) } else { String::new() },
-                    if tags.is_empty() { String::new() } else { format!("\n{}", tags.join(", ")) }
+                    if s.kills > 0 {
+                        format!(" · {} kills", s.kills)
+                    } else {
+                        String::new()
+                    },
+                    if tags.is_empty() {
+                        String::new()
+                    } else {
+                        format!("\n{}", tags.join(", "))
+                    }
                 ),
             }
         })
@@ -187,7 +207,10 @@ pub fn Heatmap(
     let months: Vec<(usize, &str)> = (0..columns)
         .filter_map(|col| {
             let monday = start + col as i64 * 7;
-            (0..7).map(|i| monday + i).find(|d| civil(*d).2 == 1).map(|d| (col, MONTHS[(civil(d).1 - 1) as usize]))
+            (0..7)
+                .map(|i| monday + i)
+                .find(|d| civil(*d).2 == 1)
+                .map(|d| (col, MONTHS[(civil(d).1 - 1) as usize]))
         })
         .collect();
 

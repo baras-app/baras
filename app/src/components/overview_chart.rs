@@ -10,9 +10,13 @@ use wasm_bindgen::JsCast;
 
 use crate::api::{self, GroupMetric, GroupTimeSeries, PlayerDeath, RaidOverviewRow, TimeRange};
 use crate::components::echarts::{
-    TOOLTIP_ROWS_JS, activate_brush, apply_brush_config, register_span_click, dispatch_action, dispose_chart, get_chart, init_svg_chart, json_to_js, next_animation_frame, register_brush_handler, set_chart_option, set_js_fn, set_option_replace,
+    TOOLTIP_ROWS_JS, activate_brush, apply_brush_config, dispatch_action, dispose_chart, get_chart, init_svg_chart,
+    json_to_js, next_animation_frame, register_brush_handler, register_span_click, set_chart_option, set_js_fn,
+    set_option_replace,
 };
-use crate::components::overview_table::OverviewSort;
+use baras_types::OverviewColumn;
+
+use crate::components::overview_columns::{Group, column};
 use crate::utils::{LightTheme, css_var};
 
 const CHART_ID: &str = "overview-group-chart";
@@ -30,20 +34,19 @@ const LABEL_CHAR_PX: f64 = 6.0;
 const LABEL_PAD_PX: f64 = 10.0;
 const LABEL_ROW_PX: f64 = 16.0;
 
-const TABS: [(&str, OverviewSort); 4] = [
-    ("DPS", OverviewSort::DPS),
-    ("EHPS", OverviewSort::EHPS),
-    ("DTPS", OverviewSort::DTPS),
-    ("Threat", OverviewSort::ThreatTotal),
+const TABS: [(&str, OverviewColumn); 4] = [
+    ("DPS", OverviewColumn::Dps),
+    ("EHPS", OverviewColumn::Ehps),
+    ("DTPS", OverviewColumn::Dtps),
+    ("Threat", OverviewColumn::ThreatTotal),
 ];
 
-fn metric_of(sort: OverviewSort) -> GroupMetric {
-    use OverviewSort::*;
-    match sort {
-        ThreatTotal | TPS => GroupMetric::Threat,
-        DamageTakenTotal | DTPS | APS => GroupMetric::DamageTaken,
-        HealingTotal | HPS | HealingPct | EHPS | ShieldingTotal | SPS => GroupMetric::Healing,
-        DPS | DamageTotal | APM | Interrupts => GroupMetric::Damage,
+fn metric_of(sort: OverviewColumn) -> GroupMetric {
+    match column(sort).group {
+        Group::Threat => GroupMetric::Threat,
+        Group::Taken => GroupMetric::DamageTaken,
+        Group::Healing | Group::HealingTaken | Group::Shielding => GroupMetric::Healing,
+        Group::Damage | Group::Activity => GroupMetric::Damage,
     }
 }
 
@@ -57,7 +60,11 @@ fn running(values: &[f64], bucket_secs: f64, metric: GroupMetric) -> Vec<f64> {
         .enumerate()
         .map(|(i, v)| {
             total += v;
-            if metric == GroupMetric::Threat { total } else { total / ((i + 1) as f64 * bucket_secs) }
+            if metric == GroupMetric::Threat {
+                total
+            } else {
+                total / ((i + 1) as f64 * bucket_secs)
+            }
         })
         .collect()
 }
@@ -105,7 +112,13 @@ fn tooltip_js(eu: bool, stacked: bool) -> String {
 
 /// Players in the table, coloured in a stable (alphabetical) order. Past
 /// sixteen, the top fifteen by total keep a colour and the rest share grey.
-fn build_option(data: &GroupTimeSeries, metric: GroupMetric, roster: &[String], stacked: bool, deaths: &[PlayerDeath]) -> Option<Value> {
+fn build_option(
+    data: &GroupTimeSeries,
+    metric: GroupMetric,
+    roster: &[String],
+    stacked: bool,
+    deaths: &[PlayerDeath],
+) -> Option<Value> {
     let mut players: Vec<(&str, Vec<f64>, f64)> = data
         .series
         .iter()
@@ -119,19 +132,27 @@ fn build_option(data: &GroupTimeSeries, metric: GroupMetric, roster: &[String], 
     // Theme palette (--series-N in styles.css)
     let palette: Vec<String> = (1..=SERIES_COLORS).map(|i| css_var(&format!("--series-{i}"))).collect();
     players.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
-    let keep = if players.len() > palette.len() { palette.len() - 1 } else { players.len() };
+    let keep = if players.len() > palette.len() {
+        palette.len() - 1
+    } else {
+        players.len()
+    };
     let rest = players.split_off(keep);
     players.sort_by(|a, b| a.0.cmp(b.0));
 
     let grey = css_var("--text-disabled");
     // Stacked = share of the group: each point is { value: % of group, raw }, and
     // the bands always fill the height (negative threat counts as none)
-    let group: Vec<f64> = stacked
-        .then(|| {
+    let group: Vec<f64> = if stacked {
+        {
             let len = players[0].1.len();
-            (0..len).map(|i| players.iter().chain(&rest).map(|p| p.1[i].max(0.0)).sum()).collect()
-        })
-        .unwrap_or_default();
+            (0..len)
+                .map(|i| players.iter().chain(&rest).map(|p| p.1[i].max(0.0)).sum())
+                .collect()
+        }
+    } else {
+        Default::default()
+    };
     let line = |name: &str, values: &[f64], color: &str| {
         let points: Vec<Value> = values
             .iter()
@@ -159,7 +180,11 @@ fn build_option(data: &GroupTimeSeries, metric: GroupMetric, roster: &[String], 
         }
     };
 
-    let mut series: Vec<Value> = players.iter().zip(&palette).map(|((n, v, _), c)| line(n, v, c)).collect();
+    let mut series: Vec<Value> = players
+        .iter()
+        .zip(&palette)
+        .map(|((n, v, _), c)| line(n, v, c))
+        .collect();
     if !rest.is_empty() {
         if stacked {
             let sum: Vec<f64> = (0..group.len()).map(|i| rest.iter().map(|r| r.1[i]).sum()).collect();
@@ -173,7 +198,9 @@ fn build_option(data: &GroupTimeSeries, metric: GroupMetric, roster: &[String], 
         legend.push(OTHERS);
     }
 
-    let times: Vec<f64> = (0..players[0].1.len()).map(|i| data.start_secs + i as f64 * data.bucket_secs).collect();
+    let times: Vec<f64> = (0..players[0].1.len())
+        .map(|i| data.start_secs + i as f64 * data.bucket_secs)
+        .collect();
     let muted = css_var("--text-muted");
     let rule = css_var("--border-light");
 
@@ -190,7 +217,9 @@ fn build_option(data: &GroupTimeSeries, metric: GroupMetric, roster: &[String], 
         })
         .collect();
     if !marks.is_empty() {
-        let red = Some(css_var("--lt-red")).filter(|c| !c.is_empty()).unwrap_or_else(|| "#e74c3c".into());
+        let red = Some(css_var("--lt-red"))
+            .filter(|c| !c.is_empty())
+            .unwrap_or_else(|| "#e74c3c".into());
         series.push(json!({
             "type": "line", "id": DEATHS_ID, "data": [],
             "markLine": {
@@ -229,7 +258,7 @@ pub fn OverviewGroupChart(
     time_range: TimeRange,
     /// Table rows, in table order: the players to plot (and a refresh signal while live)
     rows: Vec<RaidOverviewRow>,
-    sort_col: Signal<OverviewSort>,
+    sort_col: Signal<OverviewColumn>,
     sort_asc: Signal<bool>,
     /// Player whose table row is hovered
     hovered: ReadSignal<Option<String>>,
@@ -264,8 +293,17 @@ pub fn OverviewGroupChart(
         let Some((a, b)) = brush() else { return };
         if let Some(Some(d)) = data.peek().as_ref() {
             // The Alive view's x axis is already in seconds
-            let at = |i: f64| if *alive_view.peek() { i as f32 } else { (d.start_secs + i * d.bucket_secs) as f32 };
-            on_time_range_change.call(TimeRange { start: at(a), end: at(b) });
+            let at = |i: f64| {
+                if *alive_view.peek() {
+                    i as f32
+                } else {
+                    (d.start_secs + i * d.bucket_secs) as f32
+                }
+            };
+            on_time_range_change.call(TimeRange {
+                start: at(a),
+                end: at(b),
+            });
         }
     });
 
@@ -287,8 +325,13 @@ pub fn OverviewGroupChart(
         spawn(async move {
             next_animation_frame().await;
             next_animation_frame().await;
-            let (Some(mut option), Some(chart)) = (option, init_svg_chart(CHART_ID)) else { return };
-            if let Some(el) = web_sys::window().and_then(|w| w.document()).and_then(|d| d.get_element_by_id(CHART_ID)) {
+            let (Some(mut option), Some(chart)) = (option, init_svg_chart(CHART_ID)) else {
+                return;
+            };
+            if let Some(el) = web_sys::window()
+                .and_then(|w| w.document())
+                .and_then(|d| d.get_element_by_id(CHART_ID))
+            {
                 stagger_death_labels(&mut option, el.client_width() as f64);
             }
             drawn_marks.set(death_marks(&mut option).map(|m| m.clone()).unwrap_or_default());
@@ -298,7 +341,11 @@ pub fn OverviewGroupChart(
                 set_js_fn(&js, &["tooltip", "formatter"], "p", &alive_tooltip_js());
             } else {
                 set_js_fn(&js, &["tooltip", "formatter"], "params", &tooltip_js(european, stacked));
-                let y_fmt = if stacked { "return v + '%';".to_string() } else { compact_js(european) };
+                let y_fmt = if stacked {
+                    "return v + '%';".to_string()
+                } else {
+                    compact_js(european)
+                };
                 set_js_fn(&js, &["yAxis", "axisLabel", "formatter"], "v", &y_fmt);
             }
             apply_brush_config(js.unchecked_ref());
@@ -326,10 +373,9 @@ pub fn OverviewGroupChart(
                         // The row's line highlight puts this series in its blur state,
                         // so each marker's blur style must match too.
                         let (line, label) = match name.as_deref() {
-                            Some(n) if m["name"] == n => (
-                                json!({ "opacity": 1 }),
-                                json!({ "fontWeight": "bold", "opacity": 1 }),
-                            ),
+                            Some(n) if m["name"] == n => {
+                                (json!({ "opacity": 1 }), json!({ "fontWeight": "bold", "opacity": 1 }))
+                            }
                             Some(_) => (json!({ "opacity": 0.15 }), json!({ "opacity": 0.25 })),
                             None => return m,
                         };
@@ -410,7 +456,11 @@ pub fn OverviewGroupChart(
 /// alternate alive (even series) / dead (odd), in table order. Spans start at
 /// 0 and run to the end of the shown window; the axis clips to the window.
 fn build_alive_option(data: &GroupTimeSeries, roster: &[String], deaths: &[PlayerDeath]) -> Option<Value> {
-    let len = data.series.first().map(|s| s.1.len()).filter(|&n| n > 0 && !roster.is_empty())?;
+    let len = data
+        .series
+        .first()
+        .map(|s| s.1.len())
+        .filter(|&n| n > 0 && !roster.is_empty())?;
     let start = data.start_secs;
     let end = start + (len - 1) as f64 * data.bucket_secs;
 
@@ -447,7 +497,10 @@ fn build_alive_option(data: &GroupTimeSeries, roster: &[String], deaths: &[Playe
             let alive = k % 2 == 0;
             let points: Vec<Value> = spans
                 .iter()
-                .map(|p| p.get(k).map_or(json!(0), |&(a, b)| json!({ "value": b - a, "from": a, "to": b })))
+                .map(|p| {
+                    p.get(k)
+                        .map_or(json!(0), |&(a, b)| json!({ "value": b - a, "from": a, "to": b }))
+                })
                 .collect();
             json!({
                 "type": "bar", "name": if alive { "Alive" } else { "Dead" }, "stack": "life", "barWidth": "60%",
@@ -487,7 +540,9 @@ fn alive_tooltip_js() -> String {
 fn stagger_death_labels(option: &mut Value, chart_px: f64) {
     let slots = option["xAxis"]["data"].as_array().map_or(0, |a| a.len());
     let plot = chart_px - GRID_LEFT - GRID_RIGHT;
-    let Some(marks) = death_marks(option).filter(|_| slots > 1 && plot > 0.0) else { return };
+    let Some(marks) = death_marks(option).filter(|_| slots > 1 && plot > 0.0) else {
+        return;
+    };
     let step = plot / (slots - 1) as f64;
     // Right edge of the last label in each row; marks arrive in time order
     let mut rows: Vec<f64> = Vec::new();

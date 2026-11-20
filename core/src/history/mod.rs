@@ -21,26 +21,23 @@ use std::path::PathBuf;
 use crate::encounter::PhaseType;
 use crate::encounter::summary::EncounterSummary;
 
-pub use catalog::AreaCatalog;
-pub use lineage::InstanceLineage;
-pub use index::{LogRef, PullIndex, RefreshReport};
 pub use baras_types::history::difficulty_parts;
-pub use runs::run_detail;
+pub use catalog::AreaCatalog;
+pub use index::{LogRef, PullIndex, RefreshReport};
+pub use lineage::InstanceLineage;
 pub use meta::{LibraryMeta, meta_path, now_iso, pull_key};
-pub use resume::AreaResume;
 pub use record::{ChallengeLine, PullRecord, RosterLine, start_ms_of};
-pub use store::{
-    HISTORY_VERSION, HistoryHeader, LogHistory, history_file_for, history_file_name, mtime_secs,
-};
+pub use resume::AreaResume;
+pub use runs::run_detail;
+pub use store::{HISTORY_VERSION, HistoryHeader, LogHistory, history_file_for, history_file_name, mtime_secs};
 
 /// Tree group for training dummy parses (they have no boss or operation)
 pub const DUMMY_GROUP: &str = "Training Dummy";
 
 /// `~/.config/baras/history/` (created on demand)
 pub fn history_dir() -> std::io::Result<PathBuf> {
-    let dir = dirs::config_dir()
+    let dir = crate::paths::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("baras")
         .join("history");
     std::fs::create_dir_all(&dir)?;
     Ok(dir)

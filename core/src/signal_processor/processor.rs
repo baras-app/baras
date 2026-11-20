@@ -1,11 +1,11 @@
 use crate::combat_log::{CombatEvent, EntityType};
 use crate::context::resolve;
 use crate::dsl::triggers::EntitySelectorExt;
-use crate::encounter::combat::ActiveBoss;
 use crate::encounter::EncounterState;
+use crate::encounter::combat::ActiveBoss;
 use crate::game_data::{
-    correct_apply_charges, effect_id, effect_type_id, Difficulty, Discipline, BATTLE_REZ_ABILITY_IDS,
-    DISCIPLINE_ABILITIES, SCRIPTED_REVIVE_EFFECT_IDS,
+    BATTLE_REZ_ABILITY_IDS, DISCIPLINE_ABILITIES, Difficulty, Discipline, SCRIPTED_REVIVE_EFFECT_IDS,
+    correct_apply_charges, effect_id, effect_type_id,
 };
 use crate::signal_processor::signal::GameSignal;
 use crate::state::cache::SessionCache;
@@ -82,9 +82,7 @@ impl EventProcessor {
         // Detect missing area: if no AreaEntered has been seen after the first event,
         // the log file is incomplete (e.g., crash/disconnect caused SWTOR to resume
         // logging without emitting an initial AreaEntered).
-        if !cache.missing_area
-            && cache.current_area.area_id == 0
-            && event.effect.type_id != effect_type_id::AREAENTERED
+        if !cache.missing_area && cache.current_area.area_id == 0 && event.effect.type_id != effect_type_id::AREAENTERED
         {
             cache.missing_area = true;
         }
@@ -124,11 +122,7 @@ impl EventProcessor {
 
         // Effect stack counters: update per-entity stack state and aggregate
         // Must run after effect signals are emitted, before the counter↔phase loop.
-        signals.extend(counter::check_effect_stack_counters(
-            cache,
-            &signals,
-            event.timestamp,
-        ));
+        signals.extend(counter::check_effect_stack_counters(cache, &signals, event.timestamp));
 
         // Check if current phase's end_trigger fired (emits PhaseEndTriggered signal)
         signals.extend(phase::check_phase_end_triggers(&event, cache, &signals));
@@ -167,14 +161,8 @@ impl EventProcessor {
             let watermark = signals.len();
 
             // Phases: check all transition types against current signal state
-            signals.extend(phase::check_ability_phase_transitions(
-                &event, cache, &signals,
-            ));
-            signals.extend(phase::check_entity_phase_transitions(
-                cache,
-                &signals,
-                event.timestamp,
-            ));
+            signals.extend(phase::check_ability_phase_transitions(&event, cache, &signals));
+            signals.extend(phase::check_entity_phase_transitions(cache, &signals, event.timestamp));
             if !skip_time_phases {
                 signals.extend(phase::check_time_phase_transitions(cache, event.timestamp));
             }
@@ -188,11 +176,8 @@ impl EventProcessor {
             }
 
             // Evaluate counters against only the NEW signals from this iteration
-            let new_counter_signals = counter::check_counter_signal_triggers(
-                cache,
-                &signals[watermark..],
-                event.timestamp,
-            );
+            let new_counter_signals =
+                counter::check_counter_signal_triggers(cache, &signals[watermark..], event.timestamp);
             signals.extend(new_counter_signals);
 
             // If still nothing new after counter eval, we're done
@@ -246,8 +231,8 @@ impl EventProcessor {
     }
 
     fn observe_local_player_identity(&self, event: &CombatEvent, cache: &mut SessionCache) {
-        let identifies_local_player = event.effect.type_id == effect_type_id::AREAENTERED
-            || event.effect.effect_id == effect_id::ENTERCOMBAT;
+        let identifies_local_player =
+            event.effect.type_id == effect_type_id::AREAENTERED || event.effect.effect_id == effect_id::ENTERCOMBAT;
         if !cache.player_initialized
             && identifies_local_player
             && event.source_entity.entity_type == EntityType::Player
@@ -264,10 +249,7 @@ impl EventProcessor {
             return;
         }
 
-        let player = cache
-            .player_disciplines
-            .entry(event.source_entity.log_id)
-            .or_default();
+        let player = cache.player_disciplines.entry(event.source_entity.log_id).or_default();
         player.id = event.source_entity.log_id;
         player.name = event.source_entity.name;
         player.class_id = event.effect.effect_id;
@@ -294,12 +276,7 @@ impl EventProcessor {
     /// excluded: RemoveEffect is logged with the *affected* entity as source
     /// while naming the caster's ability, which would misattribute HoT/DoT
     /// recipients.
-    fn detect_discipline_from_ability(
-        &self,
-        event: &CombatEvent,
-        cache: &mut SessionCache,
-        out: &mut Vec<GameSignal>,
-    ) {
+    fn detect_discipline_from_ability(&self, event: &CombatEvent, cache: &mut SessionCache, out: &mut Vec<GameSignal>) {
         let is_activation = event.effect.effect_id == effect_id::ABILITYACTIVATE;
         let is_damage_or_heal = event.effect.type_id == effect_type_id::APPLYEFFECT
             && matches!(event.effect.effect_id, effect_id::DAMAGE | effect_id::HEAL);
@@ -320,10 +297,7 @@ impl EventProcessor {
             return;
         };
 
-        let player = cache
-            .player_disciplines
-            .entry(event.source_entity.log_id)
-            .or_default();
+        let player = cache.player_disciplines.entry(event.source_entity.log_id).or_default();
         player.id = event.source_entity.log_id;
         player.name = event.source_entity.name;
         player.discipline_id = discipline_id;
@@ -395,12 +369,7 @@ impl EventProcessor {
     // ═══════════════════════════════════════════════════════════════════════════
 
     /// Handle DisciplineChanged events for player initialization and role detection.
-    fn handle_discipline_event(
-        &self,
-        event: &CombatEvent,
-        cache: &mut SessionCache,
-        out: &mut Vec<GameSignal>,
-    ) {
+    fn handle_discipline_event(&self, event: &CombatEvent, cache: &mut SessionCache, out: &mut Vec<GameSignal>) {
         if event.effect.type_id != effect_type_id::DISCIPLINECHANGED {
             return;
         }
@@ -433,12 +402,7 @@ impl EventProcessor {
     }
 
     /// Handle Death and Revive events.
-    fn handle_entity_lifecycle(
-        &self,
-        event: &CombatEvent,
-        cache: &mut SessionCache,
-        out: &mut Vec<GameSignal>,
-    ) {
+    fn handle_entity_lifecycle(&self, event: &CombatEvent, cache: &mut SessionCache, out: &mut Vec<GameSignal>) {
         if event.effect.effect_id == effect_id::DEATH {
             // Check if entity was already marked dead (e.g., synthetic death from 0 HP
             // observation fired on a previous event). If so, skip signal emission to
@@ -446,14 +410,10 @@ impl EventProcessor {
             let already_dead = cache
                 .current_encounter()
                 .map(|enc| match event.target_entity.entity_type {
-                    EntityType::Player => enc
-                        .players
-                        .get(&event.target_entity.log_id)
-                        .map_or(false, |p| p.is_dead),
-                    EntityType::Npc | EntityType::Companion => enc
-                        .npcs
-                        .get(&event.target_entity.log_id)
-                        .map_or(false, |n| n.is_dead),
+                    EntityType::Player => enc.players.get(&event.target_entity.log_id).is_some_and(|p| p.is_dead),
+                    EntityType::Npc | EntityType::Companion => {
+                        enc.npcs.get(&event.target_entity.log_id).is_some_and(|n| n.is_dead)
+                    }
                     _ => false,
                 })
                 .unwrap_or(false);
@@ -487,18 +447,13 @@ impl EventProcessor {
             // Check if this is a battle rez (pending) or OOC revive for the local player
             let is_local_player = event.source_entity.log_id == cache.player.id;
             if is_local_player {
-                let battle_rez_pending = cache
-                    .current_encounter()
-                    .map_or(false, |enc| enc.battle_rez_pending);
+                let battle_rez_pending = cache.current_encounter().is_some_and(|enc| enc.battle_rez_pending);
 
                 if let Some(enc) = cache.current_encounter_mut() {
                     if battle_rez_pending {
                         // Battle rez landed — clear pending flag, combat continues
                         enc.battle_rez_pending = false;
-                        tracing::debug!(
-                            "[BATTLE_REZ] Battle rez landed on local player at {}",
-                            event.timestamp
-                        );
+                        tracing::debug!("[BATTLE_REZ] Battle rez landed on local player at {}", event.timestamp);
                     } else if enc.state == EncounterState::InCombat {
                         // No battle rez pending — this is an OOC revive (medcenter/probe)
                         enc.local_player_ooc_revive_time = Some(event.timestamp);
@@ -514,10 +469,7 @@ impl EventProcessor {
                 // Don't process revives after a definitive wipe (all players dead)
                 // This prevents post-wipe UI revives from resetting is_dead flags
                 if !enc.all_players_dead {
-                    enc.set_entity_alive(
-                        event.source_entity.log_id,
-                        &event.source_entity.entity_type,
-                    );
+                    enc.set_entity_alive(event.source_entity.log_id, &event.source_entity.entity_type);
                     enc.check_all_players_dead();
                 }
             }
@@ -556,17 +508,17 @@ impl EventProcessor {
             // Only track revive immunity during active combat
             // Prevents stale timestamps from previous encounters bleeding into new ones
             // (e.g., medcenter revive after a wipe shouldn't affect the next pull)
-            if let Some(enc) = cache.current_encounter_mut() {
-                if enc.state == EncounterState::InCombat {
-                    enc.set_player_revive_immunity(event.source_entity.log_id);
+            if let Some(enc) = cache.current_encounter_mut()
+                && enc.state == EncounterState::InCombat
+            {
+                enc.set_player_revive_immunity(event.source_entity.log_id);
 
-                    // Track timestamp for local player (soft-timeout wipe detection)
-                    if is_local_player {
-                        enc.local_player_revive_immunity_time = Some(event.timestamp);
-                        // Player chose medcenter over a pending battle rez — clear the flag
-                        // so the revive immunity fallback handles it correctly
-                        enc.battle_rez_pending = false;
-                    }
+                // Track timestamp for local player (soft-timeout wipe detection)
+                if is_local_player {
+                    enc.local_player_revive_immunity_time = Some(event.timestamp);
+                    // Player chose medcenter over a pending battle rez — clear the flag
+                    // so the revive immunity fallback handles it correctly
+                    enc.battle_rez_pending = false;
                 }
             }
         }
@@ -580,12 +532,7 @@ impl EventProcessor {
     /// `EntityDeath` signal. The `is_dead` flag acts as a latch — once set on the
     /// first 0 HP observation, all subsequent events with that entity at 0 HP are
     /// no-ops, preventing repeated signal firing.
-    fn handle_zero_hp_deaths(
-        &self,
-        event: &CombatEvent,
-        cache: &mut SessionCache,
-        out: &mut Vec<GameSignal>,
-    ) {
+    fn handle_zero_hp_deaths(&self, event: &CombatEvent, cache: &mut SessionCache, out: &mut Vec<GameSignal>) {
         for entity in [&event.source_entity, &event.target_entity] {
             // Must have 0 current HP with a valid max HP (not an empty/uninitialized entity)
             if entity.health.0 != 0 || entity.health.1 <= 0 {
@@ -658,12 +605,7 @@ impl EventProcessor {
     /// Emit `OperationTimerStart` the first time a player is logged inside the
     /// area's `timer_start` region. Cheap: exits on the first `None` until the
     /// area has a pending start, then only inspects player entities with positions.
-    fn check_operation_timer_start(
-        &self,
-        event: &CombatEvent,
-        cache: &mut SessionCache,
-        out: &mut Vec<GameSignal>,
-    ) {
+    fn check_operation_timer_start(&self, event: &CombatEvent, cache: &mut SessionCache, out: &mut Vec<GameSignal>) {
         let Some(timer_start) = cache.pending_timer_start() else {
             return;
         };
@@ -682,12 +624,7 @@ impl EventProcessor {
     }
 
     /// Handle AreaEntered events.
-    fn handle_area_transition(
-        &self,
-        event: &CombatEvent,
-        cache: &mut SessionCache,
-        out: &mut Vec<GameSignal>,
-    ) {
+    fn handle_area_transition(&self, event: &CombatEvent, cache: &mut SessionCache, out: &mut Vec<GameSignal>) {
         if event.effect.type_id != effect_type_id::AREAENTERED {
             return;
         }
@@ -695,9 +632,7 @@ impl EventProcessor {
         // Detect character mismatch: if a different player enters an area after the
         // local character was already established, the log file contains data from
         // multiple logins (e.g., hibernation caused a second login to append here).
-        if cache.player_initialized
-            && event.source_entity.log_id != 0
-            && event.source_entity.log_id != cache.player.id
+        if cache.player_initialized && event.source_entity.log_id != 0 && event.source_entity.log_id != cache.player.id
         {
             cache.character_mismatch = true;
         }
@@ -720,32 +655,30 @@ impl EventProcessor {
         // (e.g., when player uses ReturnToMedCenter, we don't want to overwrite
         // the raid area with the medcenter/fleet area)
         let local_id = cache.player.id;
-        if let Some(enc) = cache.current_encounter_mut() {
-            if enc.state == EncounterState::NotStarted {
-                if event.effect.difficulty_id != 0 {
-                    let difficulty = crate::game_data::Difficulty::from_difficulty_id(
-                        event.effect.difficulty_id,
-                    );
-                    let difficulty_id = Some(event.effect.difficulty_id);
-                    let difficulty_name = Some(resolve(event.effect.difficulty_name).to_string());
-                    enc.set_difficulty_info(difficulty, difficulty_id, difficulty_name);
-                } else {
-                    // No difficulty = open world, clear any stale instance difficulty
-                    enc.set_difficulty_info(None, None, None);
-                }
-                let area_id = if event.effect.effect_id != 0 {
-                    Some(event.effect.effect_id)
-                } else {
-                    None
-                };
-                let area_name = Some(resolve(event.effect.effect_name).to_string());
-                let area_entered_line = Some(event.line_number);
-                enc.set_area(area_id, area_name, area_entered_line);
-
-                // Evict stale players that leaked in via TargetSet/TargetCleared
-                // between encounters — they'll be re-discovered once combat starts.
-                enc.players.retain(|&id, _| id == local_id);
+        if let Some(enc) = cache.current_encounter_mut()
+            && enc.state == EncounterState::NotStarted
+        {
+            if event.effect.difficulty_id != 0 {
+                let difficulty = crate::game_data::Difficulty::from_difficulty_id(event.effect.difficulty_id);
+                let difficulty_id = Some(event.effect.difficulty_id);
+                let difficulty_name = Some(resolve(event.effect.difficulty_name).to_string());
+                enc.set_difficulty_info(difficulty, difficulty_id, difficulty_name);
+            } else {
+                // No difficulty = open world, clear any stale instance difficulty
+                enc.set_difficulty_info(None, None, None);
             }
+            let area_id = if event.effect.effect_id != 0 {
+                Some(event.effect.effect_id)
+            } else {
+                None
+            };
+            let area_name = Some(resolve(event.effect.effect_name).to_string());
+            let area_entered_line = Some(event.line_number);
+            enc.set_area(area_id, area_name, area_entered_line);
+
+            // Evict stale players that leaked in via TargetSet/TargetCleared
+            // between encounters — they'll be re-discovered once combat starts.
+            enc.players.retain(|&id, _| id == local_id);
         }
 
         out.push(GameSignal::AreaEntered {
@@ -760,12 +693,7 @@ impl EventProcessor {
     /// Emit NpcFirstSeen for any NPC instance encountered for the first time.
     /// Tracks by log_id (instance), so each spawn of the same NPC type fires the signal.
     /// The signal includes npc_id (class_id) so timers can match on NPC type.
-    fn handle_npc_first_seen(
-        &self,
-        event: &CombatEvent,
-        cache: &mut SessionCache,
-        out: &mut Vec<GameSignal>,
-    ) {
+    fn handle_npc_first_seen(&self, event: &CombatEvent, cache: &mut SessionCache, out: &mut Vec<GameSignal>) {
         for entity in [&event.source_entity, &event.target_entity] {
             // Only track NPCs with valid IDs
             if entity.entity_type != EntityType::Npc || entity.class_id == 0 || entity.log_id == 0 {
@@ -786,43 +714,35 @@ impl EventProcessor {
         }
         // Ahead of boss detection, so a pull in the new instance starts its clock
         if let Some(run_started) = cache.take_instance_reset() {
-            out.push(GameSignal::InstanceReset { run_started, timestamp: event.timestamp });
+            out.push(GameSignal::InstanceReset {
+                run_started,
+                timestamp: event.timestamp,
+            });
         }
     }
 
     /// Detect boss encounters via entity class ID or an optional encounter_trigger.
     /// Entity-based detection runs first; trigger-based detection is a fallback.
-    fn handle_boss_detection(
-        &self,
-        event: &CombatEvent,
-        cache: &mut SessionCache,
-        out: &mut Vec<GameSignal>,
-    ) {
+    fn handle_boss_detection(&self, event: &CombatEvent, cache: &mut SessionCache, out: &mut Vec<GameSignal>) {
         // Gather state from immutable borrow first
-        let (has_active_boss, in_combat, has_definitions, registered_npcs) = {
+        let entities_to_check = [&event.source_entity, &event.target_entity];
+        // Only NPCs registered in the encounter (engaged in combat) count
+        let registered = {
             let Some(enc) = cache.current_encounter() else {
                 return;
             };
-            (
-                enc.active_boss_idx().is_some(),
-                enc.state == EncounterState::InCombat,
-                !enc.boss_definitions().is_empty(),
-                enc.npcs.keys().copied().collect::<Vec<_>>(),
-            )
+            if enc.active_boss_idx().is_some()
+                || enc.state != EncounterState::InCombat
+                || enc.boss_definitions().is_empty()
+            {
+                return;
+            }
+            entities_to_check.map(|e| enc.npcs.contains_key(&e.log_id))
         };
 
-        if has_active_boss || !in_combat || !has_definitions {
-            return;
-        }
-
         // ─── Entity-based detection ───────────────────────────────────────────
-        // Only consider NPCs registered in the encounter (engaged in combat).
-        let entities_to_check = [&event.source_entity, &event.target_entity];
-        for entity in entities_to_check {
-            if entity.entity_type != EntityType::Npc || entity.class_id == 0 {
-                continue;
-            }
-            if !registered_npcs.contains(&entity.log_id) {
+        for (entity, is_registered) in entities_to_check.into_iter().zip(registered) {
+            if entity.entity_type != EntityType::Npc || entity.class_id == 0 || !is_registered {
                 continue;
             }
             if let Some(idx) = cache.detect_boss_encounter(entity.class_id) {
@@ -838,15 +758,21 @@ impl EventProcessor {
         // without a more-specific trigger firing. This lets two definitions share the same
         // event type and distinguish by the presence/absence of a specific value.
         let (immediate_idx, pending_idx) = {
-            let Some(enc) = cache.current_encounter() else { return; };
+            let Some(enc) = cache.current_encounter() else {
+                return;
+            };
             let local_player_id = Some(cache.player.id).filter(|&id| id != 0);
             let defs = enc.boss_definitions_arc();
             let empty_boss_ids = std::collections::HashSet::new();
             let mut immediate = None;
             let mut pending = None;
             for (idx, def) in defs.iter().enumerate() {
-                let Some(trigger) = def.encounter_trigger.as_ref() else { continue };
-                if !def.enabled { continue; }
+                let Some(trigger) = def.encounter_trigger.as_ref() else {
+                    continue;
+                };
+                if !def.enabled {
+                    continue;
+                }
                 let filter_ctx = super::trigger_eval::FilterContext {
                     entities: &def.entities,
                     local_player_id,
@@ -867,10 +793,10 @@ impl EventProcessor {
             (immediate, pending)
         };
 
-        if let Some(idx) = pending_idx {
-            if let Some(enc) = cache.current_encounter_mut() {
-                enc.boss_encounter_triggers_pending.insert(idx);
-            }
+        if let Some(idx) = pending_idx
+            && let Some(enc) = cache.current_encounter_mut()
+        {
+            enc.boss_encounter_triggers_pending.insert(idx);
         }
 
         if let Some(idx) = immediate_idx
@@ -885,16 +811,17 @@ impl EventProcessor {
         // Fires after N seconds only if the definition's encounter_trigger was seen
         // (marked pending above) but no higher-priority trigger claimed the encounter.
         let fallback_idx = {
-            let Some(enc) = cache.current_encounter() else { return; };
-            if enc.boss_encounter_triggers_pending.is_empty() { return; }
+            let Some(enc) = cache.current_encounter() else {
+                return;
+            };
+            if enc.boss_encounter_triggers_pending.is_empty() {
+                return;
+            }
             let combat_secs = enc.compute_combat_time_secs(event.timestamp).unwrap_or(0.0);
             let defs = enc.boss_definitions_arc();
             defs.iter().enumerate().find_map(|(idx, def)| {
                 let threshold = def.encounter_trigger_fallback_secs?;
-                if def.enabled
-                    && combat_secs >= threshold
-                    && enc.boss_encounter_triggers_pending.contains(&idx)
-                {
+                if def.enabled && combat_secs >= threshold && enc.boss_encounter_triggers_pending.contains(&idx) {
                     Some(idx)
                 } else {
                     None
@@ -978,12 +905,7 @@ impl EventProcessor {
     }
 
     /// Track boss HP changes and evaluate phase transitions.
-    fn handle_boss_hp_and_phases(
-        &self,
-        event: &CombatEvent,
-        cache: &mut SessionCache,
-        out: &mut Vec<GameSignal>,
-    ) {
+    fn handle_boss_hp_and_phases(&self, event: &CombatEvent, cache: &mut SessionCache, out: &mut Vec<GameSignal>) {
         // No active boss encounter
         let Some(enc) = cache.current_encounter() else {
             return;
@@ -1026,8 +948,7 @@ impl EventProcessor {
                 tracing::error!("BUG: encounter missing in handle_boss_hp_and_phases loop (mut)");
                 continue;
             };
-            if let Some((old_hp, new_hp)) = enc.update_entity_hp(entity.log_id, current_hp, max_hp)
-            {
+            if let Some((old_hp, new_hp)) = enc.update_entity_hp(entity.log_id, current_hp, max_hp) {
                 out.push(GameSignal::BossHpChanged {
                     entity_id: entity.log_id,
                     npc_id: entity.class_id,
@@ -1094,10 +1015,7 @@ impl EventProcessor {
                     target_entity_type,
                     absorbed,
                     ..
-                } if *absorbed > 0
-                    && *target_npc_id != 0
-                    && *target_entity_type == EntityType::Npc =>
-                {
+                } if *absorbed > 0 && *target_npc_id != 0 && *target_entity_type == EntityType::Npc => {
                     changes.push(ShieldChange::Absorb(*target_id, *absorbed as i64));
                 }
 
@@ -1165,11 +1083,7 @@ impl EventProcessor {
                                     {
                                         continue;
                                     }
-                                    changes.push(ShieldChange::Deactivate(
-                                        *log_id,
-                                        entity_name.clone(),
-                                        *idx,
-                                    ));
+                                    changes.push(ShieldChange::Deactivate(*log_id, entity_name.clone(), *idx));
                                 }
                             }
                         }
@@ -1204,12 +1118,7 @@ impl EventProcessor {
     /// Updates encounter.victory_triggered when the trigger fires.
     /// Supports all trigger types including ability casts, HP thresholds, and composite triggers.
     /// Optionally filtered by difficulty (e.g., Trandoshan Squad only has victory trigger on Master).
-    fn handle_victory_trigger(
-        &self,
-        event: &CombatEvent,
-        signals: &[GameSignal],
-        cache: &mut SessionCache,
-    ) {
+    fn handle_victory_trigger(&self, event: &CombatEvent, signals: &[GameSignal], cache: &mut SessionCache) {
         let Some(enc) = cache.current_encounter() else {
             return;
         };
@@ -1248,9 +1157,7 @@ impl EventProcessor {
         }
 
         // Check victory conditions (state guards) first
-        if !boss_def.victory_conditions.is_empty()
-            && !enc.evaluate_conditions(&boss_def.victory_conditions)
-        {
+        if !boss_def.victory_conditions.is_empty() && !enc.evaluate_conditions(&boss_def.victory_conditions) {
             return; // Victory conditions not met
         }
 
@@ -1276,20 +1183,13 @@ impl EventProcessor {
         };
 
         // Update state if triggered (needs mutable borrow)
-        if trigger_fired {
-            if let Some(enc) = cache.current_encounter_mut() {
-                enc.victory_triggered = true;
-                enc.victory_triggered_at = Some(event.timestamp);
-            }
+        if trigger_fired && let Some(enc) = cache.current_encounter_mut() {
+            enc.victory_triggered = true;
+            enc.victory_triggered_at = Some(event.timestamp);
         }
     }
 
-    fn handle_target_changed(
-        &self,
-        event: &CombatEvent,
-        cache: &mut SessionCache,
-        out: &mut Vec<GameSignal>,
-    ) {
+    fn handle_target_changed(&self, event: &CombatEvent, cache: &mut SessionCache, out: &mut Vec<GameSignal>) {
         match event.effect.effect_id {
             effect_id::TARGETSET => {
                 out.push(GameSignal::TargetChanged {
@@ -1334,20 +1234,14 @@ impl EventProcessor {
         let eid = event.effect.effect_id;
 
         // A) Battle rez activated — check if caster is targeting local player
-        if eid == effect_id::ABILITYACTIVATE
-            && BATTLE_REZ_ABILITY_IDS.contains(&event.action.action_id)
-        {
+        if eid == effect_id::ABILITYACTIVATE && BATTLE_REZ_ABILITY_IDS.contains(&event.action.action_id) {
             let caster = event.source_entity.log_id;
             let local = cache.player.id;
             if let Some(enc) = cache.current_encounter_mut()
-                && (enc.get_current_target(caster) == Some(local)
-                    || enc.battle_rez_implies_local(caster, local))
+                && (enc.get_current_target(caster) == Some(local) || enc.battle_rez_implies_local(caster, local))
             {
                 enc.battle_rez_pending = true;
-                tracing::debug!(
-                    "[BATTLE_REZ] Pending battle rez on local player at {}",
-                    event.timestamp
-                );
+                tracing::debug!("[BATTLE_REZ] Pending battle rez on local player at {}", event.timestamp);
             }
             return;
         }
@@ -1356,14 +1250,11 @@ impl EventProcessor {
         if (eid == effect_id::ABILITYINTERRUPT || eid == effect_id::ABILITYCANCEL)
             && BATTLE_REZ_ABILITY_IDS.contains(&event.action.action_id)
         {
-            if let Some(enc) = cache.current_encounter_mut() {
-                if enc.battle_rez_pending {
-                    enc.battle_rez_pending = false;
-                    tracing::debug!(
-                        "[BATTLE_REZ] Battle rez canceled/interrupted at {}",
-                        event.timestamp
-                    );
-                }
+            if let Some(enc) = cache.current_encounter_mut()
+                && enc.battle_rez_pending
+            {
+                enc.battle_rez_pending = false;
+                tracing::debug!("[BATTLE_REZ] Battle rez canceled/interrupted at {}", event.timestamp);
             }
             return;
         }
@@ -1372,14 +1263,13 @@ impl EventProcessor {
         if event.effect.type_id == effect_type_id::APPLYEFFECT
             && SCRIPTED_REVIVE_EFFECT_IDS.contains(&eid)
             && event.source_entity.log_id == cache.player.id
+            && let Some(enc) = cache.current_encounter_mut()
         {
-            if let Some(enc) = cache.current_encounter_mut() {
-                enc.battle_rez_pending = true;
-                tracing::debug!(
-                    "[BATTLE_REZ] Scripted revive effect on local player at {}",
-                    event.timestamp
-                );
-            }
+            enc.battle_rez_pending = true;
+            tracing::debug!(
+                "[BATTLE_REZ] Scripted revive effect on local player at {}",
+                event.timestamp
+            );
         }
     }
 
@@ -1474,12 +1364,7 @@ impl EventProcessor {
     /// Emit signals for ability activations and target changes.
     /// Resolves the actual target from encounter state when the combat log
     /// reports self-targeting (which SWTOR does for most AbilityActivate events).
-    fn emit_action_signals(
-        &self,
-        event: &CombatEvent,
-        cache: &SessionCache,
-        out: &mut Vec<GameSignal>,
-    ) {
+    fn emit_action_signals(&self, event: &CombatEvent, cache: &SessionCache, out: &mut Vec<GameSignal>) {
         let eid = event.effect.effect_id;
 
         // Ability activation
@@ -1492,10 +1377,7 @@ impl EventProcessor {
             // from the encounter's tracked target state.
             let is_self_or_empty = raw_target_id == 0 || raw_target_id == source_id;
             let (target_id, target_entity_type, target_name, target_npc_id) = if is_self_or_empty {
-                if let Some(resolved_id) = cache
-                    .current_encounter()
-                    .and_then(|e| e.get_current_target(source_id))
-                {
+                if let Some(resolved_id) = cache.current_encounter().and_then(|e| e.get_current_target(source_id)) {
                     let enc = cache.current_encounter().unwrap();
                     if let Some(player) = enc.players.get(&resolved_id) {
                         (resolved_id, EntityType::Player, player.name, 0)
@@ -1548,9 +1430,7 @@ impl EventProcessor {
     /// Pure transformation - no encounter state modification.
     fn emit_damage_signals(&self, event: &CombatEvent, out: &mut Vec<GameSignal>) {
         // Only emit for damage during APPLYEFFECT
-        if event.effect.type_id != effect_type_id::APPLYEFFECT
-            || event.effect.effect_id != effect_id::DAMAGE
-        {
+        if event.effect.type_id != effect_type_id::APPLYEFFECT || event.effect.effect_id != effect_id::DAMAGE {
             return;
         }
 
@@ -1584,9 +1464,7 @@ impl EventProcessor {
     /// Pure transformation - no encounter state modification.
     fn emit_healing_signals(&self, event: &CombatEvent, out: &mut Vec<GameSignal>) {
         // Only emit for heals during APPLYEFFECT
-        if event.effect.type_id != effect_type_id::APPLYEFFECT
-            || event.effect.effect_id != effect_id::HEAL
-        {
+        if event.effect.type_id != effect_type_id::APPLYEFFECT || event.effect.effect_id != effect_id::HEAL {
             return;
         }
 
@@ -1621,14 +1499,11 @@ impl EventProcessor {
         if event.effect.type_id != effect_type_id::EVENT {
             return;
         }
-        if event.effect.effect_id != effect_id::MODIFYTHREAT
-            && event.effect.effect_id != effect_id::TAUNT
-        {
+        if event.effect.effect_id != effect_id::MODIFYTHREAT && event.effect.effect_id != effect_id::TAUNT {
             return;
         }
 
-        if event.source_entity.entity_type == EntityType::Empty
-            || event.target_entity.entity_type == EntityType::Empty
+        if event.source_entity.entity_type == EntityType::Empty || event.target_entity.entity_type == EntityType::Empty
         {
             return;
         }
@@ -1704,9 +1579,7 @@ fn signal_npc_log_id(signal: &GameSignal) -> Option<i64> {
         // NPC lifecycle
         GameSignal::NpcFirstSeen { entity_id, .. } => Some(*entity_id),
         GameSignal::EntityDeath {
-            entity_id,
-            entity_type,
-            ..
+            entity_id, entity_type, ..
         } if *entity_type == EntityType::Npc => Some(*entity_id),
         // BossHpChanged: the boss NPC
         GameSignal::BossHpChanged { entity_id, .. } => Some(*entity_id),
@@ -1732,22 +1605,15 @@ fn shield_signal_matches(
     use crate::dsl::Trigger;
 
     match trigger {
-        Trigger::AnyOf { conditions } => conditions
-            .iter()
-            .any(|c| shield_signal_matches(c, signal, entities)),
+        Trigger::AnyOf { conditions } => conditions.iter().any(|c| shield_signal_matches(c, signal, entities)),
 
         Trigger::EffectApplied { effects, .. } => {
             if let GameSignal::EffectApplied {
-                effect_id,
-                effect_name,
-                ..
+                effect_id, effect_name, ..
             } = signal
             {
                 let name = resolve(*effect_name);
-                !effects.is_empty()
-                    && effects
-                        .iter()
-                        .any(|s| s.matches(*effect_id as u64, Some(name)))
+                !effects.is_empty() && effects.iter().any(|s| s.matches(*effect_id as u64, Some(name)))
             } else {
                 false
             }
@@ -1755,16 +1621,11 @@ fn shield_signal_matches(
 
         Trigger::EffectRemoved { effects, .. } => {
             if let GameSignal::EffectRemoved {
-                effect_id,
-                effect_name,
-                ..
+                effect_id, effect_name, ..
             } = signal
             {
                 let name = resolve(*effect_name);
-                !effects.is_empty()
-                    && effects
-                        .iter()
-                        .any(|s| s.matches(*effect_id as u64, Some(name)))
+                !effects.is_empty() && effects.iter().any(|s| s.matches(*effect_id as u64, Some(name)))
             } else {
                 false
             }
@@ -1778,10 +1639,7 @@ fn shield_signal_matches(
             } = signal
             {
                 let name = resolve(*ability_name);
-                !abilities.is_empty()
-                    && abilities
-                        .iter()
-                        .any(|s| s.matches(*ability_id as u64, Some(name)))
+                !abilities.is_empty() && abilities.iter().any(|s| s.matches(*ability_id as u64, Some(name)))
             } else {
                 false
             }
@@ -1810,10 +1668,7 @@ fn shield_signal_matches(
             } = signal
             {
                 let name = resolve(*ability_name);
-                !abilities.is_empty()
-                    && abilities
-                        .iter()
-                        .any(|s| s.matches(*ability_id as u64, Some(name)))
+                !abilities.is_empty() && abilities.iter().any(|s| s.matches(*ability_id as u64, Some(name)))
             } else {
                 false
             }
@@ -1836,13 +1691,10 @@ fn shield_signal_matches(
 
         Trigger::NpcAppears { selector, .. } => {
             if let GameSignal::NpcFirstSeen {
-                npc_id,
-                entity_name,
-                ..
+                npc_id, entity_name, ..
             } = signal
             {
-                !selector.is_empty()
-                    && selector.matches_with_roster(entities, *npc_id, Some(entity_name.as_str()))
+                !selector.is_empty() && selector.matches_with_roster(entities, *npc_id, Some(entity_name.as_str()))
             } else {
                 false
             }
@@ -1850,9 +1702,7 @@ fn shield_signal_matches(
 
         Trigger::EntityDeath { selector, .. } => {
             if let GameSignal::EntityDeath {
-                npc_id,
-                entity_name,
-                ..
+                npc_id, entity_name, ..
             } = signal
             {
                 if selector.is_empty() {
@@ -1864,10 +1714,7 @@ fn shield_signal_matches(
             }
         }
 
-        Trigger::BossHpBelow {
-            hp_percent,
-            selector,
-        } => {
+        Trigger::BossHpBelow { hp_percent, selector } => {
             if let GameSignal::BossHpChanged {
                 npc_id,
                 entity_name,
@@ -1876,8 +1723,7 @@ fn shield_signal_matches(
                 ..
             } = signal
             {
-                let crossed =
-                    *old_hp_percent > *hp_percent && *new_hp_percent <= *hp_percent + 0.01;
+                let crossed = *old_hp_percent > *hp_percent && *new_hp_percent <= *hp_percent + 0.01;
                 if !crossed {
                     return false;
                 }
@@ -1890,10 +1736,7 @@ fn shield_signal_matches(
             }
         }
 
-        Trigger::BossHpAbove {
-            hp_percent,
-            selector,
-        } => {
+        Trigger::BossHpAbove { hp_percent, selector } => {
             if let GameSignal::BossHpChanged {
                 npc_id,
                 entity_name,
@@ -1902,8 +1745,7 @@ fn shield_signal_matches(
                 ..
             } = signal
             {
-                let crossed =
-                    *old_hp_percent < *hp_percent && *new_hp_percent >= *hp_percent - 0.01;
+                let crossed = *old_hp_percent < *hp_percent && *new_hp_percent >= *hp_percent - 0.01;
                 if !crossed {
                     return false;
                 }
@@ -1978,6 +1820,7 @@ fn shield_signal_matches(
         Trigger::ChargesChanged { .. }
         | Trigger::SelfChargesChanged { .. }
         | Trigger::ResourceSpent { .. }
+        | Trigger::HealingDealt { .. }
         | Trigger::KillingBlow => false,
     }
 }

@@ -134,10 +134,7 @@ impl Parser {
                 Some(expr)
             }
             Token::Term(_) => {
-                let Token::Term(s) = std::mem::replace(
-                    &mut self.tokens[self.pos],
-                    Token::Term(String::new()),
-                ) else {
+                let Token::Term(s) = std::mem::replace(&mut self.tokens[self.pos], Token::Term(String::new())) else {
                     unreachable!()
                 };
                 self.pos += 1;
@@ -215,8 +212,10 @@ mod tests {
     fn instance_id_terms() {
         assert_eq!(build_search_clause("id:42"), "(source_id = 42 OR target_id = 42)");
         assert_eq!(build_search_clause("src_id:42"), "source_id = 42");
-        assert_eq!(build_search_clause("tgt_id:42 AND NOT src_id:7"),
-            "(target_id = 42 AND (NOT source_id = 7))");
+        assert_eq!(
+            build_search_clause("tgt_id:42 AND NOT src_id:7"),
+            "(target_id = 42 AND (NOT source_id = 7))"
+        );
         // Non-numeric suffix falls back to a substring term
         assert_eq!(build_search_clause("id:abc"), t("id:abc"));
     }
@@ -269,25 +268,14 @@ mod tests {
     fn parens_override_precedence() {
         // (A OR B) AND C
         let result = build_search_clause("(knight OR warrior) AND damage");
-        let expected = format!(
-            "(({} OR {}) AND {})",
-            t("knight"),
-            t("warrior"),
-            t("damage")
-        );
+        let expected = format!("(({} OR {}) AND {})", t("knight"), t("warrior"), t("damage"));
         assert_eq!(result, expected);
     }
 
     #[test]
     fn nested_parens() {
         let result = build_search_clause("(A AND B) OR (C AND D)");
-        let expected = format!(
-            "(({} AND {}) OR ({} AND {}))",
-            t("a"),
-            t("b"),
-            t("c"),
-            t("d"),
-        );
+        let expected = format!("(({} AND {}) OR ({} AND {}))", t("a"), t("b"), t("c"), t("d"),);
         assert_eq!(result, expected);
     }
 
@@ -302,12 +290,7 @@ mod tests {
     fn complex_expression() {
         // (A AND B) OR NOT C
         let result = build_search_clause("(knight AND damage) OR NOT heal");
-        let expected = format!(
-            "(({} AND {}) OR (NOT {}))",
-            t("knight"),
-            t("damage"),
-            t("heal")
-        );
+        let expected = format!("(({} AND {}) OR (NOT {}))", t("knight"), t("damage"), t("heal"));
         assert_eq!(result, expected);
     }
 
@@ -331,12 +314,7 @@ mod tests {
     fn backward_compat_or_not() {
         // Old-style "A OR B OR NOT C" still works
         let result = build_search_clause("knight OR warrior OR NOT boss");
-        let expected = format!(
-            "(({} OR {}) OR (NOT {}))",
-            t("knight"),
-            t("warrior"),
-            t("boss")
-        );
+        let expected = format!("(({} OR {}) OR (NOT {}))", t("knight"), t("warrior"), t("boss"));
         assert_eq!(result, expected);
     }
 

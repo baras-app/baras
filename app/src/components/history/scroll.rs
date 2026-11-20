@@ -69,7 +69,9 @@ pub struct Paged {
 }
 
 pub fn use_paged(key: &str) -> Paged {
-    Paged { state: use_signal(|| (key.to_string(), PAGE)) }
+    Paged {
+        state: use_signal(|| (key.to_string(), PAGE)),
+    }
 }
 
 impl Paged {

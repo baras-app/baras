@@ -4,7 +4,6 @@
 //! Uses unified BossWithPath type and EncounterItem enum for streamlined data handling.
 
 mod area_sidebar;
-mod import_preview;
 mod boss_header;
 mod challenge_form;
 mod challenges;
@@ -13,11 +12,13 @@ mod counter_form;
 mod counters;
 mod entities;
 mod entity_form;
+mod import_preview;
 mod new_forms;
 mod notes;
 mod optional_trigger;
 mod phase_form;
 mod phases;
+pub mod selectors;
 mod tabs;
 mod timer_form;
 mod timers;
@@ -27,8 +28,8 @@ use crate::components::editor_drawer::{DiscardPrompt, layout_style, provide_draw
 use crate::components::sidebar_header::SidebarHeader;
 use area_sidebar::{AreaCategory, BossRow};
 use boss_header::EditorHeader;
-use import_preview::ImportPreviewModal;
 use dioxus::prelude::*;
+use import_preview::ImportPreviewModal;
 
 use crate::components::form_fields::TogglePill;
 
@@ -185,6 +186,9 @@ pub use tabs::BossTabs;
 // Main Panel
 // ─────────────────────────────────────────────────────────────────────────────
 
+static AREAS: GlobalSignal<Vec<AreaListItem>> = Signal::global(Vec::new);
+static BOSSES: GlobalSignal<Vec<BossWithPath>> = Signal::global(Vec::new);
+
 #[derive(Props, Clone, PartialEq)]
 pub struct EncounterEditorProps {
     /// Unified UI session state (includes persisted state for this panel)
@@ -194,13 +198,16 @@ pub struct EncounterEditorProps {
 #[component]
 pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
     let guard = provide_drawer_guard();
-    // Area index state (not persisted - loaded fresh each time)
-    let mut areas = use_signal(Vec::<AreaListItem>::new);
-    let mut loading_areas = use_signal(|| true);
+    // The lists outlive the panel, so coming back to the tab shows the last
+    // known sidebar at once; the load on mount below refreshes it in place.
+    let mut areas = AREAS.signal();
+    let mut loading_areas = use_signal(|| AREAS.peek().is_empty());
 
-    // Boss state - unified: one signal holds all bosses with their items
-    let mut bosses = use_signal(Vec::<BossWithPath>::new);
-    let mut loading_bosses = use_signal(|| false);
+    // Boss state - unified: one signal holds all bosses with their items.
+    // Always those of `selected_area_path`.
+    let mut bosses = BOSSES.signal();
+    // Area whose bosses are being fetched; a later click supersedes it
+    let mut pending_area = use_signal(|| None::<String>);
 
     // Extract persisted state fields
     let mut selected_area_path = use_signal(|| props.state.read().encounter_builder.selected_area_path.clone());
@@ -209,7 +216,7 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
     let mut area_filter = use_signal(|| props.state.read().encounter_builder.area_filter.clone());
     let mut sidebar_collapsed = use_signal(|| props.state.read().encounter_builder.sidebar_collapsed);
     let active_boss_tab = use_signal(|| props.state.read().encounter_builder.active_boss_tab.clone());
-    
+
     // Expanded items within each tab
     let expanded_timer = use_signal(|| props.state.read().encounter_builder.expanded_timer.clone());
     let expanded_phase = use_signal(|| props.state.read().encounter_builder.expanded_phase.clone());
@@ -219,10 +226,13 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
     let hide_disabled_timers = use_signal(|| props.state.read().encounter_builder.hide_disabled_timers);
     let hide_disabled_phases = use_signal(|| props.state.read().encounter_builder.hide_disabled_phases);
     let hide_disabled_counters = use_signal(|| props.state.read().encounter_builder.hide_disabled_counters);
-    
+
     // Derived: selected_area AreaListItem (reconstructed from path/name when areas load)
-    let mut selected_area = use_signal(|| None::<AreaListItem>);
-    
+    let mut selected_area = use_signal(|| {
+        let path = selected_area_path.peek().clone()?;
+        AREAS.peek().iter().find(|a| a.file_path == path).cloned()
+    });
+
     // Sync persisted state back to unified state
     use_effect(move || {
         let mut state = props.state.write();
@@ -241,7 +251,7 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
         state.encounter_builder.hide_disabled_phases = *hide_disabled_phases.read();
         state.encounter_builder.hide_disabled_counters = *hide_disabled_counters.read();
     });
-    
+
     // Non-persisted UI state
     let mut show_new_area = use_signal(|| false);
     let mut show_new_boss = use_signal(|| false);
@@ -267,15 +277,15 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
         spawn(async move {
             if let Some(area_list) = api::get_area_index().await {
                 areas.set(area_list.clone());
-                
+
                 // Restore selected area from persisted path
-                if let Some(ref path) = *selected_area_path.read() {
-                    if let Some(area) = area_list.iter().find(|a| &a.file_path == path) {
-                        selected_area.set(Some(area.clone()));
-                        // Load bosses for the restored area
-                        if let Some(boss_list) = api::fetch_area_bosses(&area.file_path).await {
-                            bosses.set(boss_list);
-                        }
+                if let Some(ref path) = *selected_area_path.read()
+                    && let Some(area) = area_list.iter().find(|a| &a.file_path == path)
+                {
+                    selected_area.set(Some(area.clone()));
+                    // Load bosses for the restored area
+                    if let Some(boss_list) = api::fetch_area_bosses(&area.file_path).await {
+                        bosses.set(boss_list);
                     }
                 }
             }
@@ -283,34 +293,36 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
         });
     });
 
-    // Load bosses when area is selected - single unified call
+    // Open an area: fetch its bosses first, then swap the selection and the
+    // list together, so the page never passes through an empty state.
     let load_area_data = move |area: AreaListItem| {
         let file_path = area.file_path.clone();
-        let area_name = area.name.clone();
-        
-        // Update persisted state
-        selected_area_path.set(Some(file_path.clone()));
-        selected_area_name.set(Some(area_name));
-        selected_area.set(Some(area));
-        
-        loading_bosses.set(true);
-        bosses.set(Vec::new());
-        expanded_boss.set(None);
-        bosses_open.set(true);
+        pending_area.set(Some(file_path.clone()));
 
         spawn(async move {
-            if let Some(b) = api::fetch_area_bosses(&file_path).await {
-                bosses.set(b);
+            let fetched = api::fetch_area_bosses(&file_path).await;
+            if pending_area.peek().as_ref() != Some(&file_path) {
+                return;
             }
-            loading_bosses.set(false);
+            pending_area.set(None);
+            selected_area_path.set(Some(file_path));
+            selected_area_name.set(Some(area.name.clone()));
+            selected_area.set(Some(area));
+            bosses.set(fetched.unwrap_or_default());
+            expanded_boss.set(None);
+            bosses_open.set(true);
         });
     };
 
     // Group areas by category (with filtering)
     let grouped_areas = {
         let filter = area_filter().to_lowercase();
-        let mut groups: [(&'static str, Vec<AreaListItem>); 4] =
-            [("Operations", vec![]), ("Flashpoints", vec![]), ("Lair Bosses", vec![]), ("Other", vec![])];
+        let mut groups: [(&'static str, Vec<AreaListItem>); 4] = [
+            ("Operations", vec![]),
+            ("Flashpoints", vec![]),
+            ("Lair Bosses", vec![]),
+            ("Other", vec![]),
+        ];
         for area in areas() {
             if !filter.is_empty() && !area.name.to_lowercase().contains(&filter) {
                 continue;
@@ -328,7 +340,14 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
     let boss_rows: Vec<BossRow> = bosses
         .read()
         .iter()
-        .map(|b| (b.boss.id.clone(), b.boss.name.clone(), b.boss.enabled, b.boss.is_final_boss))
+        .map(|b| {
+            (
+                b.boss.id.clone(),
+                b.boss.name.clone(),
+                b.boss.enabled,
+                b.boss.is_final_boss,
+            )
+        })
         .collect();
     let open_boss: Option<BossWithPath> = expanded_boss
         .read()
@@ -342,7 +361,11 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                 match api::export_encounter_toml(None, &area.file_path).await {
                     Ok(result) => {
                         let stem = area.name.to_lowercase().replace(' ', "_");
-                        let default_name = if result.is_bundled { format!("{stem}_custom.toml") } else { format!("{stem}.toml") };
+                        let default_name = if result.is_bundled {
+                            format!("{stem}_custom.toml")
+                        } else {
+                            format!("{stem}.toml")
+                        };
                         if let Some(save_path) = api::save_file_dialog(&default_name).await {
                             match api::save_export_file(&save_path, &result.toml).await {
                                 Ok(()) => status_message.set(Some(("Area exported".to_string(), false))),
@@ -412,7 +435,7 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                             oninput: move |e| area_filter.set(e.value())
                         }
                     }
-    
+
                     div { class: "sidebar-encounter-list",
                         if loading_areas() {
                             div { class: "sidebar-empty", "Loading..." }
@@ -424,7 +447,6 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                                         areas: group,
                                         selected: selected_area(),
                                         bosses: boss_rows.clone(),
-                                        loading: loading_bosses(),
                                         bosses_open: bosses_open(),
                                         selected_boss: expanded_boss(),
                                         on_select: move |a: AreaListItem| {
@@ -490,8 +512,6 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                         div { class: "empty-state-icon", "📂" }
                         "Select an area to edit encounters"
                     }
-                } else if loading_bosses() {
-                    div { class: "empty-state", "Loading..." }
                 } else if let Some(bwp) = open_boss {
                     BossTabs {
                         key: "{bwp.boss.id}",
@@ -558,11 +578,10 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                         match api::import_encounter_toml(&content, target.as_deref()).await {
                             Ok(()) => {
                                 // Reload bosses and area index
-                                if let Some(ref path) = target {
-                                    if let Some(b) = api::fetch_area_bosses(path).await {
+                                if let Some(ref path) = target
+                                    && let Some(b) = api::fetch_area_bosses(path).await {
                                         bosses.set(b);
                                     }
-                                }
                                 if let Some(a) = api::get_area_index().await {
                                     areas.set(a);
                                 }
@@ -607,10 +626,7 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
 }
 
 #[component]
-pub fn DifficultiesEditor(
-    difficulties: Vec<String>,
-    on_change: EventHandler<Vec<String>>,
-) -> Element {
+pub fn DifficultiesEditor(difficulties: Vec<String>, on_change: EventHandler<Vec<String>>) -> Element {
     rsx! {
         div { class: "flex gap-xs",
             for diff in ["story", "veteran", "master"] {

@@ -19,6 +19,7 @@ pub use baras_types::{
     BossHealthConfig,
     ChallengeColumns,
     ChallengeLayout,
+    ChargeDirection,
     ClassColorConfig,
     ClassIconMode,
     Color,
@@ -26,17 +27,17 @@ pub use baras_types::{
     CooldownTrackerConfig,
     DataTab,
     DotTrackerConfig,
-    MirrorAbility,
-    ChargeDirection,
+    EffectFilters,
     EffectModifier,
     EffectSelector,
     EffectStackConfig,
     EffectsAConfig,
-    EffectFilters,
     EntityFilter,
     EntitySelector,
     IconPosition,
+    MAX_PROFILES,
     MainTab,
+    MirrorAbility,
     MitigationType,
     OverlayAppearanceConfig,
     OverlaySettings,
@@ -60,7 +61,6 @@ pub use baras_types::{
     UiSessionState,
     UsageSortColumn,
     ViewMode,
-    MAX_PROFILES,
     WEB_OVERLAY_URL,
 };
 
@@ -110,60 +110,10 @@ pub struct SessionInfo {
 }
 
 /// Overlay status response from backend
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 pub struct OverlayStatus {
-    pub running: Vec<String>,
-    pub enabled: Vec<String>,
-    pub personal_running: bool,
-    pub personal_enabled: bool,
-    pub raid_running: bool,
-    pub raid_enabled: bool,
-    pub boss_health_running: bool,
-    pub boss_health_enabled: bool,
-    pub timers_running: bool,
-    pub timers_enabled: bool,
-    pub timers_b_running: bool,
-    pub timers_b_enabled: bool,
-    pub challenges_running: bool,
-    pub challenges_enabled: bool,
-    pub alerts_running: bool,
-    pub alerts_enabled: bool,
-    pub effects_a_running: bool,
-    pub effects_a_enabled: bool,
-    pub effects_b_running: bool,
-    pub effects_b_enabled: bool,
-    #[serde(default)]
-    pub effects_c_running: bool,
-    #[serde(default)]
-    pub effects_c_enabled: bool,
-    pub cooldowns_running: bool,
-    pub cooldowns_enabled: bool,
-    #[serde(default)]
-    pub cooldowns_b_running: bool,
-    #[serde(default)]
-    pub cooldowns_b_enabled: bool,
-    pub dot_tracker_running: bool,
-    pub dot_tracker_enabled: bool,
-    pub notes_running: bool,
-    pub notes_enabled: bool,
-    pub combat_time_running: bool,
-    pub combat_time_enabled: bool,
-    #[serde(default)]
-    pub operation_timer_running: bool,
-    #[serde(default)]
-    pub operation_timer_enabled: bool,
-    #[serde(default)]
-    pub ability_queue_running: bool,
-    #[serde(default)]
-    pub ability_queue_enabled: bool,
-    #[serde(default)]
-    pub enemy_frames_running: bool,
-    #[serde(default)]
-    pub enemy_frames_enabled: bool,
-    #[serde(default)]
-    pub ability_cast_running: bool,
-    #[serde(default)]
-    pub ability_cast_enabled: bool,
+    /// Config keys of every enabled overlay
+    pub enabled: std::collections::HashSet<String>,
     pub overlays_visible: bool,
     pub move_mode: bool,
     pub rearrange_mode: bool,
@@ -379,6 +329,10 @@ pub struct AudioConfig {
     #[serde(default)]
     pub countdown_voice: Option<String>,
 
+    /// Alert overlay text; not editable here, carried so a save keeps it
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub alert_text: Option<String>,
+
     /// Defer the "becomes next cast" cue until GCD remaining ≤ this value.
     /// Only meaningful when used as a timer's `queue_next_audio`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -502,9 +456,7 @@ fn default_timer_display_targets() -> Vec<TimerDisplayTarget> {
 /// (legacy `display_target = "timers_a"`) or an array
 /// (`display_targets = ["timers_a", "ability_queue"]`).
 /// `None` values are filtered out so explicit `"none"` / `[]` = no overlay display.
-fn deserialize_timer_display_targets<'de, D>(
-    deserializer: D,
-) -> Result<Vec<TimerDisplayTarget>, D::Error>
+fn deserialize_timer_display_targets<'de, D>(deserializer: D) -> Result<Vec<TimerDisplayTarget>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -1359,4 +1311,3 @@ pub struct EffectImportPreview {
     pub effects_unchanged: usize,
     pub errors: Vec<String>,
 }
-

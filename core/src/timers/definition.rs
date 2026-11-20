@@ -10,6 +10,7 @@ use crate::dsl::Condition;
 use crate::dsl::CounterCondition;
 use crate::dsl::EntityDefinition;
 use crate::dsl::Trigger;
+use crate::dsl::TriggerExt;
 use crate::game_data::Difficulty;
 use baras_types::AlertTrigger;
 
@@ -267,9 +268,7 @@ pub fn default_display_targets() -> Vec<TimerDisplayTarget> {
 /// (legacy `display_target = "timers_a"`) or an array
 /// (`display_targets = ["timers_a", "ability_queue"]`).
 /// `None` values are filtered out so explicit `"none"` / `[]` = no overlay display.
-pub fn deserialize_display_targets<'de, D>(
-    deserializer: D,
-) -> Result<Vec<TimerDisplayTarget>, D::Error>
+pub fn deserialize_display_targets<'de, D>(deserializer: D) -> Result<Vec<TimerDisplayTarget>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -362,13 +361,8 @@ impl TimerDefinition {
         current_hp: f32,
     ) -> bool {
         // Provide empty string if no name (trigger will match on ID if selector is empty)
-        self.trigger.matches_boss_hp_below(
-            entities,
-            npc_id,
-            npc_name.unwrap_or(""),
-            previous_hp,
-            current_hp,
-        )
+        self.trigger
+            .matches_boss_hp_below(entities, npc_id, npc_name.unwrap_or(""), previous_hp, current_hp)
     }
 
     /// Check if this timer triggers on a specific phase being entered.
@@ -385,14 +379,8 @@ impl TimerDefinition {
 
     /// Check if this timer triggers when a counter reaches a value.
     /// Delegates to unified `Trigger::matches_counter_reaches`.
-    pub fn matches_counter_reaches(
-        &self,
-        counter_id: &str,
-        old_value: u32,
-        new_value: u32,
-    ) -> bool {
-        self.trigger
-            .matches_counter_reaches(counter_id, old_value, new_value)
+    pub fn matches_counter_reaches(&self, counter_id: &str, old_value: u32, new_value: u32) -> bool {
+        self.trigger.matches_counter_reaches(counter_id, old_value, new_value)
     }
 
     /// Check if this timer triggers when a counter value changes (any change).
@@ -403,24 +391,14 @@ impl TimerDefinition {
 
     /// Check if this timer triggers when an NPC first appears.
     /// Delegates to unified `Trigger::matches_npc_appears`.
-    pub fn matches_npc_appears(
-        &self,
-        entities: &[EntityDefinition],
-        npc_id: i64,
-        entity_name: Option<&str>,
-    ) -> bool {
+    pub fn matches_npc_appears(&self, entities: &[EntityDefinition], npc_id: i64, entity_name: Option<&str>) -> bool {
         self.trigger
             .matches_npc_appears(entities, npc_id, entity_name.unwrap_or(""))
     }
 
     /// Check if this timer triggers on entity death.
     /// Delegates to unified `Trigger::matches_entity_death`.
-    pub fn matches_entity_death(
-        &self,
-        entities: &[EntityDefinition],
-        npc_id: i64,
-        entity_name: Option<&str>,
-    ) -> bool {
+    pub fn matches_entity_death(&self, entities: &[EntityDefinition], npc_id: i64, entity_name: Option<&str>) -> bool {
         self.trigger
             .matches_entity_death(entities, npc_id, entity_name.unwrap_or(""))
     }
@@ -428,8 +406,7 @@ impl TimerDefinition {
     /// Check if this timer triggers at a specific combat time.
     /// Delegates to unified `Trigger::matches_time_elapsed`.
     pub fn matches_time_elapsed(&self, old_combat_secs: f32, new_combat_secs: f32) -> bool {
-        self.trigger
-            .matches_time_elapsed(old_combat_secs, new_combat_secs)
+        self.trigger.matches_time_elapsed(old_combat_secs, new_combat_secs)
     }
 
     /// Check if this timer triggers when an NPC sets its target.
@@ -440,19 +417,14 @@ impl TimerDefinition {
         source_npc_id: i64,
         source_name: Option<&str>,
     ) -> bool {
-        self.trigger
-            .matches_target_set(entities, source_npc_id, source_name)
+        self.trigger.matches_target_set(entities, source_npc_id, source_name)
     }
 
     /// Check if this timer triggers when damage is taken from an ability.
     /// Delegates to unified `Trigger::matches_damage_taken`.
-    pub fn matches_damage_taken(
-        &self,
-        ability_id: u64,
-        ability_name: Option<&str>,
-        defense_type_id: i64,
-    ) -> bool {
-        self.trigger.matches_damage_taken(ability_id, ability_name, defense_type_id)
+    pub fn matches_damage_taken(&self, ability_id: u64, ability_name: Option<&str>, defense_type_id: i64) -> bool {
+        self.trigger
+            .matches_damage_taken(ability_id, ability_name, defense_type_id)
     }
 
     /// Check if this timer triggers on a threat modification event.

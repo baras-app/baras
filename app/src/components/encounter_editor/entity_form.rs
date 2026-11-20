@@ -166,7 +166,12 @@ pub(super) fn EntityEditForm(
 /// One HP marker: threshold + label, its difficulty/size filters, and
 /// collapsible conditions
 #[component]
-fn HpMarkerRow(mut draft: Signal<EntityDefinition>, i: usize, marker: HpMarker, encounter_data: EncounterData) -> Element {
+fn HpMarkerRow(
+    mut draft: Signal<EntityDefinition>,
+    i: usize,
+    marker: HpMarker,
+    encounter_data: EncounterData,
+) -> Element {
     let mut conditions_expanded = use_signal(|| false);
     let condition_count = marker.conditions.len();
 
@@ -239,7 +244,12 @@ fn HpMarkerRow(mut draft: Signal<EntityDefinition>, i: usize, marker: HpMarker, 
 
 /// One shield: name and icon, start/end triggers, and HP per difficulty/size
 #[component]
-fn ShieldEditor(mut draft: Signal<EntityDefinition>, i: usize, shield: ShieldDefinition, encounter_data: EncounterData) -> Element {
+fn ShieldEditor(
+    mut draft: Signal<EntityDefinition>,
+    i: usize,
+    shield: ShieldDefinition,
+    encounter_data: EncounterData,
+) -> Element {
     rsx! {
         div { class: "editor-subcard",
             Field { label: "Shield",

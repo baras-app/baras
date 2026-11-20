@@ -6,19 +6,17 @@
 use crate::components::editor_sort::{ENCOUNTER_SORT_AZ, SortToggle, apply_rank, use_stable_rank};
 use dioxus::prelude::*;
 
-use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
-use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
 use crate::api;
 use crate::components::ability_icon::ColorIcon;
+use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
+use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
 use crate::types::{
-    AlertTrigger, AudioConfig, BossTimerDefinition, BossWithPath, EncounterItem,
-    TimerDisplayTarget, Trigger,
+    AlertTrigger, AudioConfig, BossTimerDefinition, BossWithPath, EncounterItem, TimerDisplayTarget, Trigger,
 };
 
 use super::InlineNameCreator;
-use super::timer_form::TimerEditForm;
 use super::tabs::EncounterData;
-
+use super::timer_form::TimerEditForm;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Timers Tab
@@ -41,11 +39,7 @@ fn default_timer(name: String) -> BossTimerDefinition {
         conditions: vec![],
         phases: vec![],
         counter_condition: None,
-        difficulties: vec![
-            "story".to_string(),
-            "veteran".to_string(),
-            "master".to_string(),
-        ],
+        difficulties: vec!["story".to_string(), "veteran".to_string(), "master".to_string()],
         group_size: None,
         enabled: true,
         can_be_refreshed: false,
@@ -85,7 +79,10 @@ pub fn TimersTab(
     // Extract timers from BossWithPath
     let timers = boss_with_path.boss.timers.clone();
     // A–Z when toggled; renaming leaves the row in place
-    let rank = use_stable_rank(timers.iter().map(|x| (x.id.as_str(), x.name.as_str())), ENCOUNTER_SORT_AZ());
+    let rank = use_stable_rank(
+        timers.iter().map(|x| (x.id.as_str(), x.name.as_str())),
+        ENCOUNTER_SORT_AZ(),
+    );
     let builtin_timer_ids = boss_with_path.builtin_timer_ids.clone();
     let modified_timer_ids = boss_with_path.modified_timer_ids.clone();
 
@@ -98,7 +95,12 @@ pub fn TimersTab(
         timers.clone()
     };
     apply_rank(&mut visible_timers, &rank.read(), |x| &x.id);
-    let origin_of = |id: &str| Origin::of(builtin_timer_ids.iter().any(|b| b == id), modified_timer_ids.iter().any(|m| m == id));
+    let origin_of = |id: &str| {
+        Origin::of(
+            builtin_timer_ids.iter().any(|b| b == id),
+            modified_timer_ids.iter().any(|m| m == id),
+        )
+    };
     let origin_counts = origin_counts(timers.iter().map(|x| origin_of(&x.id)));
     let origin_filter = ENCOUNTER_ORIGIN();
     visible_timers.retain(|x| origin_filter.is_none_or(|o| origin_of(&x.id) == o));
@@ -252,10 +254,7 @@ fn TimerRow(
     on_collapse: EventHandler<()>,
 ) -> Element {
     let mut is_dirty = use_signal(|| false);
-    let color_hex = format!(
-        "#{:02x}{:02x}{:02x}",
-        timer.color[0], timer.color[1], timer.color[2]
-    );
+    let color_hex = format!("#{:02x}{:02x}{:02x}", timer.color[0], timer.color[1], timer.color[2]);
     let timer_for_visibility = timer.clone();
     let timer_for_audio = timer.clone();
     let timer_for_tank = timer.clone();
@@ -291,27 +290,30 @@ fn TimerRow(
                     if expanded && is_dirty() {
                         span { class: "unsaved-indicator", title: "Unsaved changes" }
                     }
-                    span { class: "text-xs text-mono text-muted", "  {timer.id}" }
+                    span { class: "text-xs text-mono text-muted", title: "{timer.id}", "{timer.id}" }
                 }
 
-                // Overlay tag
+                // Overlay tag, or Alert for instant alerts
                 span { class: "row-col-trigger",
-                    {
-                        let targets_label = match timer.display_targets.len() {
-                            0 => "None".to_string(),
-                            1 => timer.display_targets[0].label().to_string(),
-                            n => format!("{n} overlays"),
-                        };
-                        rsx! { span { class: "tag", "{targets_label}" } }
+                    if timer.is_alert {
+                        span { class: "tag tag-alert", "Alert" }
+                    } else {
+                        {
+                            let targets_label = match timer.display_targets.len() {
+                                0 => "None".to_string(),
+                                1 => timer.display_targets[0].label().to_string(),
+                                n => format!("{n} overlays"),
+                            };
+                            rsx! { span { class: "tag", "{targets_label}" } }
+                        }
                     }
                 }
 
                 // Duration / Alert
                 span { class: "row-col-duration",
-                    if timer.is_alert {
-                        span { class: "tag tag-alert", "Alert" }
-                    } else {
-                        span { class: "text-sm text-secondary", "{timer.duration_secs:.1}s" }
+                    if !timer.is_alert {
+                        // Whole seconds drop the ".0"
+                        "{(timer.duration_secs * 10.0).round() / 10.0}s"
                     }
                 }
 
@@ -368,10 +370,7 @@ fn TimerRow(
                                 on_refetch.call(());
                             });
                         },
-                        span {
-                            class: if timer.audio.enabled { "text-primary" } else { "text-muted" },
-                            if timer.audio.enabled { "🔊" } else { "🔇" }
-                        }
+                        i { class: if timer.audio.enabled { "fa-solid fa-volume-high text-primary" } else { "fa-solid fa-volume-xmark text-muted" } }
                     }
 
                     // Role toggles [T] [H] [D]
@@ -419,14 +418,46 @@ fn role_toggle(
 ) -> Element {
     let role_name = role_name.to_string();
     let css_class = match label {
-        "T" => if active { "role-toggle role-toggle-tank active" } else { "role-toggle" },
-        "H" => if active { "role-toggle role-toggle-healer active" } else { "role-toggle" },
-        _ => if active { "role-toggle role-toggle-dps active" } else { "role-toggle" },
+        "T" => {
+            if active {
+                "role-toggle role-toggle-tank active"
+            } else {
+                "role-toggle"
+            }
+        }
+        "H" => {
+            if active {
+                "role-toggle role-toggle-healer active"
+            } else {
+                "role-toggle"
+            }
+        }
+        _ => {
+            if active {
+                "role-toggle role-toggle-dps active"
+            } else {
+                "role-toggle"
+            }
+        }
     };
     let title = if active {
-        format!("Hide for {}", match label { "T" => "Tanks", "H" => "Healers", _ => "DPS" })
+        format!(
+            "Hide for {}",
+            match label {
+                "T" => "Tanks",
+                "H" => "Healers",
+                _ => "DPS",
+            }
+        )
     } else {
-        format!("Show for {}", match label { "T" => "Tanks", "H" => "Healers", _ => "DPS" })
+        format!(
+            "Show for {}",
+            match label {
+                "T" => "Tanks",
+                "H" => "Healers",
+                _ => "DPS",
+            }
+        )
     };
     rsx! {
         span {
@@ -461,7 +492,6 @@ fn role_toggle(
     }
 }
 
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Phase Selector (multi-select dropdown)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -469,7 +499,8 @@ fn role_toggle(
 #[component]
 pub fn PhaseSelector(
     selected: Vec<String>,
-    available: Vec<String>,
+    /// (id, label) per phase
+    available: Vec<(String, String)>,
     on_change: EventHandler<Vec<String>>,
 ) -> Element {
     let mut dropdown_open = use_signal(|| false);
@@ -478,8 +509,11 @@ pub fn PhaseSelector(
     // Display text
     let display = if selected.is_empty() {
         "(all phases)".to_string()
-    } else if selected.len() == 1 {
-        selected[0].clone()
+    } else if let [only] = selected.as_slice() {
+        available
+            .iter()
+            .find(|(id, _)| id == only)
+            .map_or_else(|| only.clone(), |(_, label)| label.clone())
     } else {
         format!("{} phases", selected.len())
     };
@@ -528,9 +562,9 @@ pub fn PhaseSelector(
                         }
 
                         // Individual phases
-                        for phase in available.iter() {
+                        for (phase_id, phase) in available.iter() {
                             {
-                                let phase_id = phase.clone();
+                                let phase_id = phase_id.clone();
                                 let is_selected = selected.contains(&phase_id);
                                 let selected_clone = selected.clone();
 

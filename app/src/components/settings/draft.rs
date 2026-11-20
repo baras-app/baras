@@ -78,8 +78,7 @@ impl SettingsDraft {
     /// Replace the draft with persisted settings, dropping any pending preview
     /// so a stale edit can't land on the newly loaded settings
     fn replace(&self, settings: OverlaySettings) {
-        let (mut current, mut has_changes, mut request_id) =
-            (self.settings, self.has_changes, self.preview_request_id);
+        let (mut current, mut has_changes, mut request_id) = (self.settings, self.has_changes, self.preview_request_id);
         current.set(settings);
         has_changes.set(false);
         *request_id.write() += 1;
@@ -95,7 +94,6 @@ impl SettingsDraft {
         }
         self.has_changes.try_peek().is_ok_and(|c| *c)
     }
-
 }
 
 /// Appearance for an overlay key, falling back to its bundled default
@@ -106,4 +104,12 @@ pub fn appearance_for(settings: &OverlaySettings, key: &str) -> OverlayAppearanc
         .cloned()
         .or_else(|| settings.default_appearances.get(key).cloned())
         .unwrap_or_default()
+}
+
+/// Edit an overlay's appearance, seeding it from its default on first change
+pub fn edit_appearance(draft: SettingsDraft, key: &str, f: impl FnOnce(&mut OverlayAppearanceConfig)) {
+    draft.edit(|s| {
+        let default = s.default_appearances.get(key).cloned().unwrap_or_default();
+        f(s.appearances.entry(key.to_string()).or_insert(default));
+    });
 }

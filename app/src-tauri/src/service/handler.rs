@@ -8,23 +8,24 @@ use std::sync::atomic::Ordering;
 use tokio::sync::mpsc;
 
 use baras_core::EncounterSummary;
-use baras_core::history::{now_iso, start_ms_of};
 use baras_core::context::{AppConfig, AppConfigExt, resolve};
 use baras_core::encounter::EncounterState;
 use baras_core::game_data::Discipline;
+use baras_core::history::{now_iso, start_ms_of};
+use baras_core::query::{
+    AbilityBreakdown, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow, CombatLogSortColumn,
+    DamageTakenSummary, DataTab, EffectChartData, EffectUptimeCell, EffectWindow, EncounterTimeline, EntityBreakdown,
+    GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath, RaidOverviewRow, SortDirection, TimeRange,
+    TimeSeriesPoint,
+};
 use baras_types::history::{
     CleanupPlan, CleanupReport, ContentTag, HistoryStatus, LibraryRow, LogStatus, ParselyUpload, PullFilter,
     PullHistoryOverview, PullRow, RunDetail, RunList, RunMeta,
 };
-use baras_core::query::{
-    AbilityBreakdown, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow,
-    CombatLogSortColumn, DamageTakenSummary, DataTab, EffectChartData, EffectWindow,
-    EncounterTimeline, EntityBreakdown, HpPoint, NpcHealthRow, PlayerDeath, RaidOverviewRow,
-    EffectUptimeCell, GroupMetric, GroupTimeSeries, SortDirection, TimeRange, TimeSeriesPoint,
-};
 use tauri::{AppHandle, Emitter, Manager};
 
 use super::{AreaVisitInfo, CombatData, LogFileInfo, ServiceCommand, SessionInfo, cleanup};
+use crate::state::MutexExt;
 use crate::state::SharedState;
 
 /// Handle to communicate with the combat service and query state
@@ -40,27 +41,6 @@ impl ServiceHandle {
     // Tailing Operations
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// Send command to start tailing a log file
-    pub async fn start_tailing(&self, path: PathBuf) -> Result<(), String> {
-        self.cmd_tx
-            .send(ServiceCommand::StartTailing(path))
-            .await
-            .map_err(|e| e.to_string())
-    }
-
-    /// Send command to stop tailing
-    pub async fn stop_tailing(&self) -> Result<(), String> {
-        self.cmd_tx
-            .send(ServiceCommand::StopTailing)
-            .await
-            .map_err(|e| e.to_string())
-    }
-
-    /// Check if currently tailing a file
-    pub async fn is_tailing(&self) -> bool {
-        self.shared.session.read().await.is_some()
-    }
-
     /// Check if directory watcher is active
     pub fn is_watching(&self) -> bool {
         self.shared.watching.load(Ordering::SeqCst)
@@ -68,12 +48,7 @@ impl ServiceHandle {
 
     pub async fn active_file(&self) -> Option<String> {
         self.shared
-            .with_session(|session| {
-                session
-                    .active_file
-                    .as_ref()
-                    .map(|p| p.to_string_lossy().to_string())
-            })
+            .with_session(|session| session.active_file.as_ref().map(|p| p.to_string_lossy().to_string()))
             .await
             .unwrap_or(Some("None".to_string()))
     }
@@ -102,7 +77,7 @@ impl ServiceHandle {
     pub async fn log_files(&self) -> Vec<LogFileInfo> {
         let index = self.shared.directory_index.read().await;
         let area_cache = self.shared.area_cache.read().await;
-        let meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        let meta = self.shared.library_meta.locked();
 
         index
             .entries()
@@ -131,7 +106,9 @@ impl ServiceHandle {
                     is_empty: e.is_empty,
                     file_size: e.file_size,
                     areas,
-                    parsely: meta.log(&e.filename).and_then(|m| m.parsely.as_ref().map(|p| p.link.clone())),
+                    parsely: meta
+                        .log(&e.filename)
+                        .and_then(|m| m.parsely.as_ref().map(|p| p.link.clone())),
                 }
             })
             .collect()
@@ -161,11 +138,11 @@ impl ServiceHandle {
     }
 
     pub async fn retained_content(&self) -> Vec<ContentTag> {
-        self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner()).retain.clone()
+        self.shared.library_meta.locked().retain.clone()
     }
 
     pub async fn set_retained_content(&self, retain: Vec<ContentTag>) -> bool {
-        let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        let mut meta = self.shared.library_meta.locked();
         meta.retain = retain;
         if let Err(e) = meta.save() {
             tracing::warn!(error = %e, "Failed to save library.json");
@@ -184,7 +161,7 @@ impl ServiceHandle {
         let areas = self.shared.area_cache.read().await;
         tokio::task::block_in_place(|| {
             let pulls = cleanup::pull_index(&shared, &log_dir);
-            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let meta = shared.library_meta.locked();
             let mut rows_out: Vec<LibraryRow> = directory
                 .entries()
                 .into_iter()
@@ -215,7 +192,10 @@ impl ServiceHandle {
                         areas: log_areas.iter().map(|x| x.display_name()).collect(),
                         pulls: rows.len() as u32,
                         kills: rows.iter().filter(|r| r.success).count() as u32,
-                        dummy_only: !rows.is_empty() && rows.iter().all(|r| !r.is_operation && r.operation == baras_core::history::DUMMY_GROUP),
+                        dummy_only: !rows.is_empty()
+                            && rows
+                                .iter()
+                                .all(|r| !r.is_operation && r.operation == baras_core::history::DUMMY_GROUP),
                         status,
                         open: is_open,
                         favorite: log_meta.is_some_and(|m| m.favorite),
@@ -230,10 +210,17 @@ impl ServiceHandle {
             // Archived logs are no longer in the directory; the areas moved with them.
             // A log both on disk and archived (interrupted archive, manual copy) lists once, as the on-disk file
             let on_disk: std::collections::HashSet<String> = rows_out.iter().map(|r| r.filename.clone()).collect();
-            for a in baras_core::library::archived_logs().into_iter().filter(|a| !on_disk.contains(&a.filename)) {
+            for a in baras_core::library::archived_logs()
+                .into_iter()
+                .filter(|a| !on_disk.contains(&a.filename))
+            {
                 let info = pulls.log_info(&a.filename);
                 let rows = info.map_or(&[][..], |(r, _)| r);
-                let status = if info.is_some_and(|(_, stale)| stale) { LogStatus::ArchivedStale } else { LogStatus::Archived };
+                let status = if info.is_some_and(|(_, stale)| stale) {
+                    LogStatus::ArchivedStale
+                } else {
+                    LogStatus::Archived
+                };
                 let log_meta = meta.log(&a.filename);
                 let log_areas = baras_core::library::log_areas(areas.get(&a.path), pulls.visits_for(&a.filename));
                 rows_out.push(LibraryRow {
@@ -249,7 +236,10 @@ impl ServiceHandle {
                     areas: log_areas.iter().map(|x| x.display_name()).collect(),
                     pulls: rows.len() as u32,
                     kills: rows.iter().filter(|r| r.success).count() as u32,
-                    dummy_only: !rows.is_empty() && rows.iter().all(|r| !r.is_operation && r.operation == baras_core::history::DUMMY_GROUP),
+                    dummy_only: !rows.is_empty()
+                        && rows
+                            .iter()
+                            .all(|r| !r.is_operation && r.operation == baras_core::history::DUMMY_GROUP),
                     status,
                     open: false,
                     favorite: log_meta.is_some_and(|m| m.favorite),
@@ -269,7 +259,7 @@ impl ServiceHandle {
     }
 
     pub async fn set_log_favorite(&self, filename: String, favorite: bool) -> bool {
-        let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        let mut meta = self.shared.library_meta.locked();
         meta.set_favorite(&filename, favorite);
         if let Err(e) = meta.save() {
             tracing::warn!(error = %e, "Failed to save library.json");
@@ -280,7 +270,7 @@ impl ServiceHandle {
 
     /// The user's tags and note on one log.
     pub fn set_log_meta(&self, filename: &str, tags: Vec<String>, note: &str) -> bool {
-        let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        let mut meta = self.shared.library_meta.locked();
         meta.set_log_meta(filename, tags, note);
         match meta.save() {
             Ok(()) => true,
@@ -293,7 +283,7 @@ impl ServiceHandle {
 
     /// Hide or show one pull in Boss Statistics
     pub fn set_pull_hidden(&self, filename: &str, start_ms: i64, hidden: bool) -> bool {
-        let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        let mut meta = self.shared.library_meta.locked();
         meta.set_pull_hidden(filename, start_ms, hidden);
         match meta.save() {
             Ok(()) => true,
@@ -306,7 +296,7 @@ impl ServiceHandle {
 
     /// Remove a tag from every run of one log (the grey run tags in Log Management)
     pub fn remove_run_tag_for_log(&self, filename: &str, tag: &str) -> bool {
-        let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        let mut meta = self.shared.library_meta.locked();
         meta.remove_run_tag_for_log(filename, tag);
         match meta.save() {
             Ok(()) => true,
@@ -323,7 +313,7 @@ impl ServiceHandle {
         let mut directory = self.shared.directory_index.write().await;
         let mut areas = self.shared.area_cache.write().await;
         let restored = {
-            let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let mut meta = self.shared.library_meta.locked();
             let mut lib = baras_core::library::LibraryMut {
                 directory: &mut directory,
                 areas: &mut areas,
@@ -387,10 +377,10 @@ impl ServiceHandle {
         let new_dir = config.log_directory.clone();
 
         // Check if grid size changed
-        let old_slots = old_config.overlay_settings.raid_overlay.grid_columns
-            * old_config.overlay_settings.raid_overlay.grid_rows;
-        let new_slots = config.overlay_settings.raid_overlay.grid_columns
-            * config.overlay_settings.raid_overlay.grid_rows;
+        let old_slots =
+            old_config.overlay_settings.raid_overlay.grid_columns * old_config.overlay_settings.raid_overlay.grid_rows;
+        let new_slots =
+            config.overlay_settings.raid_overlay.grid_columns * config.overlay_settings.raid_overlay.grid_rows;
 
         let alacrity_changed = old_config.alacrity_percent != config.alacrity_percent;
         let latency_changed = old_config.latency_ms != config.latency_ms;
@@ -404,21 +394,21 @@ impl ServiceHandle {
 
         // Update raid registry max slots if grid size changed
         if new_slots != old_slots {
-            self.shared.raid_registry.lock().unwrap_or_else(|p| p.into_inner()).set_max_slots(new_slots);
+            self.shared.raid_registry.locked().set_max_slots(new_slots);
         }
 
         // Update effect tracker alacrity/latency if changed
-        if alacrity_changed || latency_changed {
-            if let Some(session) = self.shared.session.read().await.as_ref() {
-                let session = session.read().await;
-                if let Some(tracker) = session.effect_tracker() {
-                    let mut tracker = tracker.lock().unwrap_or_else(|p| p.into_inner());
-                    if alacrity_changed {
-                        tracker.set_alacrity(new_alacrity);
-                    }
-                    if latency_changed {
-                        tracker.set_latency(new_latency);
-                    }
+        if (alacrity_changed || latency_changed)
+            && let Some(session) = self.shared.session.read().await.as_ref()
+        {
+            let session = session.read().await;
+            if let Some(tracker) = session.effect_tracker() {
+                let mut tracker = tracker.locked();
+                if alacrity_changed {
+                    tracker.set_alacrity(new_alacrity);
+                }
+                if latency_changed {
+                    tracker.set_latency(new_latency);
                 }
             }
         }
@@ -485,7 +475,9 @@ impl ServiceHandle {
         let duration_formatted = start_datetime.and_then(|start| {
             let end = if is_live {
                 // Use the last log line timestamp so duration freezes when session goes stale
-                session.last_event_time.unwrap_or_else(|| chrono::Local::now().naive_local())
+                session
+                    .last_event_time
+                    .unwrap_or_else(|| chrono::Local::now().naive_local())
             } else {
                 end_naive?
             };
@@ -616,8 +608,13 @@ impl ServiceHandle {
             .and_then(start_ms_of);
         let updated = cache.encounter_history.set_parsely_link(encounter_id, link.clone());
         if updated && let (Some(filename), Some(start_ms)) = (filename, start_ms) {
-            let upload = ParselyUpload { link, uploaded_at: now_iso(), source_len: None, visibility };
-            let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let upload = ParselyUpload {
+                link,
+                uploaded_at: now_iso(),
+                source_len: None,
+                visibility,
+            };
+            let mut meta = self.shared.library_meta.locked();
             meta.set_pull_parsely(&filename, start_ms, upload);
             if let Err(e) = meta.save() {
                 tracing::warn!(error = %e, "Failed to save library.json");
@@ -631,7 +628,7 @@ impl ServiceHandle {
         let catalog = self.area_catalog();
         let shared = self.shared.clone();
         self.with_pull_index(move |index| {
-            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let meta = shared.library_meta.locked();
             index.overview(&filter, &catalog, &meta)
         })
         .await
@@ -643,7 +640,7 @@ impl ServiceHandle {
         let catalog = self.area_catalog();
         let shared = self.shared.clone();
         self.with_pull_index(move |index| {
-            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let meta = shared.library_meta.locked();
             let mut rows = index.pulls(&operation, &boss, &filter, &catalog, &meta);
             for row in &mut rows {
                 row.parsely = meta.parsely_link_for(&row.filename, row.start_ms).map(str::to_string);
@@ -659,9 +656,12 @@ impl ServiceHandle {
         let catalog = self.area_catalog();
         let shared = self.shared.clone();
         self.with_pull_index(move |index| {
-            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let meta = shared.library_meta.locked();
             let runs = index.runs(&catalog, &filter, &meta);
-            RunList { runs, tags: meta.run_tags() }
+            RunList {
+                runs,
+                tags: meta.run_tags(),
+            }
         })
         .await
         .unwrap_or_default()
@@ -669,7 +669,9 @@ impl ServiceHandle {
 
     /// Every recorded warzone match and arena round, newest first.
     pub async fn pvp_matches(&self) -> Vec<baras_types::history::PvpMatchRow> {
-        self.with_pull_index(|index| index.pvp_matches()).await.unwrap_or_default()
+        self.with_pull_index(|index| index.pvp_matches())
+            .await
+            .unwrap_or_default()
     }
 
     /// One run with its bosses, players and pulls.
@@ -677,7 +679,7 @@ impl ServiceHandle {
         let catalog = self.area_catalog();
         let shared = self.shared.clone();
         self.with_pull_index(move |index| {
-            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let meta = shared.library_meta.locked();
             let (run, rows) = index.run(&filename, start_ms, &catalog, &meta)?;
             // A run can span logs (disconnect, character swap)
             let mut files: Vec<&str> = rows.iter().map(|r| r.filename.as_str()).collect();
@@ -696,7 +698,7 @@ impl ServiceHandle {
 
     /// Tags and note for one run; an empty meta removes the entry.
     pub fn set_run_meta(&self, filename: &str, start_ms: i64, meta: RunMeta) -> bool {
-        let mut store = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        let mut store = self.shared.library_meta.locked();
         store.set_run(filename, start_ms, meta);
         match store.save() {
             Ok(()) => true,
@@ -718,8 +720,11 @@ impl ServiceHandle {
                     .path()
                     .resolve("definitions/encounters", tauri::path::BaseDirectory::Resource)
                     .ok();
-                let user = dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"));
-                Arc::new(baras_core::history::AreaCatalog::load(bundled.as_deref(), user.as_deref()))
+                let user = baras_core::paths::config_dir().map(|p| p.join("definitions").join("encounters"));
+                Arc::new(baras_core::history::AreaCatalog::load(
+                    bundled.as_deref(),
+                    user.as_deref(),
+                ))
             })
             .clone()
     }
@@ -732,8 +737,14 @@ impl ServiceHandle {
 
     /// Ask a running backfill to stop; it reports `Done { cancelled: true }`.
     pub fn cancel_history_backfill(&self) {
-        if self.shared.history_backfill_running.load(std::sync::atomic::Ordering::SeqCst) {
-            self.shared.history_backfill_cancel.store(true, std::sync::atomic::Ordering::SeqCst);
+        if self
+            .shared
+            .history_backfill_running
+            .load(std::sync::atomic::Ordering::SeqCst)
+        {
+            self.shared
+                .history_backfill_cancel
+                .store(true, std::sync::atomic::Ordering::SeqCst);
         }
     }
 
@@ -759,7 +770,10 @@ impl ServiceHandle {
             let mut status = index.status(live.as_deref());
             // "Need a scan" counts only what a scan covers (log directory + archive):
             // history of a log opened from elsewhere stays out, even when stale
-            status.stale = logs.iter().filter(|f| index.log_info(f).is_some_and(|(_, stale)| stale)).count() as u32;
+            status.stale = logs
+                .iter()
+                .filter(|f| index.log_info(f).is_some_and(|(_, stale)| stale))
+                .count() as u32;
             status.unscanned = logs.iter().filter(|f| index.log_info(f).is_none()).count() as u32;
             status
         })
@@ -779,8 +793,13 @@ impl ServiceHandle {
             return false;
         };
         let source_len = std::fs::metadata(&path).ok().map(|m| m.len());
-        let upload = ParselyUpload { link, uploaded_at: now_iso(), source_len, visibility };
-        let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        let upload = ParselyUpload {
+            link,
+            uploaded_at: now_iso(),
+            source_len,
+            visibility,
+        };
+        let mut meta = self.shared.library_meta.locked();
         meta.set_log_parsely(filename, upload);
         if let Err(e) = meta.save() {
             tracing::warn!(error = %e, "Failed to save library.json");
@@ -810,13 +829,13 @@ impl ServiceHandle {
 
     /// Swap two slots in the raid registry
     pub async fn swap_raid_slots(&self, slot_a: u8, slot_b: u8) {
-        self.shared.raid_registry.lock().unwrap_or_else(|p| p.into_inner()).swap_slots(slot_a, slot_b);
+        self.shared.raid_registry.locked().swap_slots(slot_a, slot_b);
         self.refresh_raid_frames().await;
     }
 
     /// Remove a slot from the raid registry
     pub async fn remove_raid_slot(&self, slot: u8) {
-        self.shared.raid_registry.lock().unwrap_or_else(|p| p.into_inner()).remove_slot(slot);
+        self.shared.raid_registry.locked().remove_slot(slot);
         self.refresh_raid_frames().await;
     }
 
@@ -832,11 +851,7 @@ impl ServiceHandle {
         ambiguous_rows: &[u8],
     ) -> usize {
         let remaining = {
-            let mut registry = self
-                .shared
-                .raid_registry
-                .lock()
-                .unwrap_or_else(|p| p.into_inner());
+            let mut registry = self.shared.raid_registry.locked();
             // The screen is the authority: players the pass did not
             // re-confirm are evicted before the confirmed ones are placed.
             // An ambiguous row is the exception — it read something that
@@ -852,11 +867,7 @@ impl ServiceHandle {
             registry.assign_slots(
                 assignments
                     .into_iter()
-                    .filter_map(|a| {
-                        u8::try_from(a.row)
-                            .ok()
-                            .map(|row| (row, a.entity_id, a.name))
-                    }),
+                    .filter_map(|a| u8::try_from(a.row).ok().map(|row| (row, a.entity_id, a.name))),
             );
             registry.provisional_len()
         };
@@ -864,16 +875,9 @@ impl ServiceHandle {
         remaining
     }
 
-    pub async fn apply_provisional_raid_detection(
-        &self,
-        assignments: Vec<(u8, String)>,
-    ) -> (usize, usize) {
+    pub async fn apply_provisional_raid_detection(&self, assignments: Vec<(u8, String)>) -> (usize, usize) {
         let counts = {
-            let mut registry = self
-                .shared
-                .raid_registry
-                .lock()
-                .unwrap_or_else(|p| p.into_inner());
+            let mut registry = self.shared.raid_registry.locked();
             registry.assign_provisional_slots(assignments);
             (registry.provisional_len(), registry.registered_len())
         };
@@ -890,17 +894,13 @@ impl ServiceHandle {
 
     /// Mark the slots whose reading fitted more than one player.
     pub async fn set_ambiguous_slots(&self, slots: Vec<u8>) {
-        self.shared
-            .raid_registry
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .set_ambiguous_slots(slots);
+        self.shared.raid_registry.locked().set_ambiguous_slots(slots);
         self.refresh_raid_frames().await;
     }
 
     /// Clear all raid registry slots
     pub async fn clear_raid_registry(&self) {
-        self.shared.raid_registry.lock().unwrap_or_else(|p| p.into_inner()).clear();
+        self.shared.raid_registry.locked().clear();
         self.refresh_raid_frames().await;
     }
 
@@ -936,12 +936,8 @@ impl ServiceHandle {
     /// Open a historical file (pauses live tailing)
     /// Queue a historical open. Returns `Ok(false)` when the same file is
     /// already queued or being parsed, so the click is a no-op.
-    pub async fn open_historical_file(
-        &self,
-        path: PathBuf,
-        select_encounter: Option<u64>,
-    ) -> Result<bool, String> {
-        if !self.shared.pending_opens.lock().unwrap_or_else(|p| p.into_inner()).insert(path.clone()) {
+    pub async fn open_historical_file(&self, path: PathBuf, select_encounter: Option<u64>) -> Result<bool, String> {
+        if !self.shared.pending_opens.locked().insert(path.clone()) {
             return Ok(false);
         }
         self.cmd_tx
@@ -981,29 +977,9 @@ impl ServiceHandle {
         breakdown_mode: Option<BreakdownMode>,
         duration_secs: Option<f32>,
     ) -> Result<Vec<AbilityBreakdown>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
+        self.register_encounter(encounter_idx).await?;
 
-        if let Some(idx) = encounter_idx {
-            // Query historical parquet
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            // Query live buffer
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
-
-        let types_ref: Option<Vec<&str>> = entity_types
-            .as_ref()
-            .map(|v| v.iter().map(|s| s.as_str()).collect());
+        let types_ref: Option<Vec<&str>> = entity_types.as_ref().map(|v| v.iter().map(|s| s.as_str()).collect());
         self.shared
             .query_context
             .query()
@@ -1030,38 +1006,15 @@ impl ServiceHandle {
         time_range: Option<TimeRange>,
         entity_types: Option<Vec<String>>,
     ) -> Result<DamageTakenSummary, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
+        self.register_encounter(encounter_idx).await?;
 
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
-
-        let types_ref: Option<Vec<&str>> = entity_types
-            .as_ref()
-            .map(|v| v.iter().map(|s| s.as_str()).collect());
+        let types_ref: Option<Vec<&str>> = entity_types.as_ref().map(|v| v.iter().map(|s| s.as_str()).collect());
         self.shared
             .query_context
             .query()
             .await
             .query()
-            .query_damage_taken_summary(
-                &entity_name,
-                entity_id,
-                time_range.as_ref(),
-                types_ref.as_deref(),
-            )
+            .query_damage_taken_summary(&entity_name, entity_id, time_range.as_ref(), types_ref.as_deref())
             .await
     }
 
@@ -1072,23 +1025,7 @@ impl ServiceHandle {
         encounter_idx: Option<u32>,
         time_range: Option<TimeRange>,
     ) -> Result<Vec<EntityBreakdown>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1111,10 +1048,8 @@ impl ServiceHandle {
         let session = session.read().await;
 
         // Build discipline map - source depends on live vs historical query
-        let mut player_discipline_map: std::collections::HashMap<
-            String,
-            (String, String, String, String),
-        > = std::collections::HashMap::new();
+        let mut player_discipline_map: std::collections::HashMap<String, (String, String, String, String)> =
+            std::collections::HashMap::new();
 
         // PvP encounters get friend/enemy faction classification
         let mut is_pvp = false;
@@ -1122,27 +1057,25 @@ impl ServiceHandle {
         if let Some(idx) = encounter_idx {
             // Historical query: get discipline info from that encounter's summary
             // This captures the discipline each player had AT THAT TIME
-            if let Some(cache) = session.session_cache.as_ref() {
-                if let Some(summary) = cache
+            if let Some(cache) = session.session_cache.as_ref()
+                && let Some(summary) = cache
                     .encounter_history
                     .summaries()
                     .iter()
                     .find(|s| s.encounter_id == idx as u64)
-                {
-                    is_pvp = summary.encounter_type == baras_core::encounter::PhaseType::PvP;
-                    for pm in &summary.player_metrics {
-                        if let (Some(class_icon), Some(role_icon)) = (&pm.class_icon, &pm.role_icon)
-                        {
-                            player_discipline_map.insert(
-                                pm.name.clone(),
-                                (
-                                    pm.class_name.clone().unwrap_or_default(),
-                                    pm.discipline_name.clone().unwrap_or_default(),
-                                    class_icon.clone(),
-                                    role_icon.clone(),
-                                ),
-                            );
-                        }
+            {
+                is_pvp = summary.encounter_type == baras_core::encounter::PhaseType::PvP;
+                for pm in &summary.player_metrics {
+                    if let (Some(class_icon), Some(role_icon)) = (&pm.class_icon, &pm.role_icon) {
+                        player_discipline_map.insert(
+                            pm.name.clone(),
+                            (
+                                pm.class_name.clone().unwrap_or_default(),
+                                pm.discipline_name.clone().unwrap_or_default(),
+                                class_icon.clone(),
+                                role_icon.clone(),
+                            ),
+                        );
                     }
                 }
             }
@@ -1167,15 +1100,12 @@ impl ServiceHandle {
                         let role_icon = disc.role().icon_name().to_string();
                         let discipline_name = disc.name().to_string();
                         let class_name = format!("{:?}", disc.class());
-                        player_discipline_map
-                            .insert(name, (class_name, discipline_name, class_icon, role_icon));
+                        player_discipline_map.insert(name, (class_name, discipline_name, class_icon, role_icon));
                     }
                 }
             }
 
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
+            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
             self.shared.query_context.register_live(writer).await?;
         }
 
@@ -1190,9 +1120,7 @@ impl ServiceHandle {
 
         // Enrich results with discipline info
         for row in &mut results {
-            if let Some((class_name, discipline_name, class_icon, role_icon)) =
-                player_discipline_map.get(&row.name)
-            {
+            if let Some((class_name, discipline_name, class_icon, role_icon)) = player_discipline_map.get(&row.name) {
                 row.class_name = Some(class_name.clone());
                 row.discipline_name = Some(discipline_name.clone());
                 row.class_icon = Some(class_icon.clone());
@@ -1211,23 +1139,7 @@ impl ServiceHandle {
         source_name: Option<String>,
         time_range: Option<TimeRange>,
     ) -> Result<Vec<TimeSeriesPoint>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1293,51 +1205,9 @@ impl ServiceHandle {
         }
     }
 
-    /// Get list of available encounter parquet files.
-    pub async fn list_encounter_files(&self) -> Result<Vec<u32>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        let dir = session.encounters_dir().ok_or("No encounters directory")?;
-
-        let mut indices = Vec::new();
-        if let Ok(entries) = std::fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                if let Some(name) = entry.file_name().to_str()
-                    && name.ends_with(".parquet")
-                    && let Ok(idx) = name.trim_end_matches(".parquet").parse::<u32>()
-                {
-                    indices.push(idx);
-                }
-            }
-        }
-        indices.sort();
-        Ok(indices)
-    }
-
     /// Query encounter timeline with phase segments.
-    pub async fn query_encounter_timeline(
-        &self,
-        encounter_idx: Option<u32>,
-    ) -> Result<EncounterTimeline, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+    pub async fn query_encounter_timeline(&self, encounter_idx: Option<u32>) -> Result<EncounterTimeline, String> {
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1356,23 +1226,7 @@ impl ServiceHandle {
         source_name: Option<String>,
         time_range: Option<TimeRange>,
     ) -> Result<Vec<TimeSeriesPoint>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1391,23 +1245,7 @@ impl ServiceHandle {
         source_name: Option<String>,
         time_range: Option<TimeRange>,
     ) -> Result<Vec<TimeSeriesPoint>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1426,23 +1264,7 @@ impl ServiceHandle {
         target_name: Option<String>,
         time_range: Option<TimeRange>,
     ) -> Result<Vec<TimeSeriesPoint>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1461,23 +1283,7 @@ impl ServiceHandle {
         target_name: Option<String>,
         time_range: Option<TimeRange>,
     ) -> Result<Vec<TimeSeriesPoint>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1496,23 +1302,7 @@ impl ServiceHandle {
         target_name: Option<String>,
         time_range: Option<TimeRange>,
     ) -> Result<Vec<HpPoint>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1532,23 +1322,7 @@ impl ServiceHandle {
         duration_secs: f32,
         source_filter: Option<String>,
     ) -> Result<Vec<EffectChartData>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1574,23 +1348,7 @@ impl ServiceHandle {
         duration_secs: f32,
         source_filter: Option<String>,
     ) -> Result<Vec<EffectWindow>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1621,23 +1379,7 @@ impl ServiceHandle {
         sort_column: CombatLogSortColumn,
         sort_direction: SortDirection,
     ) -> Result<Vec<CombatLogRow>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1668,23 +1410,7 @@ impl ServiceHandle {
         time_range: Option<TimeRange>,
         event_filters: Option<CombatLogFilters>,
     ) -> Result<u64, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1714,25 +1440,10 @@ impl ServiceHandle {
         sort_column: CombatLogSortColumn,
         sort_direction: SortDirection,
     ) -> Result<Vec<CombatLogFindMatch>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
+        self.register_encounter(encounter_idx).await?;
 
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
-
-        let result = self.shared
+        let result = self
+            .shared
             .query_context
             .query()
             .await
@@ -1760,23 +1471,7 @@ impl ServiceHandle {
         &self,
         encounter_idx: Option<u32>,
     ) -> Result<baras_types::GroupedEntityNames, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1792,23 +1487,7 @@ impl ServiceHandle {
         &self,
         encounter_idx: Option<u32>,
     ) -> Result<baras_types::GroupedEntityNames, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1820,10 +1499,7 @@ impl ServiceHandle {
     }
 
     /// Query player deaths in an encounter.
-    pub async fn query_player_deaths(
-        &self,
-        encounter_idx: Option<u32>,
-    ) -> Result<Vec<PlayerDeath>, String> {
+    pub async fn query_player_deaths(&self, encounter_idx: Option<u32>) -> Result<Vec<PlayerDeath>, String> {
         let session_guard = self.shared.session.read().await;
         let session = session_guard.as_ref().ok_or("No active session")?;
         let session = session.read().await;
@@ -1853,9 +1529,7 @@ impl ServiceHandle {
                     .and_then(|e| e.area_id)
                     .is_some_and(baras_core::game_data::is_pvp_area);
             }
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
+            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
             self.shared.query_context.register_live(writer).await?;
         }
 
@@ -1875,23 +1549,7 @@ impl ServiceHandle {
         player_name: String,
         death_time_secs: f32,
     ) -> Result<baras_types::DeathRecap, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1908,23 +1566,7 @@ impl ServiceHandle {
         encounter_idx: Option<u32>,
         time_range: Option<TimeRange>,
     ) -> Result<Vec<NpcHealthRow>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1943,23 +1585,7 @@ impl ServiceHandle {
         anchor_ability_id: i64,
         time_range: Option<TimeRange>,
     ) -> Result<baras_core::query::RotationAnalysis, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -1977,23 +1603,7 @@ impl ServiceHandle {
         encounter_idx: Option<u32>,
         time_range: Option<TimeRange>,
     ) -> Result<Vec<baras_core::query::AbilityUsageRow>, String> {
-        let session_guard = self.shared.session.read().await;
-        let session = session_guard.as_ref().ok_or("No active session")?;
-        let session = session.read().await;
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
-            let writer = session
-                .encounter_writer()
-                .ok_or("No live encounter buffer")?;
-            self.shared.query_context.register_live(writer).await?;
-        }
+        self.register_encounter(encounter_idx).await?;
 
         self.shared
             .query_context
@@ -2011,48 +1621,18 @@ impl ServiceHandle {
     /// Update the overlay status flag for a specific overlay type
     pub fn set_overlay_active(&self, kind: &str, active: bool) {
         match kind {
-            "raid" => self
-                .shared
-                .raid_overlay_active
-                .store(active, Ordering::SeqCst),
-            "boss_health" => self
-                .shared
-                .boss_health_overlay_active
-                .store(active, Ordering::SeqCst),
+            "raid" => self.shared.raid_overlay_active.store(active, Ordering::SeqCst),
+            "boss_health" => self.shared.boss_health_overlay_active.store(active, Ordering::SeqCst),
             // Support both legacy "timers" and new "timers_a"/"timers_b" keys
             // All map to the same flag since the service loop checks one flag for both overlays
-            "timers" | "timers_a" | "timers_b" => self
-                .shared
-                .timer_overlay_active
-                .store(active, Ordering::SeqCst),
-            "effects_a" => self
-                .shared
-                .effects_a_overlay_active
-                .store(active, Ordering::SeqCst),
-            "effects_b" => self
-                .shared
-                .effects_b_overlay_active
-                .store(active, Ordering::SeqCst),
-            "effects_c" => self
-                .shared
-                .effects_c_overlay_active
-                .store(active, Ordering::SeqCst),
-            "cooldowns" => self
-                .shared
-                .cooldowns_overlay_active
-                .store(active, Ordering::SeqCst),
-            "cooldowns_b" => self
-                .shared
-                .cooldowns_b_overlay_active
-                .store(active, Ordering::SeqCst),
-            "dot_tracker" => self
-                .shared
-                .dot_tracker_overlay_active
-                .store(active, Ordering::SeqCst),
-            "ability_cast" => self
-                .shared
-                .ability_cast_overlay_active
-                .store(active, Ordering::SeqCst),
+            "timers" | "timers_a" | "timers_b" => self.shared.timer_overlay_active.store(active, Ordering::SeqCst),
+            "effects_a" => self.shared.effects_a_overlay_active.store(active, Ordering::SeqCst),
+            "effects_b" => self.shared.effects_b_overlay_active.store(active, Ordering::SeqCst),
+            "effects_c" => self.shared.effects_c_overlay_active.store(active, Ordering::SeqCst),
+            "cooldowns" => self.shared.cooldowns_overlay_active.store(active, Ordering::SeqCst),
+            "cooldowns_b" => self.shared.cooldowns_b_overlay_active.store(active, Ordering::SeqCst),
+            "dot_tracker" => self.shared.dot_tracker_overlay_active.store(active, Ordering::SeqCst),
+            "ability_cast" => self.shared.ability_cast_overlay_active.store(active, Ordering::SeqCst),
             _ => {}
         }
     }
@@ -2086,13 +1666,13 @@ impl ServiceHandle {
 
         // Find first boss with notes
         for boss in definitions.iter() {
-            if let Some(notes) = &boss.notes {
-                if !notes.is_empty() {
-                    return Some(baras_overlay::NotesData {
-                        text: notes.clone(),
-                        boss_name: boss.name.clone(),
-                    });
-                }
+            if let Some(notes) = &boss.notes
+                && !notes.is_empty()
+            {
+                return Some(baras_overlay::NotesData {
+                    text: notes.clone(),
+                    boss_name: boss.name.clone(),
+                });
             }
         }
 
@@ -2142,7 +1722,10 @@ impl ServiceHandle {
         };
 
         // Send via the overlay channel
-        let _ = self.cmd_tx.send(super::ServiceCommand::SendNotesToOverlay(notes_data)).await;
+        let _ = self
+            .cmd_tx
+            .send(super::ServiceCommand::SendNotesToOverlay(notes_data))
+            .await;
 
         Ok(())
     }
@@ -2178,7 +1761,7 @@ impl ServiceHandle {
     /// Get the current operation timer state
     pub fn operation_timer_state(&self) -> super::OperationTimerState {
         // Return a snapshot copy - can't return the actual state due to mutex
-        let timer = self.shared.operation_timer.lock().unwrap();
+        let timer = self.shared.operation_timer.locked();
         super::OperationTimerState {
             started_at: timer.started_at,
             accumulated_secs: timer.accumulated_secs,

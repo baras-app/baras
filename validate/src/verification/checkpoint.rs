@@ -121,8 +121,7 @@ impl CheckpointVerifier {
 
     /// Record that a timer started
     pub fn record_timer_start(&mut self, timer_id: &str, combat_time_secs: f32) {
-        self.timers_started
-            .push((timer_id.to_string(), combat_time_secs));
+        self.timers_started.push((timer_id.to_string(), combat_time_secs));
     }
 
     /// Record that an alert fired
@@ -132,11 +131,7 @@ impl CheckpointVerifier {
 
     /// Check if there's a checkpoint at or before the given combat time
     /// Returns checkpoints that should be verified
-    pub fn check_time(
-        &mut self,
-        combat_time_secs: f32,
-        active_timers: &[(String, f32)],
-    ) -> Option<CheckpointResult> {
+    pub fn check_time(&mut self, combat_time_secs: f32, active_timers: &[(String, f32)]) -> Option<CheckpointResult> {
         if self.current_checkpoint_idx >= self.expectations.checkpoints.len() {
             return None;
         }
@@ -158,19 +153,16 @@ impl CheckpointVerifier {
 
             match found {
                 None => {
-                    failures.push(format!(
-                        "Timer '{}' should be active but is not",
-                        expected.id
-                    ));
+                    failures.push(format!("Timer '{}' should be active but is not", expected.id));
                 }
                 Some((_, remaining)) => {
-                    if let Some((min, max)) = expected.remaining_secs {
-                        if *remaining < min - tolerance || *remaining > max + tolerance {
-                            failures.push(format!(
-                                "Timer '{}' remaining {:.1}s not in expected range [{:.1}, {:.1}]",
-                                expected.id, remaining, min, max
-                            ));
-                        }
+                    if let Some((min, max)) = expected.remaining_secs
+                        && (*remaining < min - tolerance || *remaining > max + tolerance)
+                    {
+                        failures.push(format!(
+                            "Timer '{}' remaining {:.1}s not in expected range [{:.1}, {:.1}]",
+                            expected.id, remaining, min, max
+                        ));
                     }
                 }
             }
@@ -285,10 +277,6 @@ mod tests {
         assert!(result.is_some());
         let r = result.unwrap();
         assert!(!r.passed);
-        assert!(
-            r.failures
-                .iter()
-                .any(|f| f.contains("not in expected range"))
-        );
+        assert!(r.failures.iter().any(|f| f.contains("not in expected range")));
     }
 }

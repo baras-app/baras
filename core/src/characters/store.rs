@@ -6,8 +6,8 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 use baras_types::characters::{
-    CHARACTER_NOTE_MAX, CREW_SKILLS, CharacterRecord, DEFAULT_RESET_HOUR_UTC, MAX_CLASSES, MAX_CREW_SKILLS,
-    ManualLock, character_key,
+    CHARACTER_NOTE_MAX, CREW_SKILLS, CharacterRecord, DEFAULT_RESET_HOUR_UTC, MAX_CLASSES, MAX_CREW_SKILLS, ManualLock,
+    character_key,
 };
 
 use crate::game_data::Class;
@@ -46,9 +46,8 @@ impl Default for CharacterStore {
 
 /// `~/.config/baras/characters.json`
 pub fn store_path() -> PathBuf {
-    dirs::config_dir()
+    crate::paths::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("baras")
         .join("characters.json")
 }
 
@@ -98,7 +97,9 @@ impl CharacterStore {
         let key = character_key(&record.name, &record.server);
         if let Some(prev) = previous_key.filter(|p| *p != key) {
             // Carry manual locks across a rename unless the edit set its own
-            if let Some(old) = self.characters.remove(prev) && record.manual_locks.is_empty() {
+            if let Some(old) = self.characters.remove(prev)
+                && record.manual_locks.is_empty()
+            {
                 record.manual_locks = old.manual_locks;
             }
         }
@@ -125,15 +126,23 @@ impl CharacterStore {
     pub fn add_manual_lock(&mut self, key: &str, lock: ManualLock) {
         let record = self.characters.entry(key.to_string()).or_insert_with(|| {
             let (name, server) = key.rsplit_once('@').unwrap_or((key, ""));
-            CharacterRecord { name: name.to_string(), server: server.to_string(), ..Default::default() }
+            CharacterRecord {
+                name: name.to_string(),
+                server: server.to_string(),
+                ..Default::default()
+            }
         });
-        record.manual_locks.retain(|l| !(l.operation == lock.operation && l.tier == lock.tier));
+        record
+            .manual_locks
+            .retain(|l| !(l.operation == lock.operation && l.tier == lock.tier));
         record.manual_locks.push(lock);
     }
 
     pub fn clear_manual_lock(&mut self, key: &str, operation: &str, tier: &str) {
         if let Some(record) = self.characters.get_mut(key) {
-            record.manual_locks.retain(|l| !(l.operation == operation && l.tier == tier));
+            record
+                .manual_locks
+                .retain(|l| !(l.operation == operation && l.tier == tier));
         }
     }
 }

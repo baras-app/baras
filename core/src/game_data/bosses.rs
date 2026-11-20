@@ -13,10 +13,7 @@ use super::world_bosses::WORLD_BOSS_DATA;
 
 /// Lazy-initialized lookup table combining all boss data
 static BOSS_LOOKUP: LazyLock<HashMap<i64, BossInfo>> = LazyLock::new(|| {
-    let total = RAID_BOSS_DATA.len()
-        + LAIR_BOSS_DATA.len()
-        + FLASHPOINT_BOSS_DATA.len()
-        + WORLD_BOSS_DATA.len();
+    let total = RAID_BOSS_DATA.len() + LAIR_BOSS_DATA.len() + FLASHPOINT_BOSS_DATA.len() + WORLD_BOSS_DATA.len();
     let mut map = HashMap::with_capacity(total);
     for (id, info) in RAID_BOSS_DATA.iter() {
         map.insert(*id, info.clone());
@@ -167,12 +164,11 @@ impl Difficulty {
         let key_lower = key.to_ascii_lowercase();
 
         // Try compound key first (e.g., "veteran_16", "story_8")
-        if let Some((tier, size_str)) = key_lower.rsplit_once('_') {
-            if let Ok(size) = size_str.parse::<u8>() {
-                if size == 4 || size == 8 || size == 16 {
-                    return self.config_key() == tier && self.group_size() == size;
-                }
-            }
+        if let Some((tier, size_str)) = key_lower.rsplit_once('_')
+            && let Ok(size) = size_str.parse::<u8>()
+            && (size == 4 || size == 8 || size == 16)
+        {
+            return self.config_key() == tier && self.group_size() == size;
         }
 
         // Fall back to tier-only match (e.g., "veteran" matches both 8 and 16)

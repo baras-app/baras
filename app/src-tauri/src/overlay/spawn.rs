@@ -58,23 +58,21 @@ unsafe impl<T> Send for SendPtr<T> {}
 unsafe impl<T> Sync for SendPtr<T> {}
 
 use baras_core::context::{
-    AlertsOverlayConfig, BossHealthConfig, ChallengeOverlayConfig, OverlayAppearanceConfig,
-    OverlayPositionConfig, PersonalOverlayConfig, TimerOverlayConfig,
+    AlertsOverlayConfig, BossHealthConfig, ChallengeOverlayConfig, OverlayAppearanceConfig, OverlayPositionConfig,
+    PersonalOverlayConfig, TimerOverlayConfig,
 };
 use baras_overlay::{
-    AbilityCastConfig, AbilityCastOverlay, AbilityQueueConfig, AbilityQueueOverlay, AlertsOverlay, BossHealthOverlay, ChallengeOverlay,
-    CombatTimeConfig, CombatTimeOverlay, CooldownConfig, CooldownOverlay, DotTrackerConfig,
+    AbilityCastConfig, AbilityCastOverlay, AbilityQueueConfig, AbilityQueueOverlay, AlertsOverlay, BossHealthOverlay,
+    ChallengeOverlay, CombatTimeConfig, CombatTimeOverlay, CooldownConfig, CooldownOverlay, DotTrackerConfig,
     DotTrackerOverlay, EffectsABConfig, EffectsABOverlay, MetricOverlay, NotesConfig, NotesOverlay,
-    OperationTimerConfig, OperationTimerOverlay, Overlay, OverlayConfig, PersonalOverlay,
-    RaidGridLayout, RaidOverlay, RaidOverlayConfig, RaidRegistryAction, TimerOverlay,
+    OperationTimerConfig, OperationTimerOverlay, Overlay, OverlayConfig, PersonalOverlay, RaidGridLayout, RaidOverlay,
+    RaidOverlayConfig, RaidRegistryAction, TimerOverlay,
 };
 use baras_types::{
-    AbilityCastOverlayConfig as TypesAbilityCastConfig,
-    AbilityQueueOverlayConfig as TypesAbilityQueueConfig, ClassIconMode,
-    CombatTimeOverlayConfig as TypesCombatTimeConfig, CooldownTrackerConfig,
+    AbilityCastOverlayConfig as TypesAbilityCastConfig, AbilityQueueOverlayConfig as TypesAbilityQueueConfig,
+    ClassIconMode, CombatTimeOverlayConfig as TypesCombatTimeConfig, CooldownTrackerConfig,
     DotTrackerConfig as TypesDotTrackerConfig, EffectsAConfig as TypesEffectsAConfig,
-    NotesOverlayConfig as TypesNotesOverlayConfig,
-    OperationTimerOverlayConfig as TypesOperationTimerConfig,
+    NotesOverlayConfig as TypesNotesOverlayConfig, OperationTimerOverlayConfig as TypesOperationTimerConfig,
 };
 
 use super::state::{OverlayCommand, OverlayHandle, PositionEvent};
@@ -172,10 +170,12 @@ where
                     }
                     OverlayCommand::SetFontFamily(family) => {
                         overlay.frame_mut().set_font_family(&family);
+                        overlay.invalidate();
                         needs_render = true;
                     }
                     OverlayCommand::SetFrameStyle(style) => {
                         overlay.frame_mut().set_style(style);
+                        overlay.invalidate();
                         needs_render = true;
                     }
                     OverlayCommand::SetPosition(x, y) => {
@@ -184,14 +184,14 @@ where
                     }
                     OverlayCommand::SetSize(w, h) => {
                         overlay.frame_mut().window_mut().set_size(w, h);
+                        overlay.invalidate();
                         needs_render = true;
                     }
                     OverlayCommand::GetPosition(response_tx) => {
                         let pos = overlay.position();
                         let current_monitor = overlay.frame().window().current_monitor();
-                        let (monitor_id, monitor_x, monitor_y) = current_monitor
-                            .map(|m| (Some(m.id), m.x, m.y))
-                            .unwrap_or((None, 0, 0));
+                        let (monitor_id, monitor_x, monitor_y) =
+                            current_monitor.map(|m| (Some(m.id), m.x, m.y)).unwrap_or((None, 0, 0));
                         let _ = response_tx.send(PositionEvent {
                             kind,
                             x: pos.x,
@@ -304,17 +304,16 @@ where
     let handle = thread::spawn(move || {
         // Create the overlay on the main thread via GCD
         // Returns a raw pointer wrapped in SendPtr since we can't move the overlay between threads
-        let overlay_ptr: SendPtr<O> =
-            dispatch::Queue::main().exec_sync(move || match create_overlay() {
-                Ok(o) => {
-                    let _ = confirm_tx.send(Ok(()));
-                    SendPtr(Box::into_raw(Box::new(o)))
-                }
-                Err(e) => {
-                    let _ = confirm_tx.send(Err(e));
-                    SendPtr(ptr::null_mut())
-                }
-            });
+        let overlay_ptr: SendPtr<O> = dispatch::Queue::main().exec_sync(move || match create_overlay() {
+            Ok(o) => {
+                let _ = confirm_tx.send(Ok(()));
+                SendPtr(Box::into_raw(Box::new(o)))
+            }
+            Err(e) => {
+                let _ = confirm_tx.send(Err(e));
+                SendPtr(ptr::null_mut())
+            }
+        });
 
         if overlay_ptr.is_null() {
             return;
@@ -365,6 +364,7 @@ where
                         dispatch::Queue::main().exec_sync(move || {
                             let overlay = unsafe { &mut *overlay_ptr.get() };
                             overlay.frame_mut().set_font_family(&family);
+                            overlay.invalidate();
                         });
                         needs_render = true;
                     }
@@ -372,6 +372,7 @@ where
                         dispatch::Queue::main().exec_sync(move || {
                             let overlay = unsafe { &mut *overlay_ptr.get() };
                             overlay.frame_mut().set_style(style);
+                            overlay.invalidate();
                         });
                         needs_render = true;
                     }
@@ -386,6 +387,7 @@ where
                         dispatch::Queue::main().exec_sync(move || {
                             let overlay = unsafe { &mut *overlay_ptr.get() };
                             overlay.frame_mut().window_mut().set_size(w, h);
+                            overlay.invalidate();
                         });
                         needs_render = true;
                     }
@@ -394,9 +396,8 @@ where
                             let overlay = unsafe { &*overlay_ptr.get() };
                             let pos = overlay.position();
                             let current_monitor = overlay.frame().window().current_monitor();
-                            let (monitor_id, monitor_x, monitor_y) = current_monitor
-                                .map(|m| (Some(m.id), m.x, m.y))
-                                .unwrap_or((None, 0, 0));
+                            let (monitor_id, monitor_x, monitor_y) =
+                                current_monitor.map(|m| (Some(m.id), m.x, m.y)).unwrap_or((None, 0, 0));
                             PositionEvent {
                                 kind,
                                 x: pos.x,
@@ -529,6 +530,35 @@ where
 // Factory Functions
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Window placement for an overlay. The position is relative to its monitor:
+/// layer-shell margins on Wayland, converted to absolute on Windows.
+fn window_config(kind: OverlayType, position: &OverlayPositionConfig) -> OverlayConfig {
+    OverlayConfig {
+        x: position.x,
+        y: position.y,
+        width: position.width,
+        height: position.height,
+        namespace: kind.namespace(),
+        snap_to_grid: true,
+        click_through: true,
+        target_monitor_id: position.monitor_id.clone(),
+    }
+}
+
+/// Spawn an overlay that sends nothing back to the service
+fn spawn_simple<O: Overlay>(
+    kind: OverlayType,
+    factory: impl FnOnce() -> Result<O, String> + Send + 'static,
+) -> Result<OverlayHandle, String> {
+    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
+    Ok(OverlayHandle {
+        tx,
+        handle,
+        kind,
+        registry_action_rx: None,
+    })
+}
+
 /// Create and spawn a metric overlay
 ///
 /// Position is stored as relative to the saved monitor. On Wayland with layer-shell,
@@ -553,21 +583,11 @@ pub fn create_metric_overlay(
     // Position is already relative to the monitor - pass directly
     // On Wayland: used as layer-shell margins
     // On Windows: will be converted to absolute using monitor position
-    let config = OverlayConfig {
-        x: position.x,
-        y: position.y,
-        width: position.width,
-        height: position.height,
-        namespace: overlay_type.namespace().to_string(),
-        snap_to_grid: true,
-        click_through: true,
-        target_monitor_id: position.monitor_id.clone(),
-    };
-
     let title = overlay_type.title().to_string();
     let kind = OverlayType::Metric(overlay_type);
 
     // Create a factory closure that will be called inside the spawned thread
+    let config = window_config(kind, &position);
     let factory = move || {
         MetricOverlay::new(
             config,
@@ -585,14 +605,7 @@ pub fn create_metric_overlay(
         .map_err(|e| format!("Failed to create {} overlay: {}", title, e))
     };
 
-    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
-
-    Ok(OverlayHandle {
-        tx,
-        handle,
-        kind,
-        registry_action_rx: None,
-    })
+    spawn_simple(kind, factory)
 }
 
 /// Create and spawn the personal overlay
@@ -608,33 +621,15 @@ pub fn create_personal_overlay(
     personal_config: PersonalOverlayConfig,
 ) -> Result<OverlayHandle, String> {
     // Position is already relative to the monitor - pass directly
-    let config = OverlayConfig {
-        x: position.x,
-        y: position.y,
-        width: position.width,
-        height: position.height,
-        namespace: "baras-personal".to_string(),
-        snap_to_grid: true,
-        click_through: true,
-        target_monitor_id: position.monitor_id.clone(),
-    };
-
     let kind = OverlayType::Personal;
 
     // Create a factory closure that will be called inside the spawned thread
+    let config = window_config(kind, &position);
     let factory = move || {
-        PersonalOverlay::new(config, personal_config)
-            .map_err(|e| format!("Failed to create personal overlay: {}", e))
+        PersonalOverlay::new(config, personal_config).map_err(|e| format!("Failed to create personal overlay: {}", e))
     };
 
-    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
-
-    Ok(OverlayHandle {
-        tx,
-        handle,
-        kind,
-        registry_action_rx: None,
-    })
+    spawn_simple(kind, factory)
 }
 
 /// Create and spawn the raid frames overlay (starts with empty frames)
@@ -646,27 +641,17 @@ pub fn create_raid_overlay(
     layout: RaidGridLayout,
     raid_config: RaidOverlayConfig,
 ) -> Result<OverlayHandle, String> {
-    let config = OverlayConfig {
-        x: position.x,
-        y: position.y,
-        width: position.width,
-        height: position.height,
-        namespace: "baras-raid".to_string(),
-        // Free positioning: the raid frames align with the game's own UI
-        // element, not with other overlays.
-        snap_to_grid: false,
-        click_through: true,
-        target_monitor_id: position.monitor_id.clone(),
-    };
-
     let kind = OverlayType::Raid;
 
     // Create channel for registry actions (overlay → service)
     let (registry_tx, registry_rx) = std::sync::mpsc::channel::<RaidRegistryAction>();
 
+    let config = OverlayConfig {
+        snap_to_grid: false,
+        ..window_config(kind, &position)
+    };
     let factory = move || {
-        RaidOverlay::new(config, layout, raid_config)
-            .map_err(|e| format!("Failed to create raid overlay: {}", e))
+        RaidOverlay::new(config, layout, raid_config).map_err(|e| format!("Failed to create raid overlay: {}", e))
     };
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, Some(registry_tx))?;
@@ -684,32 +669,14 @@ pub fn create_boss_health_overlay(
     position: OverlayPositionConfig,
     boss_config: BossHealthConfig,
 ) -> Result<OverlayHandle, String> {
-    let config = OverlayConfig {
-        x: position.x,
-        y: position.y,
-        width: position.width,
-        height: position.height,
-        namespace: "baras-boss-health".to_string(),
-        snap_to_grid: true,
-        click_through: true,
-        target_monitor_id: position.monitor_id.clone(),
-    };
-
     let kind = OverlayType::BossHealth;
 
+    let config = window_config(kind, &position);
     let factory = move || {
-        BossHealthOverlay::new(config, boss_config)
-            .map_err(|e| format!("Failed to create boss health overlay: {}", e))
+        BossHealthOverlay::new(config, boss_config).map_err(|e| format!("Failed to create boss health overlay: {}", e))
     };
 
-    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
-
-    Ok(OverlayHandle {
-        tx,
-        handle,
-        kind,
-        registry_action_rx: None,
-    })
+    spawn_simple(kind, factory)
 }
 
 /// Create and spawn the Timers A countdown overlay
@@ -717,32 +684,15 @@ pub fn create_timers_a_overlay(
     position: OverlayPositionConfig,
     timer_config: TimerOverlayConfig,
 ) -> Result<OverlayHandle, String> {
-    let config = OverlayConfig {
-        x: position.x,
-        y: position.y,
-        width: position.width,
-        height: position.height,
-        namespace: "baras-timers".to_string(), // Keep original namespace for backward compat
-        snap_to_grid: true,
-        click_through: true,
-        target_monitor_id: position.monitor_id.clone(),
-    };
-
     let kind = OverlayType::TimersA;
 
+    let config = window_config(kind, &position);
     let factory = move || {
         TimerOverlay::new(config, timer_config, "Timers A")
             .map_err(|e| format!("Failed to create Timers A overlay: {}", e))
     };
 
-    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
-
-    Ok(OverlayHandle {
-        tx,
-        handle,
-        kind,
-        registry_action_rx: None,
-    })
+    spawn_simple(kind, factory)
 }
 
 /// Create and spawn the Timers B countdown overlay
@@ -750,32 +700,15 @@ pub fn create_timers_b_overlay(
     position: OverlayPositionConfig,
     timer_config: TimerOverlayConfig,
 ) -> Result<OverlayHandle, String> {
-    let config = OverlayConfig {
-        x: position.x,
-        y: position.y,
-        width: position.width,
-        height: position.height,
-        namespace: "baras-timers-b".to_string(),
-        snap_to_grid: true,
-        click_through: true,
-        target_monitor_id: position.monitor_id.clone(),
-    };
-
     let kind = OverlayType::TimersB;
 
+    let config = window_config(kind, &position);
     let factory = move || {
         TimerOverlay::new(config, timer_config, "Timers B")
             .map_err(|e| format!("Failed to create Timers B overlay: {}", e))
     };
 
-    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
-
-    Ok(OverlayHandle {
-        tx,
-        handle,
-        kind,
-        registry_action_rx: None,
-    })
+    spawn_simple(kind, factory)
 }
 
 /// Create and spawn the challenges overlay
@@ -783,32 +716,15 @@ pub fn create_challenges_overlay(
     position: OverlayPositionConfig,
     challenge_config: ChallengeOverlayConfig,
 ) -> Result<OverlayHandle, String> {
-    let config = OverlayConfig {
-        x: position.x,
-        y: position.y,
-        width: position.width,
-        height: position.height,
-        namespace: "baras-challenges".to_string(),
-        snap_to_grid: true,
-        click_through: true,
-        target_monitor_id: position.monitor_id.clone(),
-    };
-
     let kind = OverlayType::Challenges;
 
+    let config = window_config(kind, &position);
     let factory = move || {
         ChallengeOverlay::new(config, challenge_config)
             .map_err(|e| format!("Failed to create challenges overlay: {}", e))
     };
 
-    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
-
-    Ok(OverlayHandle {
-        tx,
-        handle,
-        kind,
-        registry_action_rx: None,
-    })
+    spawn_simple(kind, factory)
 }
 
 /// Create and spawn the alerts overlay
@@ -816,32 +732,14 @@ pub fn create_alerts_overlay(
     position: OverlayPositionConfig,
     alerts_config: AlertsOverlayConfig,
 ) -> Result<OverlayHandle, String> {
-    let config = OverlayConfig {
-        x: position.x,
-        y: position.y,
-        width: position.width,
-        height: position.height,
-        namespace: "baras-alerts".to_string(),
-        snap_to_grid: true,
-        click_through: true,
-        target_monitor_id: position.monitor_id.clone(),
-    };
-
     let kind = OverlayType::Alerts;
 
+    let config = window_config(kind, &position);
     let factory = move || {
-        AlertsOverlay::new(config, alerts_config)
-            .map_err(|e| format!("Failed to create alerts overlay: {}", e))
+        AlertsOverlay::new(config, alerts_config).map_err(|e| format!("Failed to create alerts overlay: {}", e))
     };
 
-    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
-
-    Ok(OverlayHandle {
-        tx,
-        handle,
-        kind,
-        registry_action_rx: None,
-    })
+    spawn_simple(kind, factory)
 }
 
 /// Convert the shared types effects config to the overlay-crate config
@@ -897,32 +795,15 @@ pub fn create_effects_overlay(
     position: OverlayPositionConfig,
     effects_config: TypesEffectsAConfig,
 ) -> Result<OverlayHandle, String> {
-    let config = OverlayConfig {
-        x: position.x,
-        y: position.y,
-        width: position.width,
-        height: position.height,
-        namespace: kind.namespace(),
-        snap_to_grid: true,
-        click_through: true,
-        target_monitor_id: position.monitor_id.clone(),
-    };
-
     let overlay_config = effects_ab_config(&effects_config, title);
 
+    let config = window_config(kind, &position);
     let factory = move || {
         EffectsABOverlay::new(config, overlay_config, title)
             .map_err(|e| format!("Failed to create {} overlay: {}", title, e))
     };
 
-    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
-
-    Ok(OverlayHandle {
-        tx,
-        handle,
-        kind,
-        registry_action_rx: None,
-    })
+    spawn_simple(kind, factory)
 }
 
 /// Create and spawn a cooldowns tracker overlay (A or B)
@@ -931,32 +812,14 @@ pub fn create_cooldowns_overlay(
     position: OverlayPositionConfig,
     cooldowns_config: CooldownTrackerConfig,
 ) -> Result<OverlayHandle, String> {
-    let config = OverlayConfig {
-        x: position.x,
-        y: position.y,
-        width: position.width,
-        height: position.height,
-        namespace: kind.namespace(),
-        snap_to_grid: true,
-        click_through: true,
-        target_monitor_id: position.monitor_id.clone(),
-    };
-
     let overlay_config = cooldown_config(&cooldowns_config);
 
+    let config = window_config(kind, &position);
     let factory = move || {
-        CooldownOverlay::new(config, overlay_config)
-            .map_err(|e| format!("Failed to create cooldowns overlay: {}", e))
+        CooldownOverlay::new(config, overlay_config).map_err(|e| format!("Failed to create cooldowns overlay: {}", e))
     };
 
-    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
-
-    Ok(OverlayHandle {
-        tx,
-        handle,
-        kind,
-        registry_action_rx: None,
-    })
+    spawn_simple(kind, factory)
 }
 
 /// Create and spawn the DOT tracker overlay
@@ -964,17 +827,6 @@ pub fn create_dot_tracker_overlay(
     position: OverlayPositionConfig,
     dot_config: TypesDotTrackerConfig,
 ) -> Result<OverlayHandle, String> {
-    let config = OverlayConfig {
-        x: position.x,
-        y: position.y,
-        width: position.width,
-        height: position.height,
-        namespace: "baras-dot-tracker".to_string(),
-        snap_to_grid: true,
-        click_through: true,
-        target_monitor_id: position.monitor_id.clone(),
-    };
-
     let kind = OverlayType::DotTracker;
 
     // Convert types config to overlay config (font_color in types not used by overlay)
@@ -995,19 +847,13 @@ pub fn create_dot_tracker_overlay(
         bar_gradient: dot_config.bar_gradient,
     };
 
+    let config = window_config(kind, &position);
     let factory = move || {
         DotTrackerOverlay::new(config, overlay_config)
             .map_err(|e| format!("Failed to create DOT tracker overlay: {}", e))
     };
 
-    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
-
-    Ok(OverlayHandle {
-        tx,
-        handle,
-        kind,
-        registry_action_rx: None,
-    })
+    spawn_simple(kind, factory)
 }
 
 /// Create and spawn the enemy HP frames overlay (PvP)
@@ -1016,17 +862,6 @@ pub fn create_enemy_frames_overlay(
     ef_config: baras_types::EnemyFramesConfig,
     class_colors: baras_types::ClassColorConfig,
 ) -> Result<OverlayHandle, String> {
-    let config = OverlayConfig {
-        x: position.x,
-        y: position.y,
-        width: position.width,
-        height: position.height,
-        namespace: "baras-enemy-frames".to_string(),
-        snap_to_grid: true,
-        click_through: true,
-        target_monitor_id: position.monitor_id.clone(),
-    };
-
     let kind = OverlayType::EnemyFrames;
 
     let overlay_config = baras_overlay::EnemyFramesConfig {
@@ -1035,19 +870,13 @@ pub fn create_enemy_frames_overlay(
         class_colors,
     };
 
+    let config = window_config(kind, &position);
     let factory = move || {
         baras_overlay::EnemyFramesOverlay::new(config, overlay_config)
             .map_err(|e| format!("Failed to create enemy frames overlay: {}", e))
     };
 
-    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
-
-    Ok(OverlayHandle {
-        tx,
-        handle,
-        kind,
-        registry_action_rx: None,
-    })
+    spawn_simple(kind, factory)
 }
 
 /// Create and spawn the notes overlay
@@ -1055,17 +884,6 @@ pub fn create_notes_overlay(
     position: OverlayPositionConfig,
     notes_config: TypesNotesOverlayConfig,
 ) -> Result<OverlayHandle, String> {
-    let config = OverlayConfig {
-        x: position.x,
-        y: position.y,
-        width: position.width,
-        height: position.height,
-        namespace: "baras-notes".to_string(),
-        snap_to_grid: true,
-        click_through: true,
-        target_monitor_id: position.monitor_id.clone(),
-    };
-
     let kind = OverlayType::Notes;
 
     // Convert types config to overlay config
@@ -1075,19 +893,11 @@ pub fn create_notes_overlay(
         dynamic_background: notes_config.dynamic_background,
     };
 
-    let factory = move || {
-        NotesOverlay::new(config, overlay_config)
-            .map_err(|e| format!("Failed to create notes overlay: {}", e))
-    };
+    let config = window_config(kind, &position);
+    let factory =
+        move || NotesOverlay::new(config, overlay_config).map_err(|e| format!("Failed to create notes overlay: {}", e));
 
-    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
-
-    Ok(OverlayHandle {
-        tx,
-        handle,
-        kind,
-        registry_action_rx: None,
-    })
+    spawn_simple(kind, factory)
 }
 
 /// Map the persisted ability cast config onto the overlay's runtime config
@@ -1109,31 +919,15 @@ pub fn create_ability_cast_overlay(
     ac_config: &TypesAbilityCastConfig,
 ) -> Result<OverlayHandle, String> {
     let kind = OverlayType::AbilityCast;
-    let config = OverlayConfig {
-        x: position.x,
-        y: position.y,
-        width: position.width,
-        height: position.height,
-        namespace: kind.namespace(),
-        snap_to_grid: true,
-        click_through: true,
-        target_monitor_id: position.monitor_id.clone(),
-    };
     let overlay_config = ability_cast_config(ac_config);
 
+    let config = window_config(kind, &position);
     let factory = move || {
         AbilityCastOverlay::new(config, overlay_config)
             .map_err(|e| format!("Failed to create ability cast overlay: {}", e))
     };
 
-    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
-
-    Ok(OverlayHandle {
-        tx,
-        handle,
-        kind,
-        registry_action_rx: None,
-    })
+    spawn_simple(kind, factory)
 }
 
 /// Create and spawn the combat time overlay
@@ -1141,17 +935,6 @@ pub fn create_combat_time_overlay(
     position: OverlayPositionConfig,
     ct_config: TypesCombatTimeConfig,
 ) -> Result<OverlayHandle, String> {
-    let config = OverlayConfig {
-        x: position.x,
-        y: position.y,
-        width: position.width,
-        height: position.height,
-        namespace: "baras-combat-time".to_string(),
-        snap_to_grid: true,
-        click_through: true,
-        target_monitor_id: position.monitor_id.clone(),
-    };
-
     let kind = OverlayType::CombatTime;
 
     let overlay_config = CombatTimeConfig {
@@ -1162,19 +945,13 @@ pub fn create_combat_time_overlay(
         clear_after_combat: ct_config.clear_after_combat,
     };
 
+    let config = window_config(kind, &position);
     let factory = move || {
         CombatTimeOverlay::new(config, overlay_config)
             .map_err(|e| format!("Failed to create combat time overlay: {}", e))
     };
 
-    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
-
-    Ok(OverlayHandle {
-        tx,
-        handle,
-        kind,
-        registry_action_rx: None,
-    })
+    spawn_simple(kind, factory)
 }
 
 /// Create and spawn the operation timer overlay
@@ -1182,17 +959,6 @@ pub fn create_operation_timer_overlay(
     position: OverlayPositionConfig,
     ot_config: TypesOperationTimerConfig,
 ) -> Result<OverlayHandle, String> {
-    let config = OverlayConfig {
-        x: position.x,
-        y: position.y,
-        width: position.width,
-        height: position.height,
-        namespace: "baras-operation-timer".to_string(),
-        snap_to_grid: true,
-        click_through: true,
-        target_monitor_id: position.monitor_id.clone(),
-    };
-
     let kind = OverlayType::OperationTimer;
 
     let overlay_config = OperationTimerConfig {
@@ -1202,19 +968,13 @@ pub fn create_operation_timer_overlay(
         dynamic_background: ot_config.dynamic_background,
     };
 
+    let config = window_config(kind, &position);
     let factory = move || {
         OperationTimerOverlay::new(config, overlay_config)
             .map_err(|e| format!("Failed to create operation timer overlay: {}", e))
     };
 
-    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
-
-    Ok(OverlayHandle {
-        tx,
-        handle,
-        kind,
-        registry_action_rx: None,
-    })
+    spawn_simple(kind, factory)
 }
 
 /// Create and spawn the ability queue overlay
@@ -1222,17 +982,6 @@ pub fn create_ability_queue_overlay(
     position: OverlayPositionConfig,
     aq_config: TypesAbilityQueueConfig,
 ) -> Result<OverlayHandle, String> {
-    let config = OverlayConfig {
-        x: position.x,
-        y: position.y,
-        width: position.width,
-        height: position.height,
-        namespace: "baras-ability-queue".to_string(),
-        snap_to_grid: true,
-        click_through: true,
-        target_monitor_id: position.monitor_id.clone(),
-    };
-
     let kind = OverlayType::AbilityQueue;
 
     let overlay_config = AbilityQueueConfig {
@@ -1243,17 +992,11 @@ pub fn create_ability_queue_overlay(
         dynamic_background: aq_config.dynamic_background,
     };
 
+    let config = window_config(kind, &position);
     let factory = move || {
         AbilityQueueOverlay::new(config, overlay_config)
             .map_err(|e| format!("Failed to create ability queue overlay: {}", e))
     };
 
-    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
-
-    Ok(OverlayHandle {
-        tx,
-        handle,
-        kind,
-        registry_action_rx: None,
-    })
+    spawn_simple(kind, factory)
 }

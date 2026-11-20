@@ -10,9 +10,11 @@ pub fn SidebarHeader(
     collapsed: bool,
     on_toggle: EventHandler<()>,
     /// Shown under the toggle while folded (e.g. active filter count)
-    #[props(default)] badge: Option<String>,
+    #[props(default)]
+    badge: Option<String>,
     /// Beside the toggle while open (e.g. a "New" button)
-    #[props(default = VNode::empty())] action: Element,
+    #[props(default = VNode::empty())]
+    action: Element,
 ) -> Element {
     rsx! {
         div { class: "sidebar-header",

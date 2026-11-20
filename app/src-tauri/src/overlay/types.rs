@@ -191,6 +191,44 @@ pub enum OverlayType {
 }
 
 impl OverlayType {
+    /// Every overlay that is not a metric
+    pub const FIXED: [OverlayType; 19] = [
+        Self::Personal,
+        Self::Raid,
+        Self::BossHealth,
+        Self::TimersA,
+        Self::TimersB,
+        Self::Challenges,
+        Self::Alerts,
+        Self::EffectsA,
+        Self::EffectsB,
+        Self::EffectsC,
+        Self::Cooldowns,
+        Self::CooldownsB,
+        Self::DotTracker,
+        Self::Notes,
+        Self::CombatTime,
+        Self::OperationTimer,
+        Self::EnemyFrames,
+        Self::AbilityCast,
+        Self::AbilityQueue,
+    ];
+
+    pub fn all() -> impl Iterator<Item = OverlayType> {
+        Self::FIXED
+            .into_iter()
+            .chain(MetricType::all().iter().copied().map(Self::Metric))
+    }
+
+    pub fn from_config_key(key: &str) -> Option<Self> {
+        // "timers" is the pre-split name of Timers A
+        let key = if key == "timers" { "timers_a" } else { key };
+        Self::FIXED
+            .into_iter()
+            .find(|kind| kind.config_key() == key)
+            .or_else(|| MetricType::from_config_key(key).map(Self::Metric))
+    }
+
     /// Overlays with live countdowns, redrawn at `OverlaySettings::overlay_fps`
     /// while locked; the rest poll at a fixed 10 per second
     pub fn is_animated(&self) -> bool {

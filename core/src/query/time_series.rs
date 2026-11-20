@@ -298,7 +298,7 @@ ORDER BY time_series.bucket_start_ms
             let hp_col = batch.column(2);
             let max_col = batch.column(3);
 
-            for i in 0..batch.num_rows() {
+            for (i, &bucket_start_ms) in buckets.iter().enumerate().take(batch.num_rows()) {
                 if !pct_col.is_null(i) {
                     // Extract values — columns may be f64/i32/i64 depending on cast
                     if let Some(a) = pct_col.as_any().downcast_ref::<Float64Array>() {
@@ -316,7 +316,7 @@ ORDER BY time_series.bucket_start_ms
                     }
                 }
                 results.push(HpPoint {
-                    bucket_start_ms: buckets[i],
+                    bucket_start_ms,
                     hp_pct: last_pct,
                     current_hp: last_hp,
                     max_hp: last_max,
@@ -344,7 +344,9 @@ impl EncounterQuery<'_> {
             GroupMetric::DamageTaken => ("target", "dmg_amount", ""),
             GroupMetric::Threat => ("source", "threat", ""), // see floored_threat
         };
-        let tr_filter = time_range.map(|tr| format!("AND {}", tr.sql_filter())).unwrap_or_default();
+        let tr_filter = time_range
+            .map(|tr| format!("AND {}", tr.sql_filter()))
+            .unwrap_or_default();
 
         let bounds = self
             .sql(&format!(
@@ -395,7 +397,11 @@ impl EncounterQuery<'_> {
             };
             series[idx].1[slot] += value;
         }
-        Ok(GroupTimeSeries { start_secs: min_bucket as f64 * bucket_secs, bucket_secs, series })
+        Ok(GroupTimeSeries {
+            start_secs: min_bucket as f64 * bucket_secs,
+            bucket_secs,
+            series,
+        })
     }
 
     /// Threat with each player's running total floored at 0, so a drop only
@@ -404,7 +410,11 @@ impl EncounterQuery<'_> {
     /// totals undercount and clip the full drop of a cloak-out or threat wipe
     /// to a small dip. Returns
     /// (player, bucket, threat actually gained or lost) per event, in log order.
-    pub(super) async fn floored_threat(&self, bucket_secs: f64, tr_filter: &str) -> Result<Vec<(String, i64, f64)>, String> {
+    pub(super) async fn floored_threat(
+        &self,
+        bucket_secs: f64,
+        tr_filter: &str,
+    ) -> Result<Vec<(String, i64, f64)>, String> {
         let batches = self
             .sql(&format!(
                 "SELECT source_name,

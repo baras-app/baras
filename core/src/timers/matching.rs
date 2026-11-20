@@ -42,8 +42,8 @@ pub fn matches_source_target_filters(
     }
 
     // Check source filter if present (None = any, passes)
-    if let Some(source_filter) = trigger.source_filter() {
-        if !source_filter.matches(
+    if let Some(source_filter) = trigger.source_filter()
+        && !source_filter.matches(
             entities,
             source_id,
             source_type,
@@ -53,14 +53,14 @@ pub fn matches_source_target_filters(
             current_target_id,
             boss_entity_ids,
             pvp_factions,
-        ) {
-            return false;
-        }
+        )
+    {
+        return false;
     }
 
     // Check target filter if present (None = any, passes)
-    if let Some(target_filter) = trigger.target_filter() {
-        if !target_filter.matches(
+    if let Some(target_filter) = trigger.target_filter()
+        && !target_filter.matches(
             entities,
             target_id,
             target_type,
@@ -70,9 +70,9 @@ pub fn matches_source_target_filters(
             current_target_id,
             boss_entity_ids,
             pvp_factions,
-        ) {
-            return false;
-        }
+        )
+    {
+        return false;
     }
 
     true
@@ -80,10 +80,7 @@ pub fn matches_source_target_filters(
 
 /// Check if a timer definition is active for current encounter context.
 /// Reads context directly from the encounter (single source of truth).
-pub(super) fn is_definition_active(
-    def: &TimerDefinition,
-    encounter: Option<&CombatEncounter>,
-) -> bool {
+pub(super) fn is_definition_active(def: &TimerDefinition, encounter: Option<&CombatEncounter>) -> bool {
     // Extract context from encounter
     let (area_id, area_name, boss_name, boss_def_id, difficulty) = match encounter {
         Some(enc) => (
@@ -97,19 +94,13 @@ pub(super) fn is_definition_active(
     };
 
     // First check basic context (area, boss, difficulty)
-    if !def.enabled
-        || !def.is_active_for_context(area_id, area_name, boss_name, boss_def_id, difficulty)
-    {
+    if !def.enabled || !def.is_active_for_context(area_id, area_name, boss_name, boss_def_id, difficulty) {
         return false;
     }
 
     // Check conditions (new unified system + legacy phases/counter_condition)
     if let Some(enc) = encounter {
-        if !enc.evaluate_merged_conditions(
-            &def.conditions,
-            &def.phases,
-            def.counter_condition.as_ref(),
-        ) {
+        if !enc.evaluate_merged_conditions(&def.conditions, &def.phases, def.counter_condition.as_ref()) {
             return false;
         }
     } else {
@@ -145,9 +136,7 @@ pub(super) fn is_definition_active_with_snapshot(
         None => (None, None, None, None, None),
     };
 
-    if !def.enabled
-        || !def.is_active_for_context(area_id, area_name, boss_name, boss_def_id, difficulty)
-    {
+    if !def.enabled || !def.is_active_for_context(area_id, area_name, boss_name, boss_def_id, difficulty) {
         return false;
     }
 

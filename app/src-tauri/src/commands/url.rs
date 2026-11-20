@@ -50,9 +50,7 @@ async fn open_url_via_portal(url: &str) -> Result<(), ashpd::Error> {
     use ashpd::desktop::open_uri::OpenFileRequest;
 
     // Parse URL and send it via the portal
-    let uri = ashpd::Uri::parse(url).map_err(|_| {
-        ashpd::Error::Response(ashpd::desktop::ResponseError::Other)
-    })?;
+    let uri = ashpd::Uri::parse(url).map_err(|_| ashpd::Error::Response(ashpd::desktop::ResponseError::Other))?;
 
     OpenFileRequest::default().send_uri(&uri).await?;
 

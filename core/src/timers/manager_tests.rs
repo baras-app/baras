@@ -216,10 +216,7 @@ fn test_npc_appears_position_constraint() {
                 position: vec![PositionConstraint {
                     entity: PositionEntity::Source,
                     axis: PositionAxis::X,
-                    op: PositionOp::Between {
-                        min: 100.0,
-                        max: 200.0,
-                    },
+                    op: PositionOp::Between { min: 100.0, max: 200.0 },
                 }],
             },
             30.0,
@@ -458,11 +455,7 @@ fn test_anyof_condition_triggers_on_either() {
     };
     manager.handle_signal(&signal1, None);
 
-    assert_eq!(
-        manager.active_timers().len(),
-        1,
-        "First condition should trigger"
-    );
+    assert_eq!(manager.active_timers().len(), 1, "First condition should trigger");
 
     // Clear timers via CombatEnded and test second ability
     manager.handle_signal(
@@ -489,11 +482,7 @@ fn test_anyof_condition_triggers_on_either() {
     };
     manager.handle_signal(&signal2, None);
 
-    assert_eq!(
-        manager.active_timers().len(),
-        1,
-        "Second condition should also trigger"
-    );
+    assert_eq!(manager.active_timers().len(), 1, "Second condition should also trigger");
 }
 
 #[test]
@@ -529,11 +518,7 @@ fn test_anyof_mixed_trigger_types() {
     };
     manager.handle_signal(&signal, Some(&enc));
 
-    assert_eq!(
-        manager.active_timers().len(),
-        1,
-        "CombatStart in AnyOf should trigger"
-    );
+    assert_eq!(manager.active_timers().len(), 1, "CombatStart in AnyOf should trigger");
 }
 
 #[test]
@@ -642,10 +627,7 @@ fn test_wrong_ability_does_not_trigger() {
     };
     manager.handle_signal(&signal, None);
 
-    assert!(
-        manager.active_timers().is_empty(),
-        "Wrong ability should not trigger"
-    );
+    assert!(manager.active_timers().is_empty(), "Wrong ability should not trigger");
 }
 
 #[test]
@@ -653,12 +635,7 @@ fn test_combat_end_clears_timers() {
     let mut manager = TimerManager::new();
 
     let start = now();
-    let timer = make_timer(
-        "combat_timer",
-        "Combat Timer",
-        TimerTrigger::CombatStart,
-        300.0,
-    );
+    let timer = make_timer("combat_timer", "Combat Timer", TimerTrigger::CombatStart, 300.0);
     manager.load_definitions(vec![timer]);
 
     let enc = make_encounter(start, 0.5);
@@ -683,10 +660,7 @@ fn test_combat_end_clears_timers() {
         None,
     );
 
-    assert!(
-        manager.active_timers().is_empty(),
-        "CombatEnded should clear timers"
-    );
+    assert!(manager.active_timers().is_empty(), "CombatEnded should clear timers");
 }
 
 #[test]
@@ -750,11 +724,7 @@ fn test_timer_expires_triggers_chain() {
 
     // Timer A should be gone, Timer B should now be active
     let active = manager.active_timers();
-    assert_eq!(
-        active.len(),
-        1,
-        "Expected Timer B to be active after Timer A expires"
-    );
+    assert_eq!(active.len(), 1, "Expected Timer B to be active after Timer A expires");
     assert_eq!(active[0].name, "Timer B");
 }
 
@@ -800,10 +770,7 @@ fn test_timer_expires_without_chain() {
     manager.tick(None);
 
     // Timer should be gone
-    assert!(
-        manager.active_timers().is_empty(),
-        "Expired timer should be removed"
-    );
+    assert!(manager.active_timers().is_empty(), "Expired timer should be removed");
 }
 
 #[test]
@@ -858,11 +825,7 @@ fn test_phase_ended_triggers_timer() {
     );
 
     let active = manager.active_timers();
-    assert_eq!(
-        active.len(),
-        1,
-        "PhaseEnded timer should trigger when phase_1 ends"
-    );
+    assert_eq!(active.len(), 1, "PhaseEnded timer should trigger when phase_1 ends");
     assert_eq!(active[0].name, "Phase 1 Ended Timer");
 }
 
@@ -911,23 +874,14 @@ fn test_phase_entered_and_ended_both_trigger() {
     );
 
     let active = manager.active_timers();
-    assert_eq!(
-        active.len(),
-        2,
-        "Both phase entered and ended timers should trigger"
-    );
+    assert_eq!(active.len(), 2, "Both phase entered and ended timers should trigger");
 }
 
 #[test]
 fn test_any_phase_change_starts_timer() {
     let mut manager = TimerManager::new();
 
-    let timer = make_timer(
-        "any_phase",
-        "Any Phase Change",
-        TimerTrigger::AnyPhaseChange,
-        10.0,
-    );
+    let timer = make_timer("any_phase", "Any Phase Change", TimerTrigger::AnyPhaseChange, 10.0);
     manager.load_definitions(vec![timer]);
 
     // No timers active initially
@@ -945,11 +899,7 @@ fn test_any_phase_change_starts_timer() {
     );
 
     let active = manager.active_timers();
-    assert_eq!(
-        active.len(),
-        1,
-        "AnyPhaseChange timer should start on phase transition"
-    );
+    assert_eq!(active.len(), 1, "AnyPhaseChange timer should start on phase transition");
     assert_eq!(active[0].name, "Any Phase Change");
 }
 
@@ -958,12 +908,7 @@ fn test_any_phase_change_starts_on_every_transition() {
     let mut manager = TimerManager::new();
 
     // per_target=false so we can observe restarts
-    let mut timer = make_timer(
-        "any_phase",
-        "Any Phase Change",
-        TimerTrigger::AnyPhaseChange,
-        10.0,
-    );
+    let mut timer = make_timer("any_phase", "Any Phase Change", TimerTrigger::AnyPhaseChange, 10.0);
     timer.can_be_refreshed = true;
     timer.per_target = false;
     manager.load_definitions(vec![timer]);
@@ -1111,10 +1056,7 @@ fn run_timer_integration(fixture_path: &Path, timer: TimerDefinition) -> Vec<Str
 fn test_integration_combat_start_timer_with_real_log() {
     let fixture_path = Path::new("../test-log-files/fixtures/bestia_pull.txt");
     if !fixture_path.exists() {
-        eprintln!(
-            "Skipping test: fixture file not found at {:?}",
-            fixture_path
-        );
+        eprintln!("Skipping test: fixture file not found at {:?}", fixture_path);
         return;
     }
 
@@ -1139,10 +1081,7 @@ fn test_integration_combat_start_timer_with_real_log() {
 fn test_integration_ability_timer_with_real_log() {
     let fixture_path = Path::new("../test-log-files/fixtures/bestia_pull.txt");
     if !fixture_path.exists() {
-        eprintln!(
-            "Skipping test: fixture file not found at {:?}",
-            fixture_path
-        );
+        eprintln!("Skipping test: fixture file not found at {:?}", fixture_path);
         return;
     }
 
@@ -1171,10 +1110,7 @@ fn test_integration_ability_timer_with_real_log() {
 fn test_integration_npc_first_seen_timer() {
     let fixture_path = Path::new("../test-log-files/fixtures/bestia_pull.txt");
     if !fixture_path.exists() {
-        eprintln!(
-            "Skipping test: fixture file not found at {:?}",
-            fixture_path
-        );
+        eprintln!("Skipping test: fixture file not found at {:?}", fixture_path);
         return;
     }
 
@@ -1316,10 +1252,7 @@ fn test_multi_timer_chain_a_b_c() {
     );
     manager.tick(None);
 
-    assert!(
-        manager.active_timers().is_empty(),
-        "All timers should have expired"
-    );
+    assert!(manager.active_timers().is_empty(), "All timers should have expired");
 }
 
 #[test]
@@ -1390,11 +1323,7 @@ fn test_cancel_on_timer_with_chain() {
     manager.tick(None);
 
     let active = manager.active_timers();
-    assert_eq!(
-        active.len(),
-        1,
-        "Only Timer C should remain (Timer B canceled)"
-    );
+    assert_eq!(active.len(), 1, "Only Timer C should remain (Timer B canceled)");
     assert_eq!(active[0].name, "Timer C");
 }
 
@@ -1464,11 +1393,7 @@ fn test_timer_refresh_resets_expiration() {
         None,
     );
 
-    assert_eq!(
-        manager.active_timers().len(),
-        1,
-        "Should still be one timer"
-    );
+    assert_eq!(manager.active_timers().len(), 1, "Should still be one timer");
 
     // The timer should have been refreshed (remaining time reset to ~5s)
     let after_refresh = manager.active_timers()[0].remaining_secs(t1);
@@ -1658,7 +1583,11 @@ fn test_damage_taken_empty_source_selector_zero() {
     let mut manager = TimerManager::new();
     manager.load_definitions(vec![make_def(EntityFilter::Selector(vec![EntitySelector::Id(0)]))]);
     manager.handle_signal(&make_signal(), None);
-    assert_eq!(manager.active_timers().len(), 1, "selector [0] should match empty source");
+    assert_eq!(
+        manager.active_timers().len(),
+        1,
+        "selector [0] should match empty source"
+    );
 
     // "any" matches too
     let mut manager = TimerManager::new();
@@ -1670,5 +1599,9 @@ fn test_damage_taken_empty_source_selector_zero() {
     let mut manager = TimerManager::new();
     manager.load_definitions(vec![make_def(EntityFilter::Selector(vec![EntitySelector::Id(999)]))]);
     manager.handle_signal(&make_signal(), None);
-    assert_eq!(manager.active_timers().len(), 0, "NPC selector must not match empty source");
+    assert_eq!(
+        manager.active_timers().len(),
+        0,
+        "NPC selector must not match empty source"
+    );
 }

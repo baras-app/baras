@@ -6,13 +6,13 @@ use std::path::PathBuf;
 use tauri::{AppHandle, State};
 
 use baras_core::EncounterSummary;
-use baras_core::PlayerMetrics;
 use baras_core::context::{AppConfig, AppConfigExt, OverlayAppearanceConfig};
 use baras_types::SoundCategory;
 
 use crate::audio::{AudioEvent, AudioSender, resolve_bundled_definitions_dir, resolve_sound_path};
 use crate::overlay::{MetricType, OverlayManager, OverlayType, SharedOverlayState};
 use crate::service::{LogFileInfo, ServiceHandle, SessionInfo};
+use crate::state::MutexExt;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Log File Commands
@@ -52,21 +52,6 @@ pub async fn refresh_file_sizes(handle: State<'_, ServiceHandle>) -> Result<(), 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tailing Commands
 // ─────────────────────────────────────────────────────────────────────────────
-
-#[tauri::command]
-pub async fn start_tailing(path: PathBuf, handle: State<'_, ServiceHandle>) -> Result<(), String> {
-    handle.start_tailing(path).await
-}
-
-#[tauri::command]
-pub async fn stop_tailing(handle: State<'_, ServiceHandle>) -> Result<(), String> {
-    handle.stop_tailing().await
-}
-
-#[tauri::command]
-pub async fn get_tailing_status(handle: State<'_, ServiceHandle>) -> Result<bool, String> {
-    Ok(handle.is_tailing().await)
-}
 
 #[tauri::command]
 pub async fn get_watching_status(handle: State<'_, ServiceHandle>) -> Result<bool, String> {
@@ -116,8 +101,8 @@ pub async fn preview_sound(
 
     let volume = handle.config().await.audio.volume;
 
-    let user_sounds_dir = dirs::config_dir()
-        .map(|p| p.join("baras").join("sounds"))
+    let user_sounds_dir = baras_core::paths::config_dir()
+        .map(|p| p.join("sounds"))
         .unwrap_or_else(|| PathBuf::from("."));
     let bundled_root = resolve_bundled_definitions_dir(&app);
 
@@ -156,7 +141,9 @@ pub async fn list_sound_files(app: tauri::AppHandle) -> Result<Vec<SoundCategory
             if !path.is_file() {
                 continue;
             }
-            let Some(ext) = path.extension().and_then(|e| e.to_str()) else { continue };
+            let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
+                continue;
+            };
             if !(ext.eq_ignore_ascii_case("mp3") || ext.eq_ignore_ascii_case("wav")) {
                 continue;
             }
@@ -167,8 +154,8 @@ pub async fn list_sound_files(app: tauri::AppHandle) -> Result<Vec<SoundCategory
     }
 
     let bundled_root = resolve_bundled_definitions_dir(&app);
-    let user_sounds_dir = dirs::config_dir()
-        .map(|p| p.join("baras").join("sounds"))
+    let user_sounds_dir = baras_core::paths::config_dir()
+        .map(|p| p.join("sounds"))
         .unwrap_or_else(|| PathBuf::from("."));
 
     let mut general = BTreeSet::new();
@@ -229,20 +216,17 @@ pub async fn get_config(handle: State<'_, ServiceHandle>) -> Result<AppConfig, S
     // Populate default appearances for each overlay type
     for metric_type in MetricType::all() {
         let key = metric_type.config_key();
-        config.overlay_settings.default_appearances.insert(
-            key.to_string(),
-            OverlayAppearanceConfig::default_for_type(key),
-        );
+        config
+            .overlay_settings
+            .default_appearances
+            .insert(key.to_string(), OverlayAppearanceConfig::default_for_type(key));
     }
 
     Ok(config)
 }
 
 #[tauri::command]
-pub async fn update_config(
-    config: AppConfig,
-    handle: State<'_, ServiceHandle>,
-) -> Result<(), String> {
+pub async fn update_config(config: AppConfig, handle: State<'_, ServiceHandle>) -> Result<(), String> {
     handle.update_config(config).await
 }
 
@@ -260,16 +244,7 @@ pub fn is_wayland_session() -> bool {
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[tauri::command]
-pub async fn get_current_metrics(
-    handle: State<'_, ServiceHandle>,
-) -> Result<Option<Vec<PlayerMetrics>>, String> {
-    Ok(handle.current_combat_data().await.map(|d| d.metrics))
-}
-
-#[tauri::command]
-pub async fn get_session_info(
-    handle: State<'_, ServiceHandle>,
-) -> Result<Option<SessionInfo>, String> {
+pub async fn get_session_info(handle: State<'_, ServiceHandle>) -> Result<Option<SessionInfo>, String> {
     Ok(handle.session_info().await)
 }
 
@@ -282,10 +257,7 @@ pub async fn get_pull_history_overview(
 }
 
 #[tauri::command]
-pub async fn start_history_backfill(
-    stale_only: bool,
-    handle: State<'_, ServiceHandle>,
-) -> Result<(), String> {
+pub async fn start_history_backfill(stale_only: bool, handle: State<'_, ServiceHandle>) -> Result<(), String> {
     handle.start_history_backfill(stale_only).await
 }
 
@@ -303,9 +275,7 @@ pub async fn get_history_status(
 }
 
 #[tauri::command]
-pub async fn get_library(
-    handle: State<'_, ServiceHandle>,
-) -> Result<Vec<baras_types::history::LibraryRow>, String> {
+pub async fn get_library(handle: State<'_, ServiceHandle>) -> Result<Vec<baras_types::history::LibraryRow>, String> {
     Ok(handle.library().await)
 }
 
@@ -329,7 +299,12 @@ pub fn set_log_meta(
 }
 
 #[tauri::command]
-pub fn set_pull_hidden(filename: String, start_ms: i64, hidden: bool, handle: State<'_, ServiceHandle>) -> Result<bool, String> {
+pub fn set_pull_hidden(
+    filename: String,
+    start_ms: i64,
+    hidden: bool,
+    handle: State<'_, ServiceHandle>,
+) -> Result<bool, String> {
     Ok(handle.set_pull_hidden(&filename, start_ms, hidden))
 }
 
@@ -361,15 +336,16 @@ pub async fn preview_log_cleanup(
 }
 
 #[tauri::command]
-pub async fn run_log_cleanup(
-    handle: State<'_, ServiceHandle>,
-) -> Result<baras_types::history::CleanupReport, String> {
+pub async fn run_log_cleanup(handle: State<'_, ServiceHandle>) -> Result<baras_types::history::CleanupReport, String> {
     Ok(handle.run_log_cleanup().await)
 }
 
 #[tauri::command]
 pub async fn restore_log(filename: String, handle: State<'_, ServiceHandle>) -> Result<String, String> {
-    handle.restore_log(filename).await.map(|p| p.to_string_lossy().into_owned())
+    handle
+        .restore_log(filename)
+        .await
+        .map(|p| p.to_string_lossy().into_owned())
 }
 
 #[tauri::command]
@@ -443,9 +419,7 @@ pub async fn get_boss_pulls(
 }
 
 #[tauri::command]
-pub async fn get_encounter_history(
-    handle: State<'_, ServiceHandle>,
-) -> Result<Vec<EncounterSummary>, String> {
+pub async fn get_encounter_history(handle: State<'_, ServiceHandle>) -> Result<Vec<EncounterSummary>, String> {
     Ok(handle.encounter_history().await)
 }
 
@@ -470,9 +444,7 @@ pub async fn get_profile_names(handle: State<'_, ServiceHandle>) -> Result<Vec<S
 }
 
 #[tauri::command]
-pub async fn get_active_profile(
-    handle: State<'_, ServiceHandle>,
-) -> Result<Option<String>, String> {
+pub async fn get_active_profile(handle: State<'_, ServiceHandle>) -> Result<Option<String>, String> {
     let config = handle.config().await;
     Ok(config.active_profile_name.clone())
 }
@@ -529,12 +501,7 @@ pub async fn apply_profile(
 
     // Update raid registry max slots if grid size changed between profiles
     if new_slots != old_slots {
-        handle
-            .shared
-            .raid_registry
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .set_max_slots(new_slots);
+        handle.shared.raid_registry.locked().set_max_slots(new_slots);
     }
 
     // Reset move mode on profile switch
@@ -575,9 +542,7 @@ pub async fn rename_profile(
     handle: State<'_, ServiceHandle>,
 ) -> Result<(), String> {
     let mut config = handle.config().await;
-    config
-        .rename_profile(&old_name, new_name)
-        .map_err(|e| e.to_string())?;
+    config.rename_profile(&old_name, new_name).map_err(|e| e.to_string())?;
     *handle.shared.config.write().await = config.clone();
     config.save().map_err(|e| e.to_string())?;
     Ok(())
@@ -623,7 +588,7 @@ pub async fn set_default_profile_for_role(
 // Changelog Commands
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Response for changelog check - contains HTML content if changelog should be shown.
+/// Rendered changelog; `should_show` is set when there are unseen versions.
 #[derive(serde::Serialize)]
 pub struct ChangelogResponse {
     pub should_show: bool,
@@ -631,39 +596,56 @@ pub struct ChangelogResponse {
     pub version: String,
 }
 
-/// Embedded changelog content (located at CHANGELOG.md in repo root)
-const CHANGELOG_MD: &str = include_str!("../../../../CHANGELOG.md");
+// `CHANGELOGS: &[(version, markdown)]`, one entry per file in `changelogs/` (see build.rs)
+include!(concat!(env!("OUT_DIR"), "/changelogs.rs"));
 
-/// Check if changelog should be shown and return rendered HTML.
-/// Compares current app version with last viewed version in config.
-/// Always returns HTML content so it can be viewed on demand.
+/// Chronological sort key. Early hotfixes appended 2-3 digits to the day
+/// (`2.1501` = Feb 15 hotfix 1, `3.7001` = Mar 7 hotfix 1).
+fn version_key(version: &str) -> [u32; 4] {
+    let mut parts = version.split('.').map(|p| p.parse().unwrap_or(0));
+    let (year, month, patch) = (
+        parts.next().unwrap_or(0),
+        parts.next().unwrap_or(0),
+        parts.next().unwrap_or(0),
+    );
+    let (day, hotfix) = match patch {
+        0..100 => (patch, 0),
+        _ if patch / 100 <= 31 => (patch / 100, patch % 100),
+        _ => (patch / 1000, patch % 1000),
+    };
+    [year, month, day, hotfix]
+}
+
+/// Changelog for the modal. `history` returns every version; otherwise only the
+/// versions released since the last one viewed (just the current one on a fresh install).
 #[tauri::command]
 pub async fn get_changelog(
     app: AppHandle,
     handle: State<'_, ServiceHandle>,
+    history: bool,
 ) -> Result<ChangelogResponse, String> {
     let config = handle.config().await;
     let current_version = app.config().version.clone().unwrap_or_default();
+    let current = version_key(&current_version);
+    let viewed = config.last_viewed_changelog_version.as_deref().map(version_key);
 
-    let should_show = config
-        .last_viewed_changelog_version
-        .as_ref()
-        .map(|v| v != &current_version)
-        .unwrap_or(true); // Show if never viewed
+    let mut entries: Vec<_> = CHANGELOGS
+        .iter()
+        .map(|(version, md)| (version_key(version), *md))
+        .filter(|(key, _)| history || viewed.map_or(*key == current, |v| *key > v))
+        .collect();
+    entries.sort_unstable_by_key(|(key, _)| std::cmp::Reverse(*key));
 
     Ok(ChangelogResponse {
-        should_show,
-        html: Some(render_changelog_html()),
+        should_show: !history && !entries.is_empty(),
+        html: (!entries.is_empty()).then(|| render_changelog_html(&entries)),
         version: current_version,
     })
 }
 
 /// Mark the changelog as viewed for the current version.
 #[tauri::command]
-pub async fn mark_changelog_viewed(
-    app: AppHandle,
-    handle: State<'_, ServiceHandle>,
-) -> Result<(), String> {
+pub async fn mark_changelog_viewed(app: AppHandle, handle: State<'_, ServiceHandle>) -> Result<(), String> {
     let current_version = app.config().version.clone().unwrap_or_default();
     let mut config = handle.config().await;
     config.last_viewed_changelog_version = Some(current_version);
@@ -672,16 +654,24 @@ pub async fn mark_changelog_viewed(
     Ok(())
 }
 
-/// Render markdown changelog to HTML.
-fn render_changelog_html() -> String {
+/// Render each version as a collapsible `<details>` section titled by its `# ` header;
+/// only the first (newest) starts expanded.
+fn render_changelog_html(entries: &[([u32; 4], &str)]) -> String {
     use pulldown_cmark::{Options, Parser, html};
 
     let options = Options::ENABLE_STRIKETHROUGH | Options::ENABLE_TABLES;
-    let parser = Parser::new_ext(CHANGELOG_MD, options);
-
-    let mut html_output = String::new();
-    html::push_html(&mut html_output, parser);
-    html_output
+    let mut out = String::new();
+    for (i, (_, md)) in entries.iter().enumerate() {
+        let (header, body) = md.split_once('\n').unwrap_or((md, ""));
+        let open = if i == 0 { " open" } else { "" };
+        out.push_str(&format!(
+            "<details{open}><summary>{}</summary>",
+            header.trim_start_matches('#').trim()
+        ));
+        html::push_html(&mut out, Parser::new_ext(body, options));
+        out.push_str("</details>");
+    }
+    out
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -714,16 +704,12 @@ fn sync_enabled_with_running(config: &mut AppConfig, overlay_state: &crate::over
 
     for overlay_type in &fixed_types {
         let running = overlay_state.is_running(*overlay_type);
-        config
-            .overlay_settings
-            .set_enabled(overlay_type.config_key(), running);
+        config.overlay_settings.set_enabled(overlay_type.config_key(), running);
     }
 
     // Sync all metric overlay states
     for metric_type in MetricType::all() {
         let running = overlay_state.is_running(OverlayType::Metric(*metric_type));
-        config
-            .overlay_settings
-            .set_enabled(metric_type.config_key(), running);
+        config.overlay_settings.set_enabled(metric_type.config_key(), running);
     }
 }

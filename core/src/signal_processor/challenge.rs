@@ -68,21 +68,10 @@ pub fn process_challenge_events(event: &CombatEvent, cache: &mut SessionCache) {
             );
         }
         effect_id::ABILITYACTIVATE => {
-            tracker.process_ability(
-                &ctx,
-                &source,
-                &target,
-                event.action.action_id as u64,
-                timestamp,
-            );
+            tracker.process_ability(&ctx, &source, &target, event.action.action_id as u64, timestamp);
         }
         effect_id::ABILITYINTERRUPT => {
-            tracker.process_interrupt(
-                &ctx,
-                &source,
-                event.action.action_id as u64,
-                timestamp,
-            );
+            tracker.process_interrupt(&ctx, &source, event.action.action_id as u64, timestamp);
         }
         _ => {
             if event.effect.type_id == effect_type_id::APPLYEFFECT {
@@ -106,13 +95,7 @@ pub fn process_challenge_events(event: &CombatEvent, cache: &mut SessionCache) {
                     timestamp,
                 );
             } else if event.effect.type_id == effect_type_id::REMOVEEFFECT {
-                tracker.process_effect_removed(
-                    &ctx,
-                    &source,
-                    &target,
-                    event.effect.effect_id as u64,
-                    timestamp,
-                );
+                tracker.process_effect_removed(&ctx, &source, &target, event.effect.effect_id as u64, timestamp);
             }
         }
     }
@@ -122,11 +105,7 @@ pub fn process_challenge_events(event: &CombatEvent, cache: &mut SessionCache) {
 }
 
 /// Convert a combat log Entity to EntityInfo for challenge matching.
-pub fn entity_to_info(
-    entity: &Entity,
-    local_player_id: i64,
-    current_target_id: Option<i64>,
-) -> EntityInfo {
+pub fn entity_to_info(entity: &Entity, local_player_id: i64, current_target_id: Option<i64>) -> EntityInfo {
     let is_current_target = current_target_id == Some(entity.log_id);
     match entity.entity_type {
         EntityType::Player => EntityInfo {

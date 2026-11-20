@@ -72,7 +72,11 @@ impl FileOpener {
 
 pub fn use_file_opener_provider(is_live_tailing: Signal<bool>) -> FileOpener {
     let toast = use_toast();
-    use_context_provider(|| FileOpener { loading: Signal::new(None), is_live_tailing, toast })
+    use_context_provider(|| FileOpener {
+        loading: Signal::new(None),
+        is_live_tailing,
+        toast,
+    })
 }
 
 pub fn use_file_opener() -> FileOpener {

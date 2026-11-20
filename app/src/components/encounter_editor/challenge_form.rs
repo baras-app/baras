@@ -4,20 +4,30 @@ use dioxus::prelude::*;
 
 use crate::components::editor_common::{FormCard, ItemActions, Origin};
 use crate::components::form_fields::{CheckField, Field, SubSection, TextField};
-use crate::types::{ChallengeColumns, ChallengeCondition, ChallengeDefinition, ChallengeMetric, ComparisonOp, EntityFilter};
+use crate::types::{
+    ChallengeColumns, ChallengeCondition, ChallengeDefinition, ChallengeMetric, ComparisonOp, EntityFilter,
+};
 use crate::utils::parse_hex_color;
 
 use super::DifficultiesEditor;
 use super::challenges::IdChipEditor;
+use super::selectors::EntityFilterDropdown;
 use super::tabs::EncounterData;
 use super::timers::PhaseSelector;
-use super::triggers::EntityFilterDropdown;
 
 /// (value, label) per column layout, in menu order
 const COLUMNS: [(ChallengeColumns, &str, &str); 6] = [
     (ChallengeColumns::TotalPercent, "total_percent", "Total + Percent"),
-    (ChallengeColumns::TotalPerSecond, "total_per_second", "Total + Per Second"),
-    (ChallengeColumns::PerSecondPercent, "per_second_percent", "Per Second + Percent"),
+    (
+        ChallengeColumns::TotalPerSecond,
+        "total_per_second",
+        "Total + Per Second",
+    ),
+    (
+        ChallengeColumns::PerSecondPercent,
+        "per_second_percent",
+        "Per Second + Percent",
+    ),
     (ChallengeColumns::TotalOnly, "total_only", "Total Only"),
     (ChallengeColumns::PerSecondOnly, "per_second_only", "Per Second Only"),
     (ChallengeColumns::PercentOnly, "percent_only", "Percent Only"),
@@ -68,7 +78,11 @@ pub(super) fn ChallengeEditForm(
     let color_hex = current_color
         .map(|c| format!("#{:02x}{:02x}{:02x}", c[0], c[1], c[2]))
         .unwrap_or_else(|| "#4a90d9".to_string());
-    let columns_value = COLUMNS.iter().find(|(c, ..)| *c == draft().columns).map(|(_, v, _)| *v).unwrap_or("total_percent");
+    let columns_value = COLUMNS
+        .iter()
+        .find(|(c, ..)| *c == draft().columns)
+        .map(|(_, v, _)| *v)
+        .unwrap_or("total_percent");
 
     rsx! {
         div { class: "challenge-edit-form",
@@ -264,7 +278,7 @@ fn ChallengeConditionRow(
                             span { class: "condition-label", "Phase" }
                             PhaseSelector {
                                 selected: phase_ids.clone(),
-                                available: encounter_data.phase_ids(),
+                                available: encounter_data.phase_options(),
                                 on_change: move |ids| {
                                     on_change.call(ChallengeCondition::Phase { phase_ids: ids });
                                 }
@@ -340,7 +354,7 @@ fn ChallengeConditionRow(
                                     },
                                     option { value: "__none__", selected: selected_counter == "__none__", "(select counter)" }
                                     for cid in &counters {
-                                        option { value: "{cid}", selected: *cid == selected_counter, "{cid}" }
+                                        option { value: "{cid}", selected: *cid == selected_counter, "{encounter_data.counter_label(cid)}" }
                                     }
                                 }
                                 if has_counter {

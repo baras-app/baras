@@ -184,8 +184,7 @@ fn test_parse_details_damage_with_effective() {
 
 #[test]
 fn test_parse_details_damage_with_absorbed() {
-    let input =
-        " (5000 ~3000 kinetic {836045448940873} (2000 absorbed {836045448945511})) <5000.0>";
+    let input = " (5000 ~3000 kinetic {836045448940873} (2000 absorbed {836045448945511})) <5000.0>";
     let result = LogParser::parse_details(input, effect_id::DAMAGE, effect_type_id::APPLYEFFECT);
     assert!(result.is_some());
 
@@ -296,11 +295,7 @@ fn test_parse_details_heal_with_effective() {
 #[test]
 fn test_parse_details_modify_charges() {
     let input = " (3 charges {836045448953667})";
-    let result = LogParser::parse_details(
-        input,
-        effect_id::ABILITYACTIVATE,
-        effect_type_id::MODIFYCHARGES,
-    );
+    let result = LogParser::parse_details(input, effect_id::ABILITYACTIVATE, effect_type_id::MODIFYCHARGES);
     assert!(result.is_some());
 
     let details = result.unwrap();
@@ -311,11 +306,7 @@ fn test_parse_details_modify_charges() {
 #[test]
 fn test_parse_details_apply_effect_with_charges() {
     let input = " (5 charges {836045448953667})";
-    let result = LogParser::parse_details(
-        input,
-        effect_id::ABILITYACTIVATE,
-        effect_type_id::APPLYEFFECT,
-    );
+    let result = LogParser::parse_details(input, effect_id::ABILITYACTIVATE, effect_type_id::APPLYEFFECT);
     assert!(result.is_some());
 
     let details = result.unwrap();
@@ -325,11 +316,7 @@ fn test_parse_details_apply_effect_with_charges() {
 #[test]
 fn test_parse_details_default() {
     let input = "";
-    let result = LogParser::parse_details(
-        input,
-        effect_id::ABILITYACTIVATE,
-        effect_type_id::DISCIPLINECHANGED,
-    );
+    let result = LogParser::parse_details(input, effect_id::ABILITYACTIVATE, effect_type_id::DISCIPLINECHANGED);
     assert!(result.is_some());
 
     let details = result.unwrap();

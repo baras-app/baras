@@ -112,10 +112,10 @@ pub fn prepare(slot: &CapturedImage, band: &Band) -> Option<PreparedCrop> {
 
 fn to_gray(img: &CapturedImage) -> Vec<u8> {
     img.rgba
-        .chunks_exact(4)
-        .map(|p| {
-            (((p[0] as u32 * 77) + (p[1] as u32 * 150) + (p[2] as u32 * 29)) >> 8) as u8
-        })
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|p| (((p[0] as u32 * 77) + (p[1] as u32 * 150) + (p[2] as u32 * 29)) >> 8) as u8)
         .collect()
 }
 
@@ -126,7 +126,9 @@ fn to_gray(img: &CapturedImage) -> Vec<u8> {
 /// leaves the glyphs bright.
 fn to_gray_suppressing_red(img: &CapturedImage) -> Vec<u8> {
     img.rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|p| {
             let g = p[1] as i32;
             let b = p[2] as i32;
@@ -140,9 +142,7 @@ fn to_gray_suppressing_red(img: &CapturedImage) -> Vec<u8> {
 /// 255. Raid frames are translucent, so raw crops often occupy a narrow band of
 /// mid greys that thresholding would flatten entirely.
 fn stretch_contrast(gray: &[u8]) -> Vec<u8> {
-    let (min, max) = gray
-        .iter()
-        .fold((255u8, 0u8), |(lo, hi), &v| (lo.min(v), hi.max(v)));
+    let (min, max) = gray.iter().fold((255u8, 0u8), |(lo, hi), &v| (lo.min(v), hi.max(v)));
 
     if max <= min {
         return gray.to_vec();
@@ -208,11 +208,7 @@ mod tests {
         for _ in 0..(width * height) {
             rgba.extend_from_slice(&[rgb.0, rgb.1, rgb.2, 255]);
         }
-        CapturedImage {
-            width,
-            height,
-            rgba,
-        }
+        CapturedImage { width, height, rgba }
     }
 
     #[test]
@@ -260,9 +256,7 @@ mod tests {
     #[test]
     fn upscale_keeps_an_edge_sharp() {
         // A vertical edge: dark half, bright half.
-        let src: Vec<u8> = (0..8 * 8)
-            .map(|i| if i % 8 < 4 { 0 } else { 255 })
-            .collect();
+        let src: Vec<u8> = (0..8 * 8).map(|i| if i % 8 < 4 { 0 } else { 255 }).collect();
         let out = upscale_lanczos3(src, 8, 8, 32, 32);
         assert_eq!(out.len(), 32 * 32);
 

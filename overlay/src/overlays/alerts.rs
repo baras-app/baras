@@ -112,10 +112,7 @@ pub struct AlertsOverlay {
 
 impl AlertsOverlay {
     /// Create a new alerts overlay
-    pub fn new(
-        window_config: OverlayConfig,
-        config: AlertsOverlayConfig,
-    ) -> Result<Self, PlatformError> {
+    pub fn new(window_config: OverlayConfig, config: AlertsOverlayConfig) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
         frame.set_label("Alerts");
 
@@ -132,7 +129,6 @@ impl AlertsOverlay {
         self.config = config;
     }
 
-
     /// Add new alerts (prepends to show newest first) and pre-cache icons.
     /// Alerts carrying an id replace the existing entry with that id in-place
     /// rather than stacking — used for live-updating countdown timers.
@@ -143,8 +139,7 @@ impl AlertsOverlay {
         for alert in &new_alerts {
             if let (Some(ability_id), Some(icon_arc)) = (alert.icon_ability_id, &alert.icon) {
                 let (src_w, src_h, ref src_data) = **icon_arc;
-                let _ = shared_scaled_icons()
-                    .get_or_scale(ability_id, icon_size, src_data, src_w, src_h);
+                let _ = shared_scaled_icons().get_or_scale(ability_id, icon_size, src_data, src_w, src_h);
             }
         }
 
@@ -210,14 +205,8 @@ impl AlertsOverlay {
 
             let text_x = if show_icons {
                 let icon_y = y - icon_size + (icon_size - font_size) / 2.0;
-                self.frame.fill_rounded_rect(
-                    group_x,
-                    icon_y,
-                    icon_size,
-                    icon_size,
-                    2.0,
-                    colors::effect_icon_bg(),
-                );
+                self.frame
+                    .fill_rounded_rect(group_x, icon_y, icon_size, icon_size, 2.0, colors::effect_icon_bg());
                 self.frame.stroke_rounded_rect_dashed(
                     group_x,
                     icon_y,
@@ -234,24 +223,10 @@ impl AlertsOverlay {
                 group_x
             };
 
-            self.frame.draw_text_styled(
-                text,
-                text_x + 1.0,
-                y + 1.0,
-                font_size,
-                shadow,
-                true,
-                false,
-            );
-            self.frame.draw_text_styled(
-                text,
-                text_x,
-                y,
-                font_size,
-                color_from_rgba(*color),
-                true,
-                false,
-            );
+            self.frame
+                .draw_text_styled(text, text_x + 1.0, y + 1.0, font_size, shadow, true, false);
+            self.frame
+                .draw_text_styled(text, text_x, y, font_size, color_from_rgba(*color), true, false);
 
             y += line_height + entry_spacing;
         }
@@ -279,9 +254,7 @@ impl AlertsOverlay {
         // Compute content height for dynamic background
         let num_entries = self.entries.len().min(max_display);
         let content_height = if num_entries > 0 {
-            padding * 2.0
-                + num_entries as f32 * line_height
-                + (num_entries - 1) as f32 * entry_spacing
+            padding * 2.0 + num_entries as f32 * line_height + (num_entries - 1) as f32 * entry_spacing
         } else {
             0.0
         };
@@ -337,9 +310,7 @@ impl AlertsOverlay {
             } else {
                 std::borrow::Cow::Borrowed(entry.text.as_str())
             };
-            let (text_width, _) =
-                self.frame
-                    .measure_text_styled(&measure_text, font_size, true, false);
+            let (text_width, _) = self.frame.measure_text_styled(&measure_text, font_size, true, false);
             let group_width = if has_icon {
                 icon_size + icon_gap + text_width
             } else {
@@ -356,9 +327,7 @@ impl AlertsOverlay {
             let text_x = if has_icon {
                 let icon_y = y - icon_size;
                 if let Some(ability_id) = entry.icon_ability_id {
-                    if let Some(scaled_icon) =
-                        shared_scaled_icons().get(ability_id, icon_size_u32)
-                    {
+                    if let Some(scaled_icon) = shared_scaled_icons().get(ability_id, icon_size_u32) {
                         self.frame.draw_image(
                             &scaled_icon,
                             icon_size_u32,
@@ -379,24 +348,10 @@ impl AlertsOverlay {
                 group_x
             };
 
-            self.frame.draw_text_styled(
-                &entry.text,
-                text_x + 1.0,
-                y + 1.0,
-                font_size,
-                shadow,
-                true,
-                false,
-            );
-            self.frame.draw_text_styled(
-                &entry.text,
-                text_x,
-                y,
-                font_size,
-                color_from_rgba(color),
-                true,
-                false,
-            );
+            self.frame
+                .draw_text_styled(&entry.text, text_x + 1.0, y + 1.0, font_size, shadow, true, false);
+            self.frame
+                .draw_text_styled(&entry.text, text_x, y, font_size, color_from_rgba(color), true, false);
 
             y += line_height + entry_spacing;
         }
@@ -434,10 +389,6 @@ impl Overlay for AlertsOverlay {
 
     fn render(&mut self) {
         AlertsOverlay::render(self);
-    }
-
-    fn poll_events(&mut self) -> bool {
-        self.frame.poll_events()
     }
 
     fn frame(&self) -> &OverlayFrame {

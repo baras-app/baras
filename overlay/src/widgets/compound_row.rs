@@ -47,9 +47,7 @@ impl CompoundValue {
 
     fn prefix_width(&self, frame: &mut OverlayFrame, vfs: f32) -> f32 {
         self.prefix.map_or(0.0, |p| {
-            frame
-                .measure_text_styled(p, vfs * self.prefix_scale, false, false)
-                .0
+            frame.measure_text_styled(p, vfs * self.prefix_scale, false, false).0
         })
     }
 
@@ -79,11 +77,7 @@ impl CompoundLayout {
         let mut col_widths: Vec<f32> = Vec::new();
         let mut max_label = 0.0f32;
         for row in rows {
-            max_label = max_label.max(
-                frame
-                    .measure_text_styled(&row.label, font_size, false, false)
-                    .0,
-            );
+            max_label = max_label.max(frame.measure_text_styled(&row.label, font_size, false, false).0);
             for (i, cv) in row.values.iter().enumerate() {
                 let w = cv.width(frame, font_size);
                 match col_widths.get_mut(i) {
@@ -93,8 +87,7 @@ impl CompoundLayout {
             }
         }
 
-        let needed =
-            max_label + font_size * LABEL_GAP + Self::grid_width(&col_widths, 1.0, font_size);
+        let needed = max_label + font_size * LABEL_GAP + Self::grid_width(&col_widths, 1.0, font_size);
         let scale = if col_widths.is_empty() {
             1.0
         } else {

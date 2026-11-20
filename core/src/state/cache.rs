@@ -4,14 +4,12 @@ use chrono::NaiveDateTime;
 use crate::combat_log::EntityType;
 use crate::dsl::{BossEncounterDefinition, OperationTimerStart};
 use crate::encounter::entity_info::PlayerInfo;
-use crate::encounter::summary::{create_encounter_summary, EncounterHistory};
-use crate::history::InstanceLineage;
+use crate::encounter::summary::{EncounterHistory, create_encounter_summary};
 use crate::encounter::{CombatEncounter, EncounterState, OverlayHealthEntry, ProcessingMode};
-use crate::game_data::{clear_boss_registry, register_hp_overlay_entity, Difficulty};
+use crate::game_data::{Difficulty, clear_boss_registry, register_hp_overlay_entity};
+use crate::history::InstanceLineage;
 use crate::state::info::AreaInfo;
-use crate::state::ipc::{
-    ParseWorkerOutput, WorkerAreaInfo, WorkerPlayerDiscipline, WorkerPlayerInfo,
-};
+use crate::state::ipc::{ParseWorkerOutput, WorkerAreaInfo, WorkerPlayerDiscipline, WorkerPlayerInfo};
 use hashbrown::{HashMap, HashSet as HashbrownSet};
 use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
@@ -145,7 +143,11 @@ impl SessionCache {
             && let Some(idx) = visit_idx
         {
             let visit = &mut self.visits[idx];
-            for npc in encounter.npcs.values().filter(|n| n.is_dead && n.entity_type == EntityType::Npc) {
+            for npc in encounter
+                .npcs
+                .values()
+                .filter(|n| n.is_dead && n.entity_type == EntityType::Npc)
+            {
                 if !visit.trash.contains(&npc.class_id) {
                     visit.trash.push(npc.class_id);
                 }
@@ -169,7 +171,8 @@ impl SessionCache {
             new_instance,
             visit_idx.and(self.lineage.as_ref()).map(|live| live.entered.as_str()),
         ) {
-            if summary.success && summary.boss_name.is_some()
+            if summary.success
+                && summary.boss_name.is_some()
                 && let Some(live) = &mut self.lineage
             {
                 live.facts.has_kill = true;
@@ -227,7 +230,11 @@ impl SessionCache {
         if area.difficulty_id == 0 {
             return;
         }
-        let Some(idx) = self.visits.len().checked_sub(1).filter(|i| self.visits[*i].area_id == area.area_id)
+        let Some(idx) = self
+            .visits
+            .len()
+            .checked_sub(1)
+            .filter(|i| self.visits[*i].area_id == area.area_id)
         else {
             return;
         };
@@ -282,9 +289,9 @@ impl SessionCache {
                 live.judged = idx;
             }
         }
-        live.facts.has_kill = summaries.iter().any(|s| {
-            s.instance_entered.as_ref() == Some(entered) && s.success && s.boss_name.is_some()
-        });
+        live.facts.has_kill = summaries
+            .iter()
+            .any(|s| s.instance_entered.as_ref() == Some(entered) && s.success && s.boss_name.is_some());
         self.lineage = Some(live);
     }
 
@@ -417,9 +424,7 @@ impl SessionCache {
     }
 
     pub fn last_combat_encounter(&self) -> Option<&CombatEncounter> {
-        self.encounters
-            .iter()
-            .rfind(|e| e.state != EncounterState::NotStarted)
+        self.encounters.iter().rfind(|e| e.state != EncounterState::NotStarted)
     }
 
     pub fn last_combat_encounter_mut(&mut self) -> Option<&mut CombatEncounter> {
@@ -435,9 +440,8 @@ impl SessionCache {
     /// Returns true if the current encounter is in the PostCombat grace window state.
     /// Used to skip accumulation/time updates for events during the grace window.
     pub fn is_in_grace_window(&self) -> bool {
-        self.current_encounter().map_or(false, |enc| {
-            matches!(enc.state, EncounterState::PostCombat { .. })
-        })
+        self.current_encounter()
+            .is_some_and(|enc| matches!(enc.state, EncounterState::PostCombat { .. }))
     }
 
     // --- Boss Health ---
@@ -522,11 +526,7 @@ impl SessionCache {
     /// another area) while ensuring area transitions between two defined areas (e.g.,
     /// Dread Fortress → Scum and Villainy) correctly update the pre-combat encounter
     /// with fresh definitions.
-    pub fn load_boss_definitions(
-        &mut self,
-        definitions: Vec<BossEncounterDefinition>,
-        force: bool,
-    ) {
+    pub fn load_boss_definitions(&mut self, definitions: Vec<BossEncounterDefinition>, force: bool) {
         // Register HP overlay entities for name lookup
         for def in &definitions {
             for entity in def.hp_overlay_entities() {
@@ -546,11 +546,10 @@ impl SessionCache {
         //   can be safely replaced (no active boss fight to disrupt)
         // NOT safe to update when encounter is InCombat/PostCombat with existing
         // definitions (e.g., player died and revived in another area mid-fight)
-        if let Some(enc) = self.current_encounter_mut() {
-            if force || enc.boss_definitions().is_empty() || enc.state == EncounterState::NotStarted
-            {
-                enc.load_boss_definitions(definitions);
-            }
+        if let Some(enc) = self.current_encounter_mut()
+            && (force || enc.boss_definitions().is_empty() || enc.state == EncounterState::NotStarted)
+        {
+            enc.load_boss_definitions(definitions);
         }
     }
 
@@ -580,7 +579,9 @@ impl SessionCache {
     /// Activate a boss encounter by definition index (for trigger-based detection).
     /// Returns true if activated, false if a boss is already active or no encounter exists.
     pub fn activate_boss_by_idx(&mut self, idx: usize) -> bool {
-        let Some(enc) = self.current_encounter_mut() else { return false; };
+        let Some(enc) = self.current_encounter_mut() else {
+            return false;
+        };
         if enc.active_boss_idx().is_some() {
             return false;
         }
@@ -598,12 +599,7 @@ impl SessionCache {
     /// Create a ParseWorkerOutput from current cache state.
     ///
     /// Used by parse-worker to serialize state for the main app.
-    pub fn to_worker_output(
-        &self,
-        end_pos: u64,
-        line_count: u64,
-        event_count: usize,
-    ) -> ParseWorkerOutput {
+    pub fn to_worker_output(&self, end_pos: u64, line_count: u64, event_count: usize) -> ParseWorkerOutput {
         ParseWorkerOutput {
             end_pos,
             line_count,
@@ -653,16 +649,11 @@ impl SessionCache {
 
         // Import player disciplines
         for disc in &output.player_disciplines {
-            self.player_disciplines
-                .insert(disc.entity_id, disc.to_player_info());
+            self.player_disciplines.insert(disc.entity_id, disc.to_player_info());
         }
 
         // Count generations before consuming encounters
-        let generation_count = output
-            .encounters
-            .iter()
-            .filter(|e| e.is_phase_start)
-            .count() as u64;
+        let generation_count = output.encounters.iter().filter(|e| e.is_phase_start).count() as u64;
 
         // Import encounter summaries
         for summary in &output.encounters {

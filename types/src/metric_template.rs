@@ -51,51 +51,97 @@ pub type Placeholder = (&'static str, MetricVar, &'static str);
 impl MetricVar {
     /// Every placeholder, grouped as settings lists them
     pub const GROUPS: &[(&str, &[Placeholder])] = &[
-        ("This overlay", &[
-            ("rate", Self::Rate, "The overlay's own per-second value"),
-            ("total", Self::Total, "The overlay's own cumulative total"),
-            ("pct", Self::Share, "Share of the group's rate"),
-        ]),
-        ("Damage", &[
-            ("dps", Self::Dps, "Damage per second"),
-            ("edps", Self::Edps, "Effective damage per second"),
-            ("bossdps", Self::BossDps, "Damage per second on bosses"),
-            ("damage_crit_pct", Self::DamageCritPct, "Damage critical chance"),
-            ("total_damage", Self::TotalDamage, "Total damage"),
-            ("total_damage_effective", Self::TotalDamageEffective, "Total effective damage"),
-            ("total_damage_boss", Self::TotalDamageBoss, "Total damage on bosses"),
-        ]),
-        ("Healing", &[
-            ("hps", Self::Hps, "Healing per second"),
-            ("ehps", Self::Ehps, "Effective healing per second"),
-            ("ehps_pct", Self::EffectiveHealPct, "Share of healing that was effective"),
-            ("heal_crit_pct", Self::HealCritPct, "Healing critical chance"),
-            ("abs", Self::Abs, "Shielding (absorbs) per second"),
-            ("total_healing", Self::TotalHealing, "Total healing"),
-            ("total_healing_effective", Self::TotalHealingEffective, "Total effective healing"),
-            ("total_shielding", Self::TotalShielding, "Total shielding (absorbs)"),
-        ]),
-        ("Damage taken", &[
-            ("dtps", Self::Dtps, "Damage taken per second"),
-            ("edtps", Self::Edtps, "Effective damage taken per second"),
-            ("defense_pct", Self::DefensePct, "Attacks dodged, parried or deflected"),
-            ("shield_pct", Self::ShieldPct, "Hits shielded"),
-            ("total_damage_taken", Self::TotalDamageTaken, "Total damage taken"),
-            ("total_damage_taken_effective", Self::TotalDamageTakenEffective, "Total effective damage taken"),
-            ("total_shield_absorbed", Self::TotalShieldAbsorbed, "Total damage absorbed by shield"),
-        ]),
-        ("Healing received", &[
-            ("htps", Self::Htps, "Healing received per second"),
-            ("ehtps", Self::Ehtps, "Effective healing received per second"),
-            ("total_healing_received", Self::TotalHealingReceived, "Total healing received"),
-            ("total_healing_received_effective", Self::TotalHealingReceivedEffective, "Total effective healing received"),
-        ]),
-        ("Other", &[
-            ("tps", Self::Tps, "Threat per second"),
-            ("total_threat", Self::TotalThreat, "Total threat"),
-            ("apm", Self::Apm, "Actions per minute"),
-            ("interrupts", Self::Interrupts, "Interrupts cast"),
-        ]),
+        (
+            "This overlay",
+            &[
+                ("rate", Self::Rate, "The overlay's own per-second value"),
+                ("total", Self::Total, "The overlay's own cumulative total"),
+                ("pct", Self::Share, "Share of the group's rate"),
+            ],
+        ),
+        (
+            "Damage",
+            &[
+                ("dps", Self::Dps, "Damage per second"),
+                ("edps", Self::Edps, "Effective damage per second"),
+                ("bossdps", Self::BossDps, "Damage per second on bosses"),
+                ("damage_crit_pct", Self::DamageCritPct, "Damage critical chance"),
+                ("total_damage", Self::TotalDamage, "Total damage"),
+                (
+                    "total_damage_effective",
+                    Self::TotalDamageEffective,
+                    "Total effective damage",
+                ),
+                ("total_damage_boss", Self::TotalDamageBoss, "Total damage on bosses"),
+            ],
+        ),
+        (
+            "Healing",
+            &[
+                ("hps", Self::Hps, "Healing per second"),
+                ("ehps", Self::Ehps, "Effective healing per second"),
+                (
+                    "ehps_pct",
+                    Self::EffectiveHealPct,
+                    "Share of healing that was effective",
+                ),
+                ("heal_crit_pct", Self::HealCritPct, "Healing critical chance"),
+                ("abs", Self::Abs, "Shielding (absorbs) per second"),
+                ("total_healing", Self::TotalHealing, "Total healing"),
+                (
+                    "total_healing_effective",
+                    Self::TotalHealingEffective,
+                    "Total effective healing",
+                ),
+                ("total_shielding", Self::TotalShielding, "Total shielding (absorbs)"),
+            ],
+        ),
+        (
+            "Damage taken",
+            &[
+                ("dtps", Self::Dtps, "Damage taken per second"),
+                ("edtps", Self::Edtps, "Effective damage taken per second"),
+                ("defense_pct", Self::DefensePct, "Attacks dodged, parried or deflected"),
+                ("shield_pct", Self::ShieldPct, "Hits shielded"),
+                ("total_damage_taken", Self::TotalDamageTaken, "Total damage taken"),
+                (
+                    "total_damage_taken_effective",
+                    Self::TotalDamageTakenEffective,
+                    "Total effective damage taken",
+                ),
+                (
+                    "total_shield_absorbed",
+                    Self::TotalShieldAbsorbed,
+                    "Total damage absorbed by shield",
+                ),
+            ],
+        ),
+        (
+            "Healing received",
+            &[
+                ("htps", Self::Htps, "Healing received per second"),
+                ("ehtps", Self::Ehtps, "Effective healing received per second"),
+                (
+                    "total_healing_received",
+                    Self::TotalHealingReceived,
+                    "Total healing received",
+                ),
+                (
+                    "total_healing_received_effective",
+                    Self::TotalHealingReceivedEffective,
+                    "Total effective healing received",
+                ),
+            ],
+        ),
+        (
+            "Other",
+            &[
+                ("tps", Self::Tps, "Threat per second"),
+                ("total_threat", Self::TotalThreat, "Total threat"),
+                ("apm", Self::Apm, "Actions per minute"),
+                ("interrupts", Self::Interrupts, "Interrupts cast"),
+            ],
+        ),
     ];
 
     fn all() -> impl Iterator<Item = &'static Placeholder> {
@@ -151,8 +197,7 @@ impl MetricTemplate {
 
     /// Drop every column that shows a cumulative total
     pub fn without_totals(mut self) -> Self {
-        let has_total =
-            |col: &[Segment]| col.iter().any(|s| matches!(s, Segment::Var(v) if v.is_total()));
+        let has_total = |col: &[Segment]| col.iter().any(|s| matches!(s, Segment::Var(v) if v.is_total()));
         if has_total(&self.center) {
             self.center.clear();
         }

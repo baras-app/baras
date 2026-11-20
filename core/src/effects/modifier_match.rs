@@ -42,130 +42,227 @@ pub(super) fn collect_hits(
         Trigger::SelfChargesChanged { .. } => {}
         Trigger::ResourceSpent { per_amount } => {
             for s in signals {
-                if let GameSignal::ResourceSpent { source_id, amount, timestamp, .. } = s
+                if let GameSignal::ResourceSpent {
+                    source_id,
+                    amount,
+                    timestamp,
+                    ..
+                } = s
                     && *source_id == eid
                 {
-                    out.push(Hit { at: *timestamp, scale: if *per_amount > 0.0 { amount / per_amount } else { 1.0 } });
+                    out.push(Hit {
+                        at: *timestamp,
+                        scale: if *per_amount > 0.0 { amount / per_amount } else { 1.0 },
+                    });
                 }
             }
         }
         Trigger::KillingBlow => {
-            out.extend(signals
-                .iter()
-                .filter(|s| matches!(s, GameSignal::EntityDeath { killer_id, .. } if *killer_id == eid))
-                .map(|s| Hit { at: s.timestamp(), scale: 1.0 }));
+            out.extend(
+                signals
+                    .iter()
+                    .filter(|s| matches!(s, GameSignal::EntityDeath { killer_id, .. } if *killer_id == eid))
+                    .map(|s| Hit {
+                        at: s.timestamp(),
+                        scale: 1.0,
+                    }),
+            );
         }
         Trigger::AbilityCast { abilities, .. } => {
             if requires_crit {
                 return;
             }
-            out.extend(signals
-                .iter()
-                .filter(|s| {
-                    if let GameSignal::AbilityActivated { ability_id, ability_name, source_id, .. } = s {
-                        if *source_id != eid {
-                            return false;
+            out.extend(
+                signals
+                    .iter()
+                    .filter(|s| {
+                        if let GameSignal::AbilityActivated {
+                            ability_id,
+                            ability_name,
+                            source_id,
+                            ..
+                        } = s
+                        {
+                            if *source_id != eid {
+                                return false;
+                            }
+                            let name = crate::context::resolve(*ability_name);
+                            abilities.is_empty() || abilities.iter().any(|a| a.matches(*ability_id as u64, Some(name)))
+                        } else {
+                            false
                         }
-                        let name = crate::context::resolve(*ability_name);
-                        abilities.is_empty() || abilities.iter().any(|a| a.matches(*ability_id as u64, Some(name)))
-                    } else {
-                        false
-                    }
-                })
-                .map(|s| Hit { at: s.timestamp(), scale: 1.0 }));
+                    })
+                    .map(|s| Hit {
+                        at: s.timestamp(),
+                        scale: 1.0,
+                    }),
+            );
         }
-        Trigger::DamageTaken { abilities, mitigation, .. } | Trigger::DamageDealt { abilities, mitigation, .. } => {
+        Trigger::DamageTaken {
+            abilities, mitigation, ..
+        }
+        | Trigger::DamageDealt {
+            abilities, mitigation, ..
+        } => {
             let dealt = matches!(trigger, Trigger::DamageDealt { .. });
-            out.extend(signals
-                .iter()
-                .filter(|s| {
-                    if let GameSignal::DamageTaken { ability_id, ability_name, defense_type_id, is_crit, source_id, target_id, .. } = s {
-                        let holder = if dealt { *source_id } else { *target_id };
-                        if holder != eid {
-                            return false;
+            out.extend(
+                signals
+                    .iter()
+                    .filter(|s| {
+                        if let GameSignal::DamageTaken {
+                            ability_id,
+                            ability_name,
+                            defense_type_id,
+                            is_crit,
+                            source_id,
+                            target_id,
+                            ..
+                        } = s
+                        {
+                            let holder = if dealt { *source_id } else { *target_id };
+                            if holder != eid {
+                                return false;
+                            }
+                            let name = crate::context::resolve(*ability_name);
+                            let ability_ok = abilities.is_empty()
+                                || abilities.iter().any(|a| a.matches(*ability_id as u64, Some(name)));
+                            let mitigation_ok = mitigation.is_empty()
+                                || mitigation.iter().any(|m| m.defense_type_id() == *defense_type_id);
+                            ability_ok && mitigation_ok && (!requires_crit || *is_crit)
+                        } else {
+                            false
                         }
-                        let name = crate::context::resolve(*ability_name);
-                        let ability_ok = abilities.is_empty() || abilities.iter().any(|a| a.matches(*ability_id as u64, Some(name)));
-                        let mitigation_ok = mitigation.is_empty() || mitigation.iter().any(|m| m.defense_type_id() == *defense_type_id);
-                        ability_ok && mitigation_ok && (!requires_crit || *is_crit)
-                    } else {
-                        false
-                    }
-                })
-                .map(|s| Hit { at: s.timestamp(), scale: 1.0 }));
+                    })
+                    .map(|s| Hit {
+                        at: s.timestamp(),
+                        scale: 1.0,
+                    }),
+            );
         }
         Trigger::HealingTaken { abilities, .. } | Trigger::HealingDealt { abilities, .. } => {
             let dealt = matches!(trigger, Trigger::HealingDealt { .. });
-            out.extend(signals
-                .iter()
-                .filter(|s| {
-                    if let GameSignal::HealingDone { ability_id, ability_name, source_id, target_id, is_crit, .. } = s {
-                        let holder = if dealt { *source_id } else { *target_id };
-                        if holder != eid {
-                            return false;
+            out.extend(
+                signals
+                    .iter()
+                    .filter(|s| {
+                        if let GameSignal::HealingDone {
+                            ability_id,
+                            ability_name,
+                            source_id,
+                            target_id,
+                            is_crit,
+                            ..
+                        } = s
+                        {
+                            let holder = if dealt { *source_id } else { *target_id };
+                            if holder != eid {
+                                return false;
+                            }
+                            let name = crate::context::resolve(*ability_name);
+                            let ability_ok = abilities.is_empty()
+                                || abilities.iter().any(|a| a.matches(*ability_id as u64, Some(name)));
+                            ability_ok && (!requires_crit || *is_crit)
+                        } else {
+                            false
                         }
-                        let name = crate::context::resolve(*ability_name);
-                        let ability_ok = abilities.is_empty() || abilities.iter().any(|a| a.matches(*ability_id as u64, Some(name)));
-                        ability_ok && (!requires_crit || *is_crit)
-                    } else {
-                        false
-                    }
-                })
-                .map(|s| Hit { at: s.timestamp(), scale: 1.0 }));
+                    })
+                    .map(|s| Hit {
+                        at: s.timestamp(),
+                        scale: 1.0,
+                    }),
+            );
         }
         Trigger::EffectApplied { effects, .. } => {
-            out.extend(signals
-                .iter()
-                .filter(|s| {
-                    if let GameSignal::EffectApplied { effect_id, effect_name, target_id, .. } = s {
-                        *target_id == eid
-                            && !effects.is_empty()
-                            && effects.iter().any(|e| e.matches(*effect_id as u64, Some(crate::context::resolve(*effect_name))))
-                    } else {
-                        false
-                    }
-                })
-                .map(|s| Hit { at: s.timestamp(), scale: 1.0 }));
+            out.extend(
+                signals
+                    .iter()
+                    .filter(|s| {
+                        if let GameSignal::EffectApplied {
+                            effect_id,
+                            effect_name,
+                            target_id,
+                            ..
+                        } = s
+                        {
+                            *target_id == eid
+                                && !effects.is_empty()
+                                && effects
+                                    .iter()
+                                    .any(|e| e.matches(*effect_id as u64, Some(crate::context::resolve(*effect_name))))
+                        } else {
+                            false
+                        }
+                    })
+                    .map(|s| Hit {
+                        at: s.timestamp(),
+                        scale: 1.0,
+                    }),
+            );
         }
         Trigger::EffectRemoved { effects, .. } => {
-            out.extend(signals
-                .iter()
-                .filter(|s| {
-                    if let GameSignal::EffectRemoved { effect_id, effect_name, target_id, .. } = s {
-                        *target_id == eid
-                            && !effects.is_empty()
-                            && effects.iter().any(|e| e.matches(*effect_id as u64, Some(crate::context::resolve(*effect_name))))
-                    } else {
-                        false
-                    }
-                })
-                .map(|s| Hit { at: s.timestamp(), scale: 1.0 }));
+            out.extend(
+                signals
+                    .iter()
+                    .filter(|s| {
+                        if let GameSignal::EffectRemoved {
+                            effect_id,
+                            effect_name,
+                            target_id,
+                            ..
+                        } = s
+                        {
+                            *target_id == eid
+                                && !effects.is_empty()
+                                && effects
+                                    .iter()
+                                    .any(|e| e.matches(*effect_id as u64, Some(crate::context::resolve(*effect_name))))
+                        } else {
+                            false
+                        }
+                    })
+                    .map(|s| Hit {
+                        at: s.timestamp(),
+                        scale: 1.0,
+                    }),
+            );
         }
         Trigger::ChargesChanged { effects, direction } => {
-            out.extend(signals
-                .iter()
-                .filter(|s| {
-                    if let GameSignal::EffectChargesChanged { effect_id, effect_name, target_id, .. } = s {
-                        if *target_id != eid {
-                            return false;
-                        }
-                        let name = crate::context::resolve(*effect_name);
-                        let effect_ok = effects.is_empty() || effects.iter().any(|e| e.matches(*effect_id as u64, Some(name)));
-                        let dir_ok = match direction {
-                            Some(dir) => {
-                                let snap_key = (*effect_id, *target_id);
-                                charge_snapshots
-                                    .iter()
-                                    .any(|(k, old, new)| *k == snap_key && direction_matches(*dir, *old, *new))
+            out.extend(
+                signals
+                    .iter()
+                    .filter(|s| {
+                        if let GameSignal::EffectChargesChanged {
+                            effect_id,
+                            effect_name,
+                            target_id,
+                            ..
+                        } = s
+                        {
+                            if *target_id != eid {
+                                return false;
                             }
-                            None => true,
-                        };
-                        effect_ok && dir_ok
-                    } else {
-                        false
-                    }
-                })
-                .map(|s| Hit { at: s.timestamp(), scale: 1.0 }));
+                            let name = crate::context::resolve(*effect_name);
+                            let effect_ok =
+                                effects.is_empty() || effects.iter().any(|e| e.matches(*effect_id as u64, Some(name)));
+                            let dir_ok = match direction {
+                                Some(dir) => {
+                                    let snap_key = (*effect_id, *target_id);
+                                    charge_snapshots
+                                        .iter()
+                                        .any(|(k, old, new)| *k == snap_key && direction_matches(*dir, *old, *new))
+                                }
+                                None => true,
+                            };
+                            effect_ok && dir_ok
+                        } else {
+                            false
+                        }
+                    })
+                    .map(|s| Hit {
+                        at: s.timestamp(),
+                        scale: 1.0,
+                    }),
+            );
         }
         _ => {}
     }

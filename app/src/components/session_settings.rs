@@ -8,7 +8,6 @@
 
 use baras_types::AlacrityPreset;
 use dioxus::prelude::*;
-use wasm_bindgen::prelude::*;
 
 use crate::api::{self, BossNotesInfo};
 use crate::components::discipline_selector::ALL_DISCIPLINES;
@@ -47,22 +46,27 @@ pub fn AlacrityPill(
             presets.set(cfg.alacrity_presets.clone());
         }
     });
-    use_future(move || async move {
-        let closure = Closure::new(move |_: JsValue| config.restart());
-        api::tauri_listen("alacrity-auto-set", &closure).await;
-        closure.forget();
+    let mut auto_sets = use_signal(|| 0u32);
+    api::use_tauri_event("alacrity-auto-set", move |_| {
+        let _ = auto_sets.try_write().map(|mut w| *w += 1);
+    });
+    use_effect(move || {
+        if *auto_sets.read() > 0 {
+            config.restart();
+        }
     });
     let save = move || {
         let (a, l, p) = (alacrity(), latency(), presets());
         let mut toast = use_toast();
         spawn(async move {
-            if let Some(mut cfg) = api::get_config().await {
+            if let Err(err) = api::patch_config(|cfg| {
                 cfg.alacrity_percent = a;
                 cfg.latency_ms = l;
                 cfg.alacrity_presets = p;
-                if let Err(err) = api::update_config(&cfg).await {
-                    toast.show(format!("Failed to save settings: {err}"), ToastSeverity::Normal);
-                }
+            })
+            .await
+            {
+                toast.show(format!("Failed to save settings: {err}"), ToastSeverity::Normal);
             }
         });
     };
@@ -75,7 +79,11 @@ pub fn AlacrityPill(
     let mut characters = use_signal(Vec::<String>::new);
     let (name, discipline) = (player_name.clone(), player_discipline.clone());
     let start_adding = move |_| {
-        new_discipline.set(discipline.clone().unwrap_or_else(|| ALL_DISCIPLINES[0].1[0].to_string()));
+        new_discipline.set(
+            discipline
+                .clone()
+                .unwrap_or_else(|| ALL_DISCIPLINES[0].1[0].to_string()),
+        );
         new_character.set(name.clone().unwrap_or_default());
         new_value.set(alacrity());
         adding.set(true);
@@ -314,7 +322,10 @@ pub fn BossNotesMenu(area_bosses: Signal<Vec<BossNotesInfo>>, selected_boss_id: 
     let mut open = use_signal(|| false);
     let bosses: Vec<BossNotesInfo> = area_bosses().iter().filter(|b| b.has_notes).cloned().collect();
     let selected = selected_boss_id();
-    let selected_name = bosses.iter().find(|b| selected.as_ref() == Some(&b.id)).map(|b| b.name.clone());
+    let selected_name = bosses
+        .iter()
+        .find(|b| selected.as_ref() == Some(&b.id))
+        .map(|b| b.name.clone());
     let none = bosses.is_empty();
     let title = match (&selected_name, none) {
         (_, true) => "Boss notes: none for this area".to_string(),

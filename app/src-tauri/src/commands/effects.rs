@@ -14,9 +14,7 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Manager, State};
 
 use baras_core::dsl::{AudioConfig, Trigger};
-use baras_core::effects::{
-    AlertTrigger, DefinitionConfig, DisplayTarget, EFFECTS_DSL_VERSION, EffectDefinition,
-};
+use baras_core::effects::{AlertTrigger, DefinitionConfig, DisplayTarget, EFFECTS_DSL_VERSION, EffectDefinition};
 use baras_core::game_data::{Discipline, DisciplineFilter};
 use baras_types::{RefreshAbility, RefreshScope};
 
@@ -184,13 +182,19 @@ impl EffectListItem {
             default_charges: self.default_charges,
             color: self.color,
             show_at_secs: self.show_at_secs,
-            disciplines: self.disciplines.iter()
+            disciplines: self
+                .disciplines
+                .iter()
                 .filter_map(|name| Discipline::from_name(name))
                 .collect(),
-            source_disciplines: self.source_disciplines.iter()
+            source_disciplines: self
+                .source_disciplines
+                .iter()
                 .filter_map(|name| DisciplineFilter::from_name(name))
                 .collect(),
-            target_disciplines: self.target_disciplines.iter()
+            target_disciplines: self
+                .target_disciplines
+                .iter()
                 .filter_map(|name| DisciplineFilter::from_name(name))
                 .collect(),
             ignore_refreshes: self.ignore_refreshes,
@@ -228,9 +232,7 @@ impl EffectListItem {
             }
             Trigger::AbilityCast { abilities, .. }
             | Trigger::DamageTaken { abilities, .. }
-            | Trigger::HealingTaken { abilities, .. } => {
-                !abilities.is_empty() || !self.refresh_abilities.is_empty()
-            }
+            | Trigger::HealingTaken { abilities, .. } => !abilities.is_empty() || !self.refresh_abilities.is_empty(),
             _ => false,
         }
     }
@@ -242,7 +244,7 @@ impl EffectListItem {
 
 /// Get the user effects config file path
 fn get_user_effects_path() -> Option<PathBuf> {
-    dirs::config_dir().map(|p| p.join("baras").join("definitions").join("effects.toml"))
+    baras_core::paths::config_dir().map(|p| p.join("definitions").join("effects.toml"))
 }
 
 /// Get the bundled effects directory
@@ -269,8 +271,7 @@ fn load_bundled_effects(app_handle: &AppHandle) -> HashMap<String, EffectDefinit
         .flatten()
         .map(|e| e.path())
         .filter(|p| {
-            p.extension().is_some_and(|ext| ext == "toml")
-                && !p.file_name().is_some_and(|n| n == "custom.toml") // Skip template
+            p.extension().is_some_and(|ext| ext == "toml") && p.file_name().is_none_or(|n| n != "custom.toml") // Skip template
         })
         .collect();
 
@@ -309,13 +310,11 @@ pub(crate) fn save_user_effects(effects: &[EffectDefinition]) -> Result<(), Stri
         effects: effects.to_vec(),
     };
 
-    let content = toml::to_string_pretty(&config)
-        .map_err(|e| format!("Failed to serialize effect config: {}", e))?;
+    let content = toml::to_string_pretty(&config).map_err(|e| format!("Failed to serialize effect config: {}", e))?;
 
     // Ensure parent directory exists
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create directory {:?}: {}", parent, e))?;
+        std::fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory {:?}: {}", parent, e))?;
     }
 
     std::fs::write(&path, content).map_err(|e| format!("Failed to write {:?}: {}", path, e))?;
@@ -333,25 +332,24 @@ fn load_all_effects(app_handle: &AppHandle) -> Vec<(EffectDefinition, bool, bool
     let bundled_ids: std::collections::HashSet<_> = bundled.keys().cloned().collect();
 
     // Load user overrides (if version matches)
-    let user_effects: HashMap<String, EffectDefinition> =
-        if let Some((version, effects)) = load_user_effects_file() {
-            if version == EFFECTS_DSL_VERSION {
-                effects.into_iter().map(|e| (e.id.clone(), e)).collect()
-            } else {
-                // Version mismatch - delete user file
-                if let Some(path) = get_user_effects_path() {
-                    warn!(
-                        file_version = version,
-                        expected_version = EFFECTS_DSL_VERSION,
-                        "User effects version mismatch, deleting file"
-                    );
-                    let _ = std::fs::remove_file(path);
-                }
-                HashMap::new()
-            }
+    let user_effects: HashMap<String, EffectDefinition> = if let Some((version, effects)) = load_user_effects_file() {
+        if version == EFFECTS_DSL_VERSION {
+            effects.into_iter().map(|e| (e.id.clone(), e)).collect()
         } else {
+            // Version mismatch - back the file up, as the service loader does
+            if let Some(path) = get_user_effects_path() {
+                warn!(
+                    file_version = version,
+                    expected_version = EFFECTS_DSL_VERSION,
+                    "User effects version mismatch, backing up file"
+                );
+                let _ = std::fs::rename(&path, path.with_extension("toml.bak"));
+            }
             HashMap::new()
-        };
+        }
+    } else {
+        HashMap::new()
+    };
 
     // Track which IDs are user overrides
     let user_ids: std::collections::HashSet<_> = user_effects.keys().cloned().collect();
@@ -392,10 +390,7 @@ pub async fn get_effect_definitions(app_handle: AppHandle) -> Result<Vec<EffectL
 
 /// Update an existing effect (always saved to user file)
 #[tauri::command]
-pub async fn update_effect_definition(
-    service: State<'_, ServiceHandle>,
-    effect: EffectListItem,
-) -> Result<(), String> {
+pub async fn update_effect_definition(service: State<'_, ServiceHandle>, effect: EffectListItem) -> Result<(), String> {
     // Validate effect has at least one way to match
     if !effect.has_valid_trigger() {
         return Err(
@@ -606,8 +601,7 @@ pub async fn export_effects_toml(effect_id: Option<String>) -> Result<String, St
         effects,
     };
 
-    toml::to_string_pretty(&config)
-        .map_err(|e| format!("Failed to serialize effects: {}", e))
+    toml::to_string_pretty(&config).map_err(|e| format!("Failed to serialize effects: {}", e))
 }
 
 /// Preview effects import — parse TOML and diff against existing
@@ -616,8 +610,7 @@ pub async fn preview_import_effects(
     app_handle: AppHandle,
     toml_content: String,
 ) -> Result<EffectImportPreview, String> {
-    let config: DefinitionConfig = toml::from_str(&toml_content)
-        .map_err(|e| format!("Failed to parse TOML: {}", e))?;
+    let config: DefinitionConfig = toml::from_str(&toml_content).map_err(|e| format!("Failed to parse TOML: {}", e))?;
 
     let mut errors = Vec::new();
 
@@ -634,10 +627,8 @@ pub async fn preview_import_effects(
 
     // Load current merged effects for diff
     let current_effects = load_all_effects(&app_handle);
-    let current_ids: std::collections::HashSet<String> =
-        current_effects.iter().map(|(e, _, _)| e.id.clone()).collect();
-    let imported_ids: std::collections::HashSet<String> =
-        config.effects.iter().map(|e| e.id.clone()).collect();
+    let current_ids: std::collections::HashSet<String> = current_effects.iter().map(|(e, _, _)| e.id.clone()).collect();
+    let imported_ids: std::collections::HashSet<String> = config.effects.iter().map(|e| e.id.clone()).collect();
 
     let mut effects_to_replace = Vec::new();
     let mut effects_to_add = Vec::new();
@@ -656,10 +647,7 @@ pub async fn preview_import_effects(
         }
     }
 
-    let effects_unchanged = current_ids
-        .iter()
-        .filter(|id| !imported_ids.contains(*id))
-        .count();
+    let effects_unchanged = current_ids.iter().filter(|id| !imported_ids.contains(*id)).count();
 
     Ok(EffectImportPreview {
         effects_to_replace,
@@ -671,12 +659,8 @@ pub async fn preview_import_effects(
 
 /// Import effects from TOML, merging into user file
 #[tauri::command]
-pub async fn import_effects_toml(
-    service: State<'_, ServiceHandle>,
-    toml_content: String,
-) -> Result<(), String> {
-    let config: DefinitionConfig = toml::from_str(&toml_content)
-        .map_err(|e| format!("Failed to parse TOML: {}", e))?;
+pub async fn import_effects_toml(service: State<'_, ServiceHandle>, toml_content: String) -> Result<(), String> {
+    let config: DefinitionConfig = toml::from_str(&toml_content).map_err(|e| format!("Failed to parse TOML: {}", e))?;
 
     if config.version != EFFECTS_DSL_VERSION {
         return Err(format!(
@@ -726,12 +710,10 @@ use std::sync::Mutex;
 use zip::ZipArchive;
 
 /// Lazy-loaded icon name lookup cache
-static ICON_NAME_CACHE: std::sync::OnceLock<Mutex<HashMap<u64, String>>> =
-    std::sync::OnceLock::new();
+static ICON_NAME_CACHE: std::sync::OnceLock<Mutex<HashMap<u64, String>>> = std::sync::OnceLock::new();
 
 /// Pre-extracted icon PNG data: lowercase filename → PNG bytes
-static ICON_PNG_CACHE: std::sync::OnceLock<HashMap<String, Vec<u8>>> =
-    std::sync::OnceLock::new();
+static ICON_PNG_CACHE: std::sync::OnceLock<HashMap<String, Vec<u8>>> = std::sync::OnceLock::new();
 
 /// Get or load the icon name mapping from CSV
 fn get_icon_name_mapping(app_handle: &AppHandle) -> Option<&Mutex<HashMap<u64, String>>> {
@@ -760,12 +742,12 @@ fn get_icon_name_mapping(app_handle: &AppHandle) -> Option<&Mutex<HashMap<u64, S
                     continue;
                 }
                 let parts: Vec<&str> = line.splitn(3, ',').collect();
-                if parts.len() >= 3 {
-                    if let Ok(ability_id) = parts[0].parse::<u64>() {
-                        let icon_name = parts[2].trim().to_string();
-                        if !icon_name.is_empty() {
-                            map.insert(ability_id, icon_name);
-                        }
+                if parts.len() >= 3
+                    && let Ok(ability_id) = parts[0].parse::<u64>()
+                {
+                    let icon_name = parts[2].trim().to_string();
+                    if !icon_name.is_empty() {
+                        map.insert(ability_id, icon_name);
                     }
                 }
             }
@@ -785,8 +767,7 @@ pub async fn get_icon_preview(app_handle: AppHandle, ability_id: u64) -> Result<
         map.get(&ability_id).cloned()
     };
 
-    let icon_name =
-        icon_name.ok_or_else(|| format!("No icon mapping for ability {}", ability_id))?;
+    let icon_name = icon_name.ok_or_else(|| format!("No icon mapping for ability {}", ability_id))?;
 
     // Get icons directory
     let icons_dir = app_handle
@@ -813,7 +794,9 @@ pub async fn get_icon_preview(app_handle: AppHandle, ability_id: u64) -> Result<
                 if let Ok(mut archive) = ZipArchive::new(reader) {
                     for i in 0..archive.len() {
                         if let Ok(mut entry) = archive.by_index(i) {
-                            let Ok(name) = entry.name().map(|n| n.to_string()) else { continue };
+                            let Ok(name) = entry.name().map(|n| n.to_string()) else {
+                                continue;
+                            };
                             if name.ends_with(".png") {
                                 let mut data = Vec::new();
                                 if entry.read_to_end(&mut data).is_ok() {

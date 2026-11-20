@@ -3,7 +3,6 @@
 //! Replays combat logs through boss definitions and validates timer behavior:
 //! - Realtime mode (1x): Debug timer display issues
 //! - Accelerated mode: Fast CI validation with checkpoints
-//! - Visual mode: Display actual overlay window (requires --features visual)
 
 mod output;
 mod replay;
@@ -20,8 +19,7 @@ use chrono::NaiveDateTime;
 use clap::{Parser, ValueEnum};
 
 use baras_core::boss::{
-    BossEncounterDefinition, ChallengeContext, EntityInfo, load_bosses_from_dir,
-    load_bosses_with_custom,
+    BossEncounterDefinition, ChallengeContext, EntityInfo, load_bosses_from_dir, load_bosses_with_custom,
 };
 use baras_core::combat_log::{CombatEvent, EntityType, LogParser};
 use baras_core::context::resolve;
@@ -30,8 +28,8 @@ use baras_core::encounter::combat::ActiveBoss;
 use baras_core::encounter::entity_info::NpcInfo;
 use baras_core::game_data::{effect_id, effect_type_id};
 use baras_core::signal_processor::{
-    EventProcessor, GameSignal, SignalHandler, check_counter_signal_triggers,
-    check_counter_timer_triggers, check_entity_phase_transitions, check_timer_phase_transitions,
+    EventProcessor, GameSignal, SignalHandler, check_counter_signal_triggers, check_counter_timer_triggers,
+    check_entity_phase_transitions, check_timer_phase_transitions,
 };
 use baras_core::state::SessionCache;
 use baras_core::timers::TimerManager;
@@ -44,18 +42,13 @@ use crate::verification::{CheckpointVerifier, Expectations};
 // CLI Arguments
 // ═══════════════════════════════════════════════════════════════════════════════
 
-#[derive(Debug, Clone, Copy, ValueEnum)]
+#[derive(Debug, Clone, Copy, ValueEnum, Default)]
 enum ReplayMode {
     /// 1x speed with actual timing delays
     Realtime,
     /// Fast replay with virtual time (default)
+    #[default]
     Accelerated,
-}
-
-impl Default for ReplayMode {
-    fn default() -> Self {
-        Self::Accelerated
-    }
 }
 
 #[derive(Parser, Debug)]
@@ -210,26 +203,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     // Parse time bounds
-    let start_at_secs = args
-        .start_at
-        .as_ref()
-        .map(|s| parse_time_arg(s))
-        .transpose()?;
-    let stop_at_secs = args
-        .stop_at
-        .as_ref()
-        .map(|s| parse_time_arg(s))
-        .transpose()?;
+    let start_at_secs = args.start_at.as_ref().map(|s| parse_time_arg(s)).transpose()?;
+    let stop_at_secs = args.stop_at.as_ref().map(|s| parse_time_arg(s)).transpose()?;
 
     // Load boss definitions
     // Resolve bundled definitions path (installed app or dev source tree)
     let def_path = args.definitions.clone().unwrap_or_else(|| {
         // Windows: installed app resources (NSIS currentUser install)
         if let Some(local_data) = dirs::data_local_dir() {
-            let installed = local_data
-                .join("BARAS")
-                .join("definitions")
-                .join("encounters");
+            let installed = local_data.join("BARAS").join("definitions").join("encounters");
             if installed.exists() {
                 return installed;
             }
@@ -242,21 +224,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     // User custom definitions directory (overlays + standalone encounters)
-    let user_dir =
-        dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"));
+    let user_dir = baras_core::paths::config_dir().map(|p| p.join("definitions").join("encounters"));
 
     // Load bundled definitions, merging with user custom overlays per-file
     let mut all_bosses: Vec<BossEncounterDefinition> = Vec::new();
     walk_and_load_definitions(&def_path, user_dir.as_deref(), &mut all_bosses)?;
 
     // Also load standalone user-created definitions (skip _custom overlays, those are already merged)
-    if let Some(ref ud) = user_dir {
-        if ud.exists() {
-            let user_standalone = load_bosses_from_dir(ud)?;
-            for boss in user_standalone {
-                if !all_bosses.iter().any(|b| b.id == boss.id) {
-                    all_bosses.push(boss);
-                }
+    if let Some(ref ud) = user_dir
+        && ud.exists()
+    {
+        let user_standalone = load_bosses_from_dir(ud)?;
+        for boss in user_standalone {
+            if !all_bosses.iter().any(|b| b.id == boss.id) {
+                all_bosses.push(boss);
             }
         }
     }
@@ -271,22 +252,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             format!(
                 "Boss '{}' not found. Available: {}",
                 args.boss,
-                bosses
-                    .iter()
-                    .map(|b| b.id.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
+                bosses.iter().map(|b| b.id.as_str()).collect::<Vec<_>>().join(", ")
             )
         })?;
 
     eprintln!("Validating: {} ({})", boss_def.name, boss_def.area_name);
     eprintln!(
         "Mode: {} (speed: {}x)",
-        if speed == 0.0 {
-            "accelerated"
-        } else {
-            "realtime"
-        },
+        if speed == 0.0 { "accelerated" } else { "realtime" },
         if speed == 0.0 {
             "instant".to_string()
         } else {
@@ -323,7 +296,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("Log file is empty or unreadable".into());
     }
 
-    let session_date = extract_session_date(&lines[0])?;
+    let session_date = extract_session_date(lines[0])?;
     let parser = LogParser::new(session_date);
 
     // Resolve encounter filter (--encounter N or --latest)
@@ -410,15 +383,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
 
         // Apply time bounds
-        if let Some(start) = start_at_secs {
-            if combat_time_secs < start {
-                continue;
-            }
+        if let Some(start) = start_at_secs
+            && combat_time_secs < start
+        {
+            continue;
         }
-        if let Some(stop) = stop_at_secs {
-            if combat_time_secs > stop {
-                break;
-            }
+        if let Some(stop) = stop_at_secs
+            && combat_time_secs > stop
+        {
+            break;
         }
 
         // Advance virtual clock (sleeps in realtime mode)
@@ -510,12 +483,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 // Counter triggers from timer events
                 new_signals.extend(check_counter_timer_triggers(
-                    &iter_expired, &iter_started, &iter_canceled, &mut cache, event.timestamp,
+                    &iter_expired,
+                    &iter_started,
+                    &iter_canceled,
+                    &mut cache,
+                    event.timestamp,
                 ));
 
                 // Phase triggers from timer events
                 new_signals.extend(check_timer_phase_transitions(
-                    &iter_expired, &iter_started, &iter_canceled, &mut cache, event.timestamp,
+                    &iter_expired,
+                    &iter_started,
+                    &iter_canceled,
+                    &mut cache,
+                    event.timestamp,
                 ));
 
                 // Inner counter↔phase fixed-point loop on new signals
@@ -530,19 +511,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         watermark = w;
 
                         // Phase transitions from counter/signal changes
-                        new_signals.extend(check_entity_phase_transitions(
-                            &mut cache,
-                            slice,
-                            event.timestamp,
-                        ));
+                        new_signals.extend(check_entity_phase_transitions(&mut cache, slice, event.timestamp));
 
                         // Counter reactions to new phase/counter signals
                         let new_slice = &new_signals[watermark..];
-                        new_signals.extend(check_counter_signal_triggers(
-                            &mut cache,
-                            new_slice,
-                            event.timestamp,
-                        ));
+                        new_signals.extend(check_counter_signal_triggers(&mut cache, new_slice, event.timestamp));
                     }
                 }
 
@@ -584,12 +557,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 && entity.health.1 > 0
             {
                 let name = resolve(entity.name).to_string();
-                cli.update_boss_hp(
-                    &name,
-                    entity.class_id,
-                    entity.health.0 as i64,
-                    entity.health.1 as i64,
-                );
+                cli.update_boss_hp(&name, entity.class_id, entity.health.0 as i64, entity.health.1 as i64);
             }
         }
 
@@ -656,10 +624,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     challenge_phase = Some(new_phase.clone());
                     challenge_tracker.set_phase(new_phase, *timestamp);
                 }
-                GameSignal::PhaseEndTriggered {
-                    phase_id,
-                    timestamp,
-                } => {
+                GameSignal::PhaseEndTriggered { phase_id, timestamp } => {
                     cli.phase_end_triggered(*timestamp, phase_id);
                 }
                 GameSignal::CounterChanged {
@@ -737,10 +702,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     challenge_phase = Some(new_phase.clone());
                     challenge_tracker.set_phase(new_phase, *timestamp);
                 }
-                GameSignal::PhaseEndTriggered {
-                    phase_id,
-                    timestamp,
-                } => {
+                GameSignal::PhaseEndTriggered { phase_id, timestamp } => {
                     cli.phase_end_triggered(*timestamp, phase_id);
                 }
                 _ => {}
@@ -751,8 +713,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Build sets for routing: queued timers show as READY, not EXPIRED;
         // removed-queued timers show as QUEUE CLEARED, not CANCELED.
-        let queued_set: std::collections::HashSet<&str> =
-            queued_timer_ids.iter().map(|s| s.as_str()).collect();
+        let queued_set: std::collections::HashSet<&str> = queued_timer_ids.iter().map(|s| s.as_str()).collect();
         let removed_queued_set: std::collections::HashSet<&str> =
             removed_queued_timer_ids.iter().map(|s| s.as_str()).collect();
 
@@ -806,7 +767,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Look up from active timers first, fall back to definitions for timers
         // that started and expired/canceled within the same signal batch.
         for started_id in &started_timer_ids {
-            if let Some(timer) = timer_manager.active_timers().iter().find(|t| &t.definition_id == started_id) {
+            if let Some(timer) = timer_manager
+                .active_timers()
+                .iter()
+                .find(|t| &t.definition_id == started_id)
+            {
                 cli.timer_start(
                     event.timestamp,
                     &timer.name,
@@ -846,9 +811,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let target = entity_to_info(&event.target_entity, local_player_id);
             let damage = event.details.dmg_effective as i64;
 
-            if target.npc_id.is_some() && event.target_entity.health.1 > 0 {
+            if let Some(npc_id) = target.npc_id
+                && event.target_entity.health.1 > 0
+            {
                 challenge_npcs.insert(
-                    target.npc_id.unwrap(),
+                    npc_id,
                     NpcInfo {
                         current_hp: event.target_entity.health.0,
                         max_hp: event.target_entity.health.1,
@@ -896,8 +863,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Finalize challenge tracker
-    let end_time = kill_target_death_time
-        .or_else(|| state.entities.values().filter_map(|e| e.last_seen).max());
+    let end_time = kill_target_death_time.or_else(|| state.entities.values().filter_map(|e| e.last_seen).max());
 
     let combat_duration = if let (Some(start), Some(end)) = (state.combat_start, end_time) {
         (end - start).num_milliseconds() as f32 / 1000.0
@@ -933,10 +899,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Exit with error code if verification failed
-    if let Some((passed, total)) = checkpoint_result {
-        if passed != total {
-            std::process::exit(1);
-        }
+    if let Some((passed, total)) = checkpoint_result
+        && passed != total
+    {
+        std::process::exit(1);
     }
 
     Ok(())
@@ -949,11 +915,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// Quick pre-scan of the log to count how many boss encounters occur.
 /// A "boss encounter" is a combat session where a boss entity NPC appears.
 /// This avoids full signal processing — just parses events and checks entity IDs.
-fn count_boss_encounters(
-    lines: &[&str],
-    parser: &LogParser,
-    boss_entity_ids: &HashSet<i64>,
-) -> u32 {
+fn count_boss_encounters(lines: &[&str], parser: &LogParser, boss_entity_ids: &HashSet<i64>) -> u32 {
     let mut count = 0u32;
     let mut in_combat = false;
     let mut boss_seen_this_combat = false;
@@ -975,9 +937,7 @@ fn count_boss_encounters(
         // Check if a boss entity appears during combat
         if in_combat && !boss_seen_this_combat {
             for entity in [&event.source_entity, &event.target_entity] {
-                if entity.entity_type == EntityType::Npc
-                    && boss_entity_ids.contains(&entity.class_id)
-                {
+                if entity.entity_type == EntityType::Npc && boss_entity_ids.contains(&entity.class_id) {
                     boss_seen_this_combat = true;
                     count += 1;
                     break;
@@ -1011,12 +971,12 @@ fn extract_session_date(first_line: &str) -> Result<NaiveDateTime, Box<dyn std::
     // Extract the timestamp from the first log line (format: [HH:MM:SS.mmm])
     // and use it as the session start time so the parser's midnight wraparound
     // detection works correctly for logs that span midnight.
-    if let Some(start) = first_line.find('[') {
-        if let Some(end) = first_line.find(']') {
-            let time_str = &first_line[start + 1..end];
-            if let Ok(time) = chrono::NaiveTime::parse_from_str(time_str, "%H:%M:%S%.3f") {
-                return Ok(today.and_time(time));
-            }
+    if let Some(start) = first_line.find('[')
+        && let Some(end) = first_line.find(']')
+    {
+        let time_str = &first_line[start + 1..end];
+        if let Ok(time) = chrono::NaiveTime::parse_from_str(time_str, "%H:%M:%S%.3f") {
+            return Ok(today.and_time(time));
         }
     }
 
@@ -1118,9 +1078,7 @@ fn track_event(state: &mut ValidationState, event: &CombatEvent, boss: &BossEnco
         .entities
         .iter()
         .any(|e| e.is_boss && e.name.eq_ignore_ascii_case(&source_name))
-        || state
-            .boss_entity_ids
-            .contains(&event.source_entity.class_id);
+        || state.boss_entity_ids.contains(&event.source_entity.class_id);
 
     if is_boss_source && event.action.action_id != 0 {
         let ability_id = event.action.action_id;
@@ -1143,13 +1101,10 @@ fn track_event(state: &mut ValidationState, event: &CombatEvent, boss: &BossEnco
     if event.target_entity.entity_type == EntityType::Player && event.effect.effect_id != 0 {
         let effect_id = event.effect.effect_id;
 
-        let entry = state
-            .effects_on_players
-            .entry(effect_id)
-            .or_insert_with(|| EffectSeen {
-                apply_count: 0,
-                remove_count: 0,
-            });
+        let entry = state.effects_on_players.entry(effect_id).or_insert_with(|| EffectSeen {
+            apply_count: 0,
+            remove_count: 0,
+        });
 
         let type_id = event.effect.type_id;
         if type_id == effect_type_id::APPLYEFFECT {
@@ -1226,10 +1181,7 @@ fn print_detailed_report(
     if !challenge_values.is_empty() && output_level >= OutputLevel::Normal {
         println!();
         println!("CHALLENGES:");
-        println!(
-            "  {:25} {:>15} {:>10} {:>12}",
-            "Name", "Value", "Events", "DPS"
-        );
+        println!("  {:25} {:>15} {:>10} {:>12}", "Name", "Value", "Events", "DPS");
         println!("  {}", "─".repeat(65));
 
         for cv in &challenge_values {
@@ -1240,10 +1192,7 @@ fn print_detailed_report(
                 .and_then(|c| c.phase_ids().map(|ids| ids.to_vec()));
 
             let duration = if let Some(ref phases) = phase_ids {
-                phases
-                    .iter()
-                    .map(|p| challenges.phase_duration(p))
-                    .sum::<f32>()
+                phases.iter().map(|p| challenges.phase_duration(p)).sum::<f32>()
             } else {
                 challenges.total_duration()
             };
@@ -1277,15 +1226,8 @@ fn print_detailed_report(
                 players.sort_by(|a, b| b.1.cmp(a.1));
 
                 for (entity_id, value) in players {
-                    let name = player_names
-                        .get(entity_id)
-                        .map(|s| s.as_str())
-                        .unwrap_or("Unknown");
-                    let player_dps = if duration > 0.0 {
-                        *value as f32 / duration
-                    } else {
-                        0.0
-                    };
+                    let name = player_names.get(entity_id).map(|s| s.as_str()).unwrap_or("Unknown");
+                    let player_dps = if duration > 0.0 { *value as f32 / duration } else { 0.0 };
                     println!(
                         "      {:20} {:>12} {:>12.1}/s",
                         truncate(name, 20),
@@ -1308,15 +1250,12 @@ fn print_detailed_report(
             println!("  {}", "─".repeat(80));
 
             let mut abilities: Vec<_> = untracked_abilities;
-            abilities.sort_by(|a, b| b.count.cmp(&a.count));
+            abilities.sort_by_key(|x| std::cmp::Reverse(x.count));
 
             for ability in abilities {
                 let sources: Vec<_> = ability.sources.iter().take(2).cloned().collect();
                 let sources_str = sources.join(", ");
-                let tracked = if state
-                    .tracked_ability_ids
-                    .contains(&(ability.ability_id as u64))
-                {
+                let tracked = if state.tracked_ability_ids.contains(&(ability.ability_id as u64)) {
                     " ✓"
                 } else {
                     ""

@@ -29,7 +29,9 @@ fn default_width() -> f64 {
 /// `style` for `.editor-layout`: the dragged width, which both the drawer and
 /// the push padding read
 pub fn layout_style() -> String {
-    DRAWER_WIDTH().map(|w| format!("--editor-drawer-w: {w:.0}px")).unwrap_or_default()
+    DRAWER_WIDTH()
+        .map(|w| format!("--editor-drawer-w: {w:.0}px"))
+        .unwrap_or_default()
 }
 
 /// Left-edge grip of a right-docked drawer: drag to resize, double-click for
@@ -106,7 +108,10 @@ impl DrawerGuard {
 
 /// Call once at the panel root, and render `DiscardPrompt` inside it
 pub fn provide_drawer_guard() -> DrawerGuard {
-    use_context_provider(|| DrawerGuard { dirty: Signal::new(false), pending: Signal::new(None) })
+    use_context_provider(|| DrawerGuard {
+        dirty: Signal::new(false),
+        pending: Signal::new(None),
+    })
 }
 
 pub fn use_drawer_guard() -> DrawerGuard {

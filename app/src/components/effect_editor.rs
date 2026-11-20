@@ -5,18 +5,20 @@
 //! - Inline expansion for editing
 //! - Full CRUD operations
 
-use crate::components::editor_drawer::{DiscardPrompt, layout_style, EditorDrawer, provide_drawer_guard};
+use crate::components::editor_drawer::{DiscardPrompt, EditorDrawer, layout_style, provide_drawer_guard};
 use dioxus::prelude::*;
 
 use super::effect_form::EffectEditForm;
 use super::effect_trigger::effect_icon_id;
 use super::encounter_editor::InlineNameCreator;
-use crate::components::effect_filters::{EffectFilterBar, matches_filters};
-use crate::components::ability_icon::ColorIcon;
-use crate::components::editor_sort::{apply_rank, use_stable_rank};
-use crate::components::editor_common::{Origin, OriginBadge};
 use crate::api;
-use crate::types::{AlertTrigger, AudioConfig, EffectImportPreview, EffectListItem, EntityFilter, Trigger, UiSessionState};
+use crate::components::ability_icon::ColorIcon;
+use crate::components::editor_common::{Origin, OriginBadge};
+use crate::components::editor_sort::{apply_rank, use_stable_rank};
+use crate::components::effect_filters::{EffectFilterBar, matches_filters};
+use crate::types::{
+    AlertTrigger, AudioConfig, EffectImportPreview, EffectListItem, EntityFilter, Trigger, UiSessionState,
+};
 
 /// Create a default effect with sensible defaults
 fn default_effect(name: String) -> EffectListItem {
@@ -126,21 +128,21 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
     // Bring the restored open effect into view once, when the list first
     // loads; picking a row later must not move the list (peek: no subscription)
     use_effect(move || {
-        if !loading() {
-            if let Some(effect_id) = expanded_effect.peek().clone() {
-                // Small delay to ensure DOM is rendered
-                spawn(async move {
-                    gloo_timers::future::TimeoutFuture::new(100).await;
-                    if let Some(window) = web_sys::window() {
-                        if let Some(document) = window.document() {
-                            let element_id = format!("effect-{}", effect_id);
-                            if let Some(element) = document.get_element_by_id(&element_id) {
-                                element.scroll_into_view();
-                            }
-                        }
+        if !loading()
+            && let Some(effect_id) = expanded_effect.peek().clone()
+        {
+            // Small delay to ensure DOM is rendered
+            spawn(async move {
+                gloo_timers::future::TimeoutFuture::new(100).await;
+                if let Some(window) = web_sys::window()
+                    && let Some(document) = window.document()
+                {
+                    let element_id = format!("effect-{}", effect_id);
+                    if let Some(element) = document.get_element_by_id(&element_id) {
+                        element.scroll_into_view();
                     }
-                });
-            }
+                }
+            });
         }
     });
 
@@ -150,12 +152,15 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
         let hide_disabled = hide_disabled_effects();
         effects()
             .into_iter()
-            .filter(|e| !(hide_disabled && !e.enabled) && (query.is_empty() || e.name.to_lowercase().contains(&query)))
+            .filter(|e| (!hide_disabled || e.enabled) && (query.is_empty() || e.name.to_lowercase().contains(&query)))
             .collect::<Vec<_>>()
     });
     let filtered_effects = use_memo(move || {
         let f = filters.read();
-        searched_effects().into_iter().filter(|e| matches_filters(&f, e)).collect::<Vec<_>>()
+        searched_effects()
+            .into_iter()
+            .filter(|e| matches_filters(&f, e))
+            .collect::<Vec<_>>()
     });
     // Always A–Z (the backend order is arbitrary); a rename keeps its row in place
     let rank = use_stable_rank(effects.read().iter().map(|e| (e.id.as_str(), e.name.as_str())), true);
@@ -592,7 +597,7 @@ fn EffectImportPreviewModal(
                                                 let targets_label = match effect.display_targets.len() {
                                                     0 => "None".to_string(),
                                                     1 => effect.display_targets[0].label().to_string(),
-                                                    n => format!("⊞ {n} targets"),
+                                                    n => format!("{n} overlays"),
                                                 };
                                                 rsx! { span { class: "tag", "{targets_label}" } }
                                             }
@@ -637,7 +642,11 @@ fn EffectImportPreviewModal(
 
 /// Bundled + user override = edited built-in
 pub(crate) fn effect_origin(is_draft: bool, is_bundled: bool, is_user_override: bool) -> Origin {
-    if is_draft { Origin::New } else { Origin::of(is_bundled && !is_user_override, is_bundled && is_user_override) }
+    if is_draft {
+        Origin::New
+    } else {
+        Origin::of(is_bundled && !is_user_override, is_bundled && is_user_override)
+    }
 }
 
 #[component]
@@ -682,7 +691,7 @@ fn EffectRow(
                         span { class: "unsaved-indicator", title: "Unsaved changes" }
                     }
                     if !is_draft {
-                        span { class: "text-xs text-mono text-muted", "  {effect.id}" }
+                        span { class: "text-xs text-mono text-muted", title: "{effect.id}", "{effect.id}" }
                     }
                 }
 
@@ -705,7 +714,7 @@ fn EffectRow(
                 span { class: "row-col-duration",
                     if !effect.is_alert {
                         if let Some(dur) = effect.duration_secs {
-                            span { class: "effect-duration", "{dur:.0}s" }
+                            "{dur:.0}s"
                         }
                     }
                 }
@@ -722,10 +731,7 @@ fn EffectRow(
                             updated.enabled = !updated.enabled;
                             on_save.call(updated);
                         },
-                        span {
-                            class: if effect.enabled { "text-success" } else { "text-muted" },
-                            if effect.enabled { "✓" } else { "○" }
-                        }
+                        i { class: if effect.enabled { "fa-solid fa-power-off text-success" } else { "fa-solid fa-power-off text-muted" } }
                     }
 
                     // Audio toggle
@@ -738,10 +744,7 @@ fn EffectRow(
                             updated.audio.enabled = !updated.audio.enabled;
                             on_save.call(updated);
                         },
-                        span {
-                            class: if effect.audio.enabled { "text-primary" } else { "text-muted" },
-                            if effect.audio.enabled { "🔊" } else { "🔇" }
-                        }
+                        i { class: if effect.audio.enabled { "fa-solid fa-volume-high text-primary" } else { "fa-solid fa-volume-xmark text-muted" } }
                     }
                     OriginBadge { origin: effect_origin(is_draft, effect.is_bundled, effect.is_user_override), kind: "effect" }
                 }

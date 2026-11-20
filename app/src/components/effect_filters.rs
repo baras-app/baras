@@ -4,8 +4,8 @@
 
 use dioxus::prelude::*;
 
-use super::editor_common::{ORIGINS, Origin, OriginFilter};
 use super::discipline_selector::{ALL_DISCIPLINES, ALL_ROLES};
+use super::editor_common::{ORIGINS, Origin, OriginFilter};
 use super::effect_editor::effect_origin;
 use super::multi_select::{Entry, MultiSelect};
 use crate::types::{DisplayTarget, EffectFilters, EffectListItem};
@@ -85,7 +85,15 @@ impl Section {
             .collect();
         let mut out: Groups = known
             .into_iter()
-            .map(|(g, vs)| (g, vs.into_iter().filter(|v| present.contains(v)).map(String::from).collect::<Vec<_>>()))
+            .map(|(g, vs)| {
+                (
+                    g,
+                    vs.into_iter()
+                        .filter(|v| present.contains(v))
+                        .map(String::from)
+                        .collect::<Vec<_>>(),
+                )
+            })
             .filter(|(_, vs)| !vs.is_empty())
             .collect();
         if !extra.is_empty() {
@@ -97,13 +105,10 @@ impl Section {
 
 /// Whether `e` passes every section's filter except `skip`
 fn passes(f: &EffectFilters, e: &EffectListItem, skip: Option<Section>) -> bool {
-    SECTIONS
-        .iter()
-        .filter(|s| Some(**s) != skip)
-        .all(|s| {
-            let picked = s.picked(f);
-            picked.is_empty() || s.values(e).iter().any(|v| picked.iter().any(|p| p == v))
-        })
+    SECTIONS.iter().filter(|s| Some(**s) != skip).all(|s| {
+        let picked = s.picked(f);
+        picked.is_empty() || s.values(e).iter().any(|v| picked.iter().any(|p| p == v))
+    })
 }
 
 pub fn matches_filters(f: &EffectFilters, e: &EffectListItem) -> bool {
@@ -112,12 +117,19 @@ pub fn matches_filters(f: &EffectFilters, e: &EffectListItem) -> bool {
 
 /// How many effects in `effects` picking `value` in `section` would leave
 fn count(f: &EffectFilters, effects: &[EffectListItem], section: Section, value: &str) -> usize {
-    effects.iter().filter(|e| passes(f, e, Some(section)) && section.values(e).contains(&value)).count()
+    effects
+        .iter()
+        .filter(|e| passes(f, e, Some(section)) && section.values(e).contains(&value))
+        .count()
 }
 
 /// `effects` is the list after the name search and hide-disabled toggle
 #[component]
-pub fn EffectFilterBar(effects: Memo<Vec<EffectListItem>>, filters: Signal<EffectFilters>, search: Signal<String>) -> Element {
+pub fn EffectFilterBar(
+    effects: Memo<Vec<EffectListItem>>,
+    filters: Signal<EffectFilters>,
+    search: Signal<String>,
+) -> Element {
     let f = filters.read().clone();
     let list = effects.read();
     let active = SECTIONS.iter().filter(|s| !s.picked(&f).is_empty()).count();
@@ -172,7 +184,11 @@ fn FilterSelect(
         if let Some(g) = group {
             entries.push((g.to_string(), Vec::new()));
         }
-        entries.extend(values.into_iter().map(|v| (format!("{v} ({})", count(&f, &list, section, &v)), vec![v])));
+        entries.extend(
+            values
+                .into_iter()
+                .map(|v| (format!("{v} ({})", count(&f, &list, section, &v)), vec![v])),
+        );
     }
 
     rsx! {

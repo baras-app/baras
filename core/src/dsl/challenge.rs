@@ -15,8 +15,8 @@ use serde::{Deserialize, Serialize};
 use crate::encounter::entity_info::NpcInfo;
 
 use super::ComparisonOp;
-use crate::dsl::entity_filter::{EntityFilter, EntityFilterMatching};
 use crate::dsl::EntityDefinition;
+use crate::dsl::entity_filter::{EntityFilter, EntityFilterMatching};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Challenge Definition
@@ -272,9 +272,9 @@ impl ChallengeCondition {
         effect_id: Option<u64>,
     ) -> bool {
         match self {
-            ChallengeCondition::Phase { phase_ids } => ctx
-                .current_phase
-                .is_some_and(|p| phase_ids.iter().any(|id| id == p)),
+            ChallengeCondition::Phase { phase_ids } => {
+                ctx.current_phase.is_some_and(|p| phase_ids.iter().any(|id| id == p))
+            }
 
             ChallengeCondition::Source { matcher } => source.is_some_and(|s| {
                 matcher.matches_challenge(
@@ -300,13 +300,9 @@ impl ChallengeCondition {
                 )
             }),
 
-            ChallengeCondition::Ability { ability_ids } => {
-                ability_id.is_some_and(|id| ability_ids.contains(&id))
-            }
+            ChallengeCondition::Ability { ability_ids } => ability_id.is_some_and(|id| ability_ids.contains(&id)),
 
-            ChallengeCondition::Effect { effect_ids } => {
-                effect_id.is_some_and(|id| effect_ids.contains(&id))
-            }
+            ChallengeCondition::Effect { effect_ids } => effect_id.is_some_and(|id| effect_ids.contains(&id)),
 
             ChallengeCondition::Counter {
                 counter_id,
@@ -317,11 +313,7 @@ impl ChallengeCondition {
                 operator.evaluate(current, *value)
             }
 
-            ChallengeCondition::BossHpRange {
-                min_hp,
-                max_hp,
-                npc_id,
-            } => {
+            ChallengeCondition::BossHpRange { min_hp, max_hp, npc_id } => {
                 let hp = if let Some(id) = npc_id {
                     ctx.npcs.get(id).map(NpcInfo::hp_percent)
                 } else {
@@ -329,9 +321,7 @@ impl ChallengeCondition {
                     ctx.npcs.values().next().map(NpcInfo::hp_percent)
                 };
 
-                hp.is_some_and(|h| {
-                    min_hp.is_none_or(|min| h >= min) && max_hp.is_none_or(|max| h <= max)
-                })
+                hp.is_some_and(|h| min_hp.is_none_or(|min| h >= min) && max_hp.is_none_or(|max| h <= max))
             }
         }
     }
@@ -394,7 +384,14 @@ mod tests {
             boss_npc_ids: vec![1001, 1002],
             ..Default::default()
         };
-        state.npcs.insert(1001, NpcInfo { current_hp: 25, max_hp: 100, ..Default::default() });
+        state.npcs.insert(
+            1001,
+            NpcInfo {
+                current_hp: 25,
+                max_hp: 100,
+                ..Default::default()
+            },
+        );
         state.counters.insert("stacks".to_string(), 5);
         state
     }
@@ -457,21 +454,9 @@ mod tests {
         let add = EntityInfo::npc(2, "Add", 9999);
         let player = EntityInfo::player(3, "Player", false);
 
-        assert!(!filter_matches(
-            &EntityFilter::NpcExceptBoss,
-            &boss,
-            &boss_ids
-        ));
-        assert!(filter_matches(
-            &EntityFilter::NpcExceptBoss,
-            &add,
-            &boss_ids
-        ));
-        assert!(!filter_matches(
-            &EntityFilter::NpcExceptBoss,
-            &player,
-            &boss_ids
-        ));
+        assert!(!filter_matches(&EntityFilter::NpcExceptBoss, &boss, &boss_ids));
+        assert!(filter_matches(&EntityFilter::NpcExceptBoss, &add, &boss_ids));
+        assert!(!filter_matches(&EntityFilter::NpcExceptBoss, &player, &boss_ids));
     }
 
     #[test]
@@ -481,16 +466,8 @@ mod tests {
         let other = EntityInfo::player(2, "Them", false);
         let npc = EntityInfo::npc(3, "NPC", 123);
 
-        assert!(filter_matches(
-            &EntityFilter::LocalPlayer,
-            &local,
-            &boss_ids
-        ));
-        assert!(!filter_matches(
-            &EntityFilter::LocalPlayer,
-            &other,
-            &boss_ids
-        ));
+        assert!(filter_matches(&EntityFilter::LocalPlayer, &local, &boss_ids));
+        assert!(!filter_matches(&EntityFilter::LocalPlayer, &other, &boss_ids));
         assert!(!filter_matches(&EntityFilter::LocalPlayer, &npc, &boss_ids));
     }
 
@@ -645,11 +622,7 @@ mod tests {
         let bytes = match fs::read(fixture_path) {
             Ok(b) => b,
             Err(e) => {
-                eprintln!(
-                    "Fixture file error: {} (cwd: {:?})",
-                    e,
-                    std::env::current_dir()
-                );
+                eprintln!("Fixture file error: {} (cwd: {:?})", e, std::env::current_dir());
                 eprintln!("Skipping test - fixture not found at: {}", fixture_path);
                 return;
             }
@@ -781,10 +754,7 @@ mod tests {
             "Boss damage: {} across {} events ({} immune hits)",
             boss_damage_total, boss_damage_events, boss_immune_events
         );
-        eprintln!(
-            "Add damage: {} across {} events",
-            add_damage_total, add_damage_events
-        );
+        eprintln!("Add damage: {} across {} events", add_damage_total, add_damage_events);
 
         // Assertions - verify we actually processed real data
         assert!(total_lines > 800, "Should have >800 lines in fixture");
@@ -884,12 +854,11 @@ mod tests {
             };
 
             // Track boss HP from any event involving Bestia
-            let target_npc_id =
-                if event.target_entity.entity_type == crate::combat_log::EntityType::Npc {
-                    Some(event.target_entity.class_id)
-                } else {
-                    None
-                };
+            let target_npc_id = if event.target_entity.entity_type == crate::combat_log::EntityType::Npc {
+                Some(event.target_entity.class_id)
+            } else {
+                None
+            };
 
             if target_npc_id == Some(BESTIA_NPC_ID) && event.target_entity.health.1 > 0 {
                 let current_hp = event.target_entity.health.0 as i64;
@@ -897,13 +866,15 @@ mod tests {
                 boss_hp_percent = (current_hp as f32 / max_hp as f32) * 100.0;
                 state.npcs.insert(
                     BESTIA_NPC_ID,
-                    NpcInfo { current_hp: current_hp as i32, max_hp: max_hp as i32, ..Default::default() },
+                    NpcInfo {
+                        current_hp: current_hp as i32,
+                        max_hp: max_hp as i32,
+                        ..Default::default()
+                    },
                 );
 
                 // Check for phase transition
-                if state.current_phase.as_deref() == Some("p1")
-                    && boss_hp_percent < BURN_PHASE_THRESHOLD
-                {
+                if state.current_phase.as_deref() == Some("p1") && boss_hp_percent < BURN_PHASE_THRESHOLD {
                     state.current_phase = Some("burn".to_string());
                     phase_transition_line = Some(line_num);
                     eprintln!(
@@ -968,22 +939,10 @@ mod tests {
 
         // Assertions
         assert!(total_lines > 700, "Should have >700 lines");
-        assert!(
-            phase_transition_line.is_some(),
-            "Should detect burn phase transition"
-        );
-        assert!(
-            dread_scream_count >= 2,
-            "Should count at least 2 Dread Screams"
-        );
-        assert!(
-            damage_before_burn > 0,
-            "Should have damage before burn phase"
-        );
-        assert!(
-            damage_during_burn > 0,
-            "Should have damage during burn phase"
-        );
+        assert!(phase_transition_line.is_some(), "Should detect burn phase transition");
+        assert!(dread_scream_count >= 2, "Should count at least 2 Dread Screams");
+        assert!(damage_before_burn > 0, "Should have damage before burn phase");
+        assert!(damage_during_burn > 0, "Should have damage during burn phase");
         assert!(boss_hp_percent < 30.0, "Final HP should be below 30%");
 
         eprintln!("=== Test passed: Phase transitions and counters work correctly ===");

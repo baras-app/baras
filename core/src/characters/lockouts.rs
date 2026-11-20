@@ -37,9 +37,8 @@ pub fn next_reset(after_ms: i64, weekly: bool, hour: u8) -> i64 {
         .unwrap_or_default()
         .and_utc();
     let period = if weekly {
-        let ahead = (i64::from(Weekday::Tue.num_days_from_monday())
-            - i64::from(at.weekday().num_days_from_monday()))
-        .rem_euclid(7);
+        let ahead = (i64::from(Weekday::Tue.num_days_from_monday()) - i64::from(at.weekday().num_days_from_monday()))
+            .rem_euclid(7);
         at += Duration::days(ahead);
         7
     } else {
@@ -67,14 +66,31 @@ struct Group {
 type Groups = HashMap<(String, &'static str), Group>;
 
 /// The group for one kill or mark, if its reset window is still open
-fn touch<'g>(groups: &'g mut Groups, operation: &str, area_id: i64, tier: &'static str, size: u8, at_ms: i64, hour: u8, now_ms: i64) -> Option<&'g mut Group> {
+fn touch<'g>(
+    groups: &'g mut Groups,
+    operation: &str,
+    area_id: i64,
+    tier: &'static str,
+    size: u8,
+    at_ms: i64,
+    hour: u8,
+    now_ms: i64,
+) -> Option<&'g mut Group> {
     let expires = next_reset(at_ms, is_weekly(tier), hour);
     if expires <= now_ms {
         return None;
     }
     let g = groups
         .entry((operation_key(area_id, operation), tier))
-        .or_insert(Group { operation: operation.to_string(), area_id, tier, size, kills: Vec::new(), expires_ms: expires, manual: false });
+        .or_insert(Group {
+            operation: operation.to_string(),
+            area_id,
+            tier,
+            size,
+            kills: Vec::new(),
+            expires_ms: expires,
+            manual: false,
+        });
     g.expires_ms = g.expires_ms.max(expires);
     if g.area_id == 0 {
         g.area_id = area_id;
@@ -83,19 +99,37 @@ fn touch<'g>(groups: &'g mut Groups, operation: &str, area_id: i64, tier: &'stat
 }
 
 fn tier_of(name: &str) -> &'static str {
-    ["Story", "Veteran", "Master"].into_iter().find(|t| t.eq_ignore_ascii_case(name)).unwrap_or("")
+    ["Story", "Veteran", "Master"]
+        .into_iter()
+        .find(|t| t.eq_ignore_ascii_case(name))
+        .unwrap_or("")
 }
 
 /// Current lockouts from one character's pulls and manual marks. Only
 /// operation kills count; an expired window contributes nothing.
-pub fn lockouts(rows: &[&PullRow], manual: &[ManualLock], catalog: &AreaCatalog, hour: u8, now_ms: i64) -> Vec<Lockout> {
+pub fn lockouts(
+    rows: &[&PullRow],
+    manual: &[ManualLock],
+    catalog: &AreaCatalog,
+    hour: u8,
+    now_ms: i64,
+) -> Vec<Lockout> {
     let mut groups = Groups::new();
     let mut sorted: Vec<&&PullRow> = rows.iter().filter(|r| r.is_operation && r.success).collect();
     sorted.sort_by_key(|r| r.start_ms);
     for r in sorted {
         let killed_at = to_utc_ms(r.start_ms + r.duration_seconds * 1000);
         let (tier, size) = difficulty_parts(&r.difficulty);
-        if let Some(g) = touch(&mut groups, &r.operation, r.area_id, tier, size, killed_at, hour, now_ms) {
+        if let Some(g) = touch(
+            &mut groups,
+            &r.operation,
+            r.area_id,
+            tier,
+            size,
+            killed_at,
+            hour,
+            now_ms,
+        ) {
             g.size = size;
             if !g.kills.contains(&r.boss) {
                 g.kills.push(r.boss.clone());
@@ -103,7 +137,16 @@ pub fn lockouts(rows: &[&PullRow], manual: &[ManualLock], catalog: &AreaCatalog,
         }
     }
     for m in manual {
-        if let Some(g) = touch(&mut groups, &m.operation, m.area_id, tier_of(&m.tier), 8, m.marked_ms, hour, now_ms) {
+        if let Some(g) = touch(
+            &mut groups,
+            &m.operation,
+            m.area_id,
+            tier_of(&m.tier),
+            8,
+            m.marked_ms,
+            hour,
+            now_ms,
+        ) {
             g.manual = true;
         }
     }
@@ -113,10 +156,18 @@ pub fn lockouts(rows: &[&PullRow], manual: &[ManualLock], catalog: &AreaCatalog,
         .map(|g| {
             let order: Vec<String> = catalog
                 .area(g.area_id)
-                .map(|a| a.bosses_at(&g.tier.to_lowercase(), g.size).map(|b| b.name.clone()).collect())
+                .map(|a| {
+                    a.bosses_at(&g.tier.to_lowercase(), g.size)
+                        .map(|b| b.name.clone())
+                        .collect()
+                })
                 .unwrap_or_default();
             let locked = if g.manual {
-                if order.is_empty() { vec!["All bosses".to_string()] } else { order.clone() }
+                if order.is_empty() {
+                    vec!["All bosses".to_string()]
+                } else {
+                    order.clone()
+                }
             } else if order.is_empty() {
                 g.kills
             } else {
@@ -136,7 +187,11 @@ pub fn lockouts(rows: &[&PullRow], manual: &[ManualLock], catalog: &AreaCatalog,
         })
         .filter(|l| !l.locked.is_empty())
         .collect();
-    out.sort_by(|a, b| a.expires_ms.cmp(&b.expires_ms).then_with(|| a.operation.cmp(&b.operation)));
+    out.sort_by(|a, b| {
+        a.expires_ms
+            .cmp(&b.expires_ms)
+            .then_with(|| a.operation.cmp(&b.operation))
+    });
     out
 }
 
@@ -151,16 +206,31 @@ mod tests {
     #[test]
     fn weekly_reset_lands_on_next_tuesday_at_hour() {
         // 2026-11-05 is a Thursday
-        assert_eq!(next_reset(ms("2026-11-05T20:00:00"), true, 12), ms("2026-11-10T12:00:00"));
+        assert_eq!(
+            next_reset(ms("2026-11-05T20:00:00"), true, 12),
+            ms("2026-11-10T12:00:00")
+        );
         // A kill on Tuesday before the hour resets the same day
-        assert_eq!(next_reset(ms("2026-11-10T03:00:00"), true, 12), ms("2026-11-10T12:00:00"));
+        assert_eq!(
+            next_reset(ms("2026-11-10T03:00:00"), true, 12),
+            ms("2026-11-10T12:00:00")
+        );
         // Exactly at reset belongs to the next week
-        assert_eq!(next_reset(ms("2026-11-10T12:00:00"), true, 12), ms("2026-11-17T12:00:00"));
+        assert_eq!(
+            next_reset(ms("2026-11-10T12:00:00"), true, 12),
+            ms("2026-11-17T12:00:00")
+        );
     }
 
     #[test]
     fn daily_reset_is_next_hour_mark() {
-        assert_eq!(next_reset(ms("2026-11-05T11:59:00"), false, 12), ms("2026-11-05T12:00:00"));
-        assert_eq!(next_reset(ms("2026-11-05T12:00:00"), false, 12), ms("2026-11-06T12:00:00"));
+        assert_eq!(
+            next_reset(ms("2026-11-05T11:59:00"), false, 12),
+            ms("2026-11-05T12:00:00")
+        );
+        assert_eq!(
+            next_reset(ms("2026-11-05T12:00:00"), false, 12),
+            ms("2026-11-06T12:00:00")
+        );
     }
 }

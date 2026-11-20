@@ -4,6 +4,8 @@
 
 use dioxus::prelude::*;
 
+use super::multi_select::{MultiSelect, plain_entries};
+
 /// "?" with a hover tooltip
 #[component]
 pub fn Help(text: &'static str) -> Element {
@@ -38,7 +40,8 @@ pub fn CheckField(
     #[props(default)] help: &'static str,
     checked: bool,
     /// Indented under the option it depends on
-    #[props(default)] nested: bool,
+    #[props(default)]
+    nested: bool,
     on_change: EventHandler<bool>,
 ) -> Element {
     rsx! {
@@ -94,6 +97,26 @@ pub fn NumberField(
                 oninput: move |e| on_input.call(e.value()),
             }
             if !unit.is_empty() { span { class: "field-unit", "{unit}" } }
+        }
+    }
+}
+
+/// Checklist dropdown over named options; any number can be picked
+#[component]
+pub fn PickField(
+    label: &'static str,
+    #[props(default)] help: &'static str,
+    /// Shown when nothing is picked, e.g. "No overlay"
+    none_label: &'static str,
+    /// Plural noun for several picks, e.g. "overlays"
+    noun: &'static str,
+    options: Vec<String>,
+    picked: Vec<String>,
+    on_change: EventHandler<Vec<String>>,
+) -> Element {
+    rsx! {
+        Field { label, help,
+            MultiSelect { any_label: none_label, noun, entries: plain_entries(&options), picked, on_change }
         }
     }
 }

@@ -18,7 +18,8 @@ use crate::types::{ComparisonOp, Condition, CounterCondition};
 #[component]
 pub fn CounterConditionEditor(
     condition: Option<CounterCondition>,
-    counters: Vec<String>,
+    /// (id, label) per counter
+    counters: Vec<(String, String)>,
     on_change: EventHandler<Option<CounterCondition>>,
 ) -> Element {
     let effective_condition = condition.clone().filter(|c| !c.counter_id.is_empty());
@@ -60,12 +61,8 @@ pub fn CounterConditionEditor(
                 if counters.is_empty() {
                     option { value: "__none__", disabled: true, "No counters defined" }
                 }
-                for counter_id in &counters {
-                    option {
-                        value: "{counter_id}",
-                        selected: *counter_id == selected_value,
-                        "{counter_id}"
-                    }
+                for (counter_id, label) in &counters {
+                    option { value: "{counter_id}", selected: *counter_id == selected_value, "{label}" }
                 }
             }
 
@@ -244,11 +241,7 @@ fn CompositeConditionEditor(
         _ => return rsx! { span { "Invalid composite" } },
     };
 
-    let label = if is_all_of {
-        "ALL OF (AND)"
-    } else {
-        "ANY OF (OR)"
-    };
+    let label = if is_all_of { "ALL OF (AND)" } else { "ANY OF (OR)" };
     let css_class = if is_all_of {
         "composite-condition--all-of"
     } else {
@@ -544,7 +537,7 @@ fn PhaseActiveEditor(
     rsx! {
         PhaseSelector {
             selected: phase_ids,
-            available: encounter_data.phase_ids(),
+            available: encounter_data.phase_options(),
             on_change: move |new_phases| {
                 on_change.call(Condition::PhaseActive { phase_ids: new_phases });
             }
@@ -593,7 +586,7 @@ fn CounterCompareEditor(
                 },
                 option { value: "__none__", selected: selected_counter == "__none__", "(select counter)" }
                 for cid in &counters {
-                    option { value: "{cid}", selected: *cid == selected_counter, "{cid}" }
+                    option { value: "{cid}", selected: *cid == selected_counter, "{encounter_data.counter_label(cid)}" }
                 }
             }
 
@@ -692,7 +685,7 @@ fn CounterCompareCounterEditor(
                 },
                 option { value: "__none__", selected: selected_left == "__none__", "(select counter)" }
                 for cid in &counters {
-                    option { value: "{cid}", selected: *cid == selected_left, "{cid}" }
+                    option { value: "{cid}", selected: *cid == selected_left, "{encounter_data.counter_label(cid)}" }
                 }
             }
 
@@ -738,7 +731,7 @@ fn CounterCompareCounterEditor(
                     },
                     option { value: "__none__", selected: selected_right == "__none__", "(select counter)" }
                     for cid in &counters_for_right {
-                        option { value: "{cid}", selected: *cid == selected_right, "{cid}" }
+                        option { value: "{cid}", selected: *cid == selected_right, "{encounter_data.counter_label(cid)}" }
                     }
                 }
             }
@@ -787,7 +780,7 @@ fn TimerTimeRemainingEditor(
                 },
                 option { value: "__none__", selected: selected_timer == "__none__", "(select timer)" }
                 for tid in &timers {
-                    option { value: "{tid}", selected: *tid == selected_timer, "{tid}" }
+                    option { value: "{tid}", selected: *tid == selected_timer, "{encounter_data.timer_label(tid)}" }
                 }
             }
 

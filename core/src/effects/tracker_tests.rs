@@ -18,12 +18,7 @@ fn now() -> chrono::NaiveDateTime {
 }
 
 /// Create a minimal effect definition for testing
-fn make_effect(
-    id: &str,
-    name: &str,
-    trigger: Trigger,
-    duration_secs: Option<f32>,
-) -> EffectDefinition {
+fn make_effect(id: &str, name: &str, trigger: Trigger, duration_secs: Option<f32>) -> EffectDefinition {
     EffectDefinition {
         id: id.to_string(),
         name: name.to_string(),
@@ -144,10 +139,7 @@ fn test_instant_alert_effect_applied_fires_alert_no_active_effect() {
 
     // Should NOT create an active effect
     let active_count = tracker.active_effects().count();
-    assert_eq!(
-        active_count, 0,
-        "Instant alert should not create active effect"
-    );
+    assert_eq!(active_count, 0, "Instant alert should not create active effect");
 }
 
 #[test]
@@ -175,10 +167,7 @@ fn test_instant_alert_no_text_when_alert_text_is_none() {
     assert_eq!(alerts.len(), 1);
     // Text field is populated (for TTS fallback) but alert_text_enabled is false
     assert_eq!(alerts[0].text, "My Alert Name");
-    assert!(
-        !alerts[0].alert_text_enabled,
-        "No text overlay when alert_text is None"
-    );
+    assert!(!alerts[0].alert_text_enabled, "No text overlay when alert_text is None");
     // Audio still fires
     assert!(alerts[0].audio_enabled);
     assert_eq!(alerts[0].audio_file.as_deref(), Some("beep.mp3"));
@@ -239,10 +228,7 @@ fn test_instant_alert_ability_cast_fires_alert_no_active_effect() {
     assert_eq!(alerts[0].text, "Ability fired!");
 
     let active_count = tracker.active_effects().count();
-    assert_eq!(
-        active_count, 0,
-        "Instant alert should not create active effect"
-    );
+    assert_eq!(active_count, 0, "Instant alert should not create active effect");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -268,10 +254,7 @@ fn test_non_instant_effect_creates_active_effect() {
 
     // Should create active effect
     let active_count = tracker.active_effects().count();
-    assert_eq!(
-        active_count, 1,
-        "Normal effect should create an active effect"
-    );
+    assert_eq!(active_count, 1, "Normal effect should create an active effect");
 
     // Should NOT fire an alert (alert_on is None)
     let alerts = tracker.take_fired_alerts();
@@ -306,11 +289,7 @@ fn test_on_apply_alert_fires_for_ability_cast_trigger() {
     assert_eq!(active_count, 1, "Should create active effect");
 
     let alerts = tracker.take_fired_alerts();
-    assert_eq!(
-        alerts.len(),
-        1,
-        "Expected OnApply alert for ability cast trigger"
-    );
+    assert_eq!(alerts.len(), 1, "Expected OnApply alert for ability cast trigger");
     assert_eq!(alerts[0].text, "Proc activated!");
 }
 
@@ -436,9 +415,7 @@ fn test_kolto_shell_others_does_not_create_phantom_when_local_active() {
     kolto_shell.display_targets = vec![super::definition::DisplayTarget::RaidFrames];
     kolto_shell.default_charges = Some(7);
     kolto_shell.single_instance_per_target = true;
-    kolto_shell.refresh_abilities = vec![RefreshAbility::Simple(baras_types::AbilitySelector::Id(
-        effect_id,
-    ))];
+    kolto_shell.refresh_abilities = vec![RefreshAbility::Simple(baras_types::AbilitySelector::Id(effect_id))];
 
     let mut kolto_shell_others = make_effect(
         "kolto_shell_others",
@@ -569,9 +546,7 @@ fn test_refresh_does_not_resurrect_removed_effect() {
         Some(21.0),
     );
     kolto_probe.display_targets = vec![super::definition::DisplayTarget::RaidFrames];
-    kolto_probe.refresh_abilities = vec![RefreshAbility::Simple(baras_types::AbilitySelector::Id(
-        effect_id,
-    ))];
+    kolto_probe.refresh_abilities = vec![RefreshAbility::Simple(baras_types::AbilitySelector::Id(effect_id))];
 
     let mut tracker = make_tracker(vec![kolto_probe]);
     tracker.set_player_context(local_player_id, 0);
@@ -583,11 +558,7 @@ fn test_refresh_does_not_resurrect_removed_effect() {
         &effect_applied_signal_with_source(effect_id as i64, local_player_id, target_id, ts),
         None,
     );
-    assert_eq!(
-        tracker.active_effects().count(),
-        1,
-        "Effect should be active"
-    );
+    assert_eq!(tracker.active_effects().count(), 1, "Effect should be active");
 
     // Step 2: Remove effect (authoritative game signal, well after application)
     let ts_remove = ts + chrono::Duration::seconds(22);
@@ -599,20 +570,12 @@ fn test_refresh_does_not_resurrect_removed_effect() {
     // The effect is marked removed but still in HashMap (tick() hasn't run yet to GC)
     // Verify it's marked removed
     let effect = tracker.active_effects().next().unwrap();
-    assert!(
-        effect.removed_at.is_some(),
-        "Effect should be marked as removed"
-    );
+    assert!(effect.removed_at.is_some(), "Effect should be marked as removed");
 
     // Step 3: Cast the refresh ability (slightly too late — probes already fell off)
     let ts_recast = ts_remove + chrono::Duration::milliseconds(500);
     tracker.handle_signal(
-        &ability_activated_signal_with_source(
-            effect_id as i64,
-            local_player_id,
-            target_id,
-            ts_recast,
-        ),
+        &ability_activated_signal_with_source(effect_id as i64, local_player_id, target_id, ts_recast),
         None,
     );
 
@@ -721,10 +684,7 @@ fn test_charges_from_local_player_do_update_local_effect() {
     );
 
     let effect = tracker.active_effects().next().unwrap();
-    assert_eq!(
-        effect.stacks, 2,
-        "Charges from local player should update normally"
-    );
+    assert_eq!(effect.stacks, 2, "Charges from local player should update normally");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -766,9 +726,7 @@ fn test_kolto_shell_others_refreshes_via_ability_activated() {
     );
     kolto_shell_others.display_targets = vec![super::definition::DisplayTarget::RaidFrames];
     kolto_shell_others.single_instance_per_target = true;
-    kolto_shell_others.refresh_abilities = vec![RefreshAbility::Simple(
-        baras_types::AbilitySelector::Id(effect_id),
-    )];
+    kolto_shell_others.refresh_abilities = vec![RefreshAbility::Simple(baras_types::AbilitySelector::Id(effect_id))];
 
     let mut tracker = make_tracker(vec![kolto_shell, kolto_shell_others]);
     tracker.set_player_context(local_player_id, 0);
@@ -831,9 +789,7 @@ fn test_single_instance_activation_does_not_late_register() {
     );
     kolto_shell_others.display_targets = vec![super::definition::DisplayTarget::RaidFrames];
     kolto_shell_others.single_instance_per_target = true;
-    kolto_shell_others.refresh_abilities = vec![RefreshAbility::Simple(
-        baras_types::AbilitySelector::Id(effect_id),
-    )];
+    kolto_shell_others.refresh_abilities = vec![RefreshAbility::Simple(baras_types::AbilitySelector::Id(effect_id))];
 
     let mut tracker = make_tracker(vec![kolto_shell_others]);
     tracker.set_player_context(local_player_id, 0);
@@ -877,9 +833,7 @@ fn make_single_instance_pair(effect_id: u64) -> (EffectDefinition, EffectDefinit
     local.display_targets = vec![super::definition::DisplayTarget::RaidFrames];
     local.default_charges = Some(7);
     local.single_instance_per_target = true;
-    local.refresh_abilities = vec![RefreshAbility::Simple(baras_types::AbilitySelector::Id(
-        effect_id,
-    ))];
+    local.refresh_abilities = vec![RefreshAbility::Simple(baras_types::AbilitySelector::Id(effect_id))];
 
     let mut others = make_effect(
         "kolto_shell_others",
@@ -894,9 +848,7 @@ fn make_single_instance_pair(effect_id: u64) -> (EffectDefinition, EffectDefinit
     );
     others.display_targets = vec![super::definition::DisplayTarget::RaidFrames];
     others.single_instance_per_target = true;
-    others.refresh_abilities = vec![RefreshAbility::Simple(baras_types::AbilitySelector::Id(
-        effect_id,
-    ))];
+    others.refresh_abilities = vec![RefreshAbility::Simple(baras_types::AbilitySelector::Id(effect_id))];
 
     (local, others)
 }
@@ -935,10 +887,7 @@ fn test_single_instance_local_apply_refreshes_others_instance() {
     );
     let effect = tracker.active_effects().next().unwrap();
     assert_eq!(effect.definition_id, "kolto_shell_others");
-    assert_eq!(
-        effect.source_entity_id, other_player_id,
-        "Original caster keeps credit"
-    );
+    assert_eq!(effect.source_entity_id, other_player_id, "Original caster keeps credit");
     assert!(effect.expires_at > original_expires, "Timer should refresh");
 }
 
@@ -1011,12 +960,7 @@ fn test_non_raid_frame_effect_does_not_register_target() {
 
     // Self-applied stim: tracked, but must not claim a raid-frame slot
     tracker.handle_signal(
-        &effect_applied_signal_with_source(
-            4256329770205184,
-            local_player_id,
-            local_player_id,
-            now(),
-        ),
+        &effect_applied_signal_with_source(4256329770205184, local_player_id, local_player_id, now()),
         None,
     );
     assert_eq!(tracker.active_effects().count(), 1, "Stim is still tracked");
@@ -1027,12 +971,7 @@ fn test_non_raid_frame_effect_does_not_register_target() {
 
     // A raid-frame HOT on self still registers
     tracker.handle_signal(
-        &effect_applied_signal_with_source(
-            814832605462528,
-            local_player_id,
-            local_player_id,
-            now(),
-        ),
+        &effect_applied_signal_with_source(814832605462528, local_player_id, local_player_id, now()),
         None,
     );
     assert!(
@@ -1050,8 +989,7 @@ fn test_non_raid_frame_effect_does_not_register_target() {
 
 /// Warzone encounter (The Pit) with an empty faction map
 fn warzone_encounter() -> crate::encounter::CombatEncounter {
-    let mut enc =
-        crate::encounter::CombatEncounter::new(1, crate::encounter::ProcessingMode::Live);
+    let mut enc = crate::encounter::CombatEncounter::new(1, crate::encounter::ProcessingMode::Live);
     enc.set_area(Some(137438988866), Some("The Pit".to_string()), None);
     enc
 }
@@ -1114,10 +1052,7 @@ fn test_pvp_other_source_registers_only_classified_teammates() {
         Some(&enc),
     );
     assert!(
-        tracker
-            .take_new_targets()
-            .iter()
-            .any(|t| t.entity_id == target_id),
+        tracker.take_new_targets().iter().any(|t| t.entity_id == target_id),
         "A friendly healer's cast registers its (still unclassified) target"
     );
 }
@@ -1140,10 +1075,7 @@ fn test_pvp_local_source_registers_unclassified_target() {
         Some(&enc),
     );
     assert!(
-        tracker
-            .take_new_targets()
-            .iter()
-            .any(|t| t.entity_id == target_id),
+        tracker.take_new_targets().iter().any(|t| t.entity_id == target_id),
         "Local casts register their target without classification"
     );
 }
@@ -1334,9 +1266,7 @@ fn test_local_player_cast_does_not_create_phantom_others_via_refresh() {
         Some(180.0),
     );
     kolto_shell.display_targets = vec![super::definition::DisplayTarget::RaidFrames];
-    kolto_shell.refresh_abilities = vec![RefreshAbility::Simple(baras_types::AbilitySelector::Id(
-        effect_id,
-    ))];
+    kolto_shell.refresh_abilities = vec![RefreshAbility::Simple(baras_types::AbilitySelector::Id(effect_id))];
 
     let mut kolto_shell_others = make_effect(
         "kolto_shell_others",
@@ -1350,9 +1280,7 @@ fn test_local_player_cast_does_not_create_phantom_others_via_refresh() {
         Some(180.0),
     );
     kolto_shell_others.display_targets = vec![super::definition::DisplayTarget::RaidFrames];
-    kolto_shell_others.refresh_abilities = vec![RefreshAbility::Simple(
-        baras_types::AbilitySelector::Id(effect_id),
-    )];
+    kolto_shell_others.refresh_abilities = vec![RefreshAbility::Simple(baras_types::AbilitySelector::Id(effect_id))];
 
     let mut tracker = make_tracker(vec![kolto_shell, kolto_shell_others]);
     tracker.set_player_context(local_player_id, 0);
@@ -1370,10 +1298,7 @@ fn test_local_player_cast_does_not_create_phantom_others_via_refresh() {
         1,
         "Should have exactly 1 effect (kolto_shell)"
     );
-    assert_eq!(
-        tracker.active_effects().next().unwrap().definition_id,
-        "kolto_shell"
-    );
+    assert_eq!(tracker.active_effects().next().unwrap().definition_id, "kolto_shell");
 
     // Local player recasts (AbilityActivated) — should refresh kolto_shell,
     // NOT create a phantom kolto_shell_others
@@ -1390,10 +1315,7 @@ fn test_local_player_cast_does_not_create_phantom_others_via_refresh() {
     );
     let effect = tracker.active_effects().next().unwrap();
     assert_eq!(effect.definition_id, "kolto_shell");
-    assert_eq!(
-        effect.last_refreshed_at, ts2,
-        "kolto_shell should be refreshed"
-    );
+    assert_eq!(effect.last_refreshed_at, ts2, "kolto_shell should be refreshed");
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -1482,7 +1404,10 @@ fn test_resource_spent_modifier_cancels_effect() {
     );
     assert!(tracker.active_effects().next().unwrap().removed_at.is_none());
 
-    tracker.handle_signals(&[resource_spent_signal(player, 5.0, ts + chrono::Duration::seconds(1))], None);
+    tracker.handle_signals(
+        &[resource_spent_signal(player, 5.0, ts + chrono::Duration::seconds(1))],
+        None,
+    );
     assert!(
         tracker.active_effects().next().unwrap().removed_at.is_some(),
         "cancel modifier should mark the effect removed"
@@ -1552,7 +1477,10 @@ fn test_any_of_modifier_shares_icd_across_trigger_kinds() {
     let original = tracker.active_effects().next().unwrap().expires_at.unwrap();
 
     // Resource spend procs (+2s)
-    tracker.handle_signals(&[resource_spent_signal(player, 5.0, ts + chrono::Duration::seconds(1))], None);
+    tracker.handle_signals(
+        &[resource_spent_signal(player, 5.0, ts + chrono::Duration::seconds(1))],
+        None,
+    );
     let after_spend = tracker.active_effects().next().unwrap().expires_at.unwrap();
     assert_eq!((after_spend - original).num_milliseconds(), 2000);
 
@@ -1566,7 +1494,10 @@ fn test_any_of_modifier_shares_icd_across_trigger_kinds() {
         timestamp: ts + chrono::Duration::seconds(2),
     };
     tracker.handle_signals(&[death], None);
-    assert_eq!(tracker.active_effects().next().unwrap().expires_at.unwrap(), after_spend);
+    assert_eq!(
+        tracker.active_effects().next().unwrap().expires_at.unwrap(),
+        after_spend
+    );
 
     // After the ICD elapses, the killing blow procs
     let death = GameSignal::EntityDeath {
@@ -1603,11 +1534,17 @@ fn test_icd_from_application_gates_first_proc() {
     let original = tracker.active_effects().next().unwrap().expires_at.unwrap();
 
     // 1s after application: still inside the ICD window counted from applied_at
-    tracker.handle_signals(&[resource_spent_signal(player, 5.0, ts + chrono::Duration::seconds(1))], None);
+    tracker.handle_signals(
+        &[resource_spent_signal(player, 5.0, ts + chrono::Duration::seconds(1))],
+        None,
+    );
     assert_eq!(tracker.active_effects().next().unwrap().expires_at.unwrap(), original);
 
     // 3s after application: allowed
-    tracker.handle_signals(&[resource_spent_signal(player, 5.0, ts + chrono::Duration::seconds(3))], None);
+    tracker.handle_signals(
+        &[resource_spent_signal(player, 5.0, ts + chrono::Duration::seconds(3))],
+        None,
+    );
     let extended = tracker.active_effects().next().unwrap().expires_at.unwrap();
     assert_eq!((extended - original).num_milliseconds(), 2000);
 }
@@ -1637,9 +1574,15 @@ fn test_modifier_revives_interpolation_expired_effect() {
     tracker.active_effects_mut().next().unwrap().timer_expired = true;
 
     // A log event from BEFORE expires_at proves the effect was still alive.
-    tracker.handle_signals(&[resource_spent_signal(player, 5.0, ts + chrono::Duration::seconds(8))], None);
+    tracker.handle_signals(
+        &[resource_spent_signal(player, 5.0, ts + chrono::Duration::seconds(8))],
+        None,
+    );
     let e = tracker.active_effects().next().unwrap();
-    assert!(!e.timer_expired, "modifier should revive an interpolation-expired effect");
+    assert!(
+        !e.timer_expired,
+        "modifier should revive an interpolation-expired effect"
+    );
     assert_eq!((e.expires_at.unwrap() - original).num_milliseconds(), 5000);
 
     // A log event from AFTER expires_at must not resurrect a genuinely expired effect.
@@ -1672,11 +1615,17 @@ fn test_icd_affected_by_alacrity_shortens_cooldown() {
     let original = tracker.active_effects().next().unwrap().expires_at.unwrap();
 
     // 7s: inside the 8s scaled ICD
-    tracker.handle_signals(&[resource_spent_signal(player, 1.0, ts + chrono::Duration::seconds(7))], None);
+    tracker.handle_signals(
+        &[resource_spent_signal(player, 1.0, ts + chrono::Duration::seconds(7))],
+        None,
+    );
     assert_eq!(tracker.active_effects().next().unwrap().expires_at.unwrap(), original);
 
     // 8s: scaled ICD elapsed (would still be blocked by the raw 10s)
-    tracker.handle_signals(&[resource_spent_signal(player, 1.0, ts + chrono::Duration::seconds(8))], None);
+    tracker.handle_signals(
+        &[resource_spent_signal(player, 1.0, ts + chrono::Duration::seconds(8))],
+        None,
+    );
     let extended = tracker.active_effects().next().unwrap().expires_at.unwrap();
     assert_eq!((extended - original).num_milliseconds(), 1000);
 }
@@ -1719,7 +1668,10 @@ fn test_duplicate_area_entered_keeps_restated_effects() {
 
     // Zone into an instance: wipe, restatement, then duplicate AreaEntered
     tracker.handle_signal(&area_entered_signal(100, ts + chrono::Duration::milliseconds(10)), None);
-    tracker.handle_signal(&effect_applied_signal(999, ts + chrono::Duration::milliseconds(30)), None);
+    tracker.handle_signal(
+        &effect_applied_signal(999, ts + chrono::Duration::milliseconds(30)),
+        None,
+    );
     tracker.handle_signal(&area_entered_signal(100, ts + chrono::Duration::milliseconds(50)), None);
 
     assert_eq!(
@@ -1755,7 +1707,12 @@ fn target_changed_signal(source_id: i64, target_id: i64, timestamp: chrono::Naiv
     }
 }
 
-fn damage_taken_signal(ability_id: i64, source_id: i64, target_id: i64, timestamp: chrono::NaiveDateTime) -> GameSignal {
+fn damage_taken_signal(
+    ability_id: i64,
+    source_id: i64,
+    target_id: i64,
+    timestamp: chrono::NaiveDateTime,
+) -> GameSignal {
     GameSignal::DamageTaken {
         ability_id,
         ability_name: empty_istr(),
@@ -1798,7 +1755,10 @@ fn dot_tracker_with_two_targets(
 
     let mut tracker = make_tracker(vec![def]);
     tracker.set_player_context(local, 0);
-    tracker.handle_signal(&effect_applied_signal_with_source(scorch as i64, local, dummy_a, ts), None);
+    tracker.handle_signal(
+        &effect_applied_signal_with_source(scorch as i64, local, dummy_a, ts),
+        None,
+    );
     tracker.handle_signal(
         &effect_applied_signal_with_source(scorch as i64, local, dummy_b, ts + chrono::Duration::seconds(3)),
         None,
@@ -1826,13 +1786,24 @@ fn test_deferred_dot_refresh_ignores_bystander_tick() {
 
     let s = |secs_x10: i64| ts + chrono::Duration::milliseconds(secs_x10 * 100);
     tracker.handle_signal(&target_changed_signal(local, a, s(100)), None);
-    tracker.handle_signal(&ability_activated_signal_with_source(scorch as i64, local, local, s(110)), None);
+    tracker.handle_signal(
+        &ability_activated_signal_with_source(scorch as i64, local, local, s(110)),
+        None,
+    );
     // Bystander B ticks 0.3s after the cast
     tracker.handle_signal(&damage_taken_signal(scorch as i64, local, b, s(113)), None);
-    assert_eq!(expires_at(&tracker, b), b_expiry, "bystander tick must not claim the refresh");
+    assert_eq!(
+        expires_at(&tracker, b),
+        b_expiry,
+        "bystander tick must not claim the refresh"
+    );
     // Real hit on A lands 1.1s after the cast
     tracker.handle_signal(&damage_taken_signal(scorch as i64, local, a, s(121)), None);
-    assert_eq!(expires_at(&tracker, a), s(121) + chrono::Duration::seconds(30), "A refreshed on its own hit");
+    assert_eq!(
+        expires_at(&tracker, a),
+        s(121) + chrono::Duration::seconds(30),
+        "A refreshed on its own hit"
+    );
     assert_eq!(expires_at(&tracker, b), b_expiry);
 }
 
@@ -1845,7 +1816,10 @@ fn test_deferred_dot_refresh_falls_back_when_target_is_self() {
 
     let s = |secs_x10: i64| ts + chrono::Duration::milliseconds(secs_x10 * 100);
     tracker.handle_signal(&target_changed_signal(local, local, s(100)), None);
-    tracker.handle_signal(&ability_activated_signal_with_source(scorch as i64, local, local, s(110)), None);
+    tracker.handle_signal(
+        &ability_activated_signal_with_source(scorch as i64, local, local, s(110)),
+        None,
+    );
     tracker.handle_signal(&damage_taken_signal(scorch as i64, local, b, s(113)), None);
     assert_eq!(expires_at(&tracker, b), s(113) + chrono::Duration::seconds(30));
 }
@@ -1861,9 +1835,15 @@ fn test_logged_apply_clears_deferred_refresh() {
 
     let s = |secs_x10: i64| ts + chrono::Duration::milliseconds(secs_x10 * 100);
     // A's DOT expires naturally, then is re-cast with a logged ApplyEffect
-    tracker.handle_signal(&effect_removed_signal_with_source(scorch as i64, local, a, s(300)), None);
+    tracker.handle_signal(
+        &effect_removed_signal_with_source(scorch as i64, local, a, s(300)),
+        None,
+    );
     tracker.handle_signal(&target_changed_signal(local, a, s(302)), None);
-    tracker.handle_signal(&ability_activated_signal_with_source(scorch as i64, local, local, s(305)), None);
+    tracker.handle_signal(
+        &ability_activated_signal_with_source(scorch as i64, local, local, s(305)),
+        None,
+    );
     let mut apply = effect_applied_signal_with_source(scorch as i64, local, a, s(305));
     if let GameSignal::EffectApplied { action_id, .. } = &mut apply {
         *action_id = scorch as i64;

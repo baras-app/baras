@@ -16,6 +16,7 @@ use baras_core::history::{LogHistory, start_ms_of};
 use baras_core::state::ipc::WorkerPlayerDiscipline;
 use baras_types::history::BackfillEvent;
 
+use crate::state::MutexExt;
 use crate::state::SharedState;
 
 pub const BACKFILL_EVENT: &str = "history-backfill";
@@ -33,7 +34,10 @@ pub fn build_pull_history(session: &ParsingSession) -> Option<LogHistory> {
     LogHistory::from_summaries(
         path,
         character,
-        cache.player_disciplines.get(&cache.player.id).map(WorkerPlayerDiscipline::from_player),
+        cache
+            .player_disciplines
+            .get(&cache.player.id)
+            .map(WorkerPlayerDiscipline::from_player),
         cache.encounter_history.summaries(),
         &cache.timer_starts,
         &cache.visits,
@@ -62,21 +66,35 @@ pub async fn persist_pull_history(session: &Arc<RwLock<ParsingSession>>, app: &A
 /// upload. Links key by the pull's start time, which survives a re-parse.
 pub async fn restore_parsely_links(session: &Arc<RwLock<ParsingSession>>, shared: &SharedState) {
     let mut session = session.write().await;
-    let Some(filename) = session.active_file.as_ref().and_then(|p| p.file_name()).and_then(|f| f.to_str()) else {
+    let Some(filename) = session
+        .active_file
+        .as_ref()
+        .and_then(|p| p.file_name())
+        .and_then(|f| f.to_str())
+    else {
         return;
     };
     let links: HashMap<i64, String> = {
-        let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
-        meta.pull_parsely_links(filename).map(|(ms, l)| (ms, l.to_string())).collect()
+        let meta = shared.library_meta.locked();
+        meta.pull_parsely_links(filename)
+            .map(|(ms, l)| (ms, l.to_string()))
+            .collect()
     };
     if links.is_empty() {
         return;
     }
     if let Some(cache) = session.session_cache.as_mut() {
         let restored = cache.encounter_history.restore_parsely_links(|s| {
-            s.start_time.as_deref().and_then(start_ms_of).and_then(|ms| links.get(&ms).cloned())
+            s.start_time
+                .as_deref()
+                .and_then(start_ms_of)
+                .and_then(|ms| links.get(&ms).cloned())
         });
-        info!(restored, known = links.len(), "Restored Parsely links onto parsed encounters");
+        info!(
+            restored,
+            known = links.len(),
+            "Restored Parsely links onto parsed encounters"
+        );
     }
 }
 
@@ -125,7 +143,7 @@ pub async fn run_backfill(shared: Arc<SharedState>, app: AppHandle, stale_only: 
     if stale_only {
         cmd.arg("--stale-only");
     }
-    if let Some(log_path) = dirs::config_dir().map(|p| p.join("baras").join("baras.log")) {
+    if let Some(log_path) = baras_core::paths::config_dir().map(|p| p.join("baras.log")) {
         cmd.env("BARAS_LOG_PATH", log_path);
     }
     cmd.stdout(std::process::Stdio::piped())
@@ -177,7 +195,15 @@ pub async fn run_backfill(shared: Arc<SharedState>, app: AppHandle, stale_only: 
             // The worker never got to report, so close the loop for the UI
             let _ = app.emit(
                 BACKFILL_EVENT,
-                &BackfillEvent::Done { pulls: 0, logs: 0, failed: 0, scanned: 0, skipped: 0, elapsed_secs: started.elapsed().as_secs_f32(), cancelled: true },
+                &BackfillEvent::Done {
+                    pulls: 0,
+                    logs: 0,
+                    failed: 0,
+                    scanned: 0,
+                    skipped: 0,
+                    elapsed_secs: started.elapsed().as_secs_f32(),
+                    cancelled: true,
+                },
             );
         }
         shared.history_backfill_running.store(false, Ordering::SeqCst);

@@ -12,8 +12,8 @@ use dioxus::prelude::*;
 use crate::api::{self, DeathRecap, DeathRecapEventKind, PlayerDeath, RaidOverviewRow};
 use crate::components::ability_icon::use_icon_url;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
-use crate::components::mirror_names::display_id;
 use crate::components::editor_drawer::{ResizeHandle, window_width};
+use crate::components::mirror_names::display_id;
 
 /// Width (px) the user dragged the drawer to; None = the CSS default. Kept
 /// for the session so each recap opens at the same size.
@@ -72,9 +72,21 @@ pub fn DeathRecapDrawer(props: DeathRecapDrawerProps) -> Element {
         .and_then(|o| o.as_ref())
         .and_then(|r| r.phase_name.clone());
     let window_start = state.as_ref().and_then(|o| o.as_ref()).map(|r| r.window_start_secs);
-    let role_icon = props.player.as_ref().and_then(|p| p.role_icon.as_deref()).and_then(get_role_icon);
-    let class_icon = props.player.as_ref().and_then(|p| p.class_icon.as_deref()).and_then(get_class_icon);
-    let discipline = props.player.as_ref().and_then(|p| p.discipline_name.clone()).unwrap_or_default();
+    let role_icon = props
+        .player
+        .as_ref()
+        .and_then(|p| p.role_icon.as_deref())
+        .and_then(get_role_icon);
+    let class_icon = props
+        .player
+        .as_ref()
+        .and_then(|p| p.class_icon.as_deref())
+        .and_then(get_class_icon);
+    let discipline = props
+        .player
+        .as_ref()
+        .and_then(|p| p.discipline_name.clone())
+        .unwrap_or_default();
 
     rsx! {
         aside {
@@ -256,11 +268,11 @@ fn DamageTakenTable(rows: Vec<DeathRecapDamageSource>, european: bool) -> Elemen
                     thead {
                         tr {
                             th { class: "col-left", "Source" }
-                            th { "Hits" }
-                            th { "Total" }
-                            th { "Max" }
-                            th { "Absorbed" }
-                            th { class: "col-left", "Type" }
+                            th { class: "col-count", "Hits" }
+                            th { class: "col-val", "Total" }
+                            th { class: "col-val", "Max" }
+                            th { class: "col-wide", "Absorbed" }
+                            th { class: "col-left col-type", "Type" }
                         }
                     }
                     tbody {
@@ -323,8 +335,8 @@ fn HealingReceivedTable(rows: Vec<DeathRecapHealSource>, european: bool) -> Elem
                     thead {
                         tr {
                             th { class: "col-left", "Source" }
-                            th { "Ticks" }
-                            th { "Effective" }
+                            th { class: "col-count", "Ticks" }
+                            th { class: "col-wide", "Effective" }
                         }
                     }
                     tbody {
@@ -393,19 +405,22 @@ fn hp_sparkline(r: &DeathRecap) -> Element {
     );
     let death_x = x(r.death_time_secs);
     // Death marker only spans the final HP drop, not the full chart height
-    let death_top = y(r
-        .hp_timeline
-        .iter()
-        .rev()
-        .nth(1)
-        .map(|p| p.hp_pct)
-        .unwrap_or(0.0));
+    let death_top = y(r.hp_timeline.iter().rev().nth(1).map(|p| p.hp_pct).unwrap_or(0.0));
     let window_label = format!("{}s", (r.death_time_secs - t0).round() as i64);
     // Ticks every TICK_SECS counting back from the death: (x in viewBox, label)
     let ticks: Vec<(f32, String)> = (0..)
         .map(|k| (k, r.death_time_secs - k as f32 * TICK_SECS))
         .take_while(|&(_, t)| t >= t0 - 0.01)
-        .map(|(k, t)| (x(t), if k == 0 { "death".to_string() } else { format!("-{}s", k * TICK_SECS as i32) }))
+        .map(|(k, t)| {
+            (
+                x(t),
+                if k == 0 {
+                    "death".to_string()
+                } else {
+                    format!("-{}s", k * TICK_SECS as i32)
+                },
+            )
+        })
         .collect();
 
     rsx! {
@@ -512,7 +527,7 @@ fn event_row(ev: &DeathRecapEvent, death_time: f32, european: bool) -> Element {
                 }
             }
             span { class: "{detail_class}",
-                if !ev.damage_type.is_empty() && !(ev.avoided && ev.value == 0) {
+                if !ev.damage_type.is_empty() && (!ev.avoided || ev.value != 0) {
                     span { class: "recap-dmg-type", "{ev.damage_type}" }
                 }
                 "{detail}"
@@ -566,7 +581,11 @@ fn recap_nav(deaths: &[PlayerDeath], name: &str, time: f32, on_select: EventHand
     let player_btn = |i: Option<usize>, back: bool| {
         let d = i.and_then(|i| firsts.get(i)).copied();
         let label = d.map_or(String::new(), |d| d.name.clone());
-        let (icon, title) = if back { ("fa-backward-step", "Previous player to die") } else { ("fa-forward-step", "Next player to die") };
+        let (icon, title) = if back {
+            ("fa-backward-step", "Previous player to die")
+        } else {
+            ("fa-forward-step", "Next player to die")
+        };
         btn(d, icon, label, title, back)
     };
     rsx! {

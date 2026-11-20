@@ -60,12 +60,19 @@ fn match_from(log: &LogHistory, group: &[&PullRecord]) -> PvpMatchRow {
     let first = group[0];
     let character = log.character_name.clone().unwrap_or_else(|| "Unknown".into());
     // My discipline from the latest round that has me
-    let me = group.iter().rev().find_map(|p| p.roster.iter().find(|m| m.name == character));
+    let me = group
+        .iter()
+        .rev()
+        .find_map(|p| p.roster.iter().find(|m| m.name == character));
     let arena = pvp_area_kind(first.area_id) == Some(PvpAreaKind::Arena);
 
     // Everyone else, deduplicated by name; a later round's discipline wins
     let mut players: Vec<PvpPlayer> = Vec::new();
-    for m in group.iter().flat_map(|p| p.roster.iter()).filter(|m| m.name != character) {
+    for m in group
+        .iter()
+        .flat_map(|p| p.roster.iter())
+        .filter(|m| m.name != character)
+    {
         let Some(faction) = m.pvp_faction else { continue };
         let friendly = faction == PvpFaction::Friendly;
         match players.iter_mut().find(|x| x.name == m.name) {
@@ -75,14 +82,23 @@ fn match_from(log: &LogHistory, group: &[&PullRecord]) -> PvpMatchRow {
                     x.discipline = m.discipline_name.clone();
                 }
             }
-            None => players.push(PvpPlayer { name: m.name.clone(), discipline: m.discipline_name.clone(), friendly }),
+            None => players.push(PvpPlayer {
+                name: m.name.clone(),
+                discipline: m.discipline_name.clone(),
+                friendly,
+            }),
         }
     }
     players.sort_by(|a, b| b.friendly.cmp(&a.friendly).then_with(|| a.name.cmp(&b.name)));
 
     let rounds: Vec<PvpRound> = group
         .iter()
-        .map(|p| PvpRound { encounter_id: p.encounter_id, start_ms: p.start_ms, won: round_won(p), duration_seconds: p.duration_secs })
+        .map(|p| PvpRound {
+            encounter_id: p.encounter_id,
+            start_ms: p.start_ms,
+            won: round_won(p),
+            duration_seconds: p.duration_secs,
+        })
         .collect();
     let wins = rounds.iter().filter(|r| r.won == Some(true)).count();
     let losses = rounds.iter().filter(|r| r.won == Some(false)).count();

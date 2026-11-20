@@ -7,7 +7,7 @@ use std::sync::Arc;
 use baras_core::PlayerMetrics;
 use baras_core::context::OverlayAppearanceConfig;
 use baras_types::metric_template::{self, MetricTemplate};
-use baras_types::{ClassColorConfig, ClassIconMode};
+use baras_types::{ClassColorConfig, ClassIconMode, MAX_BAR_RADIUS};
 use tiny_skia::Color;
 
 use super::metric_values::{entry_value, footer_value};
@@ -16,7 +16,7 @@ use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
 use crate::utils::color_from_rgba;
 use crate::widgets::colors;
-use crate::widgets::{draw_icon_placeholder, Footer, Header, ProgressBar};
+use crate::widgets::{Footer, Header, ProgressBar, draw_icon_placeholder};
 
 /// Entry in a DPS/HPS metric
 #[derive(Debug, Clone)]
@@ -155,7 +155,6 @@ const MIN_BAR_HEIGHT_ABSOLUTE: f32 = 16.0; // Absolute minimum bar height (not s
 const MIN_BAR_SPACING_ABSOLUTE: f32 = 2.0; // Absolute minimum spacing (not scaled)
 const BASE_FONT_SIZE: f32 = 14.0;
 
-
 /// A specialized DPS/HPS metric overlay
 pub struct MetricOverlay {
     frame: OverlayFrame,
@@ -235,7 +234,6 @@ impl MetricOverlay {
         self.template = MetricTemplate::parse(&appearance.template);
         self.appearance = appearance;
     }
-
 
     /// Update show empty bars setting
     pub fn set_show_empty_bars(&mut self, show: bool) {
@@ -342,9 +340,7 @@ impl MetricOverlay {
             .map(|(i, _)| i)
             .collect();
         if visible_idx.len() > max_entries {
-            visible_idx.select_nth_unstable_by_key(max_entries - 1, |&i| {
-                std::cmp::Reverse(self.entries[i].value)
-            });
+            visible_idx.select_nth_unstable_by_key(max_entries - 1, |&i| std::cmp::Reverse(self.entries[i].value));
             visible_idx.truncate(max_entries);
             visible_idx.sort_unstable();
         }
@@ -353,10 +349,7 @@ impl MetricOverlay {
 
         // PvP faction divider: entries are sorted friendly-first, so a single
         // friendly→enemy transition marks where the separator line goes
-        let divider_before = visible_entries
-            .iter()
-            .position(|e| e.is_enemy)
-            .filter(|&i| i > 0);
+        let divider_before = visible_entries.iter().position(|e| e.is_enemy).filter(|&i| i > 0);
         let divider_space = if divider_before.is_some() {
             header_spacing * 2.0 + 2.0
         } else {
@@ -366,8 +359,7 @@ impl MetricOverlay {
         // Calculate space reserved for header and footer (uses base_font_size, unaffected by font_scale)
         // Footer: 2.0 (separator offset) + spacing + font_size + buffer
         let scale = self.frame.scale_factor();
-        let header_space =
-            Header::space(self.appearance.show_header, base_font_size, header_spacing, scale);
+        let header_space = Header::space(self.appearance.show_header, base_font_size, header_spacing, scale);
         let footer_space = if self.appearance.show_footer {
             2.0 + header_spacing + bar_font_size + 6.0 * scale // separator + spacing + text + buffer
         } else {
@@ -384,8 +376,7 @@ impl MetricOverlay {
 
             if ideal_total > available_for_bars && ideal_total > 0.0 {
                 // Compress both bars and spacing proportionally (divider stays fixed)
-                let compression_ratio =
-                    (available_for_bars - divider_space).max(0.0) / (ideal_total - divider_space);
+                let compression_ratio = (available_for_bars - divider_space).max(0.0) / (ideal_total - divider_space);
                 let compressed_bar = (ideal_bar_height * compression_ratio).max(min_bar_height);
                 // Preserve a fully-connected look (ratio 0) under compression;
                 // otherwise keep a readable minimum gap.
@@ -405,9 +396,7 @@ impl MetricOverlay {
 
         // Calculate total height of all bars (for content height and layout)
         let total_bars_height = if num_entries > 0 {
-            num_entries as f32 * bar_height
-                + (num_entries.saturating_sub(1)) as f32 * effective_spacing
-                + divider_space
+            num_entries as f32 * bar_height + (num_entries.saturating_sub(1)) as f32 * effective_spacing + divider_space
         } else {
             0.0
         };
@@ -441,8 +430,7 @@ impl MetricOverlay {
                 // When stacking from bottom, the content starts higher up from
                 // bars_start_y by the header and padding, so align the background there
                 let content_y = bars_start_y - header_space - padding;
-                self.frame
-                    .begin_frame_with_content_rect(content_y, content_height);
+                self.frame.begin_frame_with_content_rect(content_y, content_height);
             } else {
                 self.frame.begin_frame_with_content_height(content_height);
             }
@@ -451,7 +439,8 @@ impl MetricOverlay {
         }
 
         let content_width = width - padding * 2.0;
-        let bar_radius = 4.0 * self.frame.scale_factor();
+        let bar_radius =
+            self.appearance.bar_radius.unwrap_or(4.0).clamp(0.0, MAX_BAR_RADIUS) * self.frame.scale_factor();
 
         // Draw header just above the first bar (uses base_font_size, not bar_font_size)
         let mut y = if self.appearance.show_header {
@@ -470,10 +459,7 @@ impl MetricOverlay {
         };
 
         // Find max value for scaling (use actual rate values, not max_value field)
-        let max_val = visible_entries
-            .iter()
-            .map(|e| e.value as f64)
-            .fold(1.0, f64::max);
+        let max_val = visible_entries.iter().map(|e| e.value as f64).fold(1.0, f64::max);
 
         // Draw entries using ProgressBar widget
         // Scale text font size proportionally if bars are compressed
@@ -489,11 +475,7 @@ impl MetricOverlay {
 
         // Calculate footer sums (friendly players only — enemy rows would
         // inflate the group total in PvP)
-        let rate_sum: i64 = visible_entries
-            .iter()
-            .filter(|e| !e.is_enemy)
-            .map(|e| e.value)
-            .sum();
+        let rate_sum: i64 = visible_entries.iter().filter(|e| !e.is_enemy).map(|e| e.value).sum();
 
         // Icon rendering setup
         // Discipline icons are opaque squares, so they get a dedicated
@@ -535,7 +517,9 @@ impl MetricOverlay {
 
             // Determine fill color: class color > custom entry color > configured bar_color
             let fill_color = if self.use_class_color {
-                entry.class_name.as_deref()
+                entry
+                    .class_name
+                    .as_deref()
                     .and_then(|n| self.class_colors.for_class_name(n))
                     .map(color_from_rgba)
                     .unwrap_or(bar_color)
@@ -584,13 +568,13 @@ impl MetricOverlay {
             }
 
             // Add split visualization if split data is available
-            if let Some(split_val) = entry.split_value {
-                if entry.value > 0 {
-                    let split_fraction = (split_val as f32 / entry.value as f32).clamp(0.0, 1.0);
-                    bar = bar.with_split(split_fraction);
-                    if let Some(color) = entry.split_color {
-                        bar = bar.with_split_color(color);
-                    }
+            if let Some(split_val) = entry.split_value
+                && entry.value > 0
+            {
+                let split_fraction = (split_val as f32 / entry.value as f32).clamp(0.0, 1.0);
+                bar = bar.with_split(split_fraction);
+                if let Some(color) = entry.split_color {
+                    bar = bar.with_split_color(color);
                 }
             }
 
@@ -603,15 +587,7 @@ impl MetricOverlay {
                 bar = bar.with_right_text(metric_template::render(&template.right, value));
             }
 
-            bar.render(
-                &mut self.frame,
-                bar_x,
-                y,
-                bar_w,
-                bar_height,
-                text_font_size,
-                bar_radius,
-            );
+            bar.render(&mut self.frame, bar_x, y, bar_w, bar_height, text_font_size, bar_radius);
 
             // Draw icon: discipline icons fill their reserved column, class
             // icons draw on top of the bar (role-tinted/white)
@@ -626,9 +602,7 @@ impl MetricOverlay {
                 };
                 if let Some(icon) = icon {
                     self.frame.draw_image_with_shadow(
-                        &icon.rgba,
-                        icon.width,
-                        icon.height,
+                        icon,
                         padding + icon_padding,
                         y + icon_padding,
                         icon_size,
@@ -659,19 +633,12 @@ impl MetricOverlay {
             let eu = self.european_number_format;
             let friendly = || visible_entries.iter().copied().filter(|e| !e.is_enemy);
             let value = |var| footer_value(var, friendly(), eu);
-            let mut footer =
-                Footer::new(metric_template::render(&template.right, value)).with_color(font_color);
+            let mut footer = Footer::new(metric_template::render(&template.right, value)).with_color(font_color);
             if !template.center.is_empty() {
                 footer = footer.with_secondary(metric_template::render(&template.center, value));
             }
 
-            footer.render(
-                &mut self.frame,
-                padding,
-                y,
-                content_width,
-                text_font_size,
-            );
+            footer.render(&mut self.frame, padding, y, content_width, text_font_size);
         }
 
         // End frame (resize indicator, commit)
@@ -740,10 +707,6 @@ impl Overlay for MetricOverlay {
 
     fn render(&mut self) {
         MetricOverlay::render(self);
-    }
-
-    fn poll_events(&mut self) -> bool {
-        self.frame.poll_events()
     }
 
     fn frame(&self) -> &OverlayFrame {

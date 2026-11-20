@@ -64,10 +64,7 @@ pub struct MonitorInfo {
 impl MonitorInfo {
     /// Check if a point is within this monitor's bounds
     pub fn contains(&self, x: i32, y: i32) -> bool {
-        x >= self.x
-            && x < self.x + self.width as i32
-            && y >= self.y
-            && y < self.y + self.height as i32
+        x >= self.x && x < self.x + self.width as i32 && y >= self.y && y < self.y + self.height as i32
     }
 
     /// Check if a rectangle overlaps with this monitor
@@ -78,11 +75,6 @@ impl MonitorInfo {
         let mon_bottom = self.y + self.height as i32;
 
         x < mon_right && rect_right > self.x && y < mon_bottom && rect_bottom > self.y
-    }
-
-    /// Convert absolute screen coordinates to relative monitor coordinates
-    pub fn to_relative(&self, abs_x: i32, abs_y: i32) -> (i32, i32) {
-        (abs_x - self.x, abs_y - self.y)
     }
 
     /// Convert relative monitor coordinates to absolute screen coordinates
@@ -141,13 +133,7 @@ impl VirtualScreenBounds {
 
 /// Clamp a window position to the virtual screen (all monitors combined).
 /// This allows windows to be dragged freely across all connected monitors.
-pub fn clamp_to_virtual_screen(
-    x: i32,
-    y: i32,
-    width: u32,
-    height: u32,
-    monitors: &[MonitorInfo],
-) -> (i32, i32) {
+pub fn clamp_to_virtual_screen(x: i32, y: i32, width: u32, height: u32, monitors: &[MonitorInfo]) -> (i32, i32) {
     VirtualScreenBounds::from_monitors(monitors)
         .map(|bounds| bounds.clamp_position(x, y, width, height))
         .unwrap_or((x, y))
@@ -156,13 +142,7 @@ pub fn clamp_to_virtual_screen(
 /// Ensure an overlay position is visible on an actual monitor.
 /// If the overlay doesn't overlap any monitor (e.g. it landed in a dead zone
 /// between monitors of different sizes), move it to the nearest monitor edge.
-pub fn ensure_visible_on_monitor(
-    x: i32,
-    y: i32,
-    width: u32,
-    height: u32,
-    monitors: &[MonitorInfo],
-) -> (i32, i32) {
+pub fn ensure_visible_on_monitor(x: i32, y: i32, width: u32, height: u32, monitors: &[MonitorInfo]) -> (i32, i32) {
     if monitors.is_empty() {
         return (x, y);
     }
@@ -187,20 +167,20 @@ pub fn ensure_visible_on_monitor(
         })
         .unwrap();
 
-    let clamped_x = x.clamp(nearest.x, (nearest.x + nearest.width as i32 - width as i32).max(nearest.x));
-    let clamped_y = y.clamp(nearest.y, (nearest.y + nearest.height as i32 - height as i32).max(nearest.y));
+    let clamped_x = x.clamp(
+        nearest.x,
+        (nearest.x + nearest.width as i32 - width as i32).max(nearest.x),
+    );
+    let clamped_y = y.clamp(
+        nearest.y,
+        (nearest.y + nearest.height as i32 - height as i32).max(nearest.y),
+    );
     (clamped_x, clamped_y)
 }
 
 /// Find the monitor that contains the center of the given rectangle.
 /// Falls back to the monitor with the most overlap, then primary, then first.
-pub fn find_monitor_at(
-    x: i32,
-    y: i32,
-    width: u32,
-    height: u32,
-    monitors: &[MonitorInfo],
-) -> Option<&MonitorInfo> {
+pub fn find_monitor_at(x: i32, y: i32, width: u32, height: u32, monitors: &[MonitorInfo]) -> Option<&MonitorInfo> {
     if monitors.is_empty() {
         return None;
     }
@@ -508,16 +488,12 @@ mod linux {
     impl OverlayPlatform for LinuxOverlay {
         fn new(config: OverlayConfig) -> Result<Self, PlatformError> {
             match backend() {
-                Backend::LayerShell => {
-                    wayland::WaylandOverlay::new(config).map(LinuxOverlay::Wayland)
-                }
+                Backend::LayerShell => wayland::WaylandOverlay::new(config).map(LinuxOverlay::Wayland),
                 Backend::Xwayland => match x11::X11Overlay::new(config) {
                     Ok(overlay) => Ok(LinuxOverlay::X11(overlay)),
-                    Err(PlatformError::ConnectionFailed(reason)) => {
-                        Err(PlatformError::UnsupportedFeature(format!(
-                            "zwlr_layer_shell_v1, and no Xwayland to fall back to ({reason})"
-                        )))
-                    }
+                    Err(PlatformError::ConnectionFailed(reason)) => Err(PlatformError::UnsupportedFeature(format!(
+                        "zwlr_layer_shell_v1, and no Xwayland to fall back to ({reason})"
+                    ))),
                     Err(error) => Err(error),
                 },
                 Backend::X11 => x11::X11Overlay::new(config).map(LinuxOverlay::X11),
@@ -660,10 +636,7 @@ mod linux {
 }
 
 /// Find a monitor by ID, or fall back to the primary monitor
-pub fn find_monitor_by_id<'a>(
-    monitors: &'a [MonitorInfo],
-    id: Option<&str>,
-) -> Option<&'a MonitorInfo> {
+pub fn find_monitor_by_id<'a>(monitors: &'a [MonitorInfo], id: Option<&str>) -> Option<&'a MonitorInfo> {
     if let Some(id) = id {
         // Try to find exact match
         if let Some(monitor) = monitors.iter().find(|m| m.id == id) {

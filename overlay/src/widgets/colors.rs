@@ -35,12 +35,6 @@ pub fn yellow() -> Color {
     Color::from_rgba8(255, 255, 0, 255)
 }
 
-/// Semi-transparent background for overlays
-#[inline]
-pub fn overlay_bg() -> Color {
-    Color::from_rgba8(30, 30, 30, 10)
-}
-
 /// DPS metric background
 #[inline]
 pub fn dps_bar_bg() -> Color {
@@ -139,40 +133,10 @@ pub fn separator_line() -> Color {
 // Effect Type Colors
 // ─────────────────────────────────────────────────────────────────────────
 
-/// HoT (Heal over Time) effect color - green
-#[inline]
-pub fn effect_hot() -> Color {
-    Color::from_rgba8(80, 200, 80, 255)
-}
-
 /// Debuff effect color - red
 #[inline]
 pub fn effect_debuff() -> Color {
     Color::from_rgba8(200, 60, 60, 255)
-}
-
-/// Buff effect color - blue
-#[inline]
-pub fn effect_buff() -> Color {
-    Color::from_rgba8(80, 140, 220, 255)
-}
-
-/// Shield/absorb effect color - yellow/gold
-#[inline]
-pub fn effect_shield() -> Color {
-    Color::from_rgba8(220, 180, 50, 255)
-}
-
-/// Cleanse/dispellable effect color - purple
-#[inline]
-pub fn effect_cleansable() -> Color {
-    Color::from_rgba8(180, 80, 200, 255)
-}
-
-/// Proc/temporary buff color - cyan
-#[inline]
-pub fn effect_proc() -> Color {
-    Color::from_rgba8(80, 200, 220, 255)
 }
 
 /// Cooldown ready state - bright light-blue
@@ -184,12 +148,6 @@ pub fn cooldown_ready() -> Color {
 // ─────────────────────────────────────────────────────────────────────────
 // Frame/Window Colors
 // ─────────────────────────────────────────────────────────────────────────
-
-/// Default frame background
-#[inline]
-pub fn frame_bg() -> Color {
-    Color::from_rgba8(30, 30, 30, 255)
-}
 
 /// Frame border color
 #[inline]
@@ -206,18 +164,6 @@ pub fn resize_indicator() -> Color {
 // ─────────────────────────────────────────────────────────────────────────
 // Raid Frame Colors
 // ─────────────────────────────────────────────────────────────────────────
-
-/// Raid frame player background
-#[inline]
-pub fn raid_frame_bg() -> Color {
-    Color::from_rgba8(40, 40, 40, 200)
-}
-
-/// Selection highlight for raid frames
-#[inline]
-pub fn raid_selection() -> Color {
-    Color::from_rgba8(80, 120, 180, 220)
-}
 
 /// Guide lines for rearrange mode
 #[inline]
@@ -271,24 +217,6 @@ pub fn raid_name_confirmed() -> Color {
 // ─────────────────────────────────────────────────────────────────────────
 // Health Bar Colors (contextual)
 // ─────────────────────────────────────────────────────────────────────────
-
-/// Health bar - healthy (>60%)
-#[inline]
-pub fn health_high() -> Color {
-    Color::from_rgba8(80, 200, 80, 255)
-}
-
-/// Health bar - medium (30-60%)
-#[inline]
-pub fn health_medium() -> Color {
-    Color::from_rgba8(220, 180, 50, 255)
-}
-
-/// Health bar - low (<30%)
-#[inline]
-pub fn health_low() -> Color {
-    Color::from_rgba8(220, 60, 60, 255)
-}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Effect Icon Colors
@@ -345,15 +273,3 @@ pub fn text_muted() -> Color {
 // ─────────────────────────────────────────────────────────────────────────
 // Role Icon Colors
 // ─────────────────────────────────────────────────────────────────────────
-
-/// Tank role icon (blue shield)
-#[inline]
-pub fn role_tank() -> Color {
-    Color::from_rgba8(100, 150, 220, 255)
-}
-
-/// Healer role icon (green cross)
-#[inline]
-pub fn role_healer() -> Color {
-    Color::from_rgba8(100, 220, 100, 255)
-}

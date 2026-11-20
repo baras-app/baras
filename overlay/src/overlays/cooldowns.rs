@@ -9,7 +9,7 @@ use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
 use crate::utils::{color_from_rgba, shared_scaled_icons};
-use crate::widgets::{colors, Header, IconBarRow, ProgressBar, RowIcon};
+use crate::widgets::{Header, IconBarRow, ProgressBar, RowIcon, colors};
 
 /// A single cooldown entry for display
 #[derive(Debug, Clone)]
@@ -49,7 +49,12 @@ pub struct CooldownEntry {
 impl CooldownEntry {
     /// Source/target annotation, if any flag is set and the name is known
     fn entity_label(&self) -> Option<String> {
-        super::entity_label(self.display_source, &self.source_name, self.show_target, &self.target_name)
+        super::entity_label(
+            self.display_source,
+            &self.source_name,
+            self.show_target,
+            &self.target_name,
+        )
     }
 
     /// Progress as 0.0 (just started) to 1.0 (ready)
@@ -149,10 +154,7 @@ pub struct CooldownOverlay {
 
 impl CooldownOverlay {
     /// Create a new cooldown overlay
-    pub fn new(
-        window_config: OverlayConfig,
-        config: CooldownConfig,
-    ) -> Result<Self, PlatformError> {
+    pub fn new(window_config: OverlayConfig, config: CooldownConfig) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
         frame.set_label("Cooldowns");
 
@@ -174,7 +176,6 @@ impl CooldownOverlay {
         self.last_rendered_bar.clear();
     }
 
-
     /// Icon pixel size to cache: the drawn size in bar layout, else the configured icon size
     fn bar_or_icon_size(&self, bar_layout: bool) -> u32 {
         let icon = self.frame.scaled(self.config.icon_size as f32).round();
@@ -195,8 +196,7 @@ impl CooldownOverlay {
         for entry in &data.entries {
             if let Some(ref icon_arc) = entry.icon {
                 let (src_w, src_h, ref src_data) = **icon_arc;
-                let _ =
-                    cache.get_or_scale(entry.icon_ability_id, icon_size, src_data, src_w, src_h);
+                let _ = cache.get_or_scale(entry.icon_ability_id, icon_size, src_data, src_w, src_h);
             }
         }
 
@@ -267,8 +267,7 @@ impl CooldownOverlay {
         let header_font_size = font_size * 1.4;
 
         // Calculate header space if enabled
-        let header_space =
-            Header::space(self.config.show_header, header_font_size, row_spacing, scale);
+        let header_space = Header::space(self.config.show_header, header_font_size, row_spacing, scale);
 
         // Compute content height for dynamic background
         let num_entries = self.data.entries.iter().take(max_display).count();
@@ -286,8 +285,7 @@ impl CooldownOverlay {
         let window_height = self.frame.height() as f32;
         let total_rows_height = num_entries as f32 * row_height;
         let rows_start_y = if self.config.stack_from_bottom && num_entries > 0 {
-            (window_height - padding - total_rows_height + row_spacing)
-                .max(padding + header_space)
+            (window_height - padding - total_rows_height + row_spacing).max(padding + header_space)
         } else {
             padding + header_space
         };
@@ -301,8 +299,7 @@ impl CooldownOverlay {
         if self.config.dynamic_background {
             if self.config.stack_from_bottom && num_entries > 0 {
                 let content_y = (header_y - padding).max(0.0);
-                self.frame
-                    .begin_frame_with_content_rect(content_y, content_height);
+                self.frame.begin_frame_with_content_rect(content_y, content_height);
             } else {
                 self.frame.begin_frame_with_content_height(content_height);
             }
@@ -339,24 +336,14 @@ impl CooldownOverlay {
             // Draw icon from cache or colored square fallback
             // Only show icon if show_icon is true
             let has_icon = if entry.show_icon {
-                if let Some(scaled_icon) =
-                    shared_scaled_icons().get(entry.icon_ability_id, icon_size_u32)
-                {
-                    self.frame.draw_image(
-                        &scaled_icon,
-                        icon_size_u32,
-                        icon_size_u32,
-                        x,
-                        y,
-                        icon_size,
-                        icon_size,
-                    );
+                if let Some(scaled_icon) = shared_scaled_icons().get(entry.icon_ability_id, icon_size_u32) {
+                    self.frame
+                        .draw_image(&scaled_icon, icon_size_u32, icon_size_u32, x, y, icon_size, icon_size);
                     true
                 } else if let Some(ref icon_arc) = entry.icon {
                     // Fallback if cache miss
                     let (img_w, img_h, ref rgba) = **icon_arc;
-                    self.frame
-                        .draw_image(rgba, img_w, img_h, x, y, icon_size, icon_size);
+                    self.frame.draw_image(rgba, img_w, img_h, x, y, icon_size, icon_size);
                     true
                 } else {
                     false
@@ -368,8 +355,7 @@ impl CooldownOverlay {
             if !has_icon {
                 // Fallback: colored square
                 let bg_color = color_from_rgba(entry.color);
-                self.frame
-                    .fill_rounded_rect(x, y, icon_size, icon_size, 3.0, bg_color);
+                self.frame.fill_rounded_rect(x, y, icon_size, icon_size, 3.0, bg_color);
             }
 
             // Decreasing clock wipe - overlay shrinks from top, revealing icon
@@ -378,13 +364,8 @@ impl CooldownOverlay {
             let progress = entry.progress();
             let overlay_height = icon_size * (1.0 - progress);
             if overlay_height > 1.0 {
-                self.frame.fill_rect(
-                    x,
-                    y,
-                    icon_size,
-                    overlay_height,
-                    color_from_rgba([0, 0, 0, 140]),
-                );
+                self.frame
+                    .fill_rect(x, y, icon_size, overlay_height, color_from_rgba([0, 0, 0, 140]));
             }
 
             // Border - use light-blue when in "ready" state
@@ -400,8 +381,7 @@ impl CooldownOverlay {
             if entry.charges > 1 || (entry.max_charges > 1 && entry.charges > 0) {
                 let charge_text = format!("{}", entry.charges);
                 let charge_font_size = font_size * 1.0;
-                let charge_x =
-                    x + icon_size - self.frame.measure_text(&charge_text, charge_font_size).0 - 2.0;
+                let charge_x = x + icon_size - self.frame.measure_text(&charge_text, charge_font_size).0 - 2.0;
                 let charge_y = y + charge_font_size + 2.0;
 
                 self.frame.draw_text_glowed(
@@ -427,25 +407,15 @@ impl CooldownOverlay {
             if self.config.show_ability_names {
                 // Ability name on top
                 let name_y = text_y - font_size * 0.3;
-                self.frame.draw_text_glowed(
-                    &entry.name,
-                    text_x,
-                    name_y,
-                    font_size,
-                    colors::white(),
-                );
+                self.frame
+                    .draw_text_glowed(&entry.name, text_x, name_y, font_size, colors::white());
 
                 // Countdown below
                 let time_text = entry.format_time(self.european_number_format);
                 let time_font_size = font_size * 0.9;
                 let time_y = name_y + font_size + 2.0;
-                self.frame.draw_text_glowed(
-                    &time_text,
-                    text_x,
-                    time_y,
-                    time_font_size,
-                    ready_text_color,
-                );
+                self.frame
+                    .draw_text_glowed(&time_text, text_x, time_y, time_font_size, ready_text_color);
 
                 // Source/target label inline to the right of countdown
                 if let Some(label) = entry.entity_label() {
@@ -502,8 +472,7 @@ impl CooldownOverlay {
         let header_font_size = font_size * 1.4;
 
         // Calculate header space if enabled
-        let header_space =
-            Header::space(self.config.show_header, header_font_size, row_spacing, scale);
+        let header_space = Header::space(self.config.show_header, header_font_size, row_spacing, scale);
 
         self.frame.begin_frame();
 
@@ -518,8 +487,7 @@ impl CooldownOverlay {
         let n = previews.len() as f32;
         let total_rows_height = n * row_height;
         let rows_start_y = if self.config.stack_from_bottom {
-            (window_height - padding - total_rows_height + row_spacing)
-                .max(padding + header_space)
+            (window_height - padding - total_rows_height + row_spacing).max(padding + header_space)
         } else {
             padding + header_space
         };
@@ -568,8 +536,7 @@ impl CooldownOverlay {
             if *charges > 1 {
                 let charge_text = format!("{}", charges);
                 let charge_font_size = font_size * 1.0;
-                let charge_x =
-                    x + icon_size - self.frame.measure_text(&charge_text, charge_font_size).0 - 2.0;
+                let charge_x = x + icon_size - self.frame.measure_text(&charge_text, charge_font_size).0 - 2.0;
                 let charge_y = y + charge_font_size + 2.0;
 
                 self.frame.draw_text_glowed(
@@ -593,22 +560,12 @@ impl CooldownOverlay {
 
                 // Countdown below
                 let time_y = name_y + font_size + 2.0;
-                self.frame.draw_text_glowed(
-                    time_text,
-                    text_x,
-                    time_y,
-                    font_size * 0.9,
-                    colors::white(),
-                );
+                self.frame
+                    .draw_text_glowed(time_text, text_x, time_y, font_size * 0.9, colors::white());
             } else {
                 // Just countdown centered
-                self.frame.draw_text_glowed(
-                    time_text,
-                    text_x,
-                    text_y + font_size / 3.0,
-                    font_size,
-                    colors::white(),
-                );
+                self.frame
+                    .draw_text_glowed(time_text, text_x, text_y + font_size / 3.0, font_size, colors::white());
             }
 
             y += row_height;
@@ -661,10 +618,12 @@ impl CooldownOverlay {
         let header_font_size = font_size * 1.4;
 
         let row = IconBarRow::new(padding, content_width, bar_height, bar_radius, scale);
-        let border = self.config.show_border.then(|| color_from_rgba(self.config.border_color));
+        let border = self
+            .config
+            .show_border
+            .then(|| color_from_rgba(self.config.border_color));
 
-        let header_space =
-            Header::space(self.config.show_header, header_font_size, entry_spacing, scale);
+        let header_space = Header::space(self.config.show_header, header_font_size, entry_spacing, scale);
 
         let n = self.data.entries.iter().take(max_display).count();
         let total_bars_height = if n > 0 {
@@ -693,8 +652,7 @@ impl CooldownOverlay {
         if self.config.dynamic_background {
             if self.config.stack_from_bottom && n > 0 {
                 let content_y = (header_y - padding).max(0.0);
-                self.frame
-                    .begin_frame_with_content_rect(content_y, content_height);
+                self.frame.begin_frame_with_content_rect(content_y, content_height);
             } else {
                 self.frame.begin_frame_with_content_height(content_height);
             }
@@ -776,8 +734,7 @@ impl CooldownOverlay {
         let padding = self.frame.scaled(BASE_PADDING);
         let entry_spacing = self.frame.scaled(BASE_ROW_SPACING);
         let font_scale = self.config.font_scale.clamp(0.3, 3.0);
-        let bar_height =
-            self.frame.scaled(self.config.icon_size as f32).round() + 4.0 * self.frame.scale_factor();
+        let bar_height = self.frame.scaled(self.config.icon_size as f32).round() + 4.0 * self.frame.scale_factor();
         let font_size = self.frame.scaled(BASE_BAR_FONT_SIZE * font_scale);
         let bar_radius = 3.0 * self.frame.scale_factor();
         let content_width = self.frame.width() as f32 - 2.0 * padding;
@@ -803,7 +760,10 @@ impl CooldownOverlay {
 
         let scale = self.frame.scale_factor();
         let row = IconBarRow::new(padding, content_width, bar_height, bar_radius, scale);
-        let border = self.config.show_border.then(|| color_from_rgba(self.config.border_color));
+        let border = self
+            .config
+            .show_border
+            .then(|| color_from_rgba(self.config.border_color));
 
         for (name, time_text, is_ready) in previews {
             let label = if self.config.show_ability_names { name } else { "" };
@@ -846,10 +806,13 @@ impl Overlay for CooldownOverlay {
         }
     }
 
+    fn invalidate(&mut self) {
+        self.last_rendered.clear();
+        self.last_rendered_bar.clear();
+    }
+
     fn update_config(&mut self, config: OverlayConfigUpdate) {
-        if let OverlayConfigUpdate::Cooldowns(cfg, european)
-            | OverlayConfigUpdate::CooldownsB(cfg, european) = config
-        {
+        if let OverlayConfigUpdate::Cooldowns(cfg, european) | OverlayConfigUpdate::CooldownsB(cfg, european) = config {
             self.set_config(cfg);
             self.european_number_format = european;
         }
@@ -857,10 +820,6 @@ impl Overlay for CooldownOverlay {
 
     fn render(&mut self) {
         CooldownOverlay::render(self);
-    }
-
-    fn poll_events(&mut self) -> bool {
-        self.frame.poll_events()
     }
 
     fn frame(&self) -> &OverlayFrame {

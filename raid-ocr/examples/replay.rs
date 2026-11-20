@@ -63,9 +63,7 @@ fn main() {
         let observations = observe_slots(&capture, &rects).rows;
         let new_names: BTreeMap<u8, String> = observations
             .iter()
-            .filter_map(|o| {
-                Some((u8::try_from(o.row).ok()?, o.name_text.clone()?))
-            })
+            .filter_map(|o| Some((u8::try_from(o.row).ok()?, o.name_text.clone()?)))
             .collect();
 
         for &(slot, ..) in &rects {
@@ -113,7 +111,13 @@ fn parse_readings(text: &str) -> (Vec<SlotRect>, BTreeMap<u8, String>) {
                     .and_then(|v| v.parse().ok())
                     .unwrap_or(0)
             };
-            rects.push((id, field("x=") as i32, field("y=") as i32, field("w=") as u32, field("h=") as u32));
+            rects.push((
+                id,
+                field("x=") as i32,
+                field("y=") as i32,
+                field("w=") as u32,
+                field("h=") as u32,
+            ));
             slot = Some(id);
             in_name_band = false;
         } else if t.starts_with("name") {
@@ -144,7 +148,9 @@ fn load_capture(path: &Path) -> Option<CapturedImage> {
     let rgba = match info.color_type {
         png::ColorType::Rgba => buf,
         png::ColorType::Rgb => buf
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .flat_map(|p| [p[0], p[1], p[2], 255])
             .collect(),
         _ => return None,

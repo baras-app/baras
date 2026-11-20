@@ -1,9 +1,8 @@
 //! Parquet writer for encounter events.
 
 use arrow::array::{
-    ArrayBuilder, ArrayRef, BooleanBuilder, Float32Builder, Int32Builder, Int64Builder, ListArray,
-    StringBuilder, StructArray, TimestampMillisecondBuilder, UInt32Builder, UInt64Builder,
-    UInt8Builder,
+    ArrayBuilder, ArrayRef, BooleanBuilder, Float32Builder, Int32Builder, Int64Builder, ListArray, StringBuilder,
+    StructArray, TimestampMillisecondBuilder, UInt8Builder, UInt32Builder, UInt64Builder,
 };
 use arrow::buffer::{NullBuffer, OffsetBuffer};
 use arrow::datatypes::{DataType, Field, Fields, Schema, TimeUnit};
@@ -204,12 +203,7 @@ impl EventMetadata {
             combat_time_secs,
             phase_id: current_phase.clone(),
             phase_name: current_phase.as_ref().and_then(|phase_id| {
-                boss_def.and_then(|def| {
-                    def.phases
-                        .iter()
-                        .find(|p| &p.id == phase_id)
-                        .map(|p| p.name.clone())
-                })
+                boss_def.and_then(|def| def.phases.iter().find(|p| &p.id == phase_id).map(|p| p.name.clone()))
             }),
             area_name: cache.current_area.area_name.clone(),
             boss_name: boss_def.map(|d| d.name.clone()),
@@ -292,11 +286,7 @@ impl EncounterWriter {
     pub fn schema() -> Arc<Schema> {
         Arc::new(Schema::new(vec![
             // ─── Core Event Identity ─────────────────────────────────────────
-            Field::new(
-                "timestamp",
-                DataType::Timestamp(TimeUnit::Millisecond, None),
-                false,
-            ),
+            Field::new("timestamp", DataType::Timestamp(TimeUnit::Millisecond, None), false),
             Field::new("line_number", DataType::UInt64, false),
             // ─── Source Entity ───────────────────────────────────────────────
             Field::new("source_id", DataType::Int64, false),
@@ -379,9 +369,7 @@ impl EncounterWriter {
         let batch = Self::build_record_batch(&self.rows, &schema)?;
 
         let file = File::create(path)?;
-        let props = WriterProperties::builder()
-            .set_compression(Compression::LZ4)
-            .build();
+        let props = WriterProperties::builder().set_compression(Compression::LZ4).build();
 
         let mut writer = ArrowWriter::try_new(file, schema, Some(props))?;
         writer.write(&batch)?;
@@ -390,10 +378,7 @@ impl EncounterWriter {
         Ok(())
     }
 
-    fn build_record_batch(
-        rows: &[EventRow],
-        schema: &Arc<Schema>,
-    ) -> Result<RecordBatch, Box<dyn std::error::Error>> {
+    fn build_record_batch(rows: &[EventRow], schema: &Arc<Schema>) -> Result<RecordBatch, Box<dyn std::error::Error>> {
         let len = rows.len();
 
         // ─── Core Event Identity ─────────────────────────────────────────────
@@ -720,11 +705,7 @@ mod tests {
         assert_eq!(batch.num_rows(), 2);
 
         let idx = batch.schema().index_of("source_x").unwrap();
-        let source_x = batch
-            .column(idx)
-            .as_any()
-            .downcast_ref::<Float32Array>()
-            .unwrap();
+        let source_x = batch.column(idx).as_any().downcast_ref::<Float32Array>().unwrap();
         assert_eq!(source_x.value(0), 137.28);
         assert!(source_x.is_null(1));
 

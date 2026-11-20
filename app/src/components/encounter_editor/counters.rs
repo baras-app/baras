@@ -6,16 +6,14 @@
 use crate::components::editor_sort::{ENCOUNTER_SORT_AZ, SortToggle, apply_rank, use_stable_rank};
 use dioxus::prelude::*;
 
-use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
-use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
 use crate::api;
-use crate::types::{
-    BossWithPath, CounterDefinition, EncounterItem, EntityFilter, Trigger,
-};
+use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
+use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
+use crate::types::{BossWithPath, CounterDefinition, EncounterItem, EntityFilter, Trigger};
 
-use super::tabs::EncounterData;
 use super::InlineNameCreator;
 use super::counter_form::CounterEditForm;
+use super::tabs::EncounterData;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Counters Tab
@@ -57,7 +55,10 @@ pub fn CountersTab(
     // Extract counters and badge IDs from BossWithPath
     let counters = boss_with_path.boss.counters.clone();
     // A–Z when toggled; renaming leaves the row in place
-    let rank = use_stable_rank(counters.iter().map(|x| (x.id.as_str(), x.name.as_str())), ENCOUNTER_SORT_AZ());
+    let rank = use_stable_rank(
+        counters.iter().map(|x| (x.id.as_str(), x.name.as_str())),
+        ENCOUNTER_SORT_AZ(),
+    );
     let builtin_counter_ids = boss_with_path.builtin_counter_ids.clone();
     let modified_counter_ids = boss_with_path.modified_counter_ids.clone();
 
@@ -70,7 +71,12 @@ pub fn CountersTab(
         counters.clone()
     };
     apply_rank(&mut visible_counters, &rank.read(), |x| &x.id);
-    let origin_of = |id: &str| Origin::of(builtin_counter_ids.iter().any(|b| b == id), modified_counter_ids.iter().any(|m| m == id));
+    let origin_of = |id: &str| {
+        Origin::of(
+            builtin_counter_ids.iter().any(|b| b == id),
+            modified_counter_ids.iter().any(|m| m == id),
+        )
+    };
     let origin_counts = origin_counts(counters.iter().map(|x| origin_of(&x.id)));
     let origin_filter = ENCOUNTER_ORIGIN();
     visible_counters.retain(|x| origin_filter.is_none_or(|o| origin_of(&x.id) == o));
@@ -202,18 +208,22 @@ fn CounterRow(
                 class: "list-item-header",
                 onclick: move |_| on_toggle.call(()),
 
-                span { class: "font-medium", "{counter.name}" }
-                if expanded && is_dirty() {
-                    span { class: "unsaved-indicator", title: "Unsaved changes" }
+                div { class: "row-col-name-id",
+                    span { class: "font-medium text-primary truncate", "{counter.name}" }
+                    if expanded && is_dirty() {
+                        span { class: "unsaved-indicator", title: "Unsaved changes" }
+                    }
+                    span { class: "text-xs text-mono text-muted", title: "{counter.id}", "{counter.id}" }
                 }
-                span { class: "text-xs text-mono text-muted", "{counter.id}" }
-                span { class: "tag", "{trigger_label}" }
-                if counter.decrement_on.is_some() {
-                    span { class: "tag tag-info", "↓ Decrement" }
-                } else if counter.decrement {
-                    span { class: "tag tag-warning", "Decrement" }
+                span { class: "row-col-tags",
+                    if counter.decrement_on.is_some() {
+                        span { class: "tag tag-info", "↓ Decrement" }
+                    } else if counter.decrement {
+                        span { class: "tag tag-warning", "Decrement" }
+                    }
+                    span { class: "tag", "{trigger_label}" }
                 }
-                span { class: "ml-auto shrink-0", OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "counter" } }
+                OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "counter" }
             }
 
             // Expanded content

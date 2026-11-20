@@ -26,7 +26,6 @@ tokio = { version = "1.48", features = ["sync", "rt", "macros"] }
 
 # Logging
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
 
 # Icon loading
 png = "0.18"
@@ -37,7 +36,6 @@ zip = { version = "9", default-features = false, features = ["deflate"] }
 wayland-client = "0.31"
 wayland-protocols = { version = "0.32", features = ["client", "unstable", "staging"] }
 wayland-protocols-wlr = { version = "0.3", features = ["client"] }
-memmap2 = "0.9"
 rustix = { version = "1.0", features = ["fs", "mm"] }
 
 # Platform: X11 (Linux fallback)
@@ -46,7 +44,6 @@ x11rb = { version = "0.14", features = ["randr", "shape", "shm"] }
 [target.'cfg(target_os = "linux")'.dependencies]
 ashpd = { version = "0.14", default-features = false, features = ["tokio", "screencast"] }
 pipewire = "0.10.1"
-dirs = "7"
 
 # Platform: Windows
 [target.'cfg(target_os = "windows")'.dependencies]
@@ -86,3 +83,6 @@ objc2-app-kit = { version = "0.3", default-features = false, features = [
   "NSView",
   "NSWindow",
 ] }
+
+[dev-dependencies]
+tracing-subscriber = { workspace = true }

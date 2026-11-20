@@ -7,7 +7,11 @@ use crate::components::mirror_names::ABILITY_NAMING;
 use crate::types::AbilityNaming;
 
 const NAMINGS: [(AbilityNaming, &str, &str); 3] = [
-    (AbilityNaming::AsLogged, "Log", "Ability names as they appear in the log"),
+    (
+        AbilityNaming::AsLogged,
+        "Log",
+        "Ability names as they appear in the log",
+    ),
     (AbilityNaming::Republic, "Rep", "Class abilities with Republic names"),
     (AbilityNaming::Imperial, "Imp", "Class abilities with Imperial names"),
 ];

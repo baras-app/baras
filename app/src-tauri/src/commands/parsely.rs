@@ -67,10 +67,10 @@ pub async fn upload_to_parsely(
         .text("public", visibility.to_string());
 
     // Add notes if provided
-    if let Some(ref note) = notes {
-        if !note.is_empty() {
-            form = form.text("notes", note.clone());
-        }
+    if let Some(ref note) = notes
+        && !note.is_empty()
+    {
+        form = form.text("notes", note.clone());
     }
 
     let mut config = handle.config().await;
@@ -176,10 +176,7 @@ pub async fn upload_encounter_to_parsely(
     }
 
     // Build filename with encounter info
-    let base_filename = path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("combat.txt");
+    let base_filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("combat.txt");
     let filename = format!("{}_lines_{}-{}.txt", base_filename, start_line, end_line);
 
     let file_part = Part::bytes(compressed)
@@ -192,10 +189,10 @@ pub async fn upload_encounter_to_parsely(
         .text("public", visibility.to_string());
 
     // Add notes if provided
-    if let Some(ref note) = notes {
-        if !note.is_empty() {
-            form = form.text("notes", note.clone());
-        }
+    if let Some(ref note) = notes
+        && !note.is_empty()
+    {
+        form = form.text("notes", note.clone());
     }
 
     let mut config = handle.config().await;
@@ -266,9 +263,7 @@ fn extract_and_compress_lines(
     let mut area_line_content: Option<&[u8]> = None;
 
     // If area_entered_line is before start_line, we need to capture it separately
-    let capture_area_line = area_entered_line
-        .map(|l| l < start_line)
-        .unwrap_or(false);
+    let capture_area_line = area_entered_line.map(|l| l < start_line).unwrap_or(false);
 
     // Split by newlines, keeping track of line numbers (1-indexed)
     let mut line_num: u64 = 0;
@@ -380,8 +375,7 @@ fn parse_parsely_response(xml: &str) -> Result<ParselyUploadResponse, String> {
     // Check for error status: <status>error</status>
     if xml.contains("<status>error</status>") {
         // Extract error message from <error>...</error>
-        let error_msg =
-            extract_xml_element(xml, "error").unwrap_or_else(|| "Unknown error".to_string());
+        let error_msg = extract_xml_element(xml, "error").unwrap_or_else(|| "Unknown error".to_string());
         return Ok(ParselyUploadResponse {
             success: false,
             link: None,

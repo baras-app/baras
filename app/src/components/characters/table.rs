@@ -33,7 +33,9 @@ pub fn FactionIcon(faction: Faction) -> Element {
 /// without smoothing in WebKit, which breaks thin glyphs apart at 24px.
 #[component]
 fn ClassGlyph(name: String, icon: String) -> Element {
-    let Some(src) = get_class_icon(&icon) else { return rsx! {} };
+    let Some(src) = get_class_icon(&icon) else {
+        return rsx! {};
+    };
     let color = ClassColorConfig::default()
         .for_class_name(&name)
         .map(|[r, g, b, _]| format!("rgb({r}, {g}, {b})"))
@@ -81,7 +83,11 @@ pub fn CharacterTable(
 ) -> Element {
     let sort_class = move |k: SortKey| {
         if *sort_key.read() == k {
-            if *sort_desc.read() { "sortable-header sorted desc" } else { "sortable-header sorted asc" }
+            if *sort_desc.read() {
+                "sortable-header sorted desc"
+            } else {
+                "sortable-header sorted asc"
+            }
         } else {
             "sortable-header"
         }

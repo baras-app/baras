@@ -16,8 +16,7 @@ use crate::combat_log::EntityType;
 use crate::context::resolve;
 use crate::debug_log;
 use crate::game_data::{
-    BossInfo, ContentType, Difficulty, PvpAreaKind, is_pvp_area, lookup_boss, pvp_area_kind,
-    pvp_match_label,
+    BossInfo, ContentType, Difficulty, PvpAreaKind, is_pvp_area, lookup_boss, pvp_area_kind, pvp_match_label,
 };
 use crate::state::info::AreaInfo;
 
@@ -194,65 +193,62 @@ impl EncounterHistory {
         }
         changed
     }
-    
+
     /// Restore the generation counter without resetting pull counts.
     /// Used when importing encounter history from subprocess - the pull counts
     /// are already reflected in the imported encounter names.
     pub fn restore_generation(&mut self, generation: u64) {
         self.current_generation = Some(generation);
     }
-    
+
     /// Rebuild pull counts from imported encounter summaries.
     /// This extracts the counts from encounter names like "Boss - 3" or "Raid Trash 5".
     /// Call this after importing encounters to ensure live encounters continue with correct numbering.
-    /// 
+    ///
     /// Only counts encounters from the CURRENT phase (after the last is_phase_start).
     /// When you enter a new area, pull counts reset, so we shouldn't carry over counts from previous areas.
     pub fn rebuild_pull_counts(&mut self) {
         self.trash_pull_count = 0;
         self.boss_pull_counts.clear();
-        
+
         // Find the index of the last phase start (area change)
-        let last_phase_start_idx = self.summaries.iter()
+        let last_phase_start_idx = self
+            .summaries
+            .iter()
             .enumerate()
             .rev()
             .find(|(_, s)| s.is_phase_start)
             .map(|(idx, _)| idx);
-        
+
         // Only count encounters from the current phase onwards
         let encounters_to_count = if let Some(start_idx) = last_phase_start_idx {
             &self.summaries[start_idx..]
         } else {
             &self.summaries[..]
         };
-        
+
         for summary in encounters_to_count {
             if let Some(ref boss_name) = summary.boss_name {
                 // Extract count from "Boss Name - N" format
-                if let Some(count_str) = summary.display_name.rsplit(" - ").next() {
-                    if let Ok(count) = count_str.parse::<u32>() {
-                        let current = self.boss_pull_counts.get(boss_name).copied().unwrap_or(0);
-                        self.boss_pull_counts.insert(boss_name.clone(), current.max(count));
-                    }
+                if let Some(count_str) = summary.display_name.rsplit(" - ").next()
+                    && let Ok(count) = count_str.parse::<u32>()
+                {
+                    let current = self.boss_pull_counts.get(boss_name).copied().unwrap_or(0);
+                    self.boss_pull_counts.insert(boss_name.clone(), current.max(count));
                 }
             } else {
                 // Trash encounter - extract count from "Type N" format
-                if let Some(count_str) = summary.display_name.rsplit(' ').next() {
-                    if let Ok(count) = count_str.parse::<u32>() {
-                        self.trash_pull_count = self.trash_pull_count.max(count);
-                    }
+                if let Some(count_str) = summary.display_name.rsplit(' ').next()
+                    && let Ok(count) = count_str.parse::<u32>()
+                {
+                    self.trash_pull_count = self.trash_pull_count.max(count);
                 }
             }
         }
     }
 
     /// Generate a human-readable name for an encounter based on its type and boss
-    pub fn generate_name(
-        &mut self,
-        encounter_type: PhaseType,
-        boss_name: Option<&str>,
-        area_id: i64,
-    ) -> String {
+    pub fn generate_name(&mut self, encounter_type: PhaseType, boss_name: Option<&str>, area_id: i64) -> String {
         match (encounter_type, boss_name) {
             // Boss encounter: "Brontes - 7"
             (_, Some(name)) => {
@@ -388,7 +384,7 @@ pub fn determine_success(encounter: &CombatEncounter) -> bool {
             // Victory trigger doesn't apply to this difficulty, fall through to normal logic
         }
     }
-    
+
     // Standard encounters: use is_likely_wipe()
     !encounter.is_likely_wipe()
 }
@@ -417,14 +413,8 @@ pub fn create_encounter_summary(
         .players
         .values()
         .map(|p| {
-            let in_combat =
-                combat_start.is_none_or(|start| p.last_seen_at.is_some_and(|seen| seen >= start));
-            format!(
-                "{}:dead={},in_combat={}",
-                resolve(p.name),
-                p.is_dead,
-                in_combat
-            )
+            let in_combat = combat_start.is_none_or(|start| p.last_seen_at.is_some_and(|seen| seen >= start));
+            format!("{}:dead={},in_combat={}", resolve(p.name), p.is_dead, in_combat)
         })
         .collect();
     debug_log!(
@@ -452,28 +442,26 @@ pub fn create_encounter_summary(
     // PvP is the exception: every zone-in is a separate match, so back-to-back
     // queues into the same map (same area_name, different AreaEntered line)
     // start a new section with fresh match/round numbering.
-    let is_phase_start = history.summaries().last()
+    let is_phase_start = history
+        .summaries()
+        .last()
         .map(|last| {
             last.area_name != encounter_area_name
                 || new_instance
-                || (is_pvp_area(area_id_for_classification)
-                    && last.area_entered_line != area_entered_line)
+                || (is_pvp_area(area_id_for_classification) && last.area_entered_line != area_entered_line)
         })
-        .unwrap_or(true);  // First encounter is always a phase start
-    
+        .unwrap_or(true); // First encounter is always a phase start
+
     // Reset pull counts on phase change (area transition)
     // This ensures encounter numbering restarts from 1 in each new area
     if is_phase_start {
         history.boss_pull_counts.clear();
         history.trash_pull_count = 0;
     }
-    
+
     // Classify using encounter's area info
-    let (encounter_type, boss_info) = classify_encounter(
-        encounter,
-        area_id_for_classification,
-        difficulty_id_for_classification,
-    );
+    let (encounter_type, boss_info) =
+        classify_encounter(encounter, area_id_for_classification, difficulty_id_for_classification);
 
     // Get boss name: prefer active definition, fall back to detected boss NPC
     // This allows non-boss trigger entities to classify the encounter
@@ -489,11 +477,7 @@ pub fn create_encounter_summary(
             }
         });
 
-    let display_name = history.generate_name(
-        encounter_type,
-        boss_name.as_deref(),
-        area_id_for_classification,
-    );
+    let display_name = history.generate_name(encounter_type, boss_name.as_deref(), area_id_for_classification);
 
     // Calculate metrics and filter to players seen during actual combat
     let combat_start = encounter.enter_combat_time;
@@ -508,18 +492,17 @@ pub fn create_encounter_summary(
                 return false;
             }
             // Filter out players not seen during combat (e.g., character switches)
-            encounter.players.get(&m.entity_id).is_some_and(|p| {
-                combat_start.is_none_or(|start| p.last_seen_at.is_some_and(|seen| seen >= start))
-            })
+            encounter
+                .players
+                .get(&m.entity_id)
+                .is_some_and(|p| combat_start.is_none_or(|start| p.last_seen_at.is_some_and(|seen| seen >= start)))
         })
         .map(|m| {
             let mut pm = m.to_player_metrics();
             // Faction relative to the local player (drives the friendly/enemy
             // overlay split when this summary hydrates CombatData)
             if is_pvp {
-                pm.pvp_faction = encounter
-                    .pvp_factions
-                    .faction_of(pm.entity_id, local_player_id);
+                pm.pvp_faction = encounter.pvp_factions.faction_of(pm.entity_id, local_player_id);
             }
             pm
         })
@@ -543,17 +526,16 @@ pub fn create_encounter_summary(
             })
         })
         .collect();
-    incoming_damage.sort_by(|a, b| b.total.cmp(&a.total));
+    incoming_damage.sort_by_key(|x| std::cmp::Reverse(x.total));
 
     // Use encounter's stored difficulty (falls back to cache if not set)
-    let difficulty = encounter.difficulty_name.clone()
-        .or_else(|| {
-            if area.difficulty_name.is_empty() {
-                None
-            } else {
-                Some(area.difficulty_name.clone())
-            }
-        });
+    let difficulty = encounter.difficulty_name.clone().or_else(|| {
+        if area.difficulty_name.is_empty() {
+            None
+        } else {
+            Some(area.difficulty_name.clone())
+        }
+    });
 
     // Collect NPC names with counts (show count only if > 1)
     // Filter out companions - they're friendly NPCs, not enemies
@@ -611,11 +593,12 @@ pub fn create_encounter_summary(
                     }
                 })
                 .collect();
-            by_player.sort_by(|a, b| b.value.cmp(&a.value));
+            by_player.sort_by_key(|x| std::cmp::Reverse(x.value));
 
             ChallengeSummary {
                 name: val.name,
-                metric: challenge_defs.iter()
+                metric: challenge_defs
+                    .iter()
                     .find(|d| d.id == val.id)
                     .map(|d| format!("{:?}", d.metric))
                     .unwrap_or_else(|| format!("{:?}", val.columns)),
@@ -690,9 +673,9 @@ pub fn create_encounter_summary(
     let partial = encounter.exit_combat_time.is_none();
     // A boss back at full HP after being damaged is a reset even without the
     // single-instance detection firing.
-    let hp_reset = progress.as_ref().is_some_and(|p| {
-        !p.bosses.is_empty() && p.bosses.iter().all(|b| b.last_pct >= 99.9 && b.lowest_pct < 99.0)
-    });
+    let hp_reset = progress
+        .as_ref()
+        .is_some_and(|p| !p.bosses.is_empty() && p.bosses.iter().all(|b| b.last_pct >= 99.9 && b.lowest_pct < 99.0));
     // Wipe wins over reset: the boss resets to full HP after a wipe, and that
     // last sample must not relabel the pull.
     let end_reason = if success {
