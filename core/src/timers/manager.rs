@@ -577,11 +577,15 @@ impl TimerManager {
             // time has entered their configured trailing window.
             self.process_countdown_alerts(interp_time);
 
+            // Process start chains (timer_started triggers)
+            let started_done = self.start_timers_on_start(0, interp_time, encounter);
+
             // Process cancellation chains (timer_canceled triggers)
             for timer_id in self.canceled_this_tick.clone() {
                 self.start_timers_on_cancel(&timer_id, ts, encounter);
                 self.cancel_timers_on_cancel(&timer_id);
             }
+            self.start_timers_on_start(started_done, ts, encounter);
 
             // Populate batch vectors so accessors return tick's events
             self.batch_expired.append(&mut self.expired_this_tick);
@@ -991,6 +995,37 @@ impl TimerManager {
 
         // Cancel any timers that have cancel_on_timer pointing to this timer
         self.cancel_timers_on_start(&def.id);
+    }
+
+    /// Start timers whose trigger is `timer_started` for timers started since index `from`
+    /// of `started_this_tick`. Chains are followed (the vec grows as timers start); each
+    /// timer ID is processed once per signal so circular definitions terminate.
+    /// Returns the processed length, to resume from on a later call.
+    fn start_timers_on_start(
+        &mut self,
+        from: usize,
+        current_time: NaiveDateTime,
+        encounter: Option<&crate::encounter::CombatEncounter>,
+    ) -> usize {
+        let mut i = from;
+        while i < self.started_this_tick.len() {
+            let started_id = self.started_this_tick[i].clone();
+            i += 1;
+            if self.started_this_tick[..i - 1].contains(&started_id) {
+                continue;
+            }
+            let matching: Vec<_> = self
+                .definitions_for_kind(TriggerKind::TimerStarted)
+                .iter()
+                .filter(|d| d.matches_timer_started(&started_id) && self.is_definition_active(d, encounter))
+                .cloned()
+                .collect();
+
+            for def in matching {
+                self.start_timer(&def, current_time, None, None);
+            }
+        }
+        i
     }
 
     /// Cancel active timers that have cancel_on_timer matching the started timer ID
@@ -2052,12 +2087,14 @@ impl SignalHandler for TimerManager {
         if let Some(ts) = self.last_timestamp {
             self.process_expirations(ts, encounter);
         }
-        // Process Cancellation Triggers
+        // Process start chains (timer_started), then cancellation triggers
         if let Some(ts) = self.last_timestamp {
+            let started_done = self.start_timers_on_start(0, ts, encounter);
             for timer_id in self.canceled_this_tick.clone() {
                 self.start_timers_on_cancel(&timer_id, ts, encounter);
                 self.cancel_timers_on_cancel(&timer_id);
             }
+            self.start_timers_on_start(started_done, ts, encounter);
         }
     }
 

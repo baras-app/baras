@@ -341,6 +341,10 @@ impl TimerDefinition {
         self.trigger.matches_timer_expires(timer_id)
     }
 
+    pub fn matches_timer_started(&self, timer_id: &str) -> bool {
+        self.trigger.matches_timer_started(timer_id)
+    }
+
     pub fn matches_timer_canceled(&self, timer_id: &str) -> bool {
         self.trigger.matches_timer_canceled(timer_id)
     }
