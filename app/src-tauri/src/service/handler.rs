@@ -687,6 +687,16 @@ impl ServiceHandle {
             .unwrap_or_default()
     }
 
+    /// Every recorded training dummy kill, newest first, rated on Parsely.
+    pub async fn dummy_parses(&self) -> Vec<baras_types::history::DummyRow> {
+        let mut rows = self
+            .with_pull_index(|index| index.dummy_parses())
+            .await
+            .unwrap_or_default();
+        self.rate_dummy_rows(&mut rows).await;
+        rows
+    }
+
     /// The run each pull of the open log belongs to.
     pub async fn session_run_links(&self) -> Vec<baras_types::history::RunLink> {
         let Some(filename) = self

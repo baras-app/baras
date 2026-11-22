@@ -421,6 +421,26 @@ impl ServiceHandle {
         ratings
     }
 
+    /// Fill each row's DPS percentile from the dummy table; rows stay
+    /// unrated when the table can't be had.
+    pub(super) async fn rate_dummy_rows(&self, rows: &mut [baras_types::history::DummyRow]) {
+        use baras_core::encounter::summary::DUMMY_RATING_PATH;
+        if rows.is_empty() {
+            return;
+        }
+        let Some(table) = self.shared.parsely_ratings.get(DUMMY_RATING_PATH).await else {
+            return;
+        };
+        for row in rows {
+            row.dps_pct = row
+                .discipline
+                .as_deref()
+                .and_then(baras_core::game_data::Discipline::from_name)
+                .map(|d| percentile(&table.dps, &disc_slug(d), row.dps as f32))
+                .filter(|pct| *pct > 0);
+        }
+    }
+
     /// Percentiles of a killed dummy parse on the table at `path`; None when
     /// the table can't be had.
     pub(super) async fn dummy_percentiles(

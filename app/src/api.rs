@@ -849,6 +849,11 @@ pub async fn set_run_meta(filename: &str, start_ms: i64, meta: &baras_types::his
     from_js(result).ok_or_else(|| "Failed to parse response".to_string())
 }
 
+/// Every recorded training dummy kill, newest first
+pub async fn get_dummy_parses() -> Option<Vec<baras_types::history::DummyRow>> {
+    from_js(invoke("get_dummy_parses", JsValue::NULL).await)
+}
+
 /// Every recorded warzone match and arena round, newest first
 pub async fn get_pvp_matches() -> Option<Vec<baras_types::history::PvpMatchRow>> {
     from_js(invoke("get_pvp_matches", JsValue::NULL).await)

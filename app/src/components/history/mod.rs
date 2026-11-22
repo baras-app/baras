@@ -9,6 +9,7 @@
 mod charts;
 mod clears;
 mod disciplines;
+mod dummy;
 mod heatmap;
 mod library;
 mod library_cleanup;
@@ -35,6 +36,7 @@ pub use library_rules::CleanupRules;
 use library::LibraryTab;
 use operations::OperationsTab;
 use overview::OverviewTab;
+use dummy::DummyTab;
 use pvp::PvpTab;
 
 #[derive(Props, Clone, PartialEq)]
@@ -211,6 +213,9 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
                 },
                 HistorySubTab::Pvp => rsx! {
                     PvpTab { european: props.european, backfill }
+                },
+                HistorySubTab::Dummy => rsx! {
+                    DummyTab { european: props.european, backfill }
                 },
             }
         }

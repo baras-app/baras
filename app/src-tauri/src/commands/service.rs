@@ -409,6 +409,11 @@ pub fn set_run_meta(
 }
 
 #[tauri::command]
+pub async fn get_dummy_parses(handle: State<'_, ServiceHandle>) -> Result<Vec<baras_types::history::DummyRow>, String> {
+    Ok(handle.dummy_parses().await)
+}
+
+#[tauri::command]
 pub async fn get_pvp_matches(
     handle: State<'_, ServiceHandle>,
 ) -> Result<Vec<baras_types::history::PvpMatchRow>, String> {

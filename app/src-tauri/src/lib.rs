@@ -283,6 +283,7 @@ pub fn run() {
             commands::get_pull_history_overview,
             commands::get_boss_pulls,
             commands::get_pvp_matches,
+            commands::get_dummy_parses,
             commands::get_operation_runs,
             commands::get_operation_run,
             commands::get_session_run_links,

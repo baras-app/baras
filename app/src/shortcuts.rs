@@ -25,7 +25,7 @@ const ENCOUNTERS: &str = ".data-explorer .sidebar-encounter-item:not(.live-query
 const VIEW_TABS: &str = ".explorer-views .data-tab";
 
 /// `[` / `]` cycle order, matching the header
-const TAB_ORDER: [MainTab; 10] = [
+const TAB_ORDER: [MainTab; 11] = [
     MainTab::DataExplorer,
     MainTab::Overlays,
     MainTab::EncounterBuilder,
@@ -33,6 +33,7 @@ const TAB_ORDER: [MainTab; 10] = [
     MainTab::BossStats,
     MainTab::RaidSummaries,
     MainTab::PvpStats,
+    MainTab::DummyStats,
     MainTab::LogManagement,
     MainTab::Characters,
     MainTab::Settings,
