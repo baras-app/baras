@@ -1542,6 +1542,9 @@ pub fn App() -> Element {
                                         ("Esc", "Close the topmost dialog, drawer or fullscreen view"),
                                         ("L", "Toggle the log file browser"),
                                         ("[  ]", "Previous / next tab"),
+                                        ("↑  ↓", "Previous / next encounter in Analysis"),
+                                        ("1 – 0", "Pick an Analysis view"),
+                                        ("Ctrl+S", "Save the open timer or effect form"),
                                         ("S", "Collapse / expand the sidebar"),
                                         ("F", "Toggle Analysis fullscreen"),
                                         ("X", "Clear all filters"),
@@ -1549,7 +1552,7 @@ pub fn App() -> Element {
                                         li { kbd { "{key}" } span { "{action}" } }
                                     }
                                 }
-                                p { class: "hint", "Ignored while typing in a field." }
+                                p { class: "hint", "Ignored while typing in a field, except Ctrl+S." }
                             }
                         }
 
