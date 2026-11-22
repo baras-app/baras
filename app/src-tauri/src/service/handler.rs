@@ -693,6 +693,12 @@ impl ServiceHandle {
             .with_pull_index(|index| index.dummy_parses())
             .await
             .unwrap_or_default();
+        {
+            let meta = self.shared.library_meta.locked();
+            for r in &mut rows {
+                r.hidden = meta.is_pull_hidden(&r.filename, r.start_ms);
+            }
+        }
         self.rate_dummy_rows(&mut rows).await;
         rows
     }

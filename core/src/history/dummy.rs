@@ -41,6 +41,7 @@ pub(super) fn dummy_rows(log: &LogHistory) -> Vec<DummyRow> {
                 crit_pct: me.crit_pct,
                 crit_damage_pct: me.crit_damage_pct,
                 dps_pct: None,
+                hidden: false,
             })
         })
         .collect()
