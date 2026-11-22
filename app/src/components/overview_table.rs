@@ -43,6 +43,9 @@ pub struct OverviewTableProps {
     /// Parsely percentiles by player name (finished PvE kills only)
     #[props(default)]
     pub percentiles: HashMap<String, RatingPercentiles>,
+    /// Last tooltip line of a percentile: the rating table's age
+    #[props(default)]
+    pub pct_note: String,
     /// The PvP layout is the one shown and edited
     #[props(default)]
     pub pvp: bool,
@@ -79,7 +82,7 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
     // Rated columns reserve a slot after the value for the percentile
     let has_pct = !props.percentiles.is_empty();
     let rated = |id: OverviewColumn| {
-        if has_pct && rating(id, &RatingPercentiles { dps: 1, boss_dps: 1, hps: 1, ehps: 1, dtps: 1, apm: 1 }) > 0 {
+        if has_pct && rating(id, &RatingPercentiles { dps: 1, boss_dps: 1, hps: 1, ehps: 1, dtps: 1, apm: 1, count: 0 }) > 0 {
             "rated"
         } else {
             ""
@@ -166,10 +169,10 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
                             for c in cols.iter() {
                                 td { class: "num {c.cell_class((c.value)(row))} {rated(c.id)}",
                                     "{c.format.apply((c.value)(row), eu)}"
-                                    if let Some(pct) = props.percentiles.get(&row.name).map(|p| rating(c.id, p)).filter(|&p| p > 0) {
+                                    if let Some((pct, count)) = props.percentiles.get(&row.name).map(|p| (rating(c.id, p), p.count)).filter(|&(p, _)| p > 0) {
                                         span {
                                             class: "pct-badge {pct_tier(pct)}",
-                                            title: "Parsely percentile for {row.discipline_name.as_deref().unwrap_or(\"this discipline\")}",
+                                            title: "{baras_types::percentile_label(pct)}\n{count} total {row.discipline_name.as_deref().unwrap_or(\"discipline\")} parses (mirror included)\n{props.pct_note}",
                                             "{pct}"
                                         }
                                     }
@@ -215,7 +218,7 @@ fn rating(col: OverviewColumn, p: &RatingPercentiles) -> u8 {
     }
 }
 
-fn pct_tier(pct: u8) -> &'static str {
+pub fn pct_tier(pct: u8) -> &'static str {
     match pct {
         100 => "p100",
         95.. => "p95",

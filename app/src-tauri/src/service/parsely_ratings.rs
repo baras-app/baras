@@ -1,10 +1,12 @@
 //! Parsely percentile tables (`/api/rating/{boss}/{mode}/{size}`).
 //!
-//! The API refreshes at midnight UTC, so a table is fetched at most once per
-//! UTC day per boss: one JSON file per table under `parsely_ratings/`, stamped
-//! with the day it was fetched. The tables of one area (the one entered live,
-//! or the one being viewed) stay in memory so tabbing between its bosses
-//! touches neither disk nor network.
+//! Parsely rebuilds its tables once a UTC day and stamps each with when
+//! (`_meta.updated_at`). A table carrying today's stamp is final for the day;
+//! one fetched before today's rebuild is asked for again, at most once per
+//! `RECHECK_INTERVAL`, until the rebuild shows up. One JSON file per table
+//! under `parsely_ratings/`. The tables of one area (the one entered live, or
+//! the one being viewed) stay in memory so tabbing between its bosses touches
+//! neither disk nor network.
 //!
 //! Nothing here is allowed to fail loudly: a missing table only means no
 //! percentiles. See `FetchError` for how failures are retried.
@@ -18,7 +20,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use tracing::{debug, warn};
 
 use baras_core::game_data::Role;
-use baras_types::{EncounterRatings, RatingPercentiles};
+use baras_types::{EncounterRatings, RatingPercentiles, RatingSource, TtkRating};
 
 use super::ServiceHandle;
 use crate::commands::USER_AGENT;
@@ -26,6 +28,8 @@ use crate::state::MutexExt;
 
 const RATING_URL: &str = "https://parsely.io/api/rating";
 const FETCH_TIMEOUT: Duration = Duration::from_secs(10);
+/// How often a table still carrying an earlier day's data is asked for again
+const RECHECK_INTERVAL_SECS: i64 = 60 * 60;
 /// No requests at all for this long after the site couldn't be reached
 const UNREACHABLE_PAUSE: Duration = Duration::from_secs(15 * 60);
 /// A table is ~350 KB; anything far beyond that isn't one
@@ -35,8 +39,32 @@ const MAX_BODY_BYTES: usize = 4 * 1024 * 1024;
 // Table
 // ─────────────────────────────────────────────────────────────────────────
 
-/// Discipline slug (or `all`) → thresholds, best percentile first
+/// Discipline key → thresholds, best percentile first. A key is `all` or a
+/// mirror pair of discipline slugs (`annihilation,watchman`).
 type Thresholds = HashMap<String, Vec<f32>>;
+
+/// `_meta`: when Parsely built the table and how many parses it rates
+#[derive(Default, Serialize, Deserialize)]
+#[serde(default)]
+struct Meta {
+    updated_at: String,
+    counts: Counts,
+}
+
+#[derive(Default, Serialize, Deserialize)]
+#[serde(default)]
+struct Counts {
+    all: u32,
+    /// Per single discipline slug; mirrors are summed in `Meta::count`
+    disciplines: HashMap<String, u32>,
+}
+
+impl Meta {
+    /// Parses behind a discipline's percentiles: its own plus its mirror's
+    fn count(&self, key: &str) -> u32 {
+        key.split(',').filter_map(|slug| self.counts.disciplines.get(slug)).sum()
+    }
+}
 
 /// The rated metrics we show; doubles as the API response and the on-disk
 /// format. Parsing is lenient so additions to the API don't break it: unknown
@@ -47,6 +75,8 @@ type Thresholds = HashMap<String, Vec<f32>>;
 struct RatingTable {
     /// UTC day (`YYYY-MM-DD`) this table was fetched
     fetched: String,
+    /// Unix seconds of that fetch
+    checked: i64,
     #[serde(deserialize_with = "lenient")]
     dps: Thresholds,
     #[serde(deserialize_with = "lenient")]
@@ -59,6 +89,11 @@ struct RatingTable {
     dtps: Thresholds,
     #[serde(deserialize_with = "lenient")]
     apm: Thresholds,
+    /// Fight length in seconds, under `all` only
+    #[serde(deserialize_with = "lenient")]
+    ttk: Thresholds,
+    #[serde(rename = "_meta", deserialize_with = "lenient_meta")]
+    meta: Meta,
 }
 
 impl RatingTable {
@@ -79,13 +114,46 @@ fn lenient<'de, D: Deserializer<'de>>(d: D) -> Result<Thresholds, D::Error> {
         .collect())
 }
 
+impl RatingTable {
+    /// Nothing newer to fetch: Parsely already rebuilt it today, or we asked
+    /// recently and it hadn't yet
+    fn is_current(&self) -> bool {
+        self.meta.updated_at.starts_with(&today())
+            || chrono::Utc::now().timestamp() - self.checked < RECHECK_INTERVAL_SECS
+    }
+
+    fn source(&self) -> RatingSource {
+        RatingSource {
+            total: self.meta.counts.all,
+            // `2026-11-22T06:08:14+00:00` → the day
+            updated: self.meta.updated_at.split('T').next().unwrap_or_default().to_string(),
+        }
+    }
+}
+
+fn lenient_meta<'de, D: Deserializer<'de>>(d: D) -> Result<Meta, D::Error> {
+    Ok(serde_json::from_value(serde_json::Value::deserialize(d)?).unwrap_or_default())
+}
+
+/// The key rating `slug` (a discipline or `all`): the mirror pair naming it
+fn rating_key<'a>(thresholds: &'a Thresholds, slug: &str) -> Option<&'a str> {
+    thresholds
+        .keys()
+        .map(String::as_str)
+        .find(|key| key.split(',').any(|s| s == slug))
+}
+
 /// Percentile (1-100) of `value` among a discipline's thresholds; 0 when it
 /// reaches none or the discipline isn't rated
-fn percentile(thresholds: &Thresholds, discipline: &str, value: f32) -> u8 {
-    let Some(t) = thresholds.get(discipline).filter(|_| value > 0.0) else {
+fn percentile(thresholds: &Thresholds, slug: &str, value: f32) -> u8 {
+    let Some(t) = rating_key(thresholds, slug)
+        .and_then(|key| thresholds.get(key))
+        .filter(|_| value > 0.0)
+    else {
         return 0;
     };
-    // Damage taken is listed ascending (lower is better), the rest descending
+    // Damage taken and kill time are listed ascending (lower is better), the
+    // rest descending
     let ascending = t.first() < t.last();
     let missed = t.partition_point(|&x| if ascending { x < value } else { x > value });
     // 100 entries today, one per percentile; scaled in case that changes
@@ -151,10 +219,13 @@ fn cache_file(path: &str) -> Option<PathBuf> {
 }
 
 /// The cached file whatever its age; None when missing or unreadable (a
-/// corrupt file is just fetched again)
+/// corrupt file, or one from before the API carried `_meta`, is just fetched
+/// again)
 fn read_cache_file(path: &str) -> Option<RatingTable> {
     let bytes = std::fs::read(cache_file(path)?).ok()?;
-    serde_json::from_slice::<RatingTable>(&bytes).ok().filter(|t| !t.is_empty())
+    serde_json::from_slice::<RatingTable>(&bytes)
+        .ok()
+        .filter(|t| !t.is_empty() && !t.meta.updated_at.is_empty())
 }
 
 fn write_cache_file(path: &str, table: &RatingTable) {
@@ -215,8 +286,7 @@ impl RatingsCache {
     /// table is good enough only while a fresh one can't be requested.
     fn local(&self, path: &str) -> Option<Arc<RatingTable>> {
         let mut state = self.state.locked();
-        let today = today();
-        let usable = |t: &RatingTable, state: &CacheState| t.fetched == today || state.blocked(path);
+        let usable = |t: &RatingTable, state: &CacheState| t.is_current() || state.blocked(path);
         if let Some(t) = state.tables.get(path)
             && usable(t, &state)
         {
@@ -227,7 +297,7 @@ impl RatingsCache {
         Some(table)
     }
 
-    /// The table for `path`, downloading it when today's isn't cached yet. A
+    /// The table for `path`, downloading it when the cached one isn't current. A
     /// failed download falls back to the stale file, if there is one.
     async fn get(&self, path: &str) -> Option<Arc<RatingTable>> {
         if let Some(t) = self.local(path) {
@@ -247,6 +317,7 @@ impl RatingsCache {
         let table = match fetched {
             Ok(mut t) => {
                 t.fetched = today();
+                t.checked = chrono::Utc::now().timestamp();
                 state.unreachable_until = None;
                 write_cache_file(path, &t);
                 t
@@ -270,8 +341,8 @@ impl RatingsCache {
         Some(table)
     }
 
-    /// Make `paths` the set held in memory, downloading the ones not cached
-    /// today. Gives up at the first failure when the site is unreachable.
+    /// Make `paths` the set held in memory, downloading the ones not
+    /// current. Gives up at the first failure when the site is unreachable.
     pub async fn load_set(&self, paths: Vec<String>) {
         self.keep_only(&paths);
         for path in &paths {
@@ -288,6 +359,47 @@ impl RatingsCache {
 // ─────────────────────────────────────────────────────────────────────────
 
 impl ServiceHandle {
+    /// Kill time percentile of every finished kill of a rated boss in the
+    /// session, by encounter id. Downloads the tables not cached today, one
+    /// boss at a time; kills whose table can't be had are left out.
+    pub async fn parsely_ttk_ratings(&self) -> Vec<(u64, TtkRating)> {
+        // Copy what the lookup needs so the session lock isn't held over a fetch
+        let kills: Vec<(u64, String, i64)> = {
+            let session_guard = self.shared.session.read().await;
+            let Some(session) = session_guard.as_ref() else {
+                return Vec::new();
+            };
+            let session = session.read().await;
+            let Some(cache) = session.session_cache.as_ref() else {
+                return Vec::new();
+            };
+            cache
+                .encounter_history
+                .summaries()
+                .iter()
+                .filter(|s| s.success && !s.partial)
+                .filter_map(|s| Some((s.encounter_id, s.parsely_rating.clone()?, s.duration_seconds)))
+                .collect()
+        };
+
+        let mut ratings = Vec::with_capacity(kills.len());
+        for (id, path, duration) in kills {
+            let Some(table) = self.shared.parsely_ratings.get(&path).await else {
+                continue;
+            };
+            let pct = percentile(&table.ttk, "all", duration as f32);
+            if pct > 0 {
+                // `_meta` counts player parses, one per player per kill; the
+                // path ends in the group size (`sparky/hm/16`)
+                let size = path.rsplit('/').next().and_then(|s| s.parse().ok()).unwrap_or(1).max(1);
+                let mut source = table.source();
+                source.total = source.total.div_ceil(size);
+                ratings.push((id, TtkRating { pct, source }));
+            }
+        }
+        ratings
+    }
+
     /// Percentiles for a finished kill of a rated boss, from the encounter's
     /// final metrics; empty when there is nothing to rate. Healing is rated
     /// for healers only.
@@ -339,8 +451,9 @@ impl ServiceHandle {
         };
 
         Some(EncounterRatings {
-            stale_as_of: (table.fetched != today()).then(|| table.fetched.clone()),
+            stale_as_of: (!table.is_current()).then(|| table.fetched.clone()),
             unavailable: false,
+            source: table.source(),
             players: players
                 .into_iter()
                 .filter_map(|pm| {
@@ -348,6 +461,7 @@ impl ServiceHandle {
                     let slug = disc.name().to_ascii_lowercase().replace(' ', "-");
                     let rate = |t: &Thresholds, v: f32| percentile(t, &slug, v);
                     let healer = disc.role() == Role::Healer;
+                    let count = rating_key(&table.dps, &slug).map_or(0, |key| table.meta.count(key));
                     Some((
                         pm.name,
                         RatingPercentiles {
@@ -357,6 +471,7 @@ impl ServiceHandle {
                             ehps: if healer { rate(&table.ehps, pm.ehps as f32) } else { 0 },
                             dtps: rate(&table.dtps, pm.dtps as f32),
                             apm: rate(&table.apm, pm.apm),
+                            count,
                         },
                     ))
                 })

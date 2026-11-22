@@ -6512,6 +6512,11 @@ a.contributor-name:hover {
   background: var(--blue-alpha-5);
 }
 
+/* Hairline between consecutive encounters of an area */
+.explorer-sidebar .sidebar-encounter-item + .sidebar-encounter-item {
+  box-shadow: 0 -1px 0 var(--border-light);
+}
+
 .sidebar-encounter-item.selected {
   background: var(--blue-alpha-10);
   border-left-color: var(--swtor-blue);
@@ -6624,11 +6629,14 @@ a.contributor-name:hover {
 }
 
 .sidebar-encounter-item .encounter-time {
-  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
 }
 
+/* The fight's length leads the row; when it started trails in parentheses.
+   Told apart by contrast alone: same size and weight */
 .sidebar-encounter-item .encounter-duration {
-  opacity: 0.7;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
 .sidebar-encounter-item .encounter-main-right {
@@ -6640,8 +6648,9 @@ a.contributor-name:hover {
 }
 
 .sidebar-encounter-item .encounter-npcs {
-  font-size: 0.7em;
-  color: #aa8866;
+  font-size: 0.75em;
+  color: var(--text-muted);
+  opacity: 1;
   margin-top: 0.2em;
   white-space: nowrap;
   overflow: hidden;
