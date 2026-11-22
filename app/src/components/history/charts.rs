@@ -454,11 +454,13 @@ pub fn PullCharts(pulls: Resource<Option<Vec<PullRow>>>, pick: Signal<Option<Cha
         }
     });
 
+    // Still fetching: an empty card, not the "nothing recorded" text
+    let loading = pulls.read().is_none();
     rsx! {
         div { class: "history-charts",
-            ChartSlot { id: DPS_ID, has_data: dps.is_some(), empty: "No DPS recorded for you on these pulls" }
-            ChartSlot { id: EHPS_ID, has_data: ehps.is_some(), empty: "No healing recorded for you on these pulls" }
-            ChartSlot { id: NIGHTS_ID, has_data: nights.is_some(), empty: "No pulls" }
+            ChartSlot { id: DPS_ID, has_data: dps.is_some(), loading, empty: "No DPS recorded for you on these pulls" }
+            ChartSlot { id: EHPS_ID, has_data: ehps.is_some(), loading, empty: "No healing recorded for you on these pulls" }
+            ChartSlot { id: NIGHTS_ID, has_data: nights.is_some(), loading, empty: "No pulls" }
         }
     }
 }
@@ -466,10 +468,12 @@ pub fn PullCharts(pulls: Resource<Option<Vec<PullRow>>>, pick: Signal<Option<Cha
 /// The chart's DOM host, or the empty-state text. Keyed on `has_data` so the
 /// host element is recreated (and the ECharts instance re-bound) on change.
 #[component]
-fn ChartSlot(id: &'static str, has_data: bool, empty: &'static str) -> Element {
+fn ChartSlot(id: &'static str, has_data: bool, loading: bool, empty: &'static str) -> Element {
     rsx! {
         if has_data {
             div { id: "{id}", class: "history-chart" }
+        } else if loading {
+            div { class: "history-chart" }
         } else {
             div { class: "history-chart chart-empty", "{empty}" }
         }
