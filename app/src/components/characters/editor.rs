@@ -132,7 +132,7 @@ pub fn CharacterEditor(
             div { class: "modal-content character-editor", onclick: move |e| e.stop_propagation(),
                 div { class: "modal-header",
                     h3 { if is_new { "Add character" } else { "Edit character" } }
-                    button { class: "btn btn-xs btn-ghost", onclick: move |_| on_close.call(()), i { class: "fa-solid fa-xmark" } }
+                    button { title: "Close", class: "btn btn-xs btn-ghost", onclick: move |_| on_close.call(()), i { class: "fa-solid fa-xmark" } }
                 }
                 div { class: "character-form",
                     div { class: "form-row",

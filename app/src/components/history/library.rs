@@ -651,7 +651,7 @@ pub fn LibraryTab(
                 div { class: "modal-content library-cleanup", onclick: move |e| e.stop_propagation(),
                     div { class: "modal-header",
                         h3 { if targets.len() == 1 { "Delete log" } else { "Delete {targets.len()} logs" } }
-                        button { class: "btn btn-xs btn-ghost", onclick: move |_| confirm_delete.set(None), i { class: "fa-solid fa-xmark" } }
+                        button { title: "Close", class: "btn btn-xs btn-ghost", onclick: move |_| confirm_delete.set(None), i { class: "fa-solid fa-xmark" } }
                     }
                     div { class: "library-delete-body",
                         div { class: "library-preview warn",

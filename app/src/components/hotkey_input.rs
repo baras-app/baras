@@ -186,6 +186,7 @@ pub fn HotkeyInput(props: HotkeyInputProps) -> Element {
             span { class: "hotkey-display", "{display_value}" }
             if !props.value.is_empty() && !is_capturing() {
                 button {
+                    title: "Clear hotkey",
                     class: "hotkey-clear",
                     r#type: "button",
                     onclick: move |e| {
