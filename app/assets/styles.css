@@ -6490,6 +6490,11 @@ a.contributor-name:hover {
   transition-property: var(--transition-props);
 }
 
+/* Every other boss in the list, so a run of pulls reads as one block */
+.sidebar-encounter-item.alt-boss {
+  background: rgba(var(--fg-rgb), 0.035);
+}
+
 .sidebar-encounter-item:hover {
   background: var(--blue-alpha-5);
 }
