@@ -111,7 +111,7 @@ pub fn SoundPicker(props: SoundPickerProps) -> Element {
                 onclick: move |_| {
                     let file = current_value_for_preview.clone();
                     if !file.is_empty() {
-                        spawn(async move { api::preview_sound(&file).await; });
+                        spawn(async move { let _ = api::preview_sound(&file).await; });
                     }
                 },
                 i { class: "fa-solid fa-play" }

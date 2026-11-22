@@ -321,18 +321,18 @@ pub async fn toggle_overlay(kind: OverlayType, currently_enabled: bool) -> bool 
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Start the operation timer manually
-pub async fn start_operation_timer() {
-    invoke("start_operation_timer", JsValue::NULL).await;
+pub async fn start_operation_timer() -> Result<(), String> {
+    try_invoke("start_operation_timer", JsValue::NULL).await.map(|_| ())
 }
 
 /// Stop the operation timer
-pub async fn stop_operation_timer() {
-    invoke("stop_operation_timer", JsValue::NULL).await;
+pub async fn stop_operation_timer() -> Result<(), String> {
+    try_invoke("stop_operation_timer", JsValue::NULL).await.map(|_| ())
 }
 
 /// Reset the operation timer
-pub async fn reset_operation_timer() {
-    invoke("reset_operation_timer", JsValue::NULL).await;
+pub async fn reset_operation_timer() -> Result<(), String> {
+    try_invoke("reset_operation_timer", JsValue::NULL).await.map(|_| ())
 }
 
 /// Show all enabled overlays
@@ -431,8 +431,8 @@ pub async fn get_watching_status() -> bool {
 }
 
 /// Restart the directory watcher
-pub async fn restart_watcher() {
-    let _ = invoke("restart_watcher", JsValue::NULL).await;
+pub async fn restart_watcher() -> Result<(), String> {
+    try_invoke("restart_watcher", JsValue::NULL).await.map(|_| ())
 }
 
 /// Refresh the log file index (rebuilds from disk)
@@ -1291,8 +1291,8 @@ pub async fn pick_audio_file() -> Option<String> {
 }
 
 /// Preview (play) a sound file so the user can hear it in the editor
-pub async fn preview_sound(filename: &str) {
-    let _ = try_invoke("preview_sound", build_args("filename", filename)).await;
+pub async fn preview_sound(filename: &str) -> Result<(), String> {
+    try_invoke("preview_sound", build_args("filename", filename)).await.map(|_| ())
 }
 
 /// Show an unsaved timer/effect draft on its overlays; returns overlays that are not enabled
@@ -1304,8 +1304,8 @@ pub async fn preview_overlay_entry(
 }
 
 /// Speak a test phrase so the user can hear TTS at the configured volume
-pub async fn preview_tts() {
-    let _ = try_invoke("preview_tts", JsValue::NULL).await;
+pub async fn preview_tts() -> Result<(), String> {
+    try_invoke("preview_tts", JsValue::NULL).await.map(|_| ())
 }
 
 /// Open a folder picker for the log directory, returns the selected path or None.
