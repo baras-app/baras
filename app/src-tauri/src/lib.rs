@@ -365,6 +365,7 @@ pub fn run() {
             commands::import_effects_toml,
             // Parsely upload
             commands::upload_to_parsely,
+            commands::query_parsely_percentiles,
             commands::upload_encounter_to_parsely,
             // URL opening
             commands::open_url,

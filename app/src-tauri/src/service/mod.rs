@@ -15,6 +15,7 @@ mod handler;
 mod history;
 mod info;
 mod operation_timer;
+pub mod parsely_ratings;
 pub(crate) mod process_monitor;
 mod raid_detection;
 mod raid_frames;
@@ -401,6 +402,21 @@ impl CombatService {
                                 let session_guard = self.shared.session.read().await;
                                 if let Some(session) = session_guard.as_ref() {
                                     let mut session = session.write().await;
+                                    // Live only: a replayed log enters areas nobody may look at
+                                    if self.shared.is_live_tailing.load(Ordering::SeqCst)
+                                        && self.shared.config.read().await.parsely_percentiles
+                                        && let Some(difficulty) = session.session_cache.as_ref().and_then(|c| {
+                                            baras_core::game_data::Difficulty::from_difficulty_id(c.current_area.difficulty_id)
+                                        })
+                                    {
+                                        let paths = bosses
+                                            .iter()
+                                            .filter_map(|b| b.parsely_slug.as_deref())
+                                            .map(|slug| difficulty.parsely_rating_path(slug))
+                                            .collect();
+                                        let shared = Arc::clone(&self.shared);
+                                        tokio::spawn(async move { shared.parsely_ratings.load_set(paths).await });
+                                    }
                                     session.load_boss_definitions(bosses, false);
                                     session.set_timer_start(area_id, timer_start);
                                 }

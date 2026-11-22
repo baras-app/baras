@@ -13,6 +13,7 @@ id = 3367421863788544
 
 [[boss]]
 id = "sparky"
+parsely_slug = "sparky"
 name = "Sparky"
 difficulties = ["story", "veteran"]
 
@@ -126,6 +127,7 @@ difficulties = ["veteran"]
 
 [[boss]]
 id = "bulo"
+parsely_slug = "quartermaster-bulo"
 name = "Quartermaster Bulo"
 difficulties = ["story", "veteran"]
 
@@ -305,6 +307,7 @@ difficulties = ["veteran"]
 
 [[boss]]
 id = "torque"
+parsely_slug = "torque"
 name = "Torque"
 difficulties = ["story", "veteran"]
 
@@ -447,6 +450,7 @@ difficulties = ["veteran"]
 
 [[boss]]
 id = "master_blaster"
+parsely_slug = "master-and-blaster"
 name = "Master & Blaster"
 difficulties = ["story", "veteran"]
 has_victory_trigger = true
@@ -1456,6 +1460,7 @@ phase_id = "master_blaster_p3_t"
 
 [[boss]]
 id = "coratanni"
+parsely_slug = "coratanni"
 name = "Coratanni"
 difficulties = ["story", "veteran"]
 has_victory_trigger = true

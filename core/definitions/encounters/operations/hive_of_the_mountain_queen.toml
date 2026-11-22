@@ -4,6 +4,7 @@ id = 945872057669593
 
 [[boss]]
 id = "mutated_geonosian_queen"
+parsely_slug = "mutated-geonosian-queen"
 name = "Mutated Geonosian Queen"
 difficulties = ["story", "veteran"]
 is_final_boss = true

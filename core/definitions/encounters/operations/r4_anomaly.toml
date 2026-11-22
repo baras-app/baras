@@ -18,6 +18,7 @@ position = [
 
 [[boss]]
 id = "ip_cpt"
+parsely_slug = "ip-cpt"
 name = "IP-CPT"
 difficulties = ["story", "veteran"]
 
@@ -462,6 +463,7 @@ timer_id = "ip_cpt_4th_intrusion_units"
 
 [[boss]]
 id = "watchdog"
+parsely_slug = "watchdog"
 name = "Watchdog"
 difficulties = ["story", "veteran"]
 
@@ -733,6 +735,7 @@ selector = ["Watchdog"]
 
 [[boss]]
 id = "kanoth"
+parsely_slug = "lord-kanoth"
 name = "Lord Kanoth"
 area_name = "R4"
 area_id = 833571547775799
@@ -1590,6 +1593,7 @@ show_on_hp_overlay = true
 
 [[boss]]
 id = "dominique"
+parsely_slug = "lady-dominique"
 name = "Lady Dominique"
 difficulties = ["story", "veteran"]
 is_final_boss = true

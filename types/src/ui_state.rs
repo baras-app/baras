@@ -31,6 +31,9 @@ pub struct UiSessionState {
 
     /// Use European number formatting (swap `.` and `,`)
     pub european_number_format: bool,
+
+    /// Show Parsely percentiles on boss kills
+    pub parsely_percentiles: bool,
 }
 
 impl UiSessionState {

@@ -10,6 +10,7 @@ timed_run_minutes = 60
 
 [[boss]]
 id = "nefra"
+parsely_slug = "nefra"
 name = "Nefra, Who Bars The Way"
 difficulties = ["story", "veteran", "master"]
 
@@ -206,6 +207,7 @@ conditions = [
 
 [[boss]]
 id = "draxus"
+parsely_slug = "gate-commander-draxus"
 name = "Gate Commander Draxus"
 difficulties = ["story", "veteran", "master"]
 
@@ -428,6 +430,7 @@ difficulties = ["veteran", "master"]
 
 [[boss]]
 id = "grobthok"
+parsely_slug = "grobthok"
 name = "Grob'thok, Who Feeds The Forge"
 difficulties = ["story", "veteran", "master"]
 
@@ -546,6 +549,7 @@ difficulties = ["veteran", "master"]
 
 [[boss]]
 id = "corruptor_zero"
+parsely_slug = "corruptor-zero"
 name = "Corruptor Zero"
 difficulties = ["story", "veteran", "master"]
 
@@ -714,6 +718,7 @@ timer_id = "corruptor_zero_gravity_ranged_mode"
 
 [[boss]]
 id = "brontes"
+parsely_slug = "dread-master-brontes"
 name = "Dread Master Brontes"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true

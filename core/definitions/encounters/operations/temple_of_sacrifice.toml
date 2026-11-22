@@ -10,6 +10,7 @@ area_id = 3367426158755840
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
 id = "malaphar"
+parsely_slug = "malaphar-the-savage"
 name = "Malaphar the Savage"
 difficulties = ["story", "veteran"]
 
@@ -102,6 +103,7 @@ value = 10
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
 id = "sword_squadron"
+parsely_slug = "sword-squadron"
 name = "Sword Squadron"
 difficulties = ["story", "veteran"]
 
@@ -268,6 +270,7 @@ difficulties = ["veteran"]
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
 id = "underlurker"
+parsely_slug = "the-underlurker"
 name = "The Underlurker"
 difficulties = ["story", "veteran"]
 
@@ -352,6 +355,7 @@ difficulties = ["veteran"]
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
 id = "revanite_commanders"
+parsely_slug = "revanite-commanders"
 name = "Revanite Commanders"
 difficulties = ["story", "veteran"]
 # its a faceroll do you really need timers ??
@@ -383,6 +387,7 @@ is_kill_target = true
 #   Floor 3: Resonance Transition → Phase 4 (Revan 28%-9%) → Phase 5 (Machine Core)
 [[boss]]
 id = "revan"
+parsely_slug = "revan"
 name = "Revan"
 difficulties = ["story", "veteran"]
 is_final_boss = true

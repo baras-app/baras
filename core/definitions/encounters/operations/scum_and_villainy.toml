@@ -15,6 +15,7 @@ area_type = "operation"
 
 [[boss]]
 id = "dashroode"
+parsely_slug = "dashroode"
 name = "Dash'Roode"
 difficulties = ["story", "veteran", "master"]
 
@@ -91,6 +92,7 @@ difficulties = ["veteran", "master"]
 
 [[boss]]
 id = "titan6"
+parsely_slug = "titan-6"
 name = "Titan 6"
 difficulties = ["story", "veteran", "master"]
 
@@ -216,6 +218,7 @@ target = "local_player"
 
 [[boss]]
 id = "hateful_entity"
+parsely_slug = "hateful-entity"
 name = "Hateful Entity"
 difficulties = ["master"]
 is_optional_boss = true
@@ -295,6 +298,7 @@ type = "combat_start"
 
 [[boss]]
 id = "thrasher"
+parsely_slug = "thrasher"
 name = "Thrasher"
 difficulties = ["story", "veteran", "master"]
 
@@ -454,6 +458,7 @@ target = "any"
 
 [[boss]]
 id = "operations_chief"
+parsely_slug = "operations-chief"
 name = "Operations Chief"
 difficulties = ["story", "veteran", "master"]
 
@@ -523,6 +528,7 @@ difficulties = ["veteran", "master"]
 
 [[boss]]
 id = "olok"
+parsely_slug = "olok-the-shadow"
 name = "Olok the Shadow"
 difficulties = ["story", "veteran", "master"]
 
@@ -691,6 +697,7 @@ timer_id = "olok_wave_4"
 
 [[boss]]
 id = "cartel_warlords"
+parsely_slug = "cartel-warlords"
 name = "Cartel Warlords"
 difficulties = ["story", "veteran", "master"]
 
@@ -882,6 +889,7 @@ group_size = 16
 
 [[boss]]
 id = "Styrak_k"
+parsely_slug = "dread-master-styrak"
 name = "Dread Master Styrak"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true

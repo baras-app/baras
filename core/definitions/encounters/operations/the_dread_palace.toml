@@ -6,6 +6,7 @@ area_type = "operation"
 
 [[boss]]
 id = "bestia"
+parsely_slug = "dread-master-bestia"
 area_type = "operation"
 name = "Dread Master Bestia"
 
@@ -733,6 +734,7 @@ value = 0.0
 
 [[boss]]
 id = "tyrans"
+parsely_slug = "dread-master-tyrans"
 area_type = "operation"
 name = "Dread Master Tyrans"
 
@@ -1069,6 +1071,7 @@ match = "any_player"
 
 [[boss]]
 id = "calphayus"
+parsely_slug = "dread-master-calphayus"
 name = "Dread Master Calphayus"
 area_type = "operation"
 
@@ -1568,6 +1571,7 @@ target = "any"
 
 [[boss]]
 id = "raptus"
+parsely_slug = "dread-master-raptus"
 name = "Dread Master Raptus"
 area_type = "operation"
 
@@ -2281,6 +2285,7 @@ phase_id = "raptus_challenges"
 
 [[boss]]
 id = "dread_council"
+parsely_slug = "dread-council"
 name = "Dread Council"
 area_type = "operation"
 is_final_boss = true

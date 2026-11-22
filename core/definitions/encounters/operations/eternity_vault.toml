@@ -15,6 +15,7 @@ id = 833571547775670
 
 [[boss]]
 id = "xrr3"
+parsely_slug = "annihilation-droid"
 name = "Annihilation Droid XRR-3"
 difficulties = ["story", "veteran"]
 
@@ -84,6 +85,7 @@ is_alert = true
 
 [[boss]]
 id = "gharj"
+parsely_slug = "gharj"
 name = "Gharj"
 difficulties = ["story", "veteran"]
 
@@ -200,6 +202,7 @@ color = [255, 50, 50, 255]
 
 [[boss]]
 id = "infernal_council"
+parsely_slug = "infernal-council"
 name = "Infernal Council"
 difficulties = ["story", "veteran"]
 
@@ -222,6 +225,7 @@ is_kill_target = true
 
 [[boss]]
 id = "soa"
+parsely_slug = "soa"
 name = "Soa"
 difficulties = ["story", "veteran"]
 is_final_boss = true

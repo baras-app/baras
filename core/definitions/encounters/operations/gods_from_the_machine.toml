@@ -19,6 +19,7 @@ position = [
 
 [[boss]]
 id = "TYTT_K"
+parsely_slug = "tyth"
 name = "TYTH"
 difficulties = ["story", "veteran", "master"]
 
@@ -690,6 +691,7 @@ type = "combat_start"
 
 [[boss]]
 id = "a&e_k"
+parsely_slug = "aivela-and-esne"
 name = "AIVELA & ESNE"
 difficulties = ["story", "veteran", "master"]
 
@@ -1713,6 +1715,7 @@ type = "combat_start"
 
 [[boss]]
 id = "nahut_k"
+parsely_slug = "nahut"
 name = "NAHUT"
 difficulties = ["story", "veteran", "master"]
 
@@ -2865,6 +2868,7 @@ type = "combat_start"
 
 [[boss]]
 id = "SCYVA_K"
+parsely_slug = "scyva"
 name = "SCYVA"
 difficulties = ["story", "veteran", "master"]
 
@@ -3992,6 +3996,7 @@ type = "combat_start"
 
 [[boss]]
 id = "IZAX_K"
+parsely_slug = "izax"
 name = "IZAX"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true

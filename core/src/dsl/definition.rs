@@ -466,6 +466,11 @@ pub struct BossEncounterDefinition {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub victory_conditions: Vec<Condition>,
 
+    // ─── Parsely ─────────────────────────────────────────────────────────────
+    /// Boss slug on parsely.io (`/api/names`), for percentile ratings
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parsely_slug: Option<String>,
+
     // ─── Final Boss ──────────────────────────────────────────────────────────
     /// Whether this is the final boss of an operation.
     /// When the final boss is killed, the operations timer is automatically stopped.
@@ -509,6 +514,7 @@ impl Default for BossEncounterDefinition {
             wipe_revokes_victory: false,
             victory_conditions: Vec::new(),
             is_final_boss: false,
+            parsely_slug: None,
             is_optional_boss: false,
             all_npc_ids: HashSet::new(),
         }

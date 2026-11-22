@@ -5,6 +5,7 @@ area_type = "operation"
 
 [[boss]]
 id = "monolith"
+parsely_slug = "colossal-monolith"
 name = "Colosssal Monolith"
 area_type = "operation"
 difficulties = ["story", "veteran"]

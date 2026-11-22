@@ -10,7 +10,7 @@ use super::derived::{self, AreaSections};
 use super::grouping::{AbilityGroups, group_abilities};
 use crate::api::{
     self, AbilityBreakdown, BreakdownMode, DamageTakenSummary, EncounterTimeline, EntityBreakdown, NpcHealthRow,
-    PlayerDeath, RaidOverviewRow, TimeRange,
+    EncounterRatings, PlayerDeath, RaidOverviewRow, TimeRange,
 };
 use crate::components::encounter_types::EncounterSummary;
 use crate::types::{CombatLogSessionState, SortColumn, SortDirection, UiSessionState, UsageSortColumn, ViewMode};
@@ -91,6 +91,8 @@ pub(super) struct ExplorerCtx {
     pub load_generation: Signal<u32>,
     pub timeline: Signal<Option<EncounterTimeline>>,
     pub overview_data: Signal<Vec<RaidOverviewRow>>,
+    /// Parsely percentiles and the encounter they rate (None = nothing rated)
+    pub percentiles: Signal<(Option<u32>, EncounterRatings)>,
     pub player_deaths: Signal<Vec<PlayerDeath>>,
     pub npc_health: Signal<Vec<NpcHealthRow>>,
     pub last_overview_fetch: Signal<Option<(Option<u32>, TimeRange, bool)>>,
@@ -198,6 +200,7 @@ pub(super) fn use_explorer_ctx(state: Signal<UiSessionState>) -> ExplorerCtx {
 
     // Overview data
     let overview_data = use_signal(Vec::<RaidOverviewRow>::new);
+    let percentiles = use_signal(|| (None, EncounterRatings::default()));
     let player_deaths = use_signal(Vec::<PlayerDeath>::new);
     let npc_health = use_signal(Vec::<NpcHealthRow>::new);
     // Track last (encounter, time_range, was_overview) we fetched overview data for (prevents re-fetch loops)
@@ -323,6 +326,7 @@ pub(super) fn use_explorer_ctx(state: Signal<UiSessionState>) -> ExplorerCtx {
         load_generation,
         timeline,
         overview_data,
+        percentiles,
         player_deaths,
         npc_health,
         last_overview_fetch,

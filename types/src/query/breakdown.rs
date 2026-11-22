@@ -202,6 +202,28 @@ pub struct MirrorAbility {
     pub is_imperial: bool,
 }
 
+/// A player's Parsely percentile (1-100) per rated metric against their
+/// discipline on that boss; 0 = unrated or below the 1st percentile.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+pub struct RatingPercentiles {
+    pub dps: u8,
+    pub boss_dps: u8,
+    pub hps: u8,
+    pub ehps: u8,
+    pub dtps: u8,
+    pub apm: u8,
+}
+
+/// Parsely percentiles for one encounter's players, by name.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct EncounterRatings {
+    pub players: std::collections::HashMap<String, RatingPercentiles>,
+    /// UTC day (`YYYY-MM-DD`) of the rating table when today's couldn't be fetched
+    pub stale_as_of: Option<String>,
+    /// A rated kill whose rating table couldn't be fetched at all
+    pub unavailable: bool,
+}
+
 /// Raid overview row - aggregated stats per player across all metrics.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RaidOverviewRow {

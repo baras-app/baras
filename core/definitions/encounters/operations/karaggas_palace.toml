@@ -13,6 +13,7 @@ id = 833571547775669
 
 [[boss]]
 id = "bonethrasher"
+parsely_slug = "bonethrasher"
 name = "Bonethrasher"
 difficulties = ["story", "veteran"]
 
@@ -36,6 +37,7 @@ label = ""
 
 [[boss]]
 id = "jarg_sorno"
+parsely_slug = "jarg-and-sorno"
 name = "Jarg & Sorno"
 difficulties = ["story", "veteran"]
 
@@ -61,6 +63,7 @@ label = "Sorno Jets Up"
 
 [[boss]]
 id = "foreman_crusher"
+parsely_slug = "foreman-crusher"
 name = "Foreman Crusher"
 difficulties = ["story", "veteran"]
 
@@ -146,6 +149,7 @@ icon_ability_id = 2779526740312064
 
 [[boss]]
 id = "g4b3"
+parsely_slug = "heavy-fabricator"
 name = "G4-B3 Heavy Fabricator"
 difficulties = ["story", "veteran"]
 
@@ -188,6 +192,7 @@ icon_ability_id = 2778641977049088
 
 [[boss]]
 id = "karagga"
+parsely_slug = "karagga-the-unyielding"
 name = "Karagga the Unyielding"
 difficulties = ["story", "veteran"]
 is_final_boss = true
