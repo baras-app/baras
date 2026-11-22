@@ -147,6 +147,9 @@ pub(super) fn entity_sidebar(
                         }
                     };
                     rsx! {
+                    if items.is_empty() {
+                        div { class: "empty-message", "Nothing recorded in this range" }
+                    }
                     for (head, members) in items.iter() {
                         {
                             let name = head.source_name.clone();

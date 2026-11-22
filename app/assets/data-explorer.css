@@ -2979,7 +2979,7 @@
   opacity: 0.4;
 }
 
-.usage-table .empty-message {
+.empty-message {
   text-align: center;
   padding: 24px;
   color: var(--text-secondary);
