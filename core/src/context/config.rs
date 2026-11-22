@@ -61,6 +61,11 @@ pub trait AppConfigExt {
     fn save_profile(&mut self, name: String) -> Result<(), &'static str>;
     fn load_profile(&mut self, name: &str) -> Result<(), &'static str>;
     fn is_profile_dirty(&self) -> bool;
+    /// Point the active profile at an existing one (the first) when it names none
+    fn ensure_active_profile(&mut self);
+    /// Write the live overlay settings into the active profile: toggles and
+    /// moves save themselves, so a profile never lags behind what is on screen
+    fn sync_active_profile(&mut self);
     fn delete_profile(&mut self, name: &str) -> Result<(), &'static str>;
     fn rename_profile(&mut self, old_name: &str, new_name: String) -> Result<(), &'static str>;
     fn profile_names(&self) -> Vec<String>;
@@ -90,6 +95,7 @@ impl AppConfigExt for AppConfig {
                 for profile in &mut config.profiles {
                     profile.settings.migrate_legacy();
                 }
+                config.ensure_active_profile();
                 config
             }
             Err(e) => {
@@ -182,6 +188,26 @@ impl AppConfigExt for AppConfig {
         }
     }
 
+    fn ensure_active_profile(&mut self) {
+        let active_exists = self
+            .active_profile_name
+            .as_deref()
+            .is_some_and(|name| self.profiles.iter().any(|p| p.name == name));
+        if !active_exists {
+            self.active_profile_name = self.profiles.first().map(|p| p.name.clone());
+        }
+    }
+
+    fn sync_active_profile(&mut self) {
+        self.ensure_active_profile();
+        let snapshot = profile_snapshot(&self.overlay_settings);
+        if let Some(name) = self.active_profile_name.as_deref()
+            && let Some(profile) = self.profiles.iter_mut().find(|p| p.name == name)
+        {
+            profile.settings = snapshot;
+        }
+    }
+
     fn delete_profile(&mut self, name: &str) -> Result<(), &'static str> {
         if self.profiles.len() <= 1 {
             return Err("The last profile can't be deleted");
@@ -191,9 +217,8 @@ impl AppConfigExt for AppConfig {
         if self.profiles.len() == len_before {
             return Err("Profile not found");
         }
-        if self.active_profile_name.as_deref() == Some(name) {
-            self.active_profile_name = None;
-        }
+        // Deleting the open profile leaves the live settings as they are, under the next one
+        self.ensure_active_profile();
         // Clear any role defaults pointing to this profile
         self.default_profile_per_role.retain(|_, v| v != name);
         Ok(())
