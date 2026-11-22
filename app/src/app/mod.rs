@@ -21,6 +21,7 @@ use crate::types::{
 };
 
 mod helpers;
+mod parsely_settings;
 mod settings_page;
 
 use helpers::{OVERLAY_CATEGORIES, apply_status, set_light_theme, set_overlay_enabled};
