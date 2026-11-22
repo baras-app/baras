@@ -6729,10 +6729,10 @@ a.contributor-name:hover {
    host and draws into its first child, so the card itself stays put and data
    updates on a live instance (live parsing, brushing) never re-trigger it. */
 [_echarts_instance_] > div:first-child {
-  animation: chart-fade-in 0.25s ease-out;
+  animation: fade-in 0.25s ease-out;
 }
 
-@keyframes chart-fade-in {
+@keyframes fade-in {
   from {
     opacity: 0;
   }
@@ -8381,4 +8381,60 @@ a.contributor-name:hover {
   height: 16px;
   border-radius: 3px;
   background: var(--dot);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Entry motion
+   ═══════════════════════════════════════════════════════════════════════════
+   Everything here runs once when the element mounts, so re-renders with live
+   data never replay it. */
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.modal-overlay,
+.modal-backdrop {
+  animation: fade-in var(--transition-slow);
+}
+
+.modal-overlay > *,
+.modal-backdrop > * {
+  animation: pop-in var(--transition-slow);
+}
+
+.nav-menu-list,
+.log-context-menu {
+  animation: drop-in var(--transition-normal);
+}
+
+/* The combat log's first page of rows, once it replaces the previous view */
+.combat-log-host:not(.pending) {
+  animation: fade-in var(--transition-slow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay,
+  .modal-backdrop,
+  .modal-overlay > *,
+  .modal-backdrop > *,
+  .nav-menu-list,
+  .log-context-menu,
+  .combat-log-host:not(.pending),
+  .drawer,
+  .death-recap-drawer,
+  .toast,
+  [_echarts_instance_] > div:first-child {
+    animation: none;
+  }
 }
