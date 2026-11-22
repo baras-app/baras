@@ -252,7 +252,6 @@ pub fn App() -> Element {
         if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
             && let Some(path) = payload.as_string()
         {
-            opener.loaded(&path);
             // Use try_write to handle signal being dropped when component unmounts
             let _ = active_file.try_write().map(|mut w| *w = path);
         }
@@ -286,7 +285,19 @@ pub fn App() -> Element {
         area_bosses.set(api::get_area_bosses_for_notes().await);
 
         // Listen for updates (no more polling!)
-        let closure = Closure::new(move |_event: JsValue| {
+        let closure = Closure::new(move |event: JsValue| {
+            // The parse is done. `active-file-changed` fires before it starts, and a
+            // second open of the same log during the parse is deduplicated by the
+            // backend without another event, so clearing there left the banner up.
+            if js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
+                .ok()
+                .and_then(|p| p.as_string())
+                .as_deref()
+                == Some("FileLoaded")
+                && let Ok(path) = active_file.try_peek()
+            {
+                opener.loaded(&path);
+            }
             // Use spawn_local for JS callbacks (no Dioxus runtime context available)
             spawn_local(async move {
                 let info = api::get_session_info().await;

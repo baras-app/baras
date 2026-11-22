@@ -1,7 +1,7 @@
 //! One place every "open this log" click goes through. Opening a large log
 //! is a full re-parse that can take many seconds in a debug build, so the
 //! opener remembers what is loading, the buttons disable, and a banner shows
-//! the file until the backend reports the active file changed.
+//! the file until the backend reports the parse finished.
 
 use dioxus::prelude::*;
 
@@ -60,7 +60,7 @@ impl FileOpener {
         });
     }
 
-    /// The backend finished parsing `path` (from the `active-file-changed` event).
+    /// The backend finished parsing `path` (the `FileLoaded` session update).
     /// Safe to call from a JS callback: only writes when it is the file we wait on.
     pub fn loaded(&self, path: &str) {
         let mut loading = self.loading;
