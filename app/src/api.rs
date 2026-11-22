@@ -988,6 +988,19 @@ pub async fn create_area(area: &NewAreaRequest) -> Result<String, String> {
     from_js(result).ok_or_else(|| "Failed to parse area response".to_string())
 }
 
+/// Delete a user-created boss
+pub async fn delete_boss(boss_id: &str, file_path: &str) -> Result<(), String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "bossId", &JsValue::from_str(boss_id));
+    js_set(&obj, "filePath", &JsValue::from_str(file_path));
+    try_invoke("delete_boss", obj.into()).await.map(|_| ())
+}
+
+/// Delete a user-created area file
+pub async fn delete_area(file_path: &str) -> Result<(), String> {
+    try_invoke("delete_area", build_args("filePath", file_path)).await.map(|_| ())
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Encounter Export/Import
 // ─────────────────────────────────────────────────────────────────────────────

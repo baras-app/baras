@@ -335,6 +335,8 @@ pub fn run() {
             commands::fetch_area_bosses,
             commands::create_area,
             commands::create_boss,
+            commands::delete_boss,
+            commands::delete_area,
             commands::create_encounter_item,
             commands::update_encounter_item,
             commands::set_all_timer_roles,

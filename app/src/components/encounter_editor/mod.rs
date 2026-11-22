@@ -395,6 +395,28 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
             }
         });
     };
+    let delete_area = move |_| {
+        let Some(file_path) = selected_area_path.read().clone() else {
+            return;
+        };
+        spawn(async move {
+            match api::delete_area(&file_path).await {
+                Ok(()) => {
+                    selected_area.set(None);
+                    selected_area_path.set(None);
+                    selected_area_name.set(None);
+                    expanded_boss.set(None);
+                    bosses.set(Vec::new());
+                    if let Some(a) = api::get_area_index().await {
+                        areas.set(a);
+                    }
+                    status_message.set(Some(("Area deleted".to_string(), false)));
+                }
+                Err(e) => status_message.set(Some((e, true))),
+            }
+        });
+    };
+
     let refetch_bosses = move |_| {
         if let Some(fp) = selected_area_path.read().clone() {
             spawn(async move {
@@ -478,6 +500,7 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                         on_status: move |msg| status_message.set(Some(msg)),
                         on_export_area: export_area,
                         on_import: import_into_area,
+                        on_delete_area: area.is_user.then_some(EventHandler::new(delete_area)),
                     }
                     if show_new_boss() {
                         {

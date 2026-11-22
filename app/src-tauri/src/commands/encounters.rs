@@ -34,6 +34,9 @@ pub struct BossWithPathResponse {
     pub boss: BossEncounterDefinition,
     pub file_path: String,
     pub category: String,
+    /// The boss ships with the app: it can be disabled but not deleted
+    #[serde(default)]
+    pub is_builtin: bool,
     /// Timer IDs that exist in the bundled (shipped) definition, unmodified.
     #[serde(default)]
     pub builtin_timer_ids: Vec<String>,
@@ -66,6 +69,7 @@ impl From<BossWithPath> for BossWithPathResponse {
             boss: bwp.boss,
             file_path: bwp.file_path.to_string_lossy().to_string(),
             category: bwp.category,
+            is_builtin: false,
             builtin_timer_ids: Vec::new(),
             modified_timer_ids: Vec::new(),
             builtin_phase_ids: Vec::new(),
@@ -670,7 +674,9 @@ pub async fn fetch_area_bosses(app_handle: AppHandle, file_path: String) -> Resu
                 }
             }
 
+            let is_builtin = bundled_timers.contains_key(&bwp.boss.id);
             let mut resp = BossWithPathResponse::from(bwp);
+            resp.is_builtin = is_builtin;
             resp.builtin_timer_ids = builtin_timer_ids;
             resp.modified_timer_ids = modified_timer_ids;
             resp.builtin_phase_ids = builtin_phase_ids;
@@ -1051,6 +1057,8 @@ pub struct AreaListItem {
     pub category: String,
     pub boss_count: usize,
     pub timer_count: usize,
+    /// A user-created area file with no bundled counterpart: it can be deleted
+    pub is_user: bool,
 }
 
 /// Get area index - list of all encounter areas with boss/timer counts.
@@ -1110,6 +1118,7 @@ fn scan_areas_recursive(dir: &Path, user_dir: Option<&Path>, areas: &mut Vec<Are
                     category,
                     boss_count,
                     timer_count,
+                    is_user: false,
                 });
             }
         }
@@ -1156,6 +1165,7 @@ fn scan_user_only_areas(user_dir: &Path, bundled_dir: &Path, areas: &mut Vec<Are
                     category,
                     boss_count,
                     timer_count,
+                    is_user: true,
                 });
             }
         }
@@ -1305,6 +1315,76 @@ pub async fn create_boss(
 
     let _ = service.reload_timer_definitions().await;
     Ok(boss)
+}
+
+/// Delete a user-created boss with its timers, phases and counters. Built-in
+/// bosses can only be disabled.
+#[tauri::command]
+pub async fn delete_boss(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    boss_id: String,
+    file_path: String,
+) -> Result<(), String> {
+    let path = PathBuf::from(&file_path);
+    if !path.exists() {
+        return Err(format!("Area file not found: {}", file_path));
+    }
+    let not_found = || format!("Boss '{}' not found", boss_id);
+
+    if let Some(custom_path) = get_custom_path_if_bundled(&path, &app_handle) {
+        if load_bosses_from_file(&path)?.iter().any(|b| b.id == boss_id) {
+            return Err("Built-in bosses can't be deleted, only disabled".to_string());
+        }
+        if !custom_path.exists() {
+            return Err(not_found());
+        }
+        let mut custom_bosses = load_bosses_from_file(&custom_path)?;
+        let before = custom_bosses.len();
+        custom_bosses.retain(|b| b.id != boss_id);
+        if custom_bosses.len() == before {
+            return Err(not_found());
+        }
+        save_bosses_to_file_with_area(&custom_bosses, &custom_path, load_area_config(&path).ok().flatten())?;
+    } else {
+        let mut bosses = load_bosses_from_file(&path)?;
+        let before = bosses.len();
+        bosses.retain(|b| b.id != boss_id);
+        if bosses.len() == before {
+            return Err(not_found());
+        }
+        save_bosses_to_file(&bosses, &path)?;
+    }
+
+    let _ = service.reload_timer_definitions().await;
+    Ok(())
+}
+
+/// Delete a user-created area file and every boss in it. Bundled areas and
+/// their `_custom.toml` overlays are refused.
+#[tauri::command]
+pub async fn delete_area(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    file_path: String,
+) -> Result<(), String> {
+    let path = PathBuf::from(&file_path)
+        .canonicalize()
+        .map_err(|_| format!("Area file not found: {}", file_path))?;
+    let user_dir = ensure_user_dir()?
+        .canonicalize()
+        .map_err(|e| format!("Failed to resolve user directory: {}", e))?;
+    let is_user_area = path.starts_with(&user_dir)
+        && path.extension().is_some_and(|ext| ext == "toml")
+        && !path.to_string_lossy().ends_with("_custom.toml")
+        && get_custom_path_if_bundled(&path, &app_handle).is_none();
+    if !is_user_area {
+        return Err("Only areas you created can be deleted".to_string());
+    }
+
+    std::fs::remove_file(&path).map_err(|e| format!("Failed to delete area file: {}", e))?;
+    let _ = service.reload_timer_definitions().await;
+    Ok(())
 }
 
 /// Change one field of a boss. A bundled boss gets the change written to its

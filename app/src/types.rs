@@ -353,6 +353,8 @@ pub struct BossWithPath {
     pub boss: BossEncounterDefinition,
     pub file_path: String,
     pub category: String,
+    #[serde(default)]
+    pub is_builtin: bool,
     /// Timer IDs from the bundled definition that are unmodified.
     #[serde(default)]
     pub builtin_timer_ids: Vec<String>,
@@ -789,6 +791,8 @@ pub struct AreaListItem {
     pub category: String,
     pub boss_count: usize,
     pub timer_count: usize,
+    #[serde(default)]
+    pub is_user: bool,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
