@@ -244,7 +244,7 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
 
                                     // Encounter items (hidden if collapsed)
                                     if !is_collapsed {
-                                        for enc in area_encounters.iter() {
+                                        for (enc, alt) in area_encounters.iter().zip(boss_bands(area_encounters)) {
                                             {
                                                 // Use actual encounter_id for parquet file lookup
                                                 let enc_idx = enc.encounter_id as u32;
@@ -270,7 +270,9 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
 
                                                 rsx! {
                                                     div {
-                                                        class: if is_selected { "sidebar-encounter-item selected" } else { "sidebar-encounter-item" },
+                                                        class: "sidebar-encounter-item",
+                                                        class: if is_selected { "selected" },
+                                                        class: if alt { "alt-boss" },
                                                         onclick: move |_| {
                                                             auto_follow.set(false);
                                                             live_query_active.set(false);
@@ -380,4 +382,21 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
             }
         }
     }
+}
+
+/// Per encounter, whether it sits in an alternate band: the band flips each
+/// time the boss changes, and trash stays with the boss before it.
+fn boss_bands(encounters: &[crate::components::encounter_types::EncounterSummary]) -> Vec<bool> {
+    let mut prev = None;
+    let mut alt = false;
+    encounters
+        .iter()
+        .map(|e| {
+            if let Some(boss) = e.boss_name.as_deref() {
+                alt ^= prev.is_some_and(|p| p != boss);
+                prev = Some(boss);
+            }
+            alt
+        })
+        .collect()
 }
