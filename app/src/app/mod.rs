@@ -1210,7 +1210,7 @@ pub fn App() -> Element {
                 // Encounter Editor Tab
                 // ─────────────────────────────────────────────────────────────
                 if kept(MainTab::EncounterBuilder) {
-                    div { style: shown(MainTab::EncounterBuilder),
+                    div { class: "kept-page", style: shown(MainTab::EncounterBuilder),
                         EncounterEditorPanel {
                             state: ui_state,
                         }
@@ -1221,7 +1221,7 @@ pub fn App() -> Element {
                 // Effects Tab
                 // ─────────────────────────────────────────────────────────────
                 if kept(MainTab::Effects) {
-                    div { style: shown(MainTab::Effects),
+                    div { class: "kept-page", style: shown(MainTab::Effects),
                         EffectEditorPanel {
                             state: ui_state,
                         }

@@ -68,7 +68,8 @@ pub(super) fn entity_sidebar(
                         "NPC"
                     }
                 }
-                div { class: "entity-list",
+                for nav in [format!("{:?}-{shown:?}", (ctx.shown_encounter)())] {
+                div { key: "{nav}", class: "entity-list fade-in",
                     // Uses memoized entity_list
                     {
                     let tr = *time_range.read();
@@ -255,6 +256,7 @@ pub(super) fn entity_sidebar(
                     }
                     }
                     }
+                }
                 }
             }
         }
