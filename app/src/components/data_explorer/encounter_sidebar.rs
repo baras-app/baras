@@ -57,6 +57,7 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
                     div { class: "history-controls",
                         ToggleSwitch {
                             label: "Bosses Only",
+                            title: "Hide trash pulls and other non-boss fights",
                             class: "boss-filter-toggle",
                             checked: *show_only_bosses.read(),
                             on_change: move |checked: bool| {
@@ -74,7 +75,7 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
                                 });
                             },
                         }
-                        span { class: "encounter-count",
+                        span { class: "encounter-count", title: "Encounters shown / total in this log",
                             "{filtered_history().len()}"
                             if *show_only_bosses.read() { " / {encounters().len()}" }
                         }
@@ -117,6 +118,7 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
                         // Auto-live toggle — nested in the live button row
                         ToggleSwitch {
                             label: "auto",
+                            title: "Switch to each new fight as it starts",
                             class: "live-query-toggle",
                             stop_propagation: true,
                             checked: *auto_live.read(),
@@ -194,12 +196,12 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
                                                 let enc_id = enc.encounter_id;
                                                 let is_selected = *selected_encounter.read() == Some(enc_idx);
                                                 // Arena rounds carry a tri-state outcome; everything else uses success
-                                                let (result_class, result_icon) = match enc.pvp_outcome.as_deref() {
-                                                    Some("win") => ("success", "fa-solid fa-check"),
-                                                    Some("loss") => ("wipe", "fa-solid fa-skull"),
-                                                    Some(_) => ("unknown", "fa-solid fa-question"),
-                                                    None if enc.success => ("success", "fa-solid fa-check"),
-                                                    None => ("wipe", "fa-solid fa-skull"),
+                                                let (result_class, result_icon, result_title) = match enc.pvp_outcome.as_deref() {
+                                                    Some("win") => ("success", "fa-solid fa-check", "Win"),
+                                                    Some("loss") => ("wipe", "fa-solid fa-skull", "Loss"),
+                                                    Some(_) => ("unknown", "fa-solid fa-question", "Outcome unknown"),
+                                                    None if enc.success => ("success", "fa-solid fa-check", "Kill"),
+                                                    None => ("wipe", "fa-solid fa-skull", "Wipe"),
                                                 };
                                                 let npc_list = enc.npc_names.iter()
                                                     .filter(|n| !n.trim().is_empty())
@@ -220,7 +222,7 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
                                                             selected_encounter.set(Some(enc_idx));
                                                         },
                                                         div { class: "encounter-main",
-                                                            span { class: "encounter-name", "{enc.display_name}" }
+                                                            span { class: "encounter-name", title: "{enc.display_name}", "{enc.display_name}" }
                                                         }
                                                         div { class: "encounter-meta",
                                                             span { class: "encounter-duration", title: "Fight duration", "{formatting::format_duration(enc.duration_seconds)}" }
@@ -298,14 +300,14 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
                                                                     }
                                                                 }
                                                                 // Result indicator (success/wipe/unknown)
-                                                                span { class: "result-indicator {result_class}",
+                                                                span { class: "result-indicator {result_class}", title: result_title,
                                                                     i { class: "{result_icon}" }
                                                                 }
                                                             }
                                                         }
                                                         // NPC names (if available)
                                                         if !npc_list.is_empty() {
-                                                            div { class: "encounter-npcs",
+                                                            div { class: "encounter-npcs", title: "{npc_list}",
                                                                 i { class: "fa-solid fa-skull-crossbones" }
                                                                 " {npc_list}"
                                                             }
