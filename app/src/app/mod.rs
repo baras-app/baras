@@ -25,7 +25,7 @@ mod helpers;
 
 use helpers::{
     OVERLAY_CATEGORIES, add_parsely_guild, apply_status, is_linux, is_macos, save_parsely_guild_fields,
-    set_light_theme, set_overlay_enabled,
+    save_setting, set_light_theme, set_overlay_enabled,
 };
 
 const FILE_LIST: &str = "file-browser-list";
@@ -126,7 +126,6 @@ pub fn App() -> Element {
     let mut hotkey_op_timer = use_signal(String::new);
     let mut hotkey_live_mode = use_signal(String::new);
     let mut hotkey_detect_raid = use_signal(String::new);
-    let mut hotkey_save_status = use_signal(String::new);
     let mut is_wayland_session = use_signal(|| false);
     use_future(move || async move {
         is_wayland_session.set(api::is_wayland_session().await);
@@ -172,7 +171,6 @@ pub fn App() -> Element {
     let mut parsely_guilds = use_signal(Vec::<String>::new);
     let mut parsely_selected_guild = use_signal(|| None::<String>);
     let mut parsely_guild_input = use_signal(String::new);
-    let mut parsely_save_status = use_signal(String::new);
 
     // ─────────────────────────────────────────────────────────────────────────
     // Initial Load
@@ -1449,7 +1447,7 @@ pub fn App() -> Element {
 
                         div { class: "settings-section",
                             h4 { "Global Hotkeys" }
-                            p { class: "hint", "Click a field and press a key combination; Backspace clears it. Changes apply after a restart." }
+                            p { class: "hint", "Click a field and press a key combination; Backspace clears it. Saved as you set them; they take effect after a restart." }
                             if is_wayland_session() {
                                 p { class: "hint hint-warning",
                                     i { class: "fa-solid fa-triangle-exclamation" }
@@ -1461,42 +1459,60 @@ pub fn App() -> Element {
                                     label { "Show/Hide Overlays" }
                                     HotkeyInput {
                                         value: hotkey_visibility(),
-                                        on_change: move |v| hotkey_visibility.set(v),
+                                        on_change: move |v: String| {
+                                            hotkey_visibility.set(v.clone());
+                                            save_setting("hotkey", move |cfg| cfg.hotkeys.toggle_visibility = (!v.is_empty()).then_some(v));
+                                        },
                                     }
                                 }
                                 div { class: "setting-row",
                                     label { "Lock/Unlock Overlays" }
                                     HotkeyInput {
                                         value: hotkey_move_mode(),
-                                        on_change: move |v| hotkey_move_mode.set(v),
+                                        on_change: move |v: String| {
+                                            hotkey_move_mode.set(v.clone());
+                                            save_setting("hotkey", move |cfg| cfg.hotkeys.toggle_move_mode = (!v.is_empty()).then_some(v));
+                                        },
                                     }
                                 }
                                 div { class: "setting-row",
                                     label { "Toggle Raid Frame Interactivity" }
                                     HotkeyInput {
                                         value: hotkey_rearrange(),
-                                        on_change: move |v| hotkey_rearrange.set(v),
+                                        on_change: move |v: String| {
+                                            hotkey_rearrange.set(v.clone());
+                                            save_setting("hotkey", move |cfg| cfg.hotkeys.toggle_rearrange_mode = (!v.is_empty()).then_some(v));
+                                        },
                                     }
                                 }
                                 div { class: "setting-row",
                                     label { "Start/Stop Operations Timer" }
                                     HotkeyInput {
                                         value: hotkey_op_timer(),
-                                        on_change: move |v| hotkey_op_timer.set(v),
+                                        on_change: move |v: String| {
+                                            hotkey_op_timer.set(v.clone());
+                                            save_setting("hotkey", move |cfg| cfg.hotkeys.toggle_operation_timer = (!v.is_empty()).then_some(v));
+                                        },
                                     }
                                 }
                                 div { class: "setting-row",
                                     label { "Run Raid Frame OCR Name Recognition" }
                                     HotkeyInput {
                                         value: hotkey_detect_raid(),
-                                        on_change: move |v| hotkey_detect_raid.set(v),
+                                        on_change: move |v: String| {
+                                            hotkey_detect_raid.set(v.clone());
+                                            save_setting("hotkey", move |cfg| cfg.hotkeys.detect_raid_names = (!v.is_empty()).then_some(v));
+                                        },
                                     }
                                 }
                                 div { class: "setting-row",
                                     label { "Resume Live Tailing" }
                                     HotkeyInput {
                                         value: hotkey_live_mode(),
-                                        on_change: move |v| hotkey_live_mode.set(v),
+                                        on_change: move |v: String| {
+                                            hotkey_live_mode.set(v.clone());
+                                            save_setting("hotkey", move |cfg| cfg.hotkeys.toggle_live_mode = (!v.is_empty()).then_some(v));
+                                        },
                                     }
                                 }
                             }
@@ -1505,32 +1521,6 @@ pub fn App() -> Element {
                                     i { class: "fa-solid fa-triangle-exclamation" }
                                     " Raid Frame OCR Name Recognition is not supported on macOS."
                                 }
-                            }
-                            div { class: "settings-footer",
-                                button {
-                                    class: "btn btn-save",
-                                    onclick: move |_| {
-                                        let v = hotkey_visibility(); let m = hotkey_move_mode(); let r = hotkey_rearrange(); let ot = hotkey_op_timer(); let lm = hotkey_live_mode(); let dr = hotkey_detect_raid();
-                                        let mut toast = use_toast();
-                                        spawn(async move {
-                                            if let Some(mut cfg) = api::get_config().await {
-                                                cfg.hotkeys.toggle_visibility = if v.is_empty() { None } else { Some(v) };
-                                                cfg.hotkeys.toggle_move_mode = if m.is_empty() { None } else { Some(m) };
-                                                cfg.hotkeys.toggle_rearrange_mode = if r.is_empty() { None } else { Some(r) };
-                                                cfg.hotkeys.toggle_operation_timer = if ot.is_empty() { None } else { Some(ot) };
-                                                cfg.hotkeys.toggle_live_mode = if lm.is_empty() { None } else { Some(lm) };
-                                                cfg.hotkeys.detect_raid_names = if dr.is_empty() { None } else { Some(dr) };
-                                                if let Err(err) = api::update_config(&cfg).await {
-                                                    toast.show(format!("Failed to save hotkeys: {}", err), ToastSeverity::Normal);
-                                                } else {
-                                                    hotkey_save_status.set("Saved".to_string());
-                                                }
-                                            }
-                                        });
-                                    },
-                                    "Save Hotkeys"
-                                }
-                                span { class: "save-status", "{hotkey_save_status}" }
                             }
                             div { class: "app-shortcuts",
                                 h5 { "In-app Shortcuts" }
@@ -1665,7 +1655,12 @@ pub fn App() -> Element {
                                     r#type: "text",
                                     placeholder: "Optional",
                                     value: parsely_username,
-                                    oninput: move |e| parsely_username.set(e.value())
+                                    oninput: move |e| parsely_username.set(e.value()),
+                                    // Saved when the field is left
+                                    onchange: move |e| {
+                                        let v = e.value();
+                                        save_setting("Parsely username", move |cfg| cfg.parsely.username = v);
+                                    },
                                 }
                             }
                             div { class: "setting-row",
@@ -1674,7 +1669,11 @@ pub fn App() -> Element {
                                     r#type: "password",
                                     placeholder: "Optional",
                                     value: parsely_password,
-                                    oninput: move |e| parsely_password.set(e.value())
+                                    oninput: move |e| parsely_password.set(e.value()),
+                                    onchange: move |e| {
+                                        let v = e.value();
+                                        save_setting("Parsely password", move |cfg| cfg.parsely.password = v);
+                                    },
                                 }
                             }
                             div { class: "setting-row",
@@ -1710,7 +1709,6 @@ pub fn App() -> Element {
                                                                     save_parsely_guild_fields(
                                                                         guilds_snapshot,
                                                                         selected_snapshot,
-                                                                        parsely_save_status,
                                                                     );
                                                                 },
                                                                 "×"
@@ -1733,7 +1731,6 @@ pub fn App() -> Element {
                                                         parsely_guild_input,
                                                         parsely_guilds,
                                                         parsely_selected_guild,
-                                                        parsely_save_status,
                                                     );
                                                 }
                                             }
@@ -1745,41 +1742,12 @@ pub fn App() -> Element {
                                                     parsely_guild_input,
                                                     parsely_guilds,
                                                     parsely_selected_guild,
-                                                    parsely_save_status,
                                                 );
                                             },
                                             "Add"
                                         }
                                     }
                                 }
-                            }
-                            div { class: "settings-footer",
-                                button {
-                                    class: "btn btn-save",
-                                    onclick: move |_| {
-                                        let u = parsely_username();
-                                        let p = parsely_password();
-                                        let guilds = parsely_guilds.read().clone();
-                                        let selected = parsely_selected_guild.read().clone();
-                                        let mut toast = use_toast();
-                                        spawn(async move {
-                                            if let Some(mut cfg) = api::get_config().await {
-                                                cfg.parsely.username = u;
-                                                cfg.parsely.password = p;
-                                                cfg.parsely.guild = String::new();
-                                                cfg.parsely.guilds = guilds;
-                                                cfg.parsely.selected_guild = selected;
-                                                if let Err(err) = api::update_config(&cfg).await {
-                                                    toast.show(format!("Failed to save Parsely settings: {}", err), ToastSeverity::Normal);
-                                                } else {
-                                                    parsely_save_status.set("Saved".to_string());
-                                                }
-                                            }
-                                        });
-                                    },
-                                    "Save Parsely Settings"
-                                }
-                                span { class: "save-status", "{parsely_save_status}" }
                             }
                         }
 
