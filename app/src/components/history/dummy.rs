@@ -51,7 +51,11 @@ enum DummySort {
 }
 
 fn size_label(hp: i64, european: bool) -> String {
-    if hp > 0 { formatting::format_compact(hp, european) } else { "Unknown".into() }
+    if hp > 0 {
+        formatting::format_compact(hp, european)
+    } else {
+        "Unknown".into()
+    }
 }
 
 fn distinct(it: impl Iterator<Item = String>) -> Vec<String> {
@@ -189,7 +193,10 @@ pub fn DummyTab(european: bool, backfill: Backfill) -> Element {
     let avg_dps = (total > 0).then(|| rows.iter().map(|r| r.dps).sum::<i64>() / total as i64);
     let avg_apm = (total > 0).then(|| rows.iter().map(|r| r.apm).sum::<f32>() / total as f32);
     let fastest = rows.iter().map(|r| r.duration_seconds).min();
-    let compact = |v: Option<i64>| v.map(|v| formatting::format_compact(v, eu)).unwrap_or_else(|| "—".into());
+    let compact = |v: Option<i64>| {
+        v.map(|v| formatting::format_compact(v, eu))
+            .unwrap_or_else(|| "—".into())
+    };
 
     // Compute in its own statement: a `filter.read()` temporary inside the call
     // arguments would outlive into the `filter.write()` and panic

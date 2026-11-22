@@ -21,7 +21,13 @@ impl EncounterQuery<'_> {
                AND {IN_COMBAT}",
             sql_escape(source_name)
         );
-        let pct = |part: f64, whole: f64| if whole > 0.0 { (part / whole * 100.0) as f32 } else { 0.0 };
+        let pct = |part: f64, whole: f64| {
+            if whole > 0.0 {
+                (part / whole * 100.0) as f32
+            } else {
+                0.0
+            }
+        };
         for batch in &self.sql(&sql).await? {
             let (hits, crits) = (col_f64(batch, 0)?, col_f64(batch, 1)?);
             let (dmg, crit_dmg) = (col_f64(batch, 2)?, col_f64(batch, 3)?);
