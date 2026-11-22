@@ -134,6 +134,11 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
                     }
                 }
                 tbody {
+                    if props.rows.is_empty() {
+                        tr {
+                            td { colspan: "99", class: "empty-message", "No players recorded in this range" }
+                        }
+                    }
                     for row in props.rows.iter() {
                         tr {
                             onmouseenter: {

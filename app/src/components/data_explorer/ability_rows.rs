@@ -69,6 +69,11 @@ pub(super) fn table_body(grouped_abilities: Memo<AbilityGroups>, cols: TableCols
 
     rsx! {
         tbody {
+            if grouped_abilities().iter().all(|(_, abilities)| abilities.is_empty()) {
+                tr {
+                    td { colspan: "99", class: "empty-message", "Nothing recorded for this selection in this range" }
+                }
+            }
             for (stats, abilities) in grouped_abilities().iter() {
                 if let Some(target) = &stats.target {
                     tr { class: "group-header",

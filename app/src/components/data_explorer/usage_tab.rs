@@ -414,7 +414,11 @@ pub(super) fn UsageTab(
                     if rows.is_empty() && !usage_loading {
                         tr {
                             td { colspan: "8", class: "empty-message",
-                                "No ability usage data available. Select a player from the sidebar."
+                                if selected_source.read().is_some() {
+                                    "No abilities used in this range."
+                                } else {
+                                    "Select a player from the sidebar to see their ability usage."
+                                }
                             }
                         }
                     } else {
