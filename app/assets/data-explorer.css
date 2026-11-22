@@ -1165,19 +1165,32 @@
 
 /* Color-coded columns */
 .overview-table .dmg {
-  color: var(--lt-red, hsl(0, 70%, 65%));
+  --group: var(--lt-red, hsl(0, 70%, 65%));
 }
 .overview-table .threat {
-  color: var(--text-violet);
+  --group: var(--text-violet);
 }
 .overview-table .taken {
-  color: var(--lt-orange, hsl(30, 70%, 60%));
+  --group: var(--lt-orange, hsl(30, 70%, 60%));
 }
 .overview-table .heal {
-  color: var(--lt-green, hsl(120, 50%, 60%));
+  --group: var(--lt-green, hsl(120, 50%, 60%));
 }
 .overview-table .shield {
-  color: var(--lt-cyan, hsl(190, 70%, 55%));
+  --group: var(--lt-cyan, hsl(190, 70%, 55%));
+}
+
+/* Rates (DPS, EHPS, DTPS…) keep the full group colour; totals, percentages
+   and counts keep a hint of it, so the eye lands on what is compared */
+.overview-table .num {
+  color: var(--group, inherit);
+}
+.overview-table .num.sub {
+  color: color-mix(in srgb, var(--group, var(--text-primary)) 45%, var(--text-muted));
+}
+/* A zero is the absence of a value: let it recede */
+.overview-table tbody .num.zero {
+  color: var(--text-disabled);
 }
 
 /* Totals row styling */
