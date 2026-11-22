@@ -7,6 +7,7 @@ use wasm_bindgen_futures::spawn_local;
 
 use crate::api::{self, BossNotesInfo};
 use crate::components::class_icons::{get_class_icon, get_role_icon};
+use crate::components::history::scroll::use_paged;
 use crate::components::toggle_switch::ToggleSwitch;
 use crate::components::{
     AlacrityPill, BossNotesMenu, CharactersPanel, CleanupRules, ContributorsModal, DataExplorerPanel,
@@ -26,6 +27,8 @@ use helpers::{
     OVERLAY_CATEGORIES, add_parsely_guild, apply_status, is_linux, is_macos, save_parsely_guild_fields,
     set_light_theme, set_overlay_enabled,
 };
+
+const FILE_LIST: &str = "file-browser-list";
 
 static CSS: Asset = asset!("/assets/styles.css");
 static DATA_EXPLORER_CSS: Asset = asset!("/assets/data-explorer.css");
@@ -77,6 +80,8 @@ pub fn App() -> Element {
     let mut upload_status = use_signal(HashMap::<String, (bool, String)>::new); // path -> (success, message)
     let mut file_browser_filter = use_signal(String::new);
     let mut hide_small_log_files = use_signal(|| true);
+    // Hundreds of rows built in one go held up the drawer's first paint past its slide-in
+    let file_paged = use_paged("");
     let mut ocr_debug_dump = use_signal(|| false);
     let mut ocr_debug_max_dumps = use_signal(|| 100u32);
 
@@ -1938,7 +1943,11 @@ pub fn App() -> Element {
                         }
                     }
 
-                    div { class: "file-browser-list",
+                    div { id: FILE_LIST, class: "file-browser-list",
+                        onscroll: move |_| {
+                            let key = format!("{}|{}", file_browser_filter().to_lowercase(), hide_small_log_files());
+                            file_paged.on_scroll(FILE_LIST, &key, log_files.read().len());
+                        },
                         if log_files().is_empty() {
                             div { class: "file-browser-empty",
                                 i { class: "fa-solid fa-spinner fa-spin" }
@@ -1982,8 +1991,9 @@ pub fn App() -> Element {
                                         name.contains(term) || date.contains(term) || day.contains(term) || areas_match || dc_match
                                     })
                                 }).cloned().collect();
+                                let shown = file_paged.limit(&format!("{filter}|{hide_small}"));
                                 rsx! {
-                                    for file in filtered.iter() {
+                                    for file in filtered.iter().take(shown) {
                                 {
                                     let path = file.path.clone();
                                     let path_for_upload = file.path.clone();
