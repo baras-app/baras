@@ -61,6 +61,38 @@ pub struct ColumnDef {
     pub sums: bool,
 }
 
+impl ColumnDef {
+    /// Per-second rates carry the comparison and keep their full colour;
+    /// totals, percentages and counts sit back as supporting figures
+    pub fn is_rate(&self) -> bool {
+        matches!(
+            self.id,
+            C::Dps
+                | C::BossDps
+                | C::Tps
+                | C::Dtps
+                | C::Edtps
+                | C::Aps
+                | C::Htps
+                | C::Ehtps
+                | C::Hps
+                | C::Ehps
+                | C::Sps
+                | C::Apm
+        )
+    }
+
+    /// Cell classes: group colour, toned down for supporting columns and zeros
+    pub fn cell_class(&self, value: f64) -> String {
+        format!(
+            "{}{}{}",
+            self.group.class(),
+            if self.is_rate() { "" } else { " sub" },
+            if value == 0.0 { " zero" } else { "" }
+        )
+    }
+}
+
 const fn col(
     id: OverviewColumn,
     group: Group,

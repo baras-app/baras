@@ -164,7 +164,7 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
                             }
                             {death_cell(row_deaths(row), props.on_death_click)}
                             for c in cols.iter() {
-                                td { class: "num {c.group.class()} {rated(c.id)}",
+                                td { class: "num {c.cell_class((c.value)(row))} {rated(c.id)}",
                                     "{c.format.apply((c.value)(row), eu)}"
                                     if let Some(pct) = props.percentiles.get(&row.name).map(|p| rating(c.id, p)).filter(|&p| p > 0) {
                                         span {
@@ -184,7 +184,7 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
                             td { class: "name-col", "{label}" }
                             td { class: "death-col" }
                             for c in cols.iter() {
-                                td { class: "num {c.group.class()} {rated(c.id)}",
+                                td { class: "num {c.cell_class(1.0)} {rated(c.id)}",
                                     if c.sums {
                                         "{c.format.apply(props.rows.iter().map(c.value).sum(), eu)}"
                                     }
