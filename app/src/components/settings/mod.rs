@@ -135,10 +135,13 @@ pub fn SettingsPanel(
     /// Which top tab shows; lifted so a control-panel gear can switch to Overlays
     mut section: Signal<SettingsSection>,
     on_settings_saved: EventHandler<()>,
+    /// Another tab is open: stay mounted but hidden
+    #[props(default)]
+    parked: bool,
 ) -> Element {
     let draft = use_settings_draft(settings);
-    // The panel lives as long as the Overlays page is open; leaving it drops
-    // unsaved edits and puts the overlays back to the saved settings
+    // The panel outlives the Overlays page (parked while another tab is open), so
+    // unsaved edits keep previewing; dropping it puts the overlays back to the saved settings
     use_drop(move || {
         if draft.abandon() {
             wasm_bindgen_futures::spawn_local(async {
@@ -294,7 +297,10 @@ pub fn SettingsPanel(
     };
 
     rsx! {
-        section { class: "drawer settings-panel",
+        // Parked: off-screen and out of the docked layout, with its draft intact
+        section {
+            class: if parked { "drawer settings-panel-parked" } else { "drawer settings-panel" },
+            style: if parked { "display: none" } else { "" },
             div { class: "settings-header",
                 h3 { "Overlay Settings" }
             }
