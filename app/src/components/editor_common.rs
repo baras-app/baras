@@ -135,6 +135,8 @@ pub fn ItemActions(
             button {
                 class: if has_changes { "btn btn-success btn-sm" } else { "btn btn-sm" },
                 disabled: !has_changes,
+                title: "Save (Ctrl+S)",
+                "data-shortcut-save": "true",
                 onclick: move |_| on_save.call(()),
                 "Save"
             }
