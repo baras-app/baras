@@ -1280,6 +1280,8 @@
   border-radius: 2px;
   background: rgba(var(--fg-rgb), 0.05);
   cursor: pointer;
+  /* The grid is laid out before its data lands: shade the days in, not pop */
+  transition: background-color var(--transition-slow);
 }
 
 /* Archived days keep their hue and shade under a hatch; a day with some
