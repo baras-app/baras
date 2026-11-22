@@ -139,7 +139,7 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
                     "Re-scan complete: {pulls} pulls across {logs} logs, {skipped} already current, {failed} failed"
                 )
             };
-            toast.show(msg, ToastSeverity::Normal);
+            toast.show(msg, ToastSeverity::Info);
         }
     });
 
@@ -162,7 +162,7 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
                     r.deleted,
                     library::fmt_bytes(r.bytes_freed)
                 ),
-                ToastSeverity::Normal,
+                ToastSeverity::Info,
             );
         }
     });

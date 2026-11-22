@@ -173,7 +173,7 @@ fn CleanupModal(plan: CleanupPlan, on_close: EventHandler<()>, on_done: EventHan
                             r.deleted,
                             fmt_bytes(r.bytes_freed)
                         ),
-                        ToastSeverity::Normal,
+                        ToastSeverity::Info,
                     );
                     on_done.call(());
                 }
