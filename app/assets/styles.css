@@ -7442,6 +7442,12 @@ a.contributor-name:hover {
   width: 100%;
 }
 
+/* A stack inside a stack (the entity list under a Source/Target picker) is a
+   column item: its 12em basis would be a height there, so size it to content */
+.field-stack > .field-stack {
+  flex: 0 0 auto;
+}
+
 .field-stack-row {
   display: flex;
   gap: var(--space-sm);
