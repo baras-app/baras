@@ -100,7 +100,7 @@ impl OperationTimerStart {
 }
 
 /// Trash combat ends when one of `final_kills` dies and the only live NPCs left
-/// are `lingering` ones (invulnerable NPCs that hold the raid in combat).
+/// are `lingering` ones (NPCs the raid leaves alive that hold it in combat).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TrashCombatEnd {
     /// Difficulties this applies to. Empty = all.
