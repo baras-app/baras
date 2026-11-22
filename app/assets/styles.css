@@ -6637,6 +6637,19 @@ a.contributor-name:hover {
   }
 }
 
+/* Every ECharts plot fades in when its instance is created. ECharts tags the
+   host and draws into its first child, so the card itself stays put and data
+   updates on a live instance (live parsing, brushing) never re-trigger it. */
+[_echarts_instance_] > div:first-child {
+  animation: chart-fade-in 0.25s ease-out;
+}
+
+@keyframes chart-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
 /* Explorer content (two-column) */
 .explorer-content {
   display: flex;
