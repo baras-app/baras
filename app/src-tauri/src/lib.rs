@@ -285,6 +285,7 @@ pub fn run() {
             commands::get_pvp_matches,
             commands::get_operation_runs,
             commands::get_operation_run,
+            commands::get_session_run_links,
             commands::set_run_meta,
             commands::start_history_backfill,
             commands::cancel_history_backfill,

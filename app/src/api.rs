@@ -824,6 +824,11 @@ pub async fn get_operation_runs(filter: &baras_types::history::PullFilter) -> Op
     from_js(invoke("get_operation_runs", build_args("filter", filter)).await)
 }
 
+/// The raid-summary run each pull of the open log belongs to
+pub async fn get_session_run_links() -> Vec<baras_types::history::RunLink> {
+    from_js(invoke("get_session_run_links", JsValue::NULL).await).unwrap_or_default()
+}
+
 pub async fn get_operation_run(filename: &str, start_ms: i64) -> Option<baras_types::history::RunDetail> {
     let obj = js_sys::Object::new();
     js_set(&obj, "filename", &JsValue::from_str(filename));

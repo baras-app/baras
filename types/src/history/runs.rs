@@ -214,6 +214,16 @@ pub struct RunSummary {
     pub hidden: bool,
 }
 
+/// Points one pull of the open log at the run it belongs to
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RunLink {
+    pub encounter_id: u64,
+    /// The run's key: `RunSummary::filename` and `start_ms`
+    pub filename: String,
+    pub start_ms: i64,
+    pub is_flashpoint: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct RunList {
     pub runs: Vec<RunSummary>,

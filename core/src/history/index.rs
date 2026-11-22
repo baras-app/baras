@@ -12,6 +12,7 @@ use std::time::SystemTime;
 use hashbrown::{HashMap, HashSet};
 
 use baras_types::history::{
+    RunLink,
     AreaSeen, BossNode, HistoryStatus, InstanceVisit, LogContinuity, LogLink, PullFilter, PullHistoryOverview, PullRow,
     PvpMatchRow, RunSummary, TimerStart, keeps,
 };
@@ -344,6 +345,21 @@ impl PullIndex {
             })
             .collect();
         Some((run.summary, rows))
+    }
+
+    /// The run each pull of one log belongs to.
+    pub fn run_links(&self, log_filename: &str, catalog: &AreaCatalog, meta: &LibraryMeta) -> Vec<RunLink> {
+        self.built_runs(catalog, meta)
+            .iter()
+            .flat_map(|run| {
+                run.rows.iter().filter(|r| r.filename == log_filename).map(|r| RunLink {
+                    encounter_id: r.encounter_id,
+                    filename: run.summary.filename.clone(),
+                    start_ms: run.summary.start_ms,
+                    is_flashpoint: run.summary.is_flashpoint,
+                })
+            })
+            .collect()
     }
 
     /// Runs across every log, with the user's tags and note attached. A run

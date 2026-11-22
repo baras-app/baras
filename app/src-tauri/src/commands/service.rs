@@ -383,6 +383,13 @@ pub async fn get_operation_runs(
 }
 
 #[tauri::command]
+pub async fn get_session_run_links(
+    handle: State<'_, ServiceHandle>,
+) -> Result<Vec<baras_types::history::RunLink>, String> {
+    Ok(handle.session_run_links().await)
+}
+
+#[tauri::command]
 pub async fn get_operation_run(
     filename: String,
     start_ms: i64,
