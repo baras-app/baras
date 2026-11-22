@@ -194,7 +194,9 @@ pub fn ParselyUploadModal(
                         disabled: is_uploading(),
                         value: "{req.notes}",
                         oninput: move |e| {
-                            manager.request.write().as_mut().unwrap().notes = e.value();
+                            if let Some(req) = manager.request.write().as_mut() {
+                                req.notes = e.value();
+                            }
                         }
                     }
 
@@ -210,7 +212,9 @@ pub fn ParselyUploadModal(
                                     checked: req.visibility == 1,
                                     disabled: is_uploading(),
                                     onchange: move |_| {
-                                        manager.request.write().as_mut().unwrap().visibility = 1;
+                                        if let Some(req) = manager.request.write().as_mut() {
+                                            req.visibility = 1;
+                                        }
                                     }
                                 }
                                 " Public"
@@ -223,7 +227,9 @@ pub fn ParselyUploadModal(
                                     checked: req.visibility == 2,
                                     disabled: is_uploading(),
                                     onchange: move |_| {
-                                        manager.request.write().as_mut().unwrap().visibility = 2;
+                                        if let Some(req) = manager.request.write().as_mut() {
+                                            req.visibility = 2;
+                                        }
                                     }
                                 }
                                 " Guild only"
@@ -236,7 +242,9 @@ pub fn ParselyUploadModal(
                                     checked: req.visibility == 0,
                                     disabled: is_uploading(),
                                     onchange: move |_| {
-                                        manager.request.write().as_mut().unwrap().visibility = 0;
+                                        if let Some(req) = manager.request.write().as_mut() {
+                                            req.visibility = 0;
+                                        }
                                     }
                                 }
                                 " Private"
@@ -256,7 +264,7 @@ pub fn ParselyUploadModal(
                                 onchange: move |e| {
                                     let val = e.value();
                                     let mut req = manager.request.write();
-                                    let req = req.as_mut().unwrap();
+                                    let Some(req) = req.as_mut() else { return };
                                     if val.is_empty() {
                                         // "None" sentinel — opt out of guild attribution.
                                         req.no_guild = true;
@@ -300,7 +308,9 @@ pub fn ParselyUploadModal(
                                         checked: req.guild_log,
                                         disabled: is_uploading() || !guild_log_enabled,
                                         onchange: move |e| {
-                                            manager.request.write().as_mut().unwrap().guild_log = e.checked();
+                                            if let Some(req) = manager.request.write().as_mut() {
+                                                req.guild_log = e.checked();
+                                            }
                                         }
                                     }
                                     " Tag all participants as guild members"
@@ -326,7 +336,7 @@ pub fn ParselyUploadModal(
                         class: "btn btn-primary",
                         disabled: is_uploading(),
                         onclick: move |_| {
-                            let upload_req = manager.request.read().clone().unwrap();
+                            let Some(upload_req) = manager.request.read().clone() else { return };
                             let visibility = upload_req.visibility;
                             let no_guild = upload_req.no_guild;
                             // guild_log only makes sense with a guild attribution.
