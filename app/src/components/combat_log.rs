@@ -734,6 +734,33 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     let show_ids_val = *show_ids.read();
     let absolute_time = *show_absolute_time.read();
     let highlighted_row_idx = *highlighted_row.read();
+    // Step to the next/previous Find match, wrapping, and centre it in the viewport
+    let mut find_step = move |forward: bool| {
+        let matches_vec = find_matches.read().clone();
+        if matches_vec.is_empty() {
+            return;
+        }
+        let current = *find_current_idx.read();
+        let idx = if forward {
+            (current + 1) % matches_vec.len()
+        } else {
+            current.checked_sub(1).unwrap_or(matches_vec.len() - 1)
+        };
+        let m = &matches_vec[idx];
+        find_current_idx.set(idx);
+        highlighted_row.set(Some(m.row_idx));
+
+        if let Some(window) = web_sys::window()
+            && let Some(doc) = window.document()
+            && let Some(elem) = doc.get_element_by_id("combat-log-scroll")
+            && let Some(html_elem) = elem.dyn_ref::<web_sys::HtmlElement>()
+        {
+            let container_h = html_elem.client_height() as f64;
+            let scroll_y = (m.pos as f64 * ROW_HEIGHT) - (container_h / 2.0) + (ROW_HEIGHT / 2.0);
+            elem.set_scroll_top(scroll_y.max(0.0) as i32);
+        }
+    };
+
     let find_match_count = find_matches.read().len();
     let active_sort_col = *log_sort_column.read();
     let active_sort_dir = *log_sort_direction.read();
@@ -961,75 +988,22 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                             placeholder: "Find...",
                             value: "{find_text}",
                             oninput: move |e| find_text.set(e.value()),
+                            onkeydown: move |e| if e.key() == Key::Enter { find_step(!e.modifiers().shift()) },
                         }
                         button {
                             class: "find-nav-btn",
                             r#type: "button",
                             disabled: find_match_count == 0,
-                            onclick: move |_| {
-                                // Clone data out of signals to avoid borrow issues
-                                let matches_vec = find_matches.read().clone();
-                                if matches_vec.is_empty() {
-                                    return;
-                                }
-                                let current = *find_current_idx.read();
-                                let prev = if current == 0 {
-                                    matches_vec.len().saturating_sub(1)
-                                } else {
-                                    current - 1
-                                };
-                                let m = &matches_vec[prev];
-
-                                // Now update state
-                                find_current_idx.set(prev);
-                                highlighted_row.set(Some(m.row_idx));
-
-                                // Scroll to center match in viewport
-                                if let Some(window) = web_sys::window()
-                                    && let Some(doc) = window.document()
-                                    && let Some(elem) = doc.get_element_by_id("combat-log-scroll")
-                                    && let Some(html_elem) = elem.dyn_ref::<web_sys::HtmlElement>()
-                                {
-                                    let container_h = html_elem.client_height() as f64;
-                                    let scroll_y = (m.pos as f64 * ROW_HEIGHT) - (container_h / 2.0) + (ROW_HEIGHT / 2.0);
-                                    elem.set_scroll_top(scroll_y.max(0.0) as i32);
-                                }
-                            },
+                            title: "Previous match (Shift+Enter)",
+                            onclick: move |_| find_step(false),
                             "▲"
                         }
                         button {
                             class: "find-nav-btn",
                             r#type: "button",
                             disabled: find_match_count == 0,
-                            onclick: move |_| {
-                                // Clone data out of signals to avoid borrow issues
-                                let matches_vec = find_matches.read().clone();
-                                if matches_vec.is_empty() {
-                                    return;
-                                }
-                                let current = *find_current_idx.read();
-                                let next = if current + 1 >= matches_vec.len() {
-                                    0
-                                } else {
-                                    current + 1
-                                };
-                                let m = &matches_vec[next];
-
-                                // Now update state
-                                find_current_idx.set(next);
-                                highlighted_row.set(Some(m.row_idx));
-
-                                // Scroll to center match in viewport
-                                if let Some(window) = web_sys::window()
-                                    && let Some(doc) = window.document()
-                                    && let Some(elem) = doc.get_element_by_id("combat-log-scroll")
-                                    && let Some(html_elem) = elem.dyn_ref::<web_sys::HtmlElement>()
-                                {
-                                    let container_h = html_elem.client_height() as f64;
-                                    let scroll_y = (m.pos as f64 * ROW_HEIGHT) - (container_h / 2.0) + (ROW_HEIGHT / 2.0);
-                                    elem.set_scroll_top(scroll_y.max(0.0) as i32);
-                                }
-                            },
+                            title: "Next match (Enter)",
+                            onclick: move |_| find_step(true),
                             "▼"
                         }
                         if find_match_count > 0 {
