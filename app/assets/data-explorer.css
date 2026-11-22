@@ -960,17 +960,8 @@
 .overview-columns-btn {
   margin-left: 0.6em;
   padding: 0.15em 0.35em;
-  background: none;
-  border: none;
-  border-radius: var(--radius-sm);
-  color: var(--text-muted);
   font-size: 11px;
   cursor: pointer;
-}
-
-.overview-columns-btn:hover {
-  color: var(--text-primary);
-  background: var(--blue-alpha-8);
 }
 
 .overview-columns-list {

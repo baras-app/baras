@@ -6433,14 +6433,24 @@ a.contributor-name:hover {
 .sidebar-section-header .section-run-link {
   flex-shrink: 0;
   margin-left: 0.4em;
-  padding: 0 0.2em;
-  border: none;
-  background: none;
-  color: var(--text-muted);
+  padding: 0.15em 0.35em;
   cursor: pointer;
 }
 
-.sidebar-section-header .section-run-link:hover {
+/* Icon-only buttons inside a header row: a resting outline and fill, so they
+   read as buttons before they are hovered */
+.sidebar-section-header .section-run-link,
+.overview-columns-btn {
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: rgba(var(--fg-rgb), 0.05);
+  color: var(--text-secondary);
+}
+
+.sidebar-section-header .section-run-link:hover,
+.overview-columns-btn:hover {
+  border-color: var(--swtor-blue-dim);
+  background: var(--blue-alpha-10);
   color: var(--text-primary);
 }
 
