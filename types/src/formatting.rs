@@ -71,7 +71,8 @@ pub fn format_compact_f64(n: f64, european: bool) -> String {
     } else if n_abs >= 1_000.0 {
         format!("{:.2}K", n / 1_000.0)
     } else {
-        format!("{:.0}", n)
+        // An empty sum is -0.0; adding 0.0 keeps that from printing as "-0"
+        format!("{:.0}", n.round() + 0.0)
     };
     maybe_eu(s, european)
 }

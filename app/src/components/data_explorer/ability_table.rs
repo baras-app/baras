@@ -21,6 +21,20 @@ pub(super) struct TableCols {
     pub is_outgoing_tab: bool,
 }
 
+impl TableCols {
+    /// Columns `table_head` lays out. The table has a fixed layout, so a cell
+    /// spanning more than this adds columns and squeezes the real ones.
+    pub(super) fn count(&self) -> usize {
+        let on = |b: bool| b as usize;
+        8 + on(self.show_ability_col)
+            + 4 * on(self.is_healing_tab)
+            + 2 * on(self.is_damage_tab)
+            + 4 * on(self.is_damage_taken)
+            + on(!self.is_damage_taken)
+            + on(self.is_outgoing_tab)
+    }
+}
+
 pub(super) fn ability_table(ctx: ExplorerCtx, tab: DataTab, european: bool) -> Element {
     repaint_with(ctx.abilities);
     let mode = *ctx.breakdown_mode.read();
