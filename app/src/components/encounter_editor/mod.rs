@@ -438,7 +438,7 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
 
                     div { class: "sidebar-encounter-list",
                         if loading_areas() {
-                            div { class: "sidebar-empty", "Loading..." }
+                            div { class: "sidebar-empty loading-late", "Loading..." }
                         } else {
                             for (name, group) in grouped_areas {
                                 if !group.is_empty() {

@@ -425,7 +425,7 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
 
                 // Effect list (flat)
                 if loading() {
-                    div { class: "empty-state", "Loading effects..." }
+                    div { class: "empty-state loading-late", "Loading effects..." }
                 } else if filtered_effects().is_empty() && draft_effect().is_none() {
                     if effects().is_empty() {
                         div { class: "empty-state-guidance",
