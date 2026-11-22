@@ -5,9 +5,10 @@
 use dioxus::prelude::*;
 
 use baras_types::formatting;
-use baras_types::history::PullRow;
+use baras_types::history::{PullFilter, PullRow};
 
 use crate::components::class_icons::{get_class_icon, get_role_icon};
+use crate::components::multi_select::toggle_value;
 
 #[derive(Clone, PartialEq)]
 pub(super) struct DisciplineStats {
@@ -56,14 +57,20 @@ pub(super) fn summarize(rows: &[PullRow]) -> Vec<DisciplineStats> {
 }
 
 #[component]
-pub(super) fn DisciplineTable(stats: Vec<DisciplineStats>, european: bool) -> Element {
+pub(super) fn DisciplineTable(stats: Vec<DisciplineStats>, mut filter: Signal<PullFilter>, european: bool) -> Element {
     let total: u32 = stats.iter().map(|d| d.pulls).sum();
     let fmt = move |n: Option<i64>| {
         n.map(|v| formatting::format_compact(v, european))
             .unwrap_or_else(|| "-".into())
     };
     rsx! {
-        div { class: "discipline-breakdown",
+        // Folded by default: the pull list below is what the page is for
+        details { class: "collapsible discipline-breakdown discipline-card",
+            summary { class: "collapsible-summary",
+                "Disciplines "
+                span { class: "section-count", "{stats.len()}" }
+            }
+            div { class: "discipline-breakdown-table",
             table { class: "pull-history-table",
                 thead {
                     tr {
@@ -78,7 +85,16 @@ pub(super) fn DisciplineTable(stats: Vec<DisciplineStats>, european: bool) -> El
                 }
                 tbody {
                     for d in stats.iter() {
-                        tr { key: "{d.discipline}",
+                        tr { key: "{d.discipline}", class: "run-row",
+                            title: "Show only this discipline; click again to clear",
+                            onclick: {
+                                let name = d.discipline.clone();
+                                move |_| {
+                                    // Own statement: the read must end before the write
+                                    let picked = toggle_value(&filter.read().disciplines, &name, true);
+                                    filter.write().disciplines = picked;
+                                }
+                            },
                             td {
                                 span { class: "pull-discipline",
                                     if let Some(icon) = d.role_icon.as_deref().and_then(get_role_icon) {
@@ -99,6 +115,7 @@ pub(super) fn DisciplineTable(stats: Vec<DisciplineStats>, european: bool) -> El
                         }
                     }
                 }
+            }
             }
         }
     }

@@ -345,11 +345,12 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                         }
                         div { class: "history-card", title: "Your highest DPS on a pull", div { class: "k", "Max DPS" } div { class: "v", {fmt_opt(max_dps)} } }
                     }
-                    // One discipline says nothing the cards above don't
-                    if by_discipline.len() > 1 {
-                        super::disciplines::DisciplineTable { stats: by_discipline, european: eu }
-                    }
                     PullCharts { pulls, pick, kills_only: filter.read().kills_only }
+                    // One discipline says nothing the cards above don't, unless
+                    // that is the filter this table set (a click clears it)
+                    if by_discipline.len() > 1 || !filter.read().disciplines.is_empty() {
+                        super::disciplines::DisciplineTable { stats: by_discipline, filter, european: eu }
+                    }
                     if let Some(p) = picked.as_ref() {
                         div { class: "history-pick",
                             i { class: "fa-solid fa-filter" }
