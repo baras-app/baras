@@ -124,12 +124,14 @@ fn table_head(
                     th {
                         class: "num col-wide {sort_class(SortColumn::Activations)}",
                         onclick: sort_click(SortColumn::Activations, false),
+                        title: "Times the ability was activated",
                         "Activations"
                     }
                 }
                 th {
                     class: "num {sort_class(SortColumn::Hits)}",
                     onclick: sort_click(SortColumn::Hits, false),
+                    title: "Hits and ticks landed",
                     "Hits"
                 }
                 th {
@@ -140,17 +142,20 @@ fn table_head(
                 th {
                     class: "num col-pct col-pct-bar {sort_class(SortColumn::Percent)}",
                     onclick: sort_click(SortColumn::Percent, false),
+                    title: "Share of the total",
                     "%"
                 }
                 if is_healing_tab {
                     th {
                         class: "num col-val col-eff col-wide {sort_class(SortColumn::Effective)}",
                         onclick: sort_click(SortColumn::Effective, false),
+                        title: "Healing that was not overheal",
                         "Effective"
                     }
                     th {
                         class: "num col-pct col-eff {sort_class(SortColumn::EffectivePct)}",
                         onclick: sort_click(SortColumn::EffectivePct, false),
+                        title: "Share of the healing that was effective",
                         "Eff%"
                     }
                 }
@@ -163,6 +168,7 @@ fn table_head(
                     th {
                         class: "num col-val col-eff {sort_class(SortColumn::Effective)}",
                         onclick: sort_click(SortColumn::Effective, false),
+                        title: "Effective healing per second",
                         "EHPS"
                     }
                 }
@@ -170,6 +176,7 @@ fn table_head(
                     th {
                         class: "num col-pct {sort_class(SortColumn::MissPct)}",
                         onclick: sort_click(SortColumn::MissPct, false),
+                        title: if is_damage_taken { "Share of attacks avoided: missed, dodged, parried or resisted" } else { "Share of attacks that did not land" },
                         if is_damage_taken { "Def%" } else { "Miss%" }
                     }
                 }
@@ -177,21 +184,25 @@ fn table_head(
                     th {
                         class: "num col-pct {sort_class(SortColumn::ShldPct)}",
                         onclick: sort_click(SortColumn::ShldPct, false),
+                        title: "Share of hits that were shielded",
                         "Shld%"
                     }
                     th {
                         class: "num col-val {sort_class(SortColumn::Absorbed)}",
                         onclick: sort_click(SortColumn::Absorbed, false),
+                        title: "Damage absorbed",
                         "Abs"
                     }
                     th {
                         class: "num col-dmg-type {sort_class(SortColumn::AttackType)}",
                         onclick: sort_click(SortColumn::AttackType, true),
+                        title: "Attack type",
                         "AT"
                     }
                     th {
                         class: "num col-dmg-type {sort_class(SortColumn::DamageType)}",
                         onclick: sort_click(SortColumn::DamageType, true),
+                        title: "Damage type",
                         "DT"
                     }
                 }
@@ -199,35 +210,41 @@ fn table_head(
                     th {
                         class: "num col-pct {sort_class(SortColumn::CritPct)}",
                         onclick: sort_click(SortColumn::CritPct, false),
+                        title: "Share of hits that were critical",
                         "Crit%"
                     }
                 }
                 th {
                     class: "num col-avg col-avg-first {sort_class(SortColumn::Avg)}",
                     onclick: sort_click(SortColumn::Avg, false),
+                    title: "Average per hit",
                     "Avg"
                 }
                 if is_damage_tab {
                     th {
                         class: "num col-avg {sort_class(SortColumn::AvgHit)}",
                         onclick: sort_click(SortColumn::AvgHit, false),
+                        title: "Average non-critical hit",
                         "Hit"
                     }
                 }
                 th {
                     class: "num col-avg {sort_class(SortColumn::AvgCrit)}",
                     onclick: sort_click(SortColumn::AvgCrit, false),
+                    title: "Average critical hit",
                     "Crit"
                 }
                 th {
                     class: "num col-avg {sort_class(SortColumn::MaxHit)}",
                     onclick: sort_click(SortColumn::MaxHit, false),
+                    title: "Largest single hit",
                     "Max"
                 }
                 if is_outgoing_tab {
                     th {
                         class: "num col-avg {sort_class(SortColumn::AvgPerActivation)}",
                         onclick: sort_click(SortColumn::AvgPerActivation, false),
+                        title: "Average total per activation",
                         "Avg/Act"
                     }
                 }
@@ -235,6 +252,7 @@ fn table_head(
                     th {
                         class: "num col-avg col-eff {sort_class(SortColumn::AvgPerActivationEff)}",
                         onclick: sort_click(SortColumn::AvgPerActivationEff, false),
+                        title: "Average effective healing per activation",
                         "Avg/Act (eff)"
                     }
                 }
