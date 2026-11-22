@@ -71,17 +71,22 @@ impl ToastManager {
             toasts.push(toast);
         }
 
-        // Auto-dismiss after timeout
-        let mut toasts_signal = self.toasts;
         let duration = match severity {
             ToastSeverity::Success => 5000,
             ToastSeverity::Normal => 5000,
             ToastSeverity::Critical => 7000,
         };
+        self.dismiss_after(id, duration);
+    }
 
-        spawn(async move {
-            TimeoutFuture::new(duration).await;
-            toasts_signal.write().retain(|t| t.id != id);
+    /// Auto-dismiss on a plain browser task rather than a Dioxus `spawn`: toasts
+    /// are also shown from Tauri event callbacks, outside the runtime, and the
+    /// timer must outlive whichever component asked for the toast.
+    fn dismiss_after(&self, id: u32, duration_ms: u32) {
+        let mut toasts = self.toasts;
+        wasm_bindgen_futures::spawn_local(async move {
+            TimeoutFuture::new(duration_ms).await;
+            let _ = toasts.try_write().map(|mut w| w.retain(|t| t.id != id));
         });
     }
 
@@ -115,11 +120,7 @@ impl ToastManager {
             toasts.push(toast);
         }
 
-        let mut toasts_signal = self.toasts;
-        spawn(async move {
-            TimeoutFuture::new(duration_ms).await;
-            toasts_signal.write().retain(|t| t.id != id);
-        });
+        self.dismiss_after(id, duration_ms);
     }
 
     /// Manually dismiss a toast by ID.
