@@ -458,11 +458,11 @@
   color: var(--text-muted);
   font-size: 1em;
   cursor: pointer;
-  transition: background 0.1s, color 0.1s, transform 0.1s;
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
 }
 
 .entity-caret i {
-  transition: transform 0.15s;
+  transition: transform var(--transition-normal);
 }
 
 .entity-caret.expanded i {
@@ -1903,7 +1903,7 @@
 
 /* Rows of the previous selection, held while the next ones load */
 .effect-table-wrapper {
-  transition: opacity 0.15s;
+  transition: opacity var(--transition-normal);
 }
 
 .effect-table-wrapper.stale {
@@ -1942,7 +1942,7 @@
 /* Plot of the previous selection, held dimmed while the next one loads
    (same timing as the effects table: quick loads never dim) */
 .chart-container > div:first-child {
-  transition: opacity 0.15s;
+  transition: opacity var(--transition-normal);
 }
 
 .chart-slot.stale .chart-container > div:first-child {
@@ -2472,7 +2472,7 @@
   white-space: nowrap;
   flex-shrink: 0;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition: background-color var(--transition-normal), border-color var(--transition-normal), color var(--transition-normal);
 }
 
 .log-clear-filters:hover {
@@ -2542,7 +2542,8 @@
   cursor: pointer;
   font-size: 11px;
   line-height: 1;
-  transition: all var(--transition-fast);
+  transition: var(--transition-fast);
+  transition-property: var(--transition-props);
 }
 
 .find-nav-btn:hover {
@@ -2887,7 +2888,7 @@
 
 .usage-table tbody tr {
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--transition-normal);
 }
 
 .usage-table tbody tr.selected {
@@ -2951,7 +2952,7 @@
 
 .usage-timeline-chart {
   width: 100%;
-  transition: height 0.2s ease;
+  transition: height var(--transition-normal);
 }
 
 /* Fullscreen toggle closing the tab bar */
