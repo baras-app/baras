@@ -131,7 +131,6 @@ pub fn SettingsPanel(
     active_profile: Signal<Option<String>>,
     overlays_enabled: Signal<std::collections::HashSet<String>>,
     overlays_visible: Signal<bool>,
-    profile_dirty: Signal<bool>,
     /// Which top tab shows; lifted so a control-panel gear can switch to Overlays
     mut section: Signal<SettingsSection>,
     on_settings_saved: EventHandler<()>,
@@ -220,11 +219,6 @@ pub fn SettingsPanel(
                     // behavioral flags) rather than the stale draft, so we don't overwrite
                     // global settings like hide_when_not_live or hide_during_conversations.
                     settings.set(config.overlay_settings.clone());
-                    // Save to the active profile so it stays in sync
-                    if let Some(ref profile_name) = active_profile() {
-                        let _ = api::save_profile(profile_name).await;
-                    }
-                    profile_dirty.set(false);
                     draft.set_status("Settings saved!".to_string());
                     on_settings_saved.call(());
                 }
@@ -249,7 +243,6 @@ pub fn SettingsPanel(
                 async move {
                     match api::reset_overlay_position(&key).await {
                         Ok(_) => {
-                            profile_dirty.set(api::is_profile_dirty().await);
                             toast.show(format!("{reset_label} position reset"), ToastSeverity::Success);
                         }
                         Err(err) => toast.show(format!("Failed to reset position: {err}"), ToastSeverity::Normal),
@@ -267,7 +260,6 @@ pub fn SettingsPanel(
                 settings,
                 profile_names,
                 active_profile,
-                profile_dirty,
                 overlays_enabled,
                 overlays_visible,
             }
@@ -340,13 +332,13 @@ pub fn SettingsPanel(
 
             div { class: "settings-footer",
                 button {
-                    class: if draft.has_changes() || profile_dirty() { "btn btn-save btn-unsaved" } else { "btn btn-save" },
-                    disabled: !draft.has_changes() && !profile_dirty(),
+                    class: if draft.has_changes() { "btn btn-save btn-unsaved" } else { "btn btn-save" },
+                    disabled: !draft.has_changes(),
                     onclick: move |_| save_to_backend(),
                     // Says where the changes go; the highlight is the unsaved marker
                     {
                         match active_profile() {
-                            Some(profile) if draft.has_changes() || profile_dirty() => format!("Save to '{profile}'"),
+                            Some(profile) if draft.has_changes() => format!("Save to '{profile}'"),
                             _ => "Save".to_string(),
                         }
                     }

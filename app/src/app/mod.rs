@@ -165,7 +165,6 @@ pub fn App() -> Element {
     // Profile state
     let mut profile_names = use_signal(Vec::<String>::new);
     let mut active_profile = use_signal(|| None::<String>);
-    let mut profile_dirty = use_signal(|| false);
 
     // Parsely settings
     let mut parsely_username = use_signal(String::new);
@@ -345,7 +344,6 @@ pub fn App() -> Element {
             let active = api::get_active_profile().await;
             let _ = profile_names.try_write().map(|mut w| *w = names);
             let _ = active_profile.try_write().map(|mut w| *w = active);
-            let _ = profile_dirty.try_write().map(|mut w| *w = false);
             // Refresh overlay settings to match the newly loaded profile
             if let Some(cfg) = api::get_config().await {
                 let _ = overlay_settings.try_write().map(|mut w| *w = cfg.overlay_settings);
@@ -486,14 +484,6 @@ pub fn App() -> Element {
                 let _ = rearrange_mode.try_write().map(|mut w| *w = status.rearrange_mode);
                 let _ = auto_hidden.try_write().map(|mut w| *w = status.auto_hidden);
             }
-        });
-    });
-
-    // Backend emits this only when locking persisted a position that actually changed
-    api::use_tauri_event("overlay-positions-changed", move |_event: JsValue| {
-        spawn_local(async move {
-            let dirty = api::is_profile_dirty().await;
-            let _ = profile_dirty.try_write().map(|mut w| *w = dirty);
         });
     });
 
@@ -873,7 +863,6 @@ pub fn App() -> Element {
                                                 if let Some(cfg) = api::get_config().await {
                                                     overlay_settings.set(cfg.overlay_settings);
                                                 }
-                                                profile_dirty.set(false);
                                                 if let Some(status) = api::get_overlay_status().await {
                                                     apply_status(status, &mut overlays_enabled, &mut overlays_visible, &mut move_mode, &mut rearrange_mode, &mut auto_hidden);
                                                 }
@@ -917,7 +906,7 @@ pub fn App() -> Element {
                                     i { class: "fa-solid fa-inbox dashboard-status-icon" }
                                     span { class: "dashboard-empty-text", "No active session" }
                                 }
-                                ProfileUnsavedHint { active_profile, profile_dirty }
+                                ProfileUnsavedHint { active_profile }
                                 SessionStatusChip { live_tailing, watching, prior: false, on_restart: restart_watcher, on_resume: resume_live }
                             }
                             }
@@ -933,7 +922,7 @@ pub fn App() -> Element {
                                     } else {
                                         span { class: "dashboard-empty-text", "Incomplete log file — boss encounters and timers unavailable" }
                                     }
-                                    ProfileUnsavedHint { active_profile, profile_dirty }
+                                    ProfileUnsavedHint { active_profile }
                                     SessionStatusChip { live_tailing, watching, prior: false, on_restart: restart_watcher, on_resume: resume_live }
                                 }
                             }
@@ -1026,7 +1015,7 @@ pub fn App() -> Element {
                                             }
                                         }
 
-                                        ProfileUnsavedHint { active_profile, profile_dirty }
+                                        ProfileUnsavedHint { active_profile }
 
                                         // Session facts on the right: who, how long, then live / prior
                                         span { class: "dashboard-identity",
@@ -1181,7 +1170,6 @@ pub fn App() -> Element {
                                                             if api::toggle_overlay(kind, on).await {
                                                                 set_overlay_enabled(&mut overlays_enabled, key, !on);
                                                                 if on && key == "raid" { rearrange_mode.set(false); }
-                                                                profile_dirty.set(api::is_profile_dirty().await);
                                                             }
                                                         }); },
                                                         on_settings: open_overlay_settings,
@@ -1214,7 +1202,6 @@ pub fn App() -> Element {
                                                     on_toggle: move |_| { spawn(async move {
                                                         if api::toggle_overlay(OverlayType::Metric(ot), on).await {
                                                             set_overlay_enabled(&mut overlays_enabled, ot.config_key(), !on);
-                                                            profile_dirty.set(api::is_profile_dirty().await);
                                                         }
                                                     }); },
                                                     on_settings: open_overlay_settings,
@@ -1240,7 +1227,6 @@ pub fn App() -> Element {
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::EnemyFrames, enemy_frames_on).await {
                                                 set_overlay_enabled(&mut overlays_enabled, "enemy_frames", !enemy_frames_on);
-                                                profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
                                         on_settings: open_overlay_settings,
@@ -1261,7 +1247,6 @@ pub fn App() -> Element {
                                                     on_toggle: move |_| { spawn(async move {
                                                         if api::toggle_overlay(OverlayType::Metric(ot), on).await {
                                                             set_overlay_enabled(&mut overlays_enabled, ot.config_key(), !on);
-                                                            profile_dirty.set(api::is_profile_dirty().await);
                                                         }
                                                     }); },
                                                     on_settings: open_overlay_settings,
@@ -1926,7 +1911,6 @@ pub fn App() -> Element {
                     active_profile: active_profile,
                     overlays_enabled,
                     overlays_visible: overlays_visible,
-                    profile_dirty: profile_dirty,
                     section: settings_section,
                     on_settings_saved: move |_| {},
                 }

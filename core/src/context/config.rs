@@ -60,7 +60,6 @@ pub trait AppConfigExt {
     fn save(self) -> Result<(), ConfigError>;
     fn save_profile(&mut self, name: String) -> Result<(), &'static str>;
     fn load_profile(&mut self, name: &str) -> Result<(), &'static str>;
-    fn is_profile_dirty(&self) -> bool;
     /// Point the active profile at an existing one (the first) when it names none
     fn ensure_active_profile(&mut self);
     /// Write the live overlay settings into the active profile: toggles and
@@ -169,23 +168,6 @@ impl AppConfigExt for AppConfig {
 
         self.active_profile_name = Some(name.to_string());
         Ok(())
-    }
-
-    /// Whether current overlay settings differ from the active profile's saved snapshot.
-    /// Compared via serde values so the nested settings tree needs no `PartialEq`.
-    fn is_profile_dirty(&self) -> bool {
-        let Some(name) = self.active_profile_name.as_deref() else {
-            return false;
-        };
-        let Some(profile) = self.profiles.iter().find(|p| p.name == name) else {
-            return false;
-        };
-        let current = serde_json::to_value(profile_snapshot(&self.overlay_settings));
-        let saved = serde_json::to_value(&profile.settings);
-        match (current, saved) {
-            (Ok(current), Ok(saved)) => current != saved,
-            _ => true,
-        }
     }
 
     fn ensure_active_profile(&mut self) {
