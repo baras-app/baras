@@ -403,7 +403,7 @@ pub fn App() -> Element {
                     "Global hotkeys unavailable: {}. Configure shortcuts in compositor settings.",
                     msg
                 ),
-                ToastSeverity::Normal,
+                ToastSeverity::Info,
             );
         }
     });
@@ -450,7 +450,7 @@ pub fn App() -> Element {
     // Listen for auto-hidden toast events (from hotkey/tray show while auto-hidden)
     let mut auto_hidden_toast = use_toast();
     api::use_tauri_event("overlays-auto-hidden-toast", move |_event: JsValue| {
-        auto_hidden_toast.show("Overlays are currently auto-hidden", ToastSeverity::Normal);
+        auto_hidden_toast.show("Overlays are currently auto-hidden", ToastSeverity::Info);
     });
 
     // Check for changelog on startup
@@ -726,7 +726,7 @@ pub fn App() -> Element {
                                                 overlays_visible.set(!is_visible);
                                                 if is_visible { move_mode.set(false); }
                                                 if !is_visible && auto_hidden() {
-                                                    toast.show("Overlays are currently auto-hidden".to_string(), ToastSeverity::Normal);
+                                                    toast.show("Overlays are currently auto-hidden".to_string(), ToastSeverity::Info);
                                                 }
                                             }
                                         });
@@ -1020,7 +1020,7 @@ pub fn App() -> Element {
                                             overlays_visible.set(!is_visible);
                                             if is_visible { move_mode.set(false); }
                                             if !is_visible && auto_hidden() {
-                                                toast.show("Overlays are currently auto-hidden".to_string(), ToastSeverity::Normal);
+                                                toast.show("Overlays are currently auto-hidden".to_string(), ToastSeverity::Info);
                                             }
                                         }
                                     });

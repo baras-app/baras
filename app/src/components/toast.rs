@@ -13,9 +13,11 @@ use crate::api;
 pub enum ToastSeverity {
     /// Success messages - 5 second duration
     Success,
-    /// Normal warnings/errors - 5 second duration
+    /// Notices that need no action - 5 second duration
+    Info,
+    /// Warnings/errors - stay until dismissed
     Normal,
-    /// Critical errors - 7 second duration
+    /// Critical errors - stay until dismissed
     Critical,
 }
 
@@ -49,8 +51,9 @@ impl ToastManager {
 
     /// Show a toast notification.
     ///
-    /// Toast will auto-dismiss after 5 seconds (Normal) or 7 seconds (Critical).
-    /// Maximum 5 toasts are shown at once - oldest is removed if exceeded.
+    /// Success and Info auto-dismiss after 5 seconds; a failure stays until
+    /// closed so it can't be missed. Maximum 5 toasts are shown at once -
+    /// oldest is removed if exceeded.
     pub fn show(&mut self, message: impl Into<String>, severity: ToastSeverity) {
         let id = *self.next_id.peek();
         *self.next_id.write() += 1;
@@ -71,12 +74,9 @@ impl ToastManager {
             toasts.push(toast);
         }
 
-        let duration = match severity {
-            ToastSeverity::Success => 5000,
-            ToastSeverity::Normal => 5000,
-            ToastSeverity::Critical => 7000,
-        };
-        self.dismiss_after(id, duration);
+        if matches!(severity, ToastSeverity::Success | ToastSeverity::Info) {
+            self.dismiss_after(id, 5000);
+        }
     }
 
     /// Auto-dismiss on a plain browser task rather than a Dioxus `spawn`: toasts
@@ -90,10 +90,6 @@ impl ToastManager {
         });
     }
 
-    /// Show a persistent toast notification.
-    ///
-    /// Toast will NOT auto-dismiss - user must click the X button to close it.
-    /// Maximum 5 toasts are shown at once - oldest is removed if exceeded.
     /// Show a toast with a clickable link that auto-dismisses after `duration_ms`.
     pub fn show_with_link(
         &mut self,
@@ -164,12 +160,14 @@ pub fn ToastFrame() -> Element {
                     key: "{toast.id}",
                     class: match toast.severity {
                         ToastSeverity::Success => "toast toast-success",
+                        ToastSeverity::Info => "toast toast-info",
                         ToastSeverity::Normal => "toast",
                         ToastSeverity::Critical => "toast toast-critical",
                     },
                     span { class: "toast-icon",
                         match toast.severity {
                             ToastSeverity::Success => rsx! { i { class: "fa-solid fa-circle-check" } },
+                            ToastSeverity::Info => rsx! { i { class: "fa-solid fa-circle-info" } },
                             _ => rsx! { i { class: "fa-solid fa-triangle-exclamation" } },
                         }
                     }

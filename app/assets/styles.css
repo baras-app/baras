@@ -7146,6 +7146,10 @@ a.contributor-name:hover {
   );
 }
 
+.toast-info {
+  border-color: var(--text-muted);
+}
+
 .toast-critical {
   border-color: var(--color-error, #ef5350);
   background: linear-gradient(
@@ -7162,6 +7166,10 @@ a.contributor-name:hover {
 
 .toast-success .toast-icon {
   color: var(--color-success, #5fd98e);
+}
+
+.toast-info .toast-icon {
+  color: var(--text-muted);
 }
 
 .toast-critical .toast-icon {

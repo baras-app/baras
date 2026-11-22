@@ -206,13 +206,13 @@ pub fn PreviewButton(request: OverlayPreviewRequest) -> Element {
                 let request = request.clone();
                 spawn(async move {
                     if request.targets.is_empty() && request.audio.is_none() {
-                        toast.show("Nothing to preview: no supported overlay selected", ToastSeverity::Normal);
+                        toast.show("Nothing to preview: no supported overlay selected", ToastSeverity::Info);
                         return;
                     }
                     match api::preview_overlay_entry(&request).await {
                         Ok(missing) if !missing.is_empty() => toast.show(
                             format!("Overlay not enabled: {}", missing.join(", ")),
-                            ToastSeverity::Normal,
+                            ToastSeverity::Info,
                         ),
                         Ok(_) => {}
                         Err(e) => toast.show(e, ToastSeverity::Normal),
