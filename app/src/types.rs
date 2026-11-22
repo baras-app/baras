@@ -131,7 +131,8 @@ pub struct AreaVisitInfo {
     pub area_name: String,
     /// Difficulty string (may be empty)
     pub difficulty: String,
-    /// Badge tier from the difficulty ID ("fp"/"nim"/"hm"/"sm"), language-independent
+    /// Badge tier from the area and difficulty IDs
+    /// ("arena"/"warzone"/"fp"/"nim"/"hm"/"sm"), language-independent
     #[serde(default)]
     pub difficulty_tier: Option<String>,
 }
@@ -153,6 +154,8 @@ pub struct LogFileInfo {
     /// Saved Parsely link from a previous upload
     #[serde(default)]
     pub parsely: Option<String>,
+    #[serde(default)]
+    pub link: baras_types::history::LogLink,
 }
 
 /// Update availability info from backend

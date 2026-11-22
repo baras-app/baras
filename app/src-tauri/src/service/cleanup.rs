@@ -7,10 +7,10 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use baras_core::context::{DirectoryIndex, LogAreaCache};
-use baras_core::history::PullIndex;
+use baras_core::history::{AreaCatalog, PullIndex};
 use baras_core::library::{LibraryMut, LibraryView};
 use baras_types::history::{ArchiveReport, CleanupEvent, CleanupPlan, CleanupReport};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::state::MutexExt;
 use crate::state::SharedState;
@@ -40,6 +40,22 @@ pub fn pull_index<'a>(shared: &'a SharedState, log_dir: &Path) -> std::sync::Mut
     index
 }
 
+/// Definitions are read once per app run; an edited encounter file shows
+/// up after a restart.
+pub fn area_catalog(shared: &SharedState, app: &AppHandle) -> Arc<AreaCatalog> {
+    shared
+        .area_catalog
+        .get_or_init(|| {
+            let bundled = app
+                .path()
+                .resolve("definitions/encounters", tauri::path::BaseDirectory::Resource)
+                .ok();
+            let user = baras_core::paths::config_dir().map(|p| p.join("definitions").join("encounters"));
+            Arc::new(AreaCatalog::load(bundled.as_deref(), user.as_deref()))
+        })
+        .clone()
+}
+
 /// The log being tailed, if any.
 pub async fn live_path(shared: &SharedState) -> Option<PathBuf> {
     let guard = shared.session.read().await;
@@ -48,7 +64,8 @@ pub async fn live_path(shared: &SharedState) -> Option<PathBuf> {
 }
 
 /// Dry run under the saved rules. Nothing is touched.
-pub async fn plan(shared: &Arc<SharedState>, live: Option<&Path>) -> CleanupPlan {
+pub async fn plan(shared: &Arc<SharedState>, app: &AppHandle, live: Option<&Path>) -> CleanupPlan {
+    let catalog = area_catalog(shared, app);
     let (rules, log_dir) = {
         let config = shared.config.read().await;
         (config.log_cleanup.clone(), PathBuf::from(&config.log_directory))
@@ -73,6 +90,7 @@ pub async fn plan(shared: &Arc<SharedState>, live: Option<&Path>) -> CleanupPlan
             archived: &archived,
             pulls: &pulls,
             meta: &meta,
+            catalog: &catalog,
             live,
         };
         baras_core::library::plan(&view, &rules, chrono::Local::now().date_naive())
@@ -85,7 +103,7 @@ pub const CLEANUP_EVENT: &str = "log-cleanup";
 /// on the `log-cleanup` event.
 pub async fn run(shared: &Arc<SharedState>, app: &AppHandle) -> CleanupReport {
     let live = live_path(shared).await;
-    let plan = plan(shared, live.as_deref()).await;
+    let plan = plan(shared, app, live.as_deref()).await;
     if plan.is_empty() {
         return CleanupReport::default();
     }

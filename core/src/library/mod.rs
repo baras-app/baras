@@ -16,9 +16,7 @@ use std::path::{Path, PathBuf};
 
 use chrono::NaiveDate;
 
-use baras_types::history::{
-    CleanupCandidate, CleanupPlan, ContentTag, DeleteReport, InstanceVisit, LogCleanup, PullRow,
-};
+use baras_types::history::{CleanupCandidate, CleanupPlan, ContentTag, DeleteReport, LogCleanup, PullRow};
 
 pub use archive::{
     ArchivedLog, Compressed, archive_dir, archived_log, archived_logs, commit, compress_log, restore, sweep_partial,
@@ -26,15 +24,36 @@ pub use archive::{
 
 use crate::context::{DirectoryIndex, FileAreaEntry, FileAreaIndex, LogAreaCache, parse_log_filename};
 use crate::game_data::{Difficulty, is_pvp_area};
-use crate::history::{DUMMY_GROUP, LibraryMeta, PullIndex, history_file_for};
+use crate::history::{AreaCatalog, DUMMY_GROUP, LibraryMeta, LogFacts, PullIndex, history_file_for};
 use crate::storage::data_dir;
 
-/// The areas a log covers: those its `AreaEntered` lines name, plus any its
-/// history recorded a visit to. A log resumed after a disconnect has no such
-/// line for the instance it continues in, only the recovered visit.
-pub fn log_areas(scanned: Option<&FileAreaIndex>, visits: &[InstanceVisit]) -> Vec<FileAreaEntry> {
-    let mut areas: Vec<FileAreaEntry> = scanned.map(|a| a.areas.clone()).unwrap_or_default();
-    for v in visits {
+/// The areas a log covers, None when nothing has looked at it yet. The
+/// history's own list (from the full parse) wins; the `LogAreaCache` scan
+/// only stands in for logs whose history predates it or does not exist.
+/// Either way only defined areas and PvP maps count, and any visit the
+/// history recorded is included: a log resumed after a disconnect has no
+/// `AreaEntered` line for the area it continues in, only the recovered visit.
+pub fn log_areas(
+    scanned: Option<&FileAreaIndex>,
+    facts: Option<LogFacts<'_>>,
+    catalog: &AreaCatalog,
+) -> Option<Vec<FileAreaEntry>> {
+    let recorded = facts.map(|f| f.areas).filter(|a| !a.is_empty());
+    let mut areas: Vec<FileAreaEntry> = match (recorded, scanned) {
+        (Some(recorded), _) => recorded
+            .iter()
+            .filter(|a| catalog.area(a.area_id).is_some() || is_pvp_area(a.area_id))
+            .map(|a| FileAreaEntry {
+                area_id: a.area_id,
+                area_name: a.area_name.clone(),
+                difficulty_id: a.difficulty_id,
+                difficulty_name: a.difficulty.clone(),
+            })
+            .collect(),
+        (None, Some(scanned)) => scanned.areas.clone(),
+        (None, None) => return None,
+    };
+    for v in facts.map_or(&[][..], |f| f.visits) {
         if !areas
             .iter()
             .any(|a| a.area_id == v.area_id && a.difficulty_id == v.difficulty_id)
@@ -47,7 +66,7 @@ pub fn log_areas(scanned: Option<&FileAreaIndex>, visits: &[InstanceVisit]) -> V
             });
         }
     }
-    areas
+    Some(areas)
 }
 
 /// What a log holds, from the areas it covers (see `log_areas`) plus its
@@ -96,6 +115,7 @@ pub struct LibraryView<'a> {
     pub archived: &'a [ArchivedLog],
     pub pulls: &'a PullIndex,
     pub meta: &'a LibraryMeta,
+    pub catalog: &'a AreaCatalog,
     /// The log being tailed, never a candidate
     pub live: Option<&'a Path>,
 }
@@ -128,9 +148,8 @@ fn archive_due(rules: &LogCleanup, age_days: i64) -> bool {
 
 /// Retention only shields a log from deletion: a retained log that is due
 /// for deletion is archived instead when the archive rule covers it, and
-/// kept raw otherwise. A non-empty log that has not been area-indexed yet is
-/// unknown, so it is left alone until it has been (an archive can no longer
-/// be indexed). Returns None when the log is kept.
+/// kept raw otherwise. A non-empty log whose areas are not known yet (no
+/// history, no area scan) is left alone until they are. Returns None when the log is kept.
 fn retained_action(
     action: Action,
     tags: &[ContentTag],
@@ -166,18 +185,10 @@ pub fn plan(view: &LibraryView<'_>, rules: &LogCleanup, today: NaiveDate) -> Cle
             out.skipped_favorites += 1;
             return;
         }
-        let area_index = view.areas.get(path);
-        let areas = log_areas(area_index, view.pulls.visits_for(filename));
-        let content = content_tags(&areas, view.pulls.rows_for(filename));
-        let Some(action) = retained_action(
-            action,
-            &content,
-            area_index.is_some(),
-            size,
-            rules,
-            age,
-            &view.meta.retain,
-        ) else {
+        let areas = log_areas(view.areas.get(path), view.pulls.facts_for(filename), view.catalog);
+        let content = content_tags(areas.as_deref().unwrap_or_default(), view.pulls.rows_for(filename));
+        let Some(action) = retained_action(action, &content, areas.is_some(), size, rules, age, &view.meta.retain)
+        else {
             out.kept += 1;
             return;
         };

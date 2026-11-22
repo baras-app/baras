@@ -226,4 +226,56 @@ pub struct LibraryRow {
     pub parsely: Option<String>,
     /// Pulls with their own Parsely link
     pub parsely_fights: u32,
+    #[serde(default)]
+    pub link: LogLink,
+}
+
+/// A log's place in a session split by a crash or disconnect.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct LogLink {
+    /// Started mid-session, without the game's entry lines
+    #[serde(default)]
+    pub mid_start: bool,
+    /// Filename of the earlier log this one picked up from
+    #[serde(default)]
+    pub resumed_from: Option<String>,
+    /// Filename of the later log that picked up from this one
+    #[serde(default)]
+    pub continued_in: Option<String>,
+}
+
+impl LogLink {
+    /// `(label, tooltip)` of each tag a log row shows: one for how it
+    /// started, one for how it ended.
+    pub fn tags(&self) -> Vec<(&'static str, String)> {
+        let mut tags = Vec::new();
+        if let Some(from) = &self.resumed_from {
+            tags.push((
+                "← D/C",
+                format!("Resumed after a crash or disconnect: continues the log from {}", log_time(from)),
+            ));
+        } else if self.mid_start {
+            tags.push((
+                "D/C",
+                "Started mid-session after a crash or disconnect; the earlier area and character could not be recovered"
+                    .to_owned(),
+            ));
+        }
+        if let Some(next) = &self.continued_in {
+            tags.push((
+                "D/C →",
+                format!("Cut off by a crash or disconnect: continued in the log from {}", log_time(next)),
+            ));
+        }
+        tags
+    }
+}
+
+/// `combat_2026-11-16_02_12_42_771128.txt` -> `2026-11-16 02:12`
+fn log_time(filename: &str) -> String {
+    let stamp = filename.strip_prefix("combat_").unwrap_or(filename);
+    match (stamp.get(..10), stamp.get(11..13), stamp.get(14..16)) {
+        (Some(date), Some(h), Some(m)) => format!("{date} {h}:{m}"),
+        _ => filename.to_owned(),
+    }
 }

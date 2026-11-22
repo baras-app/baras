@@ -3149,6 +3149,30 @@ details[open] .collapsible-summary::before {
   font-size: 0.9em;
 }
 
+.file-browser-search-wrap {
+  position: relative;
+}
+
+.file-browser-search-wrap .file-browser-search {
+  padding-right: 2em;
+}
+
+.file-browser-search-clear {
+  position: absolute;
+  top: 50%;
+  right: 0.4em;
+  transform: translateY(-50%);
+  padding: 0.1em 0.35em;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.file-browser-search-clear:hover {
+  color: var(--text-primary);
+}
+
 .file-browser-search:focus {
   outline: none;
   border-color: var(--swtor-blue-dim);
@@ -3261,6 +3285,16 @@ details[open] .collapsible-summary::before {
 
 .file-item .file-size {
   color: var(--text-muted);
+}
+
+.file-item .file-dc {
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid rgba(220, 160, 40, 0.35);
+  border-radius: 3px;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--text-gold);
 }
 
 .file-item .btn-open {
@@ -3410,6 +3444,12 @@ details[open] .collapsible-summary::before {
 .file-areas .area-tag.diff-sm:hover {
   background: rgba(60, 180, 120, 0.3);
   color: var(--color-success);
+}
+
+.file-areas .area-tag.diff-pvp {
+  background: rgba(74, 158, 255, 0.12);
+  border-color: rgba(74, 158, 255, 0.45);
+  color: var(--swtor-blue-bright);
 }
 
 .file-areas .area-tag.diff-fp {

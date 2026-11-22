@@ -644,10 +644,8 @@ impl EventProcessor {
         if event.effect.difficulty_id != 0 && crate::game_data::is_flashpoint(event.effect.effect_id) {
             cache.record_timer_start(event.timestamp);
         }
-        // The game logs entry twice; only the line carrying the difficulty opens a visit
-        if event.effect.difficulty_id != 0 {
-            cache.begin_visit(event.timestamp);
-        }
+        // The game logs an instance's entry twice; only the line carrying the difficulty opens a visit
+        cache.enter_area(event.timestamp, event.effect.difficulty_id != 0);
 
         // Also update the current encounter's area/difficulty
         // BUT only if the encounter hasn't started combat yet.

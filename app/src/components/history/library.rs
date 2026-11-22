@@ -507,6 +507,9 @@ pub fn LibraryTab(
                                             for t in row.content.iter() {
                                                 span { class: "lib-tag {tag_class(*t)}", {t.label()} }
                                             }
+                                            for (label, tip) in row.link.tags() {
+                                                span { class: "lib-tag dc", title: "{tip}", "{label}" }
+                                            }
                                             if !row.areas.is_empty() {
                                                 span { class: "library-area-names", "{area_names}" }
                                             }

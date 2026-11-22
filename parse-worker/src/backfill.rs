@@ -117,6 +117,8 @@ pub fn run(log_dir: &Path, definitions_dir: Option<&Path>, stale_only: bool) -> 
             &parsed.encounters,
             &parsed.timer_starts,
             &parsed.visits,
+            parsed.continuity.clone(),
+            &parsed.areas_seen,
         );
         if let Some(tmp) = &extracted {
             let _ = std::fs::remove_file(tmp);

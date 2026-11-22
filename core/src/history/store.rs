@@ -12,7 +12,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
-use baras_types::history::{InstanceVisit, TimerStart};
+use baras_types::history::{AreaSeen, InstanceVisit, LogContinuity, TimerStart};
 
 use super::record::PullRecord;
 use super::{history_dir, is_recordable};
@@ -22,7 +22,7 @@ use crate::state::ipc::WorkerPlayerDiscipline;
 
 /// Bump whenever `PullRecord` gains a field that old files cannot default
 /// sensibly. Files below this version are "stale" and need a re-scan.
-pub const HISTORY_VERSION: u32 = 6;
+pub const HISTORY_VERSION: u32 = 7;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogHistory {
@@ -53,6 +53,11 @@ pub struct LogHistory {
     /// Instanced-area stays in this log (see `InstanceVisit`)
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub visits: Vec<InstanceVisit>,
+    #[serde(default)]
+    pub continuity: LogContinuity,
+    /// Every distinct area + difficulty the log entered, in order
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub areas: Vec<AreaSeen>,
 }
 
 /// Just enough of a history file to decide whether it needs a re-scan,
@@ -138,6 +143,8 @@ impl LogHistory {
         summaries: &[EncounterSummary],
         timer_starts: &[TimerStart],
         visits: &[InstanceVisit],
+        continuity: LogContinuity,
+        areas: &[AreaSeen],
     ) -> Option<Self> {
         let filename = path.file_name()?.to_str()?;
         let (source_len, source_mtime) = std::fs::metadata(path)
@@ -159,6 +166,8 @@ impl LogHistory {
                 .collect(),
             timer_starts: timer_starts.to_vec(),
             visits: visits.to_vec(),
+            continuity,
+            areas: areas.to_vec(),
         })
     }
 
@@ -195,6 +204,8 @@ impl LogHistory {
                 pulls,
                 timer_starts: Vec::new(),
                 visits: Vec::new(),
+                continuity: LogContinuity::default(),
+                areas: Vec::new(),
             },
             legacy_parsely,
         })
