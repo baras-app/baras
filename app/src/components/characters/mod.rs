@@ -127,7 +127,7 @@ pub fn CharactersPanel() -> Element {
                 Ok(true) => {
                     toast.show(
                         format!("Removed {}. Tick “Hidden” to bring it back.", row.name),
-                        ToastSeverity::Normal,
+                        ToastSeverity::Success,
                     );
                     roster.restart();
                 }
