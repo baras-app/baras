@@ -20,6 +20,7 @@ pub fn ProfilesSection(
     let mut profile_status = use_signal(String::new);
     let mut renaming_profile: Signal<Option<String>> = use_signal(|| None);
     let mut rename_input = use_signal(String::new);
+    let mut deleting_profile: Signal<Option<String>> = use_signal(|| None);
     let mut toast = use_toast();
 
     let mut role_defaults: Signal<HashMap<String, String>> = use_signal(HashMap::new);
@@ -143,26 +144,44 @@ pub fn ProfilesSection(
                                                 },
                                                 i { class: "fa-solid fa-pen" }
                                             }
-                                            // Delete button
-                                            button {
-                                                class: "btn btn-small btn-delete",
-                                                title: "Delete profile",
-                                                onclick: {
-                                                    let pname = profile_name.clone();
-                                                    move |_| {
-                                                        let pname = pname.clone();
-                                                        spawn(async move {
-                                                            if let Err(err) = api::delete_profile(&pname).await {
-                                                                toast.show(format!("Failed to delete profile: {}", err), ToastSeverity::Normal);
-                                                            } else {
-                                                                profile_names.set(api::get_profile_names().await);
-                                                                active_profile.set(api::get_active_profile().await);
-                                                                profile_status.set(format!("Deleted '{}'", pname));
-                                                            }
-                                                        });
-                                                    }
-                                                },
-                                                i { class: "fa-solid fa-trash" }
+                                            // Delete button, confirmed inline
+                                            if deleting_profile().as_ref() == Some(&profile_name) {
+                                                "Delete?"
+                                                button {
+                                                    class: "btn btn-small btn-delete",
+                                                    onclick: {
+                                                        let pname = profile_name.clone();
+                                                        move |_| {
+                                                            let pname = pname.clone();
+                                                            deleting_profile.set(None);
+                                                            spawn(async move {
+                                                                if let Err(err) = api::delete_profile(&pname).await {
+                                                                    toast.show(format!("Failed to delete profile: {}", err), ToastSeverity::Normal);
+                                                                } else {
+                                                                    profile_names.set(api::get_profile_names().await);
+                                                                    active_profile.set(api::get_active_profile().await);
+                                                                    profile_status.set(format!("Deleted '{}'", pname));
+                                                                }
+                                                            });
+                                                        }
+                                                    },
+                                                    "Yes"
+                                                }
+                                                button {
+                                                    class: "btn btn-small",
+                                                    onclick: move |_| deleting_profile.set(None),
+                                                    "No"
+                                                }
+                                            } else {
+                                                button {
+                                                    class: "btn btn-small btn-delete",
+                                                    title: "Delete profile",
+                                                    onclick: {
+                                                        let pname = profile_name.clone();
+                                                        move |_| deleting_profile.set(Some(pname.clone()))
+                                                    },
+                                                    i { class: "fa-solid fa-trash" }
+                                                }
                                             }
                                         }
                                     }
