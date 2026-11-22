@@ -178,6 +178,11 @@ pub struct AppConfig {
     #[serde(default)]
     pub european_number_format: bool,
 
+    /// Show Parsely percentiles on boss kills in the Data Explorer (fetches
+    /// the boss's rating table from parsely.io, at most once a day).
+    #[serde(default = "default_true")]
+    pub parsely_percentiles: bool,
+
     /// Use the light color theme in the main app window (overlays are unaffected).
     #[serde(default)]
     pub light_theme: bool,
@@ -261,6 +266,7 @@ impl AppConfig {
             latency_ms: 0,
             last_viewed_changelog_version: None,
             european_number_format: false,
+            parsely_percentiles: true,
             light_theme: false,
             raid_summaries_include_flashpoints: false,
             lockout_tiers: [true; 3],

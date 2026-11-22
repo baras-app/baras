@@ -149,6 +149,8 @@ pub struct SharedState {
     pub pull_index: Mutex<PullIndex>,
     /// User-owned log/pull metadata (favorites, tags, notes, Parsely links)
     pub library_meta: Mutex<LibraryMeta>,
+    /// Parsely percentile tables, fetched per boss at most once a UTC day
+    pub parsely_ratings: crate::service::parsely_ratings::RatingsCache,
     /// User-owned character data (crew skills, guild, notes, manual lockouts)
     pub character_store: Mutex<CharacterStore>,
     /// Boss order, final bosses and timed-run rules per area, built on first use
@@ -234,6 +236,7 @@ impl SharedState {
             raid_registry: Mutex::new(RaidSlotRegistry::new(raid_slots)),
             pull_index: Mutex::new(PullIndex::default()),
             library_meta: Mutex::new(LibraryMeta::load()),
+            parsely_ratings: Default::default(),
             character_store: Mutex::new(CharacterStore::load()),
             area_catalog: std::sync::OnceLock::new(),
             history_backfill_running: AtomicBool::new(false),

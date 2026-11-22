@@ -144,6 +144,16 @@ impl Difficulty {
         }
     }
 
+    /// Percentile table path on Parsely for a boss slug: `{slug}/{mode}/{size}`
+    pub fn parsely_rating_path(&self, slug: &str) -> String {
+        let mode = match self.config_key() {
+            "story" => "sm",
+            "veteran" => "hm",
+            _ => "mm",
+        };
+        format!("{slug}/{mode}/{}", self.group_size())
+    }
+
     /// Config key for TOML serialization (e.g., "veteran", "master", "story")
     pub fn config_key(&self) -> &'static str {
         match self {

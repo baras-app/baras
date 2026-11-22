@@ -108,6 +108,10 @@ pub struct EncounterSummary {
     /// Link to the uploaded encounter on Parsely (set after successful upload)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parsely_link: Option<String>,
+    /// Percentile table path on Parsely, `{boss}/{mode}/{size}`; None when the
+    /// boss or difficulty isn't rated
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parsely_rating: Option<String>,
 
     // ─── Pull Progress (History tab) ─────────────────────────────────────────
     /// Boss HP / phase progress; None for PvP, dummies and unknown bosses
@@ -463,6 +467,12 @@ pub fn create_encounter_summary(
     let (encounter_type, boss_info) =
         classify_encounter(encounter, area_id_for_classification, difficulty_id_for_classification);
 
+    let parsely_rating = encounter
+        .active_boss_definition()
+        .and_then(|def| def.parsely_slug.as_deref())
+        .zip(Difficulty::from_difficulty_id(difficulty_id_for_classification))
+        .map(|(slug, d)| d.parsely_rating_path(slug));
+
     // Get boss name: prefer active definition, fall back to detected boss NPC
     // This allows non-boss trigger entities to classify the encounter
     let boss_name = encounter
@@ -725,6 +735,7 @@ pub fn create_encounter_summary(
         event_end_line: encounter.last_event_line,
         // Parsely link (set after successful upload)
         parsely_link: None,
+        parsely_rating,
         progress,
         deaths,
         end_reason,

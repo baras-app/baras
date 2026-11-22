@@ -6,6 +6,7 @@ area_type = "operation"
 # ─── Golden Fury ───────────────────────────────────────────────────
 [[boss]]
 id = "golden_fury"
+parsely_slug = "golden-fury"
 name = "Golden Fury"
 area_type = "operation"
 difficulties = ["story", "veteran"]

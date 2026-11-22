@@ -123,6 +123,7 @@ pub fn App() -> Element {
     let mut minimize_to_tray = use_signal(|| true);
     let mut web_overlay_enabled = use_signal(|| false);
     let mut european_number_format = use_signal(|| false);
+    let mut parsely_percentiles = use_signal(|| true);
     let mut light_theme = use_signal(|| false);
     use_context_provider(|| crate::utils::LightTheme(light_theme));
     let mut app_version = use_signal(String::new);
@@ -213,6 +214,8 @@ pub fn App() -> Element {
             ui_state.write().data_explorer.overview_columns = config.overview_columns.clone();
             ui_state.write().combat_log.show_ids = config.show_log_ids;
             ui_state.write().european_number_format = config.european_number_format;
+            parsely_percentiles.set(config.parsely_percentiles);
+            ui_state.write().parsely_percentiles = config.parsely_percentiles;
         }
 
         app_version.set(api::get_app_version().await);
@@ -1391,6 +1394,28 @@ pub fn App() -> Element {
                                 "European number format"
                             }
                             p { class: "hint", "Swaps the decimal point and thousands separator (1.50K → 1,50K). Editor inputs still use '.' for decimals." }
+                            label { class: "settings-check",
+                                input {
+                                    r#type: "checkbox",
+                                    checked: parsely_percentiles(),
+                                    onchange: move |e| {
+                                        let checked = e.checked();
+                                        parsely_percentiles.set(checked);
+                                        ui_state.write().parsely_percentiles = checked;
+                                        let mut toast = use_toast();
+                                        spawn(async move {
+                                            if let Some(mut cfg) = api::get_config().await {
+                                                cfg.parsely_percentiles = checked;
+                                                if let Err(err) = api::update_config(&cfg).await {
+                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                }
+                                            }
+                                        });
+                                    }
+                                }
+                                "Parsely percentiles"
+                            }
+                            p { class: "hint", "Rates each player against their discipline on operation boss kills in the Data Explorer. Downloads the boss's rating table from parsely.io at most once a day." }
                         }
 
                         div { class: "settings-section",

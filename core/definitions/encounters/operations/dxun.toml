@@ -27,6 +27,7 @@ position = [
 
 [[boss]]
 id = "red"
+parsely_slug = "the-pack-leader"
 name = "Red"
 difficulties = ["story", "veteran", "master"]
 
@@ -151,6 +152,7 @@ can_be_refreshed = true
 
 [[boss]]
 id = "holding_pens"
+parsely_slug = "encounter-one"
 name = "Lights Out"
 has_victory_trigger = true
 victory_trigger = { type = "any_of", conditions = [
@@ -301,6 +303,7 @@ countdown_start = 0
 
 [[boss]]
 id = "breach"
+parsely_slug = "encounter-two"
 name = "According To Plan"
 encounter_trigger_fallback_secs = 5.0
 
@@ -337,6 +340,7 @@ can_be_refreshed = true
 
 [[boss]]
 id = "trandos"
+parsely_slug = "mutant-trandoshan-squad"
 name = "Trandoshans"
 difficulties = ["story", "veteran", "master"]
 # NiM: Ultimate Hunter casts Dying Light (effect removed) or player targets loot cache
@@ -646,6 +650,7 @@ difficulties = ["master"]
 
 [[boss]]
 id = "huntmaster"
+parsely_slug = "huntmaster"
 name = "Huntmaster"
 difficulties = ["story", "veteran", "master"]
 has_victory_trigger = true
@@ -1030,6 +1035,7 @@ target = "local_player"
 
 [[boss]]
 id = "apex_vanguard"
+parsely_slug = "apex-vanguard"
 name = "Apex Vanguard"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true

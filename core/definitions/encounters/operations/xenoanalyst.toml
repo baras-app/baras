@@ -9,6 +9,7 @@ area_type = "operation"
 
 [[boss]]
 id = "xenoanalyst"
+parsely_slug = "xenoanalyst-ii"
 name = "Xenoanalyst II"
 difficulties = ["story", "veteran"]
 is_final_boss = true

@@ -15,6 +15,7 @@ timed_run_minutes = 120
 
 [[boss]]
 id = "writhing_horror"
+parsely_slug = "the-writhing-horror"
 name = "The Writhing Horror"
 difficulties = ["story", "veteran", "master"]
 
@@ -131,6 +132,7 @@ effects = [3010626045607936]
 
 [[boss]]
 id = "dread_guard"
+parsely_slug = "dread-guards"
 name = "The Dread Guard"
 difficulties = ["story", "veteran", "master"]
 
@@ -456,6 +458,7 @@ effects = [3014530170880000]
 
 [[boss]]
 id = "op_ix"
+parsely_slug = "operator-ix"
 name = "Operator IX"
 difficulties = ["story", "veteran", "master"]
 
@@ -695,6 +698,7 @@ abilities = [2959369905897472]
 
 [[boss]]
 id = "kephess_the_undying"
+parsely_slug = "kephess-the-undying"
 name = "Kephess"
 difficulties = ["story", "veteran", "master"]
 
@@ -979,6 +983,7 @@ difficulties = ["veteran", "master"]
 
 [[boss]]
 id = "the_terror_from_beyond"
+parsely_slug = "the-terror-from-beyond"
 name = "The Terror From Beyond"
 difficulties = ["story", "veteran", "master"]
 has_victory_trigger = true
@@ -1624,6 +1629,7 @@ selector = ["Tunneling Tentacle"]
 #---------- Dreadful Entity
 [[boss]]
 id = "dreadful"
+parsely_slug = "dreadful-entity"
 name = "Dreadful Entity"
 difficulties = ["master"]
 is_optional_boss = true

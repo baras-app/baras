@@ -4,6 +4,7 @@ id = 137438993438
 
 [[boss]]
 id = "eyeless"
+parsely_slug = "the-eyeless"
 name = "The Eyeless"
 difficulties = ["story", "veteran"]
 is_final_boss = true

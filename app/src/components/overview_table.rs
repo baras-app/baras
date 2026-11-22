@@ -5,8 +5,9 @@
 //! under a colored side heading.
 
 use dioxus::prelude::*;
+use std::collections::HashMap;
 
-use baras_types::{OverviewColumn, UiSessionState, formatting};
+use baras_types::{OverviewColumn, RatingPercentiles, UiSessionState, formatting};
 
 use crate::api::{PlayerDeath, RaidOverviewRow};
 use crate::components::class_icons::{get_class_icon, get_role_icon};
@@ -39,6 +40,9 @@ pub struct OverviewTableProps {
     /// Where column picks are saved; the header gets the columns button with it
     #[props(default)]
     pub layout_state: Option<Signal<UiSessionState>>,
+    /// Parsely percentiles by player name (finished PvE kills only)
+    #[props(default)]
+    pub percentiles: HashMap<String, RatingPercentiles>,
     /// The PvP layout is the one shown and edited
     #[props(default)]
     pub pvp: bool,
@@ -72,6 +76,16 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
         }
     };
 
+    // Rated columns reserve a slot after the value for the percentile
+    let has_pct = !props.percentiles.is_empty();
+    let rated = |id: OverviewColumn| {
+        if has_pct && rating(id, &RatingPercentiles { dps: 1, boss_dps: 1, hps: 1, ehps: 1, dtps: 1, apm: 1 }) > 0 {
+            "rated"
+        } else {
+            ""
+        }
+    };
+
     let row_deaths = |row: &RaidOverviewRow| -> Vec<PlayerDeath> {
         props
             .deaths
@@ -93,8 +107,8 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
                 colgroup {
                     col { class: "name-col" }
                     col { class: "death-col" }
-                    for _ in 0..cols.len() {
-                        col { class: "num-col" }
+                    for c in cols.iter() {
+                        col { class: "num-col {rated(c.id)}" }
                     }
                 }
                 thead {
@@ -112,7 +126,7 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
                         }
                         th { class: "death-col", title: "Deaths" }
                         for c in cols.iter() {
-                            th { class: "num sortable", title: "{c.title}", onclick: sort_click(c.id), "{c.label}{arrow(c.id)}" }
+                            th { class: "num sortable {rated(c.id)}", title: "{c.title}", onclick: sort_click(c.id), "{c.label}{arrow(c.id)}" }
                         }
                     }
                 }
@@ -150,7 +164,16 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
                             }
                             {death_cell(row_deaths(row), props.on_death_click)}
                             for c in cols.iter() {
-                                td { class: "num {c.group.class()}", "{c.format.apply((c.value)(row), eu)}" }
+                                td { class: "num {c.group.class()} {rated(c.id)}",
+                                    "{c.format.apply((c.value)(row), eu)}"
+                                    if let Some(pct) = props.percentiles.get(&row.name).map(|p| rating(c.id, p)).filter(|&p| p > 0) {
+                                        span {
+                                            class: "pct-badge {pct_tier(pct)}",
+                                            title: "Parsely percentile for {row.discipline_name.as_deref().unwrap_or(\"this discipline\")}",
+                                            "{pct}"
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -161,7 +184,7 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
                             td { class: "name-col", "{label}" }
                             td { class: "death-col" }
                             for c in cols.iter() {
-                                td { class: "num {c.group.class()}",
+                                td { class: "num {c.group.class()} {rated(c.id)}",
                                     if c.sums {
                                         "{c.format.apply(props.rows.iter().map(c.value).sum(), eu)}"
                                     }
@@ -176,6 +199,30 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
             OverviewColumnMenu { state, shown: props.columns.clone(), pvp: props.pvp, open: menu_open }
         }
         }
+    }
+}
+
+/// The percentile shown beside a column's value; 0 for unrated columns
+fn rating(col: OverviewColumn, p: &RatingPercentiles) -> u8 {
+    match col {
+        OverviewColumn::Dps => p.dps,
+        OverviewColumn::BossDps => p.boss_dps,
+        OverviewColumn::Hps => p.hps,
+        OverviewColumn::Ehps => p.ehps,
+        OverviewColumn::Dtps => p.dtps,
+        OverviewColumn::Apm => p.apm,
+        _ => 0,
+    }
+}
+
+fn pct_tier(pct: u8) -> &'static str {
+    match pct {
+        100 => "p100",
+        95.. => "p95",
+        75.. => "p75",
+        50.. => "p50",
+        25.. => "p25",
+        _ => "p0",
     }
 }
 

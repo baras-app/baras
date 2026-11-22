@@ -13,6 +13,7 @@ area_type = "operation"
 
 [[boss]]
 id = "zorn_toth"
+parsely_slug = "toth-and-zorn"
 name = "Zorn & Toth"
 difficulties = ["story", "veteran", "master"]
 has_victory_trigger = true
@@ -598,6 +599,7 @@ difficulties = ["veteran", "master"]
 
 [[boss]]
 id = "firebrand_stormcaller"
+parsely_slug = "firebrand-and-stormcaller"
 name = "Firebrand & Stormcaller"
 difficulties = ["story", "veteran", "master"]
 
@@ -984,6 +986,7 @@ cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
 
 [[boss]]
 id = "colonel_vorgath"
+parsely_slug = "colonel-vorgath"
 name = "Colonel Vorgath"
 difficulties = ["story", "veteran", "master"]
 
@@ -1146,6 +1149,7 @@ ability_ids = [2853022220681216, 2853043695517696]
 
 [[boss]]
 id = "warlord_kephess"
+parsely_slug = "warlord-kephess"
 name = "Warlord Kephess"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true

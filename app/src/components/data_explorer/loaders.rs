@@ -312,7 +312,7 @@ fn use_timeline_loader(ctx: ExplorerCtx) {
             let mode = *view_mode.peek();
             let is_overview = matches!(mode, ViewMode::Overview);
             let (overview, detail) = futures_util::future::join(
-                fetch_overview(idx, tr, Some(dur), is_overview),
+                fetch_overview(ctx, idx, tr, Some(dur), is_overview),
                 fetch_detail(ctx, idx, mode, tr, Some(dur)),
             )
             .await;
@@ -335,16 +335,21 @@ fn use_timeline_loader(ctx: ExplorerCtx) {
     });
 }
 
-type OverviewData = (
-    Option<Vec<api::RaidOverviewRow>>,
-    Option<Vec<api::PlayerDeath>>,
-    Option<Vec<api::NpcHealthRow>>,
-);
+struct OverviewData {
+    rows: Option<Vec<api::RaidOverviewRow>>,
+    deaths: Option<Vec<api::PlayerDeath>>,
+    npcs: Option<Vec<api::NpcHealthRow>>,
+    /// Encounter the percentiles rate; None when this view isn't rated
+    rated: Option<u32>,
+    /// None while the rating table still has to be downloaded
+    percentiles: Option<api::EncounterRatings>,
+}
 
-/// Raid overview (class icons for every view), plus deaths and NPC health when
-/// the Overview tab itself is open; they don't depend on each other, so all
-/// three run at once.
+/// Raid overview (class icons for every view), plus deaths, NPC health and
+/// already-downloaded Parsely percentiles when the Overview tab itself is
+/// open; they don't depend on each other, so all run at once.
 async fn fetch_overview(
+    ctx: ExplorerCtx,
     idx: Option<u32>,
     tr: TimeRange,
     full_duration: Option<f32>,
@@ -361,19 +366,37 @@ async fn fetch_overview(
     } else {
         full_duration
     };
+    // Percentiles rate whole finished fights only; the backend decides the rest
+    let whole_fight = tr_opt.is_none() || full_duration.is_some_and(|d| tr.is_full(d));
+    let rated = idx.filter(|_| is_overview && whole_fight && ctx.state.peek().parsely_percentiles);
     if is_overview {
-        futures_util::future::join3(
+        let (rows, deaths, npcs, percentiles) = futures_util::future::join4(
             api::query_raid_overview(idx, tr_opt.as_ref(), duration),
             api::query_player_deaths(idx),
             api::query_npc_health(idx, tr_opt.as_ref()),
+            async {
+                match rated {
+                    Some(i) => api::query_parsely_percentiles(i, true).await,
+                    None => Some(Default::default()),
+                }
+            },
         )
-        .await
+        .await;
+        OverviewData {
+            rows,
+            deaths,
+            npcs,
+            rated,
+            percentiles,
+        }
     } else {
-        (
-            api::query_raid_overview(idx, tr_opt.as_ref(), duration).await,
-            None,
-            None,
-        )
+        OverviewData {
+            rows: api::query_raid_overview(idx, tr_opt.as_ref(), duration).await,
+            deaths: None,
+            npcs: None,
+            rated,
+            percentiles: Some(Default::default()),
+        }
     }
 }
 
@@ -385,9 +408,16 @@ fn apply_overview(ctx: ExplorerCtx, idx: Option<u32>, tr: TimeRange, is_overview
         mut player_deaths,
         mut npc_health,
         mut last_overview_fetch,
+        mut percentiles,
         ..
     } = ctx;
-    let (overview, deaths, npcs) = data;
+    let OverviewData {
+        rows: overview,
+        deaths,
+        npcs,
+        rated,
+        percentiles: local_percentiles,
+    } = data;
     // None typically means no data available (no encounters dir, etc.) - not an error.
     // Not recorded in last_overview_fetch, so the next effect trigger retries.
     let loaded = overview.is_some();
@@ -398,6 +428,19 @@ fn apply_overview(ctx: ExplorerCtx, idx: Option<u32>, tr: TimeRange, is_overview
         if *view_mode.peek() == ViewMode::Overview {
             shown_mode.set(Some(ViewMode::Overview));
         }
+    }
+    // Percentiles land with the table when their rating table is already
+    // downloaded; otherwise they follow once it is
+    let rated = rated.filter(|_| loaded);
+    let download = rated.filter(|_| local_percentiles.is_none());
+    percentiles.set((rated, local_percentiles.unwrap_or_default()));
+    if let Some(i) = download {
+        spawn(async move {
+            let p = api::query_parsely_percentiles(i, false).await.unwrap_or_default();
+            if percentiles.peek().0 == rated {
+                percentiles.set((rated, p));
+            }
+        });
     }
     if loaded {
         // The bool tracks whether overview-specific data was loaded
@@ -454,7 +497,7 @@ fn use_overview_loader(ctx: ExplorerCtx) {
 
         spawn(async move {
             let full_duration = timeline.peek().as_ref().map(|t| t.duration_secs);
-            let data = fetch_overview(idx, tr, full_duration, is_overview).await;
+            let data = fetch_overview(ctx, idx, tr, full_duration, is_overview).await;
             // Superseded while the queries ran: the newer request owns the signals
             if *selected_encounter.peek() == idx && *time_range.peek() == tr {
                 apply_overview(ctx, idx, tr, is_overview && *view_mode.peek() == mode, data);

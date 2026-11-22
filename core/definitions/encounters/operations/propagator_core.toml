@@ -9,6 +9,7 @@ area_type = "operation"
 
 [[boss]]
 id = "propagator_core_xr53"
+parsely_slug = "propagator-core"
 name = "Propagator Core XR-53"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true

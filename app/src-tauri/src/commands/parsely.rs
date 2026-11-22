@@ -11,7 +11,7 @@ use tauri::State;
 use crate::service::ServiceHandle;
 
 const PARSELY_URL: &str = "https://parsely.io/api/upload2";
-const USER_AGENT: &str = "BARAS v0.1.0";
+pub(crate) const USER_AGENT: &str = "BARAS v0.1.0";
 const REFERER: &str = "baras-app";
 
 /// Extra seconds of trailing log lines to include beyond the encounter's end_line
@@ -422,4 +422,16 @@ fn extract_xml_element(xml: &str, tag: &str) -> Option<String> {
         }
     }
     None
+}
+
+/// Parsely percentiles for a finished kill; empty when the encounter isn't
+/// rated. With `local_only`, None means the table has to be
+/// downloaded first (ask again without it).
+#[tauri::command]
+pub async fn query_parsely_percentiles(
+    encounter_idx: u32,
+    local_only: bool,
+    handle: State<'_, ServiceHandle>,
+) -> Result<Option<baras_types::EncounterRatings>, String> {
+    Ok(handle.parsely_percentiles(encounter_idx, local_only).await)
 }

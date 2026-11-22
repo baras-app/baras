@@ -30,6 +30,7 @@ pub(super) fn overview_view(ctx: ExplorerCtx, european: bool) -> Element {
         mut recap_death,
         overview_table_data,
         overview_data,
+        percentiles,
         ..
     } = ctx;
     repaint_with(overview_data);
@@ -101,6 +102,7 @@ pub(super) fn overview_view(ctx: ExplorerCtx, european: bool) -> Element {
                                rsx! {
                                    OverviewTable {
                                        rows: table_data.rows.clone(),
+                                       percentiles: percentiles.read().1.players.clone(),
                                        total_label: "Group Total",
                                        columns: columns.clone(),
                                        sort_col: overview_sort_col,
@@ -111,6 +113,16 @@ pub(super) fn overview_view(ctx: ExplorerCtx, european: bool) -> Element {
                                        hovered: Some(overview_hovered),
     layout_state: Some(state),
     pvp: table_data.pvp,
+                                   }
+                                   {
+                                       let ratings = &percentiles.read().1;
+                                       if ratings.unavailable {
+                                           rsx! { p { class: "overview-ratings-note", "Parsely percentiles unavailable" } }
+                                       } else if let Some(day) = &ratings.stale_as_of {
+                                           rsx! { p { class: "overview-ratings-note", "Parsely percentiles from {day} (latest unavailable)" } }
+                                       } else {
+                                           rsx! {}
+                                       }
                                    }
                                }
                            }

@@ -1334,7 +1334,7 @@ pub use baras_types::{
     AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow,
     CombatLogSortColumn, DamageTakenSummary, DataTab, DeathRecap, DeathRecapEventKind, EffectChartData,
     EffectUptimeCell, EffectWindow, EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries,
-    GroupedEntityNames, HpPoint, NpcHealthRow, NpcSpawn, PhaseSegment, PlayerDeath, PvpFaction, RaidOverviewRow,
+    GroupedEntityNames, HpPoint, NpcHealthRow, NpcSpawn, PhaseSegment, EncounterRatings, PlayerDeath, PvpFaction, RaidOverviewRow,
     RotationAnalysis, SortDirection, TimeRange, TimeSeriesPoint,
 };
 
@@ -1394,6 +1394,16 @@ pub async fn query_raid_overview(
     js_set(&obj, "durationSecs", &to_js(&duration_secs));
     let result = invoke_query("query_raid_overview", obj.into()).await;
     from_js(result)
+}
+
+/// Parsely percentiles; empty unless the encounter is a finished kill of a rated boss.
+/// With `local_only`, None means the table isn't downloaded yet (ask again without it).
+pub async fn query_parsely_percentiles(encounter_idx: u32, local_only: bool) -> Option<EncounterRatings> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
+    js_set(&obj, "localOnly", &to_js(&local_only));
+    // Not through the query cache: the backend holds the tables and decides when to retry
+    from_js(invoke("query_parsely_percentiles", obj.into()).await)
 }
 
 /// Query final health state of all NPCs in an encounter.
