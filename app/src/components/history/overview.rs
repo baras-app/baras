@@ -376,7 +376,21 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                         rsx! {
                                             tr {
                                                 key: "{row.filename}:{row.encounter_id}",
-                                                class: if row.hidden { "pull-hidden" } else { "" },
+                                                class: match (row.path.is_some(), row.hidden) {
+                                                    (true, true) => "run-row pull-hidden",
+                                                    (true, false) => "run-row",
+                                                    (false, true) => "pull-hidden",
+                                                    (false, false) => "",
+                                                },
+                                                // The whole row opens the pull; the action cell keeps its own clicks
+                                                onclick: {
+                                                    let (path, encounter_id) = (row.path.clone(), row.encounter_id);
+                                                    move |_| {
+                                                        if let Some(path) = path.clone() && !opener.busy() {
+                                                            opener.open(path, Some(encounter_id));
+                                                        }
+                                                    }
+                                                },
                                                 td { {short_ts(&row.timestamp)} }
                                                 td {
                                                     span { class: "{class}", "{label}" }
@@ -410,7 +424,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                                     }
                                                 }
                                                 // Parsely, open / restore, hide: one action cell
-                                                td { class: "pull-row-actions",
+                                                td { class: "pull-row-actions", onclick: move |e| e.stop_propagation(),
                                                     if let Some(link) = row.parsely.clone() {
                                                         button {
                                                             class: "btn btn-xs btn-ghost",
