@@ -17,7 +17,7 @@ mod operations;
 mod overview;
 mod pvp;
 mod run_detail;
-mod scroll;
+pub mod scroll;
 mod toolbar;
 
 use dioxus::prelude::*;
