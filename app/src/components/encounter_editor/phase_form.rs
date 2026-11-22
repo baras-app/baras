@@ -3,6 +3,7 @@
 use dioxus::prelude::*;
 
 use crate::components::editor_common::{FormCard, ItemActions, Origin};
+use crate::components::editor_drawer::EditorDrawer;
 use crate::components::form_fields::{CheckField, Field, SubSection, TextField};
 use crate::types::{Condition, PhaseDefinition, Trigger};
 
@@ -21,6 +22,7 @@ pub(super) fn PhaseEditForm(
     encounter_data: EncounterData,
     on_save: EventHandler<PhaseDefinition>,
     on_delete: EventHandler<PhaseDefinition>,
+    on_close: EventHandler<()>,
     #[props(default)] on_dirty: EventHandler<bool>,
 ) -> Element {
     let phase_id_display = phase.id.clone();
@@ -62,7 +64,7 @@ pub(super) fn PhaseEditForm(
         on_delete.call(phase_for_delete.clone());
     };
 
-    rsx! {
+    let body = rsx! {
         div { class: "phase-edit-form",
             div { class: "edit-grid",
                 // ═══ LEFT: Identity Card ═════════════════════════════════════
@@ -181,13 +183,23 @@ pub(super) fn PhaseEditForm(
                     }
                 }
             }
+        }
+    };
 
-            ItemActions {
-                has_changes: has_changes(),
-                origin: Origin::of(is_builtin, is_modified),
-                on_save: handle_save,
-                on_delete: handle_delete,
-            }
+    rsx! {
+        EditorDrawer {
+            title: phase.name.clone(),
+            dirty: has_changes(),
+            on_close: on_close,
+            actions: rsx! {
+                ItemActions {
+                    has_changes: has_changes(),
+                    origin: Origin::of(is_builtin, is_modified),
+                    on_save: handle_save,
+                    on_delete: handle_delete,
+                }
+            },
+            {body}
         }
     }
 }

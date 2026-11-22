@@ -5,7 +5,7 @@
 //! - Inline expansion for editing
 //! - Full CRUD operations
 
-use crate::components::editor_drawer::{DiscardPrompt, EditorDrawer, layout_style, provide_drawer_guard};
+use crate::components::editor_drawer::{DiscardPrompt, layout_style, provide_drawer_guard};
 use dioxus::prelude::*;
 
 use super::effect_form::EffectEditForm;
@@ -751,10 +751,6 @@ fn EffectRow(
             }
 
             if expanded {
-                EditorDrawer {
-                    title: if effect.name.is_empty() { "New effect".to_string() } else { effect.name.clone() },
-                    dirty: is_dirty(),
-                    on_close: on_toggle,
                 EffectEditForm {
                     effect: effect.clone(),
                     is_draft: is_draft,
@@ -765,7 +761,7 @@ fn EffectRow(
                     on_duplicate: on_duplicate,
                     on_export: on_export,
                     on_dirty: move |dirty: bool| is_dirty.set(dirty),
-                }
+                    on_close: on_toggle,
                 }
             }
         }

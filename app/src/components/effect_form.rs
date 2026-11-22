@@ -14,7 +14,8 @@ use super::encounter_editor::selectors::{EffectSelectorEditor, EntityFilterDropd
 use super::sound_picker::SoundPicker;
 use super::toggle_switch::ToggleSwitch;
 use crate::components::ability_icon::use_icon_url;
-use crate::components::editor_common::{FormCard, ItemActions, PreviewButton, preview_audio};
+use crate::components::editor_common::{FormCard, ItemActions, PreviewButton, preview_audio, use_item_draft};
+use crate::components::editor_drawer::EditorDrawer;
 use crate::components::form_fields::{CheckField, Field, NumberField, PickField, SubSection, TextField, TogglePill};
 use crate::types::{
     AlertTrigger, DisplayTarget, EffectListItem, EntityFilter, RefreshAbility, RefreshScope, Trigger,
@@ -109,21 +110,17 @@ pub(crate) fn EffectEditForm(
     on_delete: EventHandler<()>,
     on_duplicate: EventHandler<()>,
     #[props(default)] on_export: EventHandler<()>,
+    on_close: EventHandler<()>,
     #[props(default)] on_dirty: EventHandler<bool>,
 ) -> Element {
-    let effect_for_draft = effect.clone();
     let effect_for_trigger = effect.clone();
-    let effect_original = effect.clone();
-    let mut draft = use_signal(|| effect_for_draft);
+    let (mut draft, edited) = use_item_draft(effect.clone());
     let mut trigger_type = use_signal(|| EffectTriggerType::from_effect(&effect_for_trigger));
     // Explicit icon_ability_id, or the trigger's id when it is blank
     let (icon_preview_url, icon_loaded) = {
         let d = draft.read();
         use_icon_url(effect_icon_id(d.icon_ability_id, &d.trigger))
     };
-
-    // Track if form was just saved (resets dirty state)
-    let mut just_saved = use_signal(|| false);
 
     // The row's enable and audio toggles save straight to the stored effect: follow
     // them, or the next Save here would write the draft's stale values back
@@ -136,16 +133,8 @@ pub(crate) fn EffectEditForm(
         }
     }));
 
-    // Reset just_saved when user makes new changes after saving
-    let effect_original_for_effect = effect_original.clone();
-    use_effect(move || {
-        if draft() != effect_original_for_effect && just_saved() {
-            just_saved.set(false);
-        }
-    });
-
     // For drafts, always enable save; for existing effects, only when changed
-    let has_changes = use_memo(move || is_draft || (!just_saved() && draft() != effect_original));
+    let has_changes = use_memo(move || is_draft || edited());
 
     // Notify parent when dirty state changes
     use_effect(move || {
@@ -156,7 +145,7 @@ pub(crate) fn EffectEditForm(
     let color_hex = format!("#{:02x}{:02x}{:02x}", color[0], color[1], color[2]);
     let targets = draft().display_targets;
 
-    rsx! {
+    let body = rsx! {
         div { class: "list-item-body effect-edit-form",
             div { class: "edit-grid left-66",
                 // ═══ LEFT COLUMN: Identity, Trigger ══════════════════════════════
@@ -640,24 +629,32 @@ pub(crate) fn EffectEditForm(
                     }
                 }
             }
+        }
+    };
 
-            // Actions (outside grid, full width)
-            ItemActions {
-                has_changes: has_changes(),
-                origin: effect_origin(is_draft, is_bundled, is_user_override),
-                on_save: move |_| {
-                    just_saved.set(true);
-                    on_save.call(draft());
-                },
-                on_delete: move |_| on_delete.call(()),
-                on_duplicate: (!is_draft).then_some(on_duplicate),
-                PreviewButton {
-                    request: preview_request(&draft()),
+    rsx! {
+        EditorDrawer {
+            title: if effect.name.is_empty() { "New effect".to_string() } else { effect.name.clone() },
+            dirty: has_changes(),
+            on_close: on_close,
+            actions: rsx! {
+                ItemActions {
+                    has_changes: has_changes(),
+                    origin: effect_origin(is_draft, is_bundled, is_user_override),
+                    on_save: move |_| {
+                        on_save.call(draft());
+                    },
+                    on_delete: move |_| on_delete.call(()),
+                    on_duplicate: (!is_draft).then_some(on_duplicate),
+                    PreviewButton {
+                        request: preview_request(&draft()),
+                    }
+                    if !is_draft && is_user_override {
+                        button { class: "btn btn-sm", onclick: move |_| on_export.call(()), "Export" }
+                    }
                 }
-                if !is_draft && is_user_override {
-                    button { class: "btn btn-sm", onclick: move |_| on_export.call(()), "Export" }
-                }
-            }
+            },
+            {body}
         }
     }
 }

@@ -8,7 +8,7 @@ use dioxus::prelude::*;
 
 use crate::api;
 use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
-use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
+use crate::components::editor_drawer::use_drawer_guard;
 use crate::types::{BossWithPath, ChallengeColumns, ChallengeDefinition, ChallengeMetric, EncounterItem};
 
 use super::InlineNameCreator;
@@ -233,56 +233,55 @@ fn ChallengeRow(
                     let file_path_delete = file_path.clone();
 
                     rsx! {
-                        EditorDrawer { title: challenge.name.clone(), dirty: is_dirty(), on_close: on_collapse,
-                            ChallengeEditForm {
-                                challenge: challenge.clone(),
-                                encounter_data: encounter_data,
-                                is_builtin: is_builtin,
-                                on_dirty: move |dirty: bool| is_dirty.set(dirty),
-                                on_save: move |updated: ChallengeDefinition| {
-                                    // Update parent state synchronously so props refresh and dirty indicator clears
-                                    let mut current = all_challenges_for_save.clone();
-                                    if let Some(idx) = current.iter().position(|c| c.id == updated.id) {
-                                        current[idx] = updated.clone();
-                                        on_change.call(current);
+                        ChallengeEditForm {
+                            challenge: challenge.clone(),
+                            encounter_data: encounter_data,
+                            is_builtin: is_builtin,
+                            on_dirty: move |dirty: bool| is_dirty.set(dirty),
+                            on_save: move |updated: ChallengeDefinition| {
+                                // Update parent state synchronously so props refresh and dirty indicator clears
+                                let mut current = all_challenges_for_save.clone();
+                                if let Some(idx) = current.iter().position(|c| c.id == updated.id) {
+                                    current[idx] = updated.clone();
+                                    on_change.call(current);
+                                }
+                                let boss_id = boss_id_save.clone();
+                                let file_path = file_path_save.clone();
+                                let item = EncounterItem::Challenge(updated);
+                                on_status.call(("Saving...".to_string(), false));
+                                spawn(async move {
+                                    match api::update_encounter_item(&boss_id, &file_path, &item, None).await {
+                                        Ok(_) => on_status.call(("Saved".to_string(), false)),
+                                        Err(_) => on_status.call(("Failed to save".to_string(), true)),
                                     }
-                                    let boss_id = boss_id_save.clone();
-                                    let file_path = file_path_save.clone();
-                                    let item = EncounterItem::Challenge(updated);
-                                    on_status.call(("Saving...".to_string(), false));
+                                });
+                            },
+                            on_delete: {
+                                let all_challenges = all_challenges.clone();
+                                move |challenge_to_delete: ChallengeDefinition| {
+                                    let all_challenges = all_challenges.clone();
+                                    let boss_id = boss_id_delete.clone();
+                                    let file_path = file_path_delete.clone();
+                                    let challenge_id = challenge_to_delete.id.clone();
                                     spawn(async move {
-                                        match api::update_encounter_item(&boss_id, &file_path, &item, None).await {
-                                            Ok(_) => on_status.call(("Saved".to_string(), false)),
-                                            Err(_) => on_status.call(("Failed to save".to_string(), true)),
+                                        match api::delete_encounter_item("challenge", &challenge_id, &boss_id, &file_path).await {
+                                            Ok(_) => {
+                                                let updated: Vec<_> = all_challenges.iter()
+                                                    .filter(|c| c.id != challenge_id)
+                                                    .cloned()
+                                                    .collect();
+                                                on_change.call(updated);
+                                                on_collapse.call(());
+                                                on_status.call(("Deleted".to_string(), false));
+                                            }
+                                            Err(err) => {
+                                                on_status.call((err, true));
+                                            }
                                         }
                                     });
-                                },
-                                on_delete: {
-                                    let all_challenges = all_challenges.clone();
-                                    move |challenge_to_delete: ChallengeDefinition| {
-                                        let all_challenges = all_challenges.clone();
-                                        let boss_id = boss_id_delete.clone();
-                                        let file_path = file_path_delete.clone();
-                                        let challenge_id = challenge_to_delete.id.clone();
-                                        spawn(async move {
-                                            match api::delete_encounter_item("challenge", &challenge_id, &boss_id, &file_path).await {
-                                                Ok(_) => {
-                                                    let updated: Vec<_> = all_challenges.iter()
-                                                        .filter(|c| c.id != challenge_id)
-                                                        .cloned()
-                                                        .collect();
-                                                    on_change.call(updated);
-                                                    on_collapse.call(());
-                                                    on_status.call(("Deleted".to_string(), false));
-                                                }
-                                                Err(err) => {
-                                                    on_status.call((err, true));
-                                                }
-                                            }
-                                        });
-                                    }
-                                },
-                            }
+                                }
+                            },
+                            on_close: on_collapse,
                         }
                     }
                 }
