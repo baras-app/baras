@@ -52,7 +52,7 @@ pub(super) fn summarize(rows: &[PullRow]) -> Vec<DisciplineStats> {
             d.fastest_kill = Some(d.fastest_kill.map_or(r.duration_seconds, |f| f.min(r.duration_seconds)));
         }
     }
-    out.sort_by(|a, b| b.pulls.cmp(&a.pulls));
+    out.sort_by_key(|d| std::cmp::Reverse(d.pulls));
     out
 }
 
