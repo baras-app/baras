@@ -181,6 +181,14 @@ pub fn ProfilesSection(
                                                                     profile_names.set(api::get_profile_names().await);
                                                                     active_profile.set(api::get_active_profile().await);
                                                                     profile_status.set(format!("Deleted '{}'", pname));
+                                                                    // Deleting the open profile switches to another one
+                                                                    if let Some(config) = api::get_config().await {
+                                                                        settings.set(config.overlay_settings);
+                                                                    }
+                                                                    if let Some(status) = api::get_overlay_status().await {
+                                                                        overlays_visible.set(status.overlays_visible);
+                                                                        overlays_enabled.set(status.enabled);
+                                                                    }
                                                                 }
                                                             });
                                                         }

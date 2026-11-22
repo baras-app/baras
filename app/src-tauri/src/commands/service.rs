@@ -527,11 +527,23 @@ pub async fn load_profile(
 }
 
 #[tauri::command]
-pub async fn delete_profile(name: String, handle: State<'_, ServiceHandle>) -> Result<(), String> {
+pub async fn delete_profile(
+    name: String,
+    handle: State<'_, ServiceHandle>,
+    overlay_state: State<'_, SharedOverlayState>,
+) -> Result<(), String> {
     let mut config = handle.config().await;
+    let was_active = config.active_profile_name.as_deref() == Some(name.as_str());
     config.delete_profile(&name).map_err(|e| e.to_string())?;
+    let next_active = config.active_profile_name.clone();
     *handle.shared.config.write().await = config.clone();
     config.save().map_err(|e| e.to_string())?;
+
+    // The open profile is gone: switch to the one that took its place, so the
+    // live layout (which now saves itself) isn't written over that profile
+    if was_active && let Some(next) = next_active {
+        apply_profile(&next, &handle, &overlay_state).await?;
+    }
     Ok(())
 }
 

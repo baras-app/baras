@@ -383,7 +383,8 @@ impl ServiceHandle {
     }
 
     /// Update the configuration
-    pub async fn update_config(&self, config: AppConfig) -> Result<(), String> {
+    pub async fn update_config(&self, mut config: AppConfig) -> Result<(), String> {
+        config.sync_active_profile();
         let old_config = self.shared.config.read().await.clone();
         let old_dir = old_config.log_directory.clone();
         let new_dir = config.log_directory.clone();
