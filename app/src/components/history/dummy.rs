@@ -9,6 +9,7 @@ use baras_types::history::{BackfillEvent, DummyRow, keeps};
 use baras_types::percentile_label;
 
 use super::Backfill;
+use super::dummy_chart::DummyTrend;
 use super::overview::short_ts;
 use super::scroll::use_paged;
 use crate::api;
@@ -304,6 +305,8 @@ pub fn DummyTab(european: bool, backfill: Backfill) -> Element {
                         div { class: "v", {fastest.map(formatting::format_duration).unwrap_or_else(|| "—".into())} }
                     }
                 }
+
+                DummyTrend { rows: kills.clone(), european: eu }
 
                 if lines.len() > 1 {
                     div { class: "discipline-breakdown discipline-breakdown-table",
