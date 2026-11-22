@@ -29,7 +29,6 @@ mod widgets;
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::components::profile_unsaved::{OVERLAY_DRAFT_DIRTY, OVERLAY_SAVE_REQUEST};
 use crate::components::{ToastSeverity, use_toast};
 use crate::types::{MetricType, OverlaySettings};
 
@@ -148,13 +147,6 @@ pub fn SettingsPanel(
             });
         }
     });
-    // Header hint: mirror the draft's state out, take Save requests in
-    use_effect(move || *OVERLAY_DRAFT_DIRTY.write() = draft.has_changes());
-    use_drop(|| {
-        if let Ok(mut d) = OVERLAY_DRAFT_DIRTY.signal().try_write() {
-            *d = false;
-        }
-    });
     let mut toast = use_toast();
 
     let tab = selected_tab();
@@ -226,13 +218,6 @@ pub fn SettingsPanel(
         }
     };
 
-    let seen_request = use_hook(|| OVERLAY_SAVE_REQUEST.peek().to_owned());
-    use_effect(move || {
-        if OVERLAY_SAVE_REQUEST() != seen_request {
-            spawn(save_to_backend());
-        }
-    });
-
     // Sits beside each overlay tab's style reset
     let reset_position = rsx! {
         button {
@@ -294,6 +279,9 @@ pub fn SettingsPanel(
             class: if parked { "drawer settings-panel-parked" } else { "drawer settings-panel" },
             div { class: "settings-header",
                 h3 { "Overlay Settings" }
+                if draft.has_changes() {
+                    span { class: "unsaved-indicator", title: "Style changes are previewing on the overlays but not saved yet" }
+                }
             }
 
             div { class: "settings-content",
@@ -330,7 +318,15 @@ pub fn SettingsPanel(
                 {tab_content}
             }
 
-            div { class: "settings-footer",
+            // Style edits are the only thing left to save (toggles and moves save
+            // themselves), so their unsaved state is called out here, on their page
+            div { class: if draft.has_changes() { "settings-footer unsaved" } else { "settings-footer" },
+                if draft.has_changes() {
+                    span { class: "settings-footer-note",
+                        i { class: "fa-solid fa-circle-exclamation" }
+                        " Unsaved style changes"
+                    }
+                }
                 button {
                     class: if draft.has_changes() { "btn btn-save btn-unsaved" } else { "btn btn-save" },
                     disabled: !draft.has_changes(),
