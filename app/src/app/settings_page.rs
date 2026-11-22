@@ -161,14 +161,7 @@ pub(super) fn SettingsPage(
                         onchange: move |e| {
                             let checked = e.checked();
                             minimize_to_tray.set(checked);
-                            let mut toast = use_toast();
-                            spawn(async move {
-                                if let Err(err) = api::patch_config(|cfg| {
-                                    cfg.minimize_to_tray = checked;
-                                }).await {
-                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                }
-                            });
+                            save_setting("settings", move |cfg| cfg.minimize_to_tray = checked);
                         }
                     }
                     "Minimize to tray on close"
@@ -237,15 +230,7 @@ pub(super) fn SettingsPage(
                             let checked = e.checked();
                             parsely_percentiles.set(checked);
                             ui_state.write().parsely_percentiles = checked;
-                            let mut toast = use_toast();
-                            spawn(async move {
-                                if let Some(mut cfg) = api::get_config().await {
-                                    cfg.parsely_percentiles = checked;
-                                    if let Err(err) = api::update_config(&cfg).await {
-                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                    }
-                                }
-                            });
+                            save_setting("settings", move |cfg| cfg.parsely_percentiles = checked);
                         }
                     }
                     "Parsely percentiles"
@@ -361,14 +346,7 @@ pub(super) fn SettingsPage(
                         onchange: move |e| {
                             let checked = e.checked();
                             audio_enabled.set(checked);
-                            let mut toast = use_toast();
-                            spawn(async move {
-                                if let Err(err) = api::patch_config(|cfg| {
-                                    cfg.audio.enabled = checked;
-                                }).await {
-                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                }
-                            });
+                            save_setting("settings", move |cfg| cfg.audio.enabled = checked);
                         }
                     }
                     "Enable Audio"
@@ -384,14 +362,7 @@ pub(super) fn SettingsPage(
                     on_change: move |v: f64| {
                         let val = v.round() as u8;
                         audio_volume.set(val);
-                        let mut toast = use_toast();
-                        spawn(async move {
-                            if let Err(err) = api::patch_config(|cfg| {
-                                cfg.audio.volume = val;
-                            }).await {
-                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                            }
-                        });
+                        save_setting("settings", move |cfg| cfg.audio.volume = val);
                     },
                 }
 
@@ -403,14 +374,7 @@ pub(super) fn SettingsPage(
                         onchange: move |e| {
                             let checked = e.checked();
                             audio_tts_enabled.set(checked);
-                            let mut toast = use_toast();
-                            spawn(async move {
-                                if let Err(err) = api::patch_config(|cfg| {
-                                    cfg.audio.tts_enabled = checked;
-                                }).await {
-                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                }
-                            });
+                            save_setting("settings", move |cfg| cfg.audio.tts_enabled = checked);
                         }
                     }
                     "Text-to-Speech"
@@ -584,14 +548,7 @@ pub(super) fn SettingsPage(
                         onchange: move |e| {
                             let checked = e.checked();
                             ocr_debug_dump.set(checked);
-                            let mut toast = use_toast();
-                            spawn(async move {
-                                if let Err(err) = api::patch_config(|cfg| {
-                                    cfg.ocr_debug_dump = checked;
-                                }).await {
-                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                }
-                            });
+                            save_setting("settings", move |cfg| cfg.ocr_debug_dump = checked);
                         }
                     }
                     "Save detection images"
@@ -606,14 +563,7 @@ pub(super) fn SettingsPage(
                         on_change: move |v: f64| {
                             let count = v as u32;
                             ocr_debug_max_dumps.set(count);
-                            let mut toast = use_toast();
-                            spawn(async move {
-                                if let Err(err) = api::patch_config(|cfg| {
-                                    cfg.ocr_debug_max_dumps = count;
-                                }).await {
-                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                }
-                            });
+                            save_setting("settings", move |cfg| cfg.ocr_debug_max_dumps = count);
                         }
                     }
                 }

@@ -39,16 +39,7 @@ pub(super) fn is_linux() -> bool {
 pub(super) fn set_light_theme(mut light_theme: Signal<bool>, on: bool) {
     light_theme.set(on);
     crate::utils::apply_theme(on);
-    let mut toast = use_toast();
-    spawn(async move {
-        if let Err(err) = api::patch_config(|cfg| {
-            cfg.light_theme = on;
-        })
-        .await
-        {
-            toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-        }
-    });
+    save_setting("settings", move |cfg| cfg.light_theme = on);
 }
 
 /// Persist guild fields (`guilds` + `selected_guild`) to the config without
