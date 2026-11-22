@@ -337,7 +337,12 @@ pub fn OverviewGroupChart(
             drawn_marks.set(death_marks(&mut option).map(|m| m.clone()).unwrap_or_default());
             let Some(js) = json_to_js(&option) else { return };
             set_js_fn(&js, &["xAxis", "axisLabel", "formatter"], "v", MMSS);
-            set_js_fn(&js, &["xAxis", "axisLabel", "interval"], "i, v", &tick_filter_js(&option));
+            set_js_fn(
+                &js,
+                &["xAxis", "axisLabel", "interval"],
+                "i, v",
+                &tick_filter_js(&option),
+            );
             if alive {
                 set_js_fn(&js, &["tooltip", "formatter"], "p", &alive_tooltip_js());
             } else {

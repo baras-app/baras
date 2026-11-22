@@ -98,7 +98,13 @@ pub fn App() -> Element {
         }
     });
     let kept = move |tab: MainTab| active_tab() == tab || opened_tabs.read().contains(&tab);
-    let shown = move |tab: MainTab| if active_tab() == tab { "display: contents" } else { "display: none" };
+    let shown = move |tab: MainTab| {
+        if active_tab() == tab {
+            "display: contents"
+        } else {
+            "display: none"
+        }
+    };
 
     // Other UI state (not part of session persistence)
     let mut overlay_settings = use_signal(OverlaySettings::default);
@@ -529,7 +535,10 @@ pub fn App() -> Element {
         spawn(async move {
             match api::restart_watcher().await {
                 Ok(()) => is_live_tailing.set(true),
-                Err(err) => toast.show(format!("Couldn't restart the log watcher: {err}"), ToastSeverity::Normal),
+                Err(err) => toast.show(
+                    format!("Couldn't restart the log watcher: {err}"),
+                    ToastSeverity::Normal,
+                ),
             }
         });
     };
