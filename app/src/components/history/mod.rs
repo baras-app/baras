@@ -10,6 +10,7 @@ mod charts;
 mod clears;
 mod disciplines;
 mod dummy;
+mod dummy_chart;
 mod heatmap;
 mod library;
 mod library_cleanup;

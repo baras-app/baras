@@ -139,7 +139,7 @@ fn pull_axis(labels: Vec<String>) -> Value {
 /// Axis labels at period boundaries only, keyed by point index: months
 /// while they fit, then quarters, then years. The points themselves stay
 /// evenly spaced and unlabelled; the tooltip has their time.
-fn period_ticks(timestamps: &[&str]) -> Value {
+pub(super) fn period_ticks(timestamps: &[&str]) -> Value {
     const MONTHS: [&str; 12] = [
         "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
@@ -167,6 +167,15 @@ fn period_ticks(timestamps: &[&str]) -> Value {
         t = ticks(&year);
     }
     Value::Object(t.into_iter().map(|(i, l)| (i.to_string(), Value::String(l))).collect())
+}
+
+/// Label, tick and gridline of a category axis at the `period_ticks` indices only
+pub(super) fn apply_period_ticks(js: &JsValue, ticks: &Value) {
+    let show = format!("var t = {ticks}; return t[i] !== undefined;");
+    set_js_fn(js, &["xAxis", "axisLabel", "formatter"], "v, i", &format!("var t = {ticks}; return t[i] || '';"));
+    set_js_fn(js, &["xAxis", "axisLabel", "interval"], "i, v", &show);
+    set_js_fn(js, &["xAxis", "axisTick", "interval"], "i, v", &show);
+    set_js_fn(js, &["xAxis", "splitLine", "interval"], "i, v", &show);
 }
 
 /// Lines on the DPS / EHPS charts: the role played on the pull (as recorded,
@@ -390,17 +399,7 @@ pub fn PullCharts(pulls: Resource<Option<Vec<PullRow>>>, pick: Signal<Option<Cha
                     Some(option) => {
                         if let (Some(chart), Some(js)) = (init_chart(id), json_to_js(option)) {
                             if let Some(ticks) = option.get("_ticks") {
-                                // Period boundaries only: label, tick and gridline share one index set
-                                let show = format!("var t = {ticks}; return t[i] !== undefined;");
-                                set_js_fn(
-                                    &js,
-                                    &["xAxis", "axisLabel", "formatter"],
-                                    "v, i",
-                                    &format!("var t = {ticks}; return t[i] || '';"),
-                                );
-                                set_js_fn(&js, &["xAxis", "axisLabel", "interval"], "i, v", &show);
-                                set_js_fn(&js, &["xAxis", "axisTick", "interval"], "i, v", &show);
-                                set_js_fn(&js, &["xAxis", "splitLine", "interval"], "i, v", &show);
+                                apply_period_ticks(&js, ticks);
                             } else {
                                 // Day only on the axis ("Sep 12"); the category keeps the time for the tooltip
                                 set_js_fn(
