@@ -8,6 +8,9 @@ use memchr::{memchr, memmem};
 #[cfg(test)]
 mod tests;
 
+/// How far a line's time may trail the filename time and still be the same day.
+const FILENAME_LEAD_TOLERANCE_MS: i64 = 5 * 60 * 1000;
+
 macro_rules! parse_i64 {
     ($s:expr) => {
         $s.parse::<i64>().unwrap_or_default()
@@ -115,22 +118,21 @@ impl LogParser {
 
         let timestamp = chrono::NaiveTime::from_hms_milli_opt(hour as u32, minute as u32, second as u32, millis as u32);
 
-        if let Some(compare_time) = timestamp {
-            if compare_time
-                .signed_duration_since(self.session_date.time())
-                .num_milliseconds()
-                < 0
-            {
-                return self
-                    .session_date
-                    .date()
-                    .and_time(compare_time)
-                    .checked_add_days(Days::new(1));
-            } else {
-                return Some(self.session_date.date().and_time(compare_time));
-            };
+        let compare_time = timestamp?;
+        let date = self.session_date.date().and_time(compare_time);
+        // A line earlier than the filename time normally means the log crossed
+        // midnight. The first lines of a log can however predate the filename by
+        // up to a few seconds (the game stamps the event before it creates the file).
+        let behind_ms = self
+            .session_date
+            .time()
+            .signed_duration_since(compare_time)
+            .num_milliseconds();
+        if behind_ms > FILENAME_LEAD_TOLERANCE_MS {
+            date.checked_add_days(Days::new(1))
+        } else {
+            Some(date)
         }
-        None
     }
 
     fn parse_entity(&self, segment: &str) -> Option<Entity> {
