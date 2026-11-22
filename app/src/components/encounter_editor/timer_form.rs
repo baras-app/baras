@@ -45,6 +45,17 @@ pub(super) fn TimerEditForm(
     let mut draft = use_signal(|| timer_for_draft);
     let mut just_saved = use_signal(|| false);
 
+    // The row's role and audio toggles save straight to the stored timer: follow
+    // them, or the next Save here would write the draft's stale values back
+    let (row_roles, row_audio) = (timer.roles.clone(), timer.audio.enabled);
+    use_effect(use_reactive!(|(row_roles, row_audio)| {
+        if draft.peek().roles != row_roles || draft.peek().audio.enabled != row_audio {
+            let mut d = draft.write();
+            d.roles = row_roles;
+            d.audio.enabled = row_audio;
+        }
+    }));
+
     // Reset just_saved when user makes new changes after saving
     let timer_original_for_effect = timer_original.clone();
     use_effect(move || {

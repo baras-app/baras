@@ -125,6 +125,17 @@ pub(crate) fn EffectEditForm(
     // Track if form was just saved (resets dirty state)
     let mut just_saved = use_signal(|| false);
 
+    // The row's enable and audio toggles save straight to the stored effect: follow
+    // them, or the next Save here would write the draft's stale values back
+    let (row_enabled, row_audio) = (effect.enabled, effect.audio.enabled);
+    use_effect(use_reactive!(|(row_enabled, row_audio)| {
+        if draft.peek().enabled != row_enabled || draft.peek().audio.enabled != row_audio {
+            let mut d = draft.write();
+            d.enabled = row_enabled;
+            d.audio.enabled = row_audio;
+        }
+    }));
+
     // Reset just_saved when user makes new changes after saving
     let effect_original_for_effect = effect_original.clone();
     use_effect(move || {
