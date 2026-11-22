@@ -3,6 +3,7 @@
 use dioxus::prelude::*;
 
 use super::ctx::ExplorerCtx;
+use crate::components::overview_table::pct_tier;
 use crate::types::{DataTab, ViewMode};
 use baras_types::formatting;
 
@@ -27,6 +28,7 @@ pub(super) fn encounter_strip(ctx: ExplorerCtx) -> Element {
         live_query_active,
         sidebar_collapsed,
         overview_fullscreen,
+        ttk_ratings,
         ..
     } = ctx;
 
@@ -52,6 +54,13 @@ pub(super) fn encounter_strip(ctx: ExplorerCtx) -> Element {
                             span { class: "enc-strip-duration",
                                 i { class: "fa-regular fa-clock" }
                                 " {formatting::format_duration(enc.duration_seconds)}"
+                            }
+                            if let Some(r) = ttk_ratings.read().get(&enc.encounter_id) {
+                                span {
+                                    class: "pct-badge {pct_tier(r.pct)}",
+                                    title: "{baras_types::percentile_label(r.pct)}\n~{r.source.total} total kills\n{r.source.updated_note()}",
+                                    "{r.pct}"
+                                }
                             }
                         }
                     }

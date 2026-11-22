@@ -1396,6 +1396,14 @@ pub async fn query_raid_overview(
     from_js(result)
 }
 
+/// Kill time percentiles of the session's rated kills, by encounter id.
+pub async fn query_parsely_ttk_ratings() -> std::collections::HashMap<u64, baras_types::TtkRating> {
+    from_js::<Vec<(u64, baras_types::TtkRating)>>(invoke("query_parsely_ttk_ratings", JsValue::NULL).await)
+        .unwrap_or_default()
+        .into_iter()
+        .collect()
+}
+
 /// Parsely percentiles; empty unless the encounter is a finished kill of a rated boss.
 /// With `local_only`, None means the table isn't downloaded yet (ask again without it).
 pub async fn query_parsely_percentiles(encounter_idx: u32, local_only: bool) -> Option<EncounterRatings> {

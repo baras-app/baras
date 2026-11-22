@@ -93,6 +93,8 @@ pub(super) struct ExplorerCtx {
     pub overview_data: Signal<Vec<RaidOverviewRow>>,
     /// Parsely percentiles and the encounter they rate (None = nothing rated)
     pub percentiles: Signal<(Option<u32>, EncounterRatings)>,
+    /// Parsely kill time percentile per rated kill, by encounter id
+    pub ttk_ratings: Signal<HashMap<u64, baras_types::TtkRating>>,
     pub player_deaths: Signal<Vec<PlayerDeath>>,
     pub npc_health: Signal<Vec<NpcHealthRow>>,
     pub last_overview_fetch: Signal<Option<(Option<u32>, TimeRange, bool)>>,
@@ -201,6 +203,7 @@ pub(super) fn use_explorer_ctx(state: Signal<UiSessionState>) -> ExplorerCtx {
     // Overview data
     let overview_data = use_signal(Vec::<RaidOverviewRow>::new);
     let percentiles = use_signal(|| (None, EncounterRatings::default()));
+    let ttk_ratings = use_signal(HashMap::new);
     let player_deaths = use_signal(Vec::<PlayerDeath>::new);
     let npc_health = use_signal(Vec::<NpcHealthRow>::new);
     // Track last (encounter, time_range, was_overview) we fetched overview data for (prevents re-fetch loops)
@@ -327,6 +330,7 @@ pub(super) fn use_explorer_ctx(state: Signal<UiSessionState>) -> ExplorerCtx {
         timeline,
         overview_data,
         percentiles,
+        ttk_ratings,
         player_deaths,
         npc_health,
         last_overview_fetch,

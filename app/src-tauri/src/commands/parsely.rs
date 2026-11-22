@@ -424,6 +424,15 @@ fn extract_xml_element(xml: &str, tag: &str) -> Option<String> {
     None
 }
 
+/// Kill time percentiles of the session's rated kills, by encounter id (as
+/// pairs: integer map keys don't survive the trip to the frontend).
+#[tauri::command]
+pub async fn query_parsely_ttk_ratings(
+    handle: State<'_, ServiceHandle>,
+) -> Result<Vec<(u64, baras_types::TtkRating)>, String> {
+    Ok(handle.parsely_ttk_ratings().await)
+}
+
 /// Parsely percentiles for a finished kill; empty when the encounter isn't
 /// rated. With `local_only`, None means the table has to be
 /// downloaded first (ask again without it).

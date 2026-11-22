@@ -1173,6 +1173,9 @@
   right: 6px;
   top: 50%;
   transform: translateY(-50%);
+}
+
+.pct-badge {
   width: 26px;
   padding: 1px 0;
   border-radius: 3px;
@@ -1184,11 +1187,11 @@
   background: color-mix(in srgb, currentColor 16%, transparent);
 }
 
-.overview-table .pct-badge.p25 { color: #5fbf6a; }
-.overview-table .pct-badge.p50 { color: var(--swtor-blue); }
-.overview-table .pct-badge.p75 { color: #b47aff; }
-.overview-table .pct-badge.p95 { color: var(--swtor-orange); }
-.overview-table .pct-badge.p100 { color: var(--text-gold); }
+.pct-badge.p25 { color: #5fbf6a; }
+.pct-badge.p50 { color: var(--swtor-blue); }
+.pct-badge.p75 { color: #b47aff; }
+.pct-badge.p95 { color: var(--swtor-orange); }
+.pct-badge.p100 { color: var(--text-gold); }
 
 /* Why percentiles are missing or old (Parsely unreachable) */
 .overview-ratings-note {

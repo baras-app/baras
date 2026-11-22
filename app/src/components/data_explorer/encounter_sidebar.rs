@@ -4,6 +4,7 @@ use dioxus::prelude::*;
 
 use super::ctx::{ExplorerCtx, repaint_with};
 use crate::api;
+use crate::components::overview_table::pct_tier;
 use crate::components::toggle_switch::ToggleSwitch;
 use crate::components::{ToastSeverity, use_parsely_upload, use_toast};
 use baras_types::formatting;
@@ -22,6 +23,7 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
         mut sidebar_collapsed,
         filtered_history,
         sections,
+        ttk_ratings,
         ..
     } = ctx;
     repaint_with(encounters);
@@ -221,6 +223,7 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
                                                             span { class: "encounter-name", "{enc.display_name}" }
                                                         }
                                                         div { class: "encounter-meta",
+                                                            span { class: "encounter-duration", title: "Fight duration", "{formatting::format_duration(enc.duration_seconds)}" }
                                                             if let Some(time) = &enc.start_time {
                                                                 {
                                                                     // Format ISO timestamp "2026-03-07T21:30:31" → "21:30:31"
@@ -235,13 +238,20 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
                                                                         .filter(|s| *s >= 0);
                                                                     match since_entry {
                                                                         Some(secs) => rsx! {
-                                                                            span { class: "encounter-time", title: "{display_time}", "+{formatting::format_duration(secs)}" }
+                                                                            span { class: "encounter-time", title: "Started {display_time}, this long after entering the instance", "(+{formatting::format_duration(secs)})" }
                                                                         },
-                                                                        None => rsx! { span { class: "encounter-time", "{display_time}" } },
+                                                                        None => rsx! { span { class: "encounter-time", "({display_time})" } },
                                                                     }
                                                                 }
                                                             }
-                                                            span { class: "encounter-duration", "({formatting::format_duration(enc.duration_seconds)})" }
+                                                            // Kill time percentile
+                                                            if let Some(r) = ttk_ratings.read().get(&enc_id) {
+                                                                span {
+                                                                    class: "pct-badge {pct_tier(r.pct)}",
+                                                                    title: "{baras_types::percentile_label(r.pct)}\n~{r.source.total} total kills\n{r.source.updated_note()}",
+                                                                    "{r.pct}"
+                                                                }
+                                                            }
                                                             div { class: "encounter-main-right",
                                                                 // Parsely upload / link button
                                                                 {

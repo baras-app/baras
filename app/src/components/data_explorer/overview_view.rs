@@ -103,6 +103,7 @@ pub(super) fn overview_view(ctx: ExplorerCtx, european: bool) -> Element {
                                    OverviewTable {
                                        rows: table_data.rows.clone(),
                                        percentiles: percentiles.read().1.players.clone(),
+                                       pct_note: percentiles.read().1.source.updated_note(),
                                        total_label: "Group Total",
                                        columns: columns.clone(),
                                        sort_col: overview_sort_col,

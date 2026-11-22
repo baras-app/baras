@@ -212,6 +212,9 @@ pub struct RatingPercentiles {
     pub ehps: u8,
     pub dtps: u8,
     pub apm: u8,
+    /// Parses the discipline's percentiles are drawn from (mirror included)
+    #[serde(default)]
+    pub count: u32,
 }
 
 /// Parsely percentiles for one encounter's players, by name.
@@ -222,6 +225,48 @@ pub struct EncounterRatings {
     pub stale_as_of: Option<String>,
     /// A rated kill whose rating table couldn't be fetched at all
     pub unavailable: bool,
+    #[serde(default)]
+    pub source: RatingSource,
+}
+
+/// Size and age of the Parsely table a percentile was read from.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct RatingSource {
+    /// Player parses in the table, across every discipline
+    pub total: u32,
+    /// UTC day (`YYYY-MM-DD`) Parsely last rebuilt the table; empty if unknown
+    pub updated: String,
+}
+
+impl RatingSource {
+    /// Closing tooltip line: how old the data is
+    pub fn updated_note(&self) -> String {
+        if self.updated.is_empty() {
+            String::new()
+        } else {
+            format!("Parsely data last updated: {}", self.updated)
+        }
+    }
+}
+
+/// Opening tooltip line of a percentile: `Estimated Percentile: 72nd`
+pub fn percentile_label(pct: u8) -> String {
+    let suffix = match (pct % 10, pct % 100) {
+        (_, 11..=13) => "th",
+        (1, _) => "st",
+        (2, _) => "nd",
+        (3, _) => "rd",
+        _ => "th",
+    };
+    format!("Estimated Percentile: {pct}{suffix}")
+}
+
+/// Parsely percentile (1-100) of one kill's time among all rated kills;
+/// `source.total` is the estimated number of those kills.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct TtkRating {
+    pub pct: u8,
+    pub source: RatingSource,
 }
 
 /// Raid overview row - aggregated stats per player across all metrics.

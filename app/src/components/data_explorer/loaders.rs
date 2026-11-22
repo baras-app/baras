@@ -19,6 +19,7 @@ pub(super) fn use_loaders(ctx: ExplorerCtx) {
     use_encounter_list(ctx);
     use_session_events(ctx);
     use_parsely_refresh(ctx);
+    use_ttk_ratings(ctx);
     use_live_tick(ctx);
     use_timeline_loader(ctx);
     use_overview_loader(ctx);
@@ -35,6 +36,30 @@ fn use_local_player_name(ctx: ExplorerCtx) {
         if let Some(info) = api::get_session_info().await {
             let _ = local_player_name.try_write().map(|mut w| *w = info.player_name);
         }
+    });
+}
+
+// Kill time percentiles for the sidebar: asked again only when the number of
+// kills changes, so they sit beside every kill instead of following the view
+fn use_ttk_ratings(ctx: ExplorerCtx) {
+    let ExplorerCtx {
+        encounters,
+        state,
+        mut ttk_ratings,
+        ..
+    } = ctx;
+    let kills = use_memo(move || encounters.read().iter().filter(|e| e.success).count());
+    let enabled = use_memo(move || state.read().parsely_percentiles);
+    use_effect(move || {
+        let wanted = enabled() && kills() > 0;
+        spawn(async move {
+            let ratings = if wanted {
+                api::query_parsely_ttk_ratings().await
+            } else {
+                Default::default()
+            };
+            let _ = ttk_ratings.try_write().map(|mut w| *w = ratings);
+        });
     });
 }
 
