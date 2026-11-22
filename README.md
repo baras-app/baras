@@ -51,6 +51,27 @@ sudo apt-get install -y \
   libpipewire-0.3-dev
 ```
 
+## NixOS
+
+Add the following to your flake:
+```nix
+inputs = {
+  baras = {
+    url = "github:baras-app/baras";
+  };
+  # ...
+}
+```
+
+Then add the following in `environment.systemPackages` from your `configuration.nix` : 
+```nix
+inputs.baras.packages.${pkgs.stdenv.hostPlatform.system}.
+```
+
+Tested and working on NixOs with Niri & Noctalia.
+Feel free to send me a message on Discord if you encounter any issue with NixOS.
+My discord: `nephtys.` (yes with the dot!).
+
 ### Development
 
 Build the parse-worker sidecar, then start the Tauri dev server with hot-reload:
