@@ -10,7 +10,7 @@ let
 
   src = fetchurl {
     url = "https://github.com/baras-app/${pname}/releases/download/${version}/BARAS_2026.11.23_amd64.AppImage";
-    hash = "sha256:c64c1f1f79da37bd816caffa849b4a3f719f80655971e24b1663d8d88c33fd02";
+    hash = "sha256:sha256-MWicFCcdsbETmn8sFz6D+2YPxNIx5+xe5BtHGJao6Ng=";
   };
 
 in
