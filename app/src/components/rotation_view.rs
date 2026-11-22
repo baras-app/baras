@@ -102,7 +102,7 @@ pub fn RotationView(props: RotationViewProps) -> Element {
         });
     });
 
-    // Query rotation when Create is clicked (rotation_active) or time_range changes
+    // Query rotation when an anchor is picked (rotation_active) or time_range changes
     use_effect(move || {
         let tr = tracked_time_range();
         let active = rotation_active();
@@ -110,7 +110,7 @@ pub fn RotationView(props: RotationViewProps) -> Element {
         if !active {
             return;
         }
-        let Some(anchor_id) = *selected_anchor.peek() else {
+        let Some(anchor_id) = selected_anchor() else {
             return;
         };
         let Some(ref source_name) = *tracked_source.peek() else {
@@ -143,15 +143,15 @@ pub fn RotationView(props: RotationViewProps) -> Element {
         div { class: "rotation-view",
             // Controls row
             div { class: "rotation-controls",
-                label { "Create Rotation Visualisation:" }
+                label { title: "Each cast of this ability starts a new row", "Rotation cycle starts with:" }
                 select {
                     class: "rotation-anchor-select",
                     value: selected_anchor().map(|id| id.to_string()).unwrap_or_default(),
                     onchange: move |evt: Event<FormData>| {
-                        let val = evt.value();
-                        selected_anchor.set(val.parse::<i64>().ok());
+                        let anchor = evt.value().parse::<i64>().ok();
+                        selected_anchor.set(anchor);
                         rotation.set(None);
-                        rotation_active.set(false);
+                        rotation_active.set(anchor.is_some());
                     },
                     option { value: "", "-- Select Ability --" }
                     for (id, name) in &abilities {
@@ -162,20 +162,20 @@ pub fn RotationView(props: RotationViewProps) -> Element {
                         }
                     }
                 }
-                button {
-                    class: "btn btn-primary",
-                    disabled: selected_anchor().is_none() || source.is_none() || loading(),
-                    onclick: move |_| {
-                        rotation_active.set(true);
-                    },
-                    if loading() { "Loading..." } else { "Create" }
-                }
                 AbilityNamingPills {}
             }
 
             if source.is_none() {
                 div { class: "rotation-placeholder",
                     "Select a player from the sidebar to view their rotation."
+                }
+            } else if selected_anchor().is_none() {
+                div { class: "rotation-placeholder",
+                    "Pick the ability that starts each rotation cycle."
+                }
+            } else if rotation().is_none() && !loading() && rotation_active() {
+                div { class: "rotation-placeholder",
+                    "Couldn't build a rotation for this ability."
                 }
             }
 
