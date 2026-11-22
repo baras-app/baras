@@ -113,7 +113,7 @@ pub fn RunDetailView(
     let Some(d) = detail_read.as_ref().and_then(|d| d.as_ref()) else {
         return rsx! {
             div { class: "sidebar-empty",
-                if detail_read.is_none() { p { "Loading…" } } else { p { "Select a run" } }
+                if detail_read.is_none() { p { class: "loading-late", "Loading…" } } else { p { "Select a run" } }
             }
         };
     };

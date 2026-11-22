@@ -134,7 +134,7 @@ pub fn DeathRecapDrawer(props: DeathRecapDrawerProps) -> Element {
                 {
                     match state {
                         None => rsx! {
-                            div { class: "recap-loading", "Loading recap..." }
+                            div { class: "recap-loading loading-late", "Loading recap..." }
                         },
                         Some(None) => rsx! {
                             div { class: "recap-loading", "No recap data available for this death." }

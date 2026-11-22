@@ -156,7 +156,7 @@ pub fn EffectUptimeView(
             }
             if effects.is_empty() {
                 div { class: "uptime-empty",
-                    if cells.read().is_none() { "Loading…" } else { "No effects applied by {source} on these targets" }
+                    if cells.read().is_none() { span { class: "loading-late", "Loading…" } } else { "No effects applied by {source} on these targets" }
                 }
             } else {
                 div { class: "overview-table-box uptime-table-box",
