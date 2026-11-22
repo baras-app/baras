@@ -31,7 +31,7 @@ pub use dsl::EntityFilter;
 pub use dsl::{AbilitySelector, EffectSelector, EntitySelector};
 pub use dsl::{
     BossConfig, BossEncounterDefinition, BossTimerDefinition, CounterCondition, CounterDefinition, OperationTimerStart,
-    PhaseDefinition, PhaseTrigger, load_bosses_from_dir,
+    PhaseDefinition, PhaseTrigger, TrashCombatEnd, load_bosses_from_dir,
 };
 pub use effects::{
     ActiveEffect, DefinitionConfig, DefinitionSet, DisplayTarget, EFFECTS_DSL_VERSION, EffectDefinition, EffectTracker,

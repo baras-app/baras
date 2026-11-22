@@ -4,6 +4,13 @@ id = 137438993402
 area_type = "operation"
 timed_run_minutes = 60
 
+# Qor'thest's invulnerable shield guards follow the raid to Draxus in Story, so
+# the game never exits combat after the last two Dread Host Soldiers die.
+[area.combat_end]
+difficulties = ["story"]
+final_kills = [3316784199368704]
+lingering = [3270364192833536, 3272541741252608]
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 1: Nefra, Who Bars The Way
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -216,6 +223,7 @@ name = "Draxus"
 ids = [3273924720721920, 3303401081274368, 3303392491339776, 3303405376241664]
 is_boss = true
 is_kill_target = true
+single_instance = true
 
 [[boss.entities.hp_markers]]
 hp_percent = 90.0

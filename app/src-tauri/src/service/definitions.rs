@@ -260,13 +260,10 @@ impl CombatService {
         let _ = self.app_handle.emit("alacrity-auto-set", value);
     }
 
-    /// The area's `[area.timer_start]` region, if the definition file declares one.
-    pub(super) fn load_area_timer_start(&self, area_id: i64) -> Option<baras_core::OperationTimerStart> {
+    /// The area's `[area]` header rules, if the definition file declares any.
+    pub(super) fn load_area_rules(&self, area_id: i64) -> Option<baras_core::dsl::AreaConfig> {
         let entry = self.area_index.get(&area_id)?;
-        baras_core::boss::load_area_config(&entry.file_path)
-            .ok()
-            .flatten()
-            .and_then(|area| area.timer_start)
+        baras_core::boss::load_area_config(&entry.file_path).ok().flatten()
     }
 
     /// Get the path to the timer preferences file
