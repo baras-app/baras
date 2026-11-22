@@ -300,7 +300,6 @@ pub fn SettingsPanel(
         // Parked: off-screen and out of the docked layout, with its draft intact
         section {
             class: if parked { "drawer settings-panel-parked" } else { "drawer settings-panel" },
-            style: if parked { "display: none" } else { "" },
             div { class: "settings-header",
                 h3 { "Overlay Settings" }
             }

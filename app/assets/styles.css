@@ -410,6 +410,12 @@ select optgroup {
   align-items: stretch;
 }
 
+/* Another tab is open: the panel stays mounted with its draft, out of sight
+   and out of the docked layout above */
+.drawer.settings-panel-parked {
+  display: none;
+}
+
 .container:has(> .settings-panel) > .app-header {
   grid-column: 1 / -1;
 }
