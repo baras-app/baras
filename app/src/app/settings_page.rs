@@ -5,9 +5,8 @@
 
 use dioxus::prelude::*;
 
-use super::helpers::{
-    add_parsely_guild, is_linux, is_macos, save_parsely_guild_fields, save_setting, set_light_theme,
-};
+use super::helpers::{is_linux, is_macos, save_setting, set_light_theme};
+use super::parsely_settings::ParselySettings;
 use crate::api;
 use crate::components::{
     CleanupRules, HotkeyInput, LockoutResetSetting, NumberInput, Slider, ToastSeverity, use_toast,
@@ -21,8 +20,8 @@ pub(super) fn SettingsPage(
     mut is_watching: Signal<bool>,
     mut european_number_format: Signal<bool>,
     light_theme: Signal<bool>,
-    mut parsely_guilds: Signal<Vec<String>>,
-    mut parsely_selected_guild: Signal<Option<String>>,
+    parsely_guilds: Signal<Vec<String>>,
+    parsely_selected_guild: Signal<Option<String>>,
 ) -> Element {
     // Log directory stats
     let mut log_dir_size = use_signal(|| 0u64);
@@ -50,7 +49,6 @@ pub(super) fn SettingsPage(
     // Parsely
     let mut parsely_username = use_signal(String::new);
     let mut parsely_password = use_signal(String::new);
-    let mut parsely_guild_input = use_signal(String::new);
 
     // Name detection
     let mut ocr_debug_dump = use_signal(|| false);
@@ -418,109 +416,11 @@ pub(super) fn SettingsPage(
 
             } // settings-col
             div { class: "settings-col",
-            div { class: "settings-section",
-                h4 { "Parsely.io" }
-                p { class: "hint", "Upload logs to parsely.io for leaderboards and detailed analysis." }
-                div { class: "setting-row",
-                    label { "Username" }
-                    input {
-                        r#type: "text",
-                        placeholder: "Optional",
-                        value: parsely_username,
-                        oninput: move |e| parsely_username.set(e.value()),
-                        // Saved when the field is left
-                        onchange: move |e| {
-                            let v = e.value();
-                            save_setting("Parsely username", move |cfg| cfg.parsely.username = v);
-                        },
-                    }
-                }
-                div { class: "setting-row",
-                    label { "Password" }
-                    input {
-                        r#type: "password",
-                        placeholder: "Optional",
-                        value: parsely_password,
-                        oninput: move |e| parsely_password.set(e.value()),
-                        onchange: move |e| {
-                            let v = e.value();
-                            save_setting("Parsely password", move |cfg| cfg.parsely.password = v);
-                        },
-                    }
-                }
-                div { class: "setting-row",
-                    label { "Guilds" }
-                    div { class: "parsely-guilds-field",
-                        if !parsely_guilds.read().is_empty() {
-                            div { class: "parsely-guilds-chips",
-                                for (idx, guild) in parsely_guilds.read().iter().enumerate() {
-                                    {
-                                        let name = guild.clone();
-                                        rsx! {
-                                            span {
-                                                key: "{name}-{idx}",
-                                                class: "chip",
-                                                "{name}"
-                                                button {
-                                                    class: "chip-remove",
-                                                    title: "Remove guild",
-                                                    onclick: move |_| {
-                                                        let (guilds_snapshot, selected_snapshot) = {
-                                                            let mut list = parsely_guilds.write();
-                                                            list.retain(|g| g != &name);
-                                                            let still_has_selected = parsely_selected_guild
-                                                                .read()
-                                                                .as_deref()
-                                                                .map(|s| list.iter().any(|g| g == s))
-                                                                .unwrap_or(false);
-                                                            if !still_has_selected {
-                                                                parsely_selected_guild.set(list.first().cloned());
-                                                            }
-                                                            (list.clone(), parsely_selected_guild.read().clone())
-                                                        };
-                                                        save_parsely_guild_fields(
-                                                            guilds_snapshot,
-                                                            selected_snapshot,
-                                                        );
-                                                    },
-                                                    "×"
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        div { class: "parsely-guilds-add",
-                            input {
-                                r#type: "text",
-                                placeholder: "Add a guild...",
-                                value: parsely_guild_input,
-                                oninput: move |e| parsely_guild_input.set(e.value()),
-                                onkeydown: move |e| {
-                                    if e.key() == Key::Enter {
-                                        add_parsely_guild(
-                                            parsely_guild_input,
-                                            parsely_guilds,
-                                            parsely_selected_guild,
-                                        );
-                                    }
-                                }
-                            }
-                            button {
-                                class: "btn btn-secondary btn-sm",
-                                onclick: move |_| {
-                                    add_parsely_guild(
-                                        parsely_guild_input,
-                                        parsely_guilds,
-                                        parsely_selected_guild,
-                                    );
-                                },
-                                "Add"
-                            }
-                        }
-                    }
-                }
+            ParselySettings {
+                username: parsely_username,
+                password: parsely_password,
+                guilds: parsely_guilds,
+                selected_guild: parsely_selected_guild,
             }
 
             div { class: "settings-section",
