@@ -126,6 +126,14 @@ fn with_tooltip_delay(option: &JsValue) {
 pub const TOOLTIP_ROWS_JS: &str = "var tipHead = function (t) { return '<div style=\"opacity:.7;margin-bottom:2px;text-align:left\">' + t + '</div>'; };\
      var tipRow = function (label, value, style) { return '<div style=\"display:flex;gap:16px;' + (style || '') + '\"><span style=\"flex:1;text-align:left\">' + label + '</span><b style=\"text-align:right\">' + value + '</b></div>'; };";
 
+/// Minimal HTML escape for names placed in tooltip markup
+pub fn escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
 pub fn set_chart_option(chart: &JsValue, option: &JsValue) {
     with_tooltip_delay(option);
     if let Some(func) = method(chart, "setOption") {

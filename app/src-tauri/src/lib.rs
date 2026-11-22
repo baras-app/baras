@@ -283,8 +283,10 @@ pub fn run() {
             commands::get_pull_history_overview,
             commands::get_boss_pulls,
             commands::get_pvp_matches,
+            commands::get_dummy_parses,
             commands::get_operation_runs,
             commands::get_operation_run,
+            commands::get_session_run_links,
             commands::set_run_meta,
             commands::start_history_backfill,
             commands::cancel_history_backfill,
@@ -367,6 +369,7 @@ pub fn run() {
             // Parsely upload
             commands::upload_to_parsely,
             commands::query_parsely_percentiles,
+            commands::query_dummy_parse,
             commands::query_parsely_ttk_ratings,
             commands::upload_encounter_to_parsely,
             // URL opening

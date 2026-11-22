@@ -99,7 +99,6 @@ const BASE_HEIGHT: f32 = 120.0;
 /// Base layout values (at BASE_WIDTH x BASE_HEIGHT)
 const BASE_LINE_HEIGHT: f32 = 16.0;
 const BASE_ENTRY_SPACING: f32 = 2.0;
-const BASE_PADDING: f32 = 6.0;
 
 /// Alerts text overlay
 pub struct AlertsOverlay {
@@ -171,9 +170,9 @@ impl AlertsOverlay {
 
     /// Render a skeleton preview when in move mode
     fn render_preview(&mut self) {
-        let padding = self.frame.scaled(BASE_PADDING);
+        let padding = self.frame.edge_margin();
         let line_height = self.frame.scaled(BASE_LINE_HEIGHT);
-        let entry_spacing = self.frame.scaled(BASE_ENTRY_SPACING);
+        let entry_spacing = BASE_ENTRY_SPACING;
         let font_size = self.frame.scaled(self.config.font_size as f32);
         let icon_size = font_size;
         let icon_gap = self.frame.scaled(4.0);
@@ -244,9 +243,9 @@ impl AlertsOverlay {
         // Remove expired alerts first
         self.prune_expired();
 
-        let padding = self.frame.scaled(BASE_PADDING);
+        let padding = self.frame.edge_margin();
         let line_height = self.frame.scaled(BASE_LINE_HEIGHT);
-        let entry_spacing = self.frame.scaled(BASE_ENTRY_SPACING);
+        let entry_spacing = BASE_ENTRY_SPACING;
         let font_size = self.frame.scaled(self.config.font_size as f32);
 
         let max_display = self.config.max_display as usize;

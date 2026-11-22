@@ -171,6 +171,7 @@ pub fn App() -> Element {
             parsely_selected_guild.set(config.parsely.selected_guild);
             // UI preferences - now in unified state
             ui_state.write().data_explorer.show_only_bosses = config.show_only_bosses;
+            ui_state.write().data_explorer.hide_percentiles = config.hide_percentiles;
             ui_state.write().history.filter.flashpoints = config.raid_summaries_include_flashpoints;
             ui_state.write().data_explorer.auto_live = config.data_explorer_auto_live;
             ui_state.write().data_explorer.overview_columns = config.overview_columns.clone();
@@ -609,6 +610,7 @@ pub fn App() -> Element {
                                     (MainTab::BossStats, "fa-solid fa-chart-column", "Boss Statistics", "One boss across every log"),
                                     (MainTab::RaidSummaries, "fa-solid fa-dungeon", "Raid Summaries", ""),
                                     (MainTab::PvpStats, "fa-solid fa-crosshairs", "PvP Statistics", "Warzone and arena record, kills and deaths, trends"),
+                                    (MainTab::DummyStats, "fa-solid fa-bullseye", "Dummy Parses", "Training dummy kills by discipline"),
                                 ],
                                 state: ui_state,
                             }
@@ -1208,7 +1210,7 @@ pub fn App() -> Element {
                 // Encounter Editor Tab
                 // ─────────────────────────────────────────────────────────────
                 if kept(MainTab::EncounterBuilder) {
-                    div { style: shown(MainTab::EncounterBuilder),
+                    div { class: "kept-page", style: shown(MainTab::EncounterBuilder),
                         EncounterEditorPanel {
                             state: ui_state,
                         }
@@ -1219,7 +1221,7 @@ pub fn App() -> Element {
                 // Effects Tab
                 // ─────────────────────────────────────────────────────────────
                 if kept(MainTab::Effects) {
-                    div { style: shown(MainTab::Effects),
+                    div { class: "kept-page", style: shown(MainTab::Effects),
                         EffectEditorPanel {
                             state: ui_state,
                         }

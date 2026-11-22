@@ -69,6 +69,10 @@ pub struct AreaConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timer_start: Option<OperationTimerStart>,
 
+    /// Ends trash combat that the game never exits (e.g., Story Draxus lead-up).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub combat_end: Option<TrashCombatEnd>,
+
     /// Timed-run achievement limit in minutes. Only the operation's highest
     /// difficulty has a timed run (R-4's is Veteran because it has no Master).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -92,6 +96,24 @@ impl OperationTimerStart {
         matches_position_constraints(&self.position, Some(position), Some(position))
             && (self.difficulties.is_empty()
                 || difficulty.is_some_and(|d| self.difficulties.iter().any(|key| d.matches_config_key(key))))
+    }
+}
+
+/// Trash combat ends when one of `final_kills` dies and the only live NPCs left
+/// are `lingering` ones (NPCs the raid leaves alive that hold it in combat).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TrashCombatEnd {
+    /// Difficulties this applies to. Empty = all.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub difficulties: Vec<String>,
+    pub final_kills: Vec<i64>,
+    pub lingering: Vec<i64>,
+}
+
+impl TrashCombatEnd {
+    pub fn applies_to(&self, difficulty: Option<Difficulty>) -> bool {
+        self.difficulties.is_empty()
+            || difficulty.is_some_and(|d| self.difficulties.iter().any(|key| d.matches_config_key(key)))
     }
 }
 
@@ -304,9 +326,9 @@ pub struct EntityDefinition {
     pub pushes_at: Option<f32>,
 
     /// Only one live instance of this entity can exist per pull. Seeing a
-    /// second live instance during a victory-trigger encounter means the boss
-    /// reset (e.g. Zorn & Toth pulled with a player outside the arena), which
-    /// splits the encounter since no wipe/victory would otherwise end it.
+    /// second live instance mid-encounter means the boss reset (e.g. Zorn &
+    /// Toth pulled with a player outside the arena), which splits the
+    /// encounter since no wipe/victory would otherwise end it.
     #[serde(default, skip_serializing_if = "crate::serde_defaults::is_false")]
     pub single_instance: bool,
 }

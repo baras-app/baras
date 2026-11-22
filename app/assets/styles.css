@@ -1978,6 +1978,7 @@ button:active:not(:disabled),
    under "Segments are flat until hovered"), sharing the width equally */
 .settings-top-tabs {
   margin: 0.75em 0;
+  flex-shrink: 0;
 }
 .settings-top-tabs .tab-btn {
   flex: 1;
@@ -1986,7 +1987,8 @@ button:active:not(:disabled),
   font-size: 0.9em;
 }
 .overlay-select-row {
-  margin-bottom: 0.25em;
+  margin-bottom: 0.5em;
+  flex-shrink: 0;
 }
 .overlay-select-row select {
   flex: 1;
@@ -5208,13 +5210,31 @@ a.contributor-name:hover {
 
 .editor-drawer-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
   border-bottom: 1px solid var(--border-subtle);
 }
 
+/* Fold and close hold the corners; title and actions share what is between */
+.editor-drawer-heading {
+  flex: 1;
+  min-width: 0;
+  min-height: 30px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-sm);
+}
+
+/* As tall as the heading's first row, so they line up with the title */
+.editor-drawer-fold,
+.editor-drawer-close {
+  min-height: 30px;
+}
+
 .editor-drawer-header h3 {
+  flex: 1 1 8em;
   margin: 0;
   min-width: 0;
   overflow: hidden;
@@ -5224,10 +5244,16 @@ a.contributor-name:hover {
   color: var(--text-primary);
 }
 
-.editor-drawer-actions {
+.editor-drawer-actions,
+.item-actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--space-xs);
+}
+
+.editor-drawer-actions {
   margin-left: auto;
 }
 
@@ -5257,16 +5283,6 @@ a.contributor-name:hover {
   padding: 0;
   border: none;
   background: none;
-}
-
-/* Save / Delete stay in reach while the form scrolls */
-.editor-drawer-body .form-actions {
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
-  margin-top: var(--space-md);
-  padding: var(--space-sm) 0;
-  background: var(--bg-mid);
 }
 
 /* In the drawer the form's two columns stack until the drawer is wide enough
@@ -5344,20 +5360,25 @@ a.contributor-name:hover {
 .editor-drawer.collapsed .editor-drawer-header {
   flex: 1;
   flex-direction: column;
+  align-items: center;
   padding: var(--space-sm) 0;
   border-bottom: none;
 }
 
+.editor-drawer.collapsed .editor-drawer-heading {
+  display: contents;
+}
+
 .editor-drawer.collapsed .editor-drawer-header h3 {
+  flex: 0 1 auto;
+  min-height: 0;
   writing-mode: vertical-rl;
   cursor: pointer;
   font-size: 0.9em;
   color: var(--text-secondary);
 }
 
-.editor-drawer.collapsed .editor-drawer-actions {
-  flex-direction: column;
-  margin-left: 0;
+.editor-drawer.collapsed .editor-drawer-close {
   margin-top: auto;
 }
 
@@ -6427,6 +6448,31 @@ a.contributor-name:hover {
   white-space: nowrap;
 }
 
+/* Opens the section's run in Raid Summaries */
+.sidebar-section-header .section-run-link {
+  flex-shrink: 0;
+  margin-left: 0.4em;
+  padding: 0.15em 0.35em;
+  cursor: pointer;
+}
+
+/* Icon-only buttons inside a header row: a resting outline and fill, so they
+   read as buttons before they are hovered */
+.sidebar-section-header .section-run-link,
+.overview-columns-btn {
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: rgba(var(--fg-rgb), 0.05);
+  color: var(--text-secondary);
+}
+
+.sidebar-section-header .section-run-link:hover,
+.overview-columns-btn:hover {
+  border-color: var(--swtor-blue-dim);
+  background: var(--blue-alpha-10);
+  color: var(--text-primary);
+}
+
 /* Top level of the history sidebars: Operations / Flashpoints / Other */
 .sidebar-group-header {
   display: flex;
@@ -6473,6 +6519,11 @@ a.contributor-name:hover {
   border-left: 3px solid transparent;
   transition: var(--transition-normal);
   transition-property: var(--transition-props);
+}
+
+/* Every other boss in the list, so a run of pulls reads as one block */
+.sidebar-encounter-item.alt-boss {
+  background: rgba(var(--fg-rgb), 0.035);
 }
 
 .sidebar-encounter-item:hover {
@@ -6705,7 +6756,7 @@ a.contributor-name:hover {
    host and draws into its first child, so the card itself stays put and data
    updates on a live instance (live parsing, brushing) never re-trigger it. */
 [_echarts_instance_] > div:first-child {
-  animation: fade-in 0.25s ease-out;
+  animation: fade-in var(--transition-normal);
 }
 
 @keyframes fade-in {
@@ -8410,7 +8461,19 @@ a.contributor-name:hover {
 
 /* The combat log's first page of rows, once it replaces the previous view */
 .combat-log-host:not(.pending) {
-  animation: fade-in var(--transition-slow);
+  animation: fade-in var(--transition-normal);
+}
+
+/* Navigation: whatever a page, history view, explorer view or encounter change
+   mounts. Hidden editors restart theirs when they are shown again. `.fade-in`
+   marks content re-keyed on navigation (see `ability_table`). */
+.tab-content > *,
+.kept-page > *,
+.history-panel > *,
+.overview-section,
+.explorer-content > *,
+.fade-in {
+  animation: fade-in var(--transition-normal);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -8421,6 +8484,12 @@ a.contributor-name:hover {
   .nav-menu-list,
   .log-context-menu,
   .combat-log-host:not(.pending),
+  .tab-content > *,
+  .kept-page > *,
+  .history-panel > *,
+  .overview-section,
+  .explorer-content > *,
+  .fade-in,
   .drawer,
   .death-recap-drawer,
   .toast,

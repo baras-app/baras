@@ -454,6 +454,8 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
 
     // Load data when filters, time range, sort, or encounter change
     let on_ready = props.on_ready;
+    // Encounter the painted rows belong to; keys them so a new fight's fade in
+    let mut rows_encounter = use_signal(|| props.encounter_idx);
     use_effect(move || {
         let idx = *encounter_idx_signal.read();
         let tr = *time_range_signal.read();
@@ -507,6 +509,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
             }
             if let Some(data) = data {
                 rows.set(data);
+                rows_encounter.set(idx);
             }
             if let Some(on_ready) = on_ready {
                 on_ready.call(());
@@ -1170,7 +1173,10 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                     style: "height: {total_height}px; position: relative;",
 
                     // Rendered rows
+                    for nav in [rows_encounter()] {
                     div {
+                        key: "{nav:?}",
+                        class: "fade-in",
                         style: "position: absolute; top: {start_idx as f64 * ROW_HEIGHT}px; width: 100%;",
                         for row in visible_rows.iter() {
                             {
@@ -1260,6 +1266,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                             } // rsx!
                             } // let row_time block
                         }
+                    }
                     }
                 }
             }

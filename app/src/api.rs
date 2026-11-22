@@ -824,6 +824,11 @@ pub async fn get_operation_runs(filter: &baras_types::history::PullFilter) -> Op
     from_js(invoke("get_operation_runs", build_args("filter", filter)).await)
 }
 
+/// The raid-summary run each pull of the open log belongs to
+pub async fn get_session_run_links() -> Vec<baras_types::history::RunLink> {
+    from_js(invoke("get_session_run_links", JsValue::NULL).await).unwrap_or_default()
+}
+
 pub async fn get_operation_run(filename: &str, start_ms: i64) -> Option<baras_types::history::RunDetail> {
     let obj = js_sys::Object::new();
     js_set(&obj, "filename", &JsValue::from_str(filename));
@@ -842,6 +847,11 @@ pub async fn set_run_meta(filename: &str, start_ms: i64, meta: &baras_types::his
     );
     let result = try_invoke("set_run_meta", obj.into()).await?;
     from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
+/// Every recorded training dummy kill, newest first
+pub async fn get_dummy_parses() -> Option<Vec<baras_types::history::DummyRow>> {
+    from_js(invoke("get_dummy_parses", JsValue::NULL).await)
 }
 
 /// Every recorded warzone match and arena round, newest first
@@ -1413,6 +1423,14 @@ pub async fn query_parsely_ttk_ratings() -> std::collections::HashMap<u64, baras
         .unwrap_or_default()
         .into_iter()
         .collect()
+}
+
+/// One player's training dummy parse: stats, GCD delays and percentiles.
+pub async fn query_dummy_parse(encounter_idx: u32, source_name: &str) -> Option<baras_types::DummyParse> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
+    js_set(&obj, "sourceName", &JsValue::from_str(source_name));
+    from_js(invoke("query_dummy_parse", obj.into()).await)
 }
 
 /// Parsely percentiles; empty unless the encounter is a finished kill of a rated boss.

@@ -20,7 +20,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use tracing::{debug, warn};
 
 use baras_core::game_data::Role;
-use baras_types::{EncounterRatings, RatingPercentiles, RatingSource, TtkRating};
+use baras_types::{DummyParse, DummyPercentiles, EncounterRatings, RatingPercentiles, RatingSource, TtkRating};
 
 use super::ServiceHandle;
 use crate::commands::USER_AGENT;
@@ -94,6 +94,11 @@ struct RatingTable {
     dtps: Thresholds,
     #[serde(deserialize_with = "lenient")]
     apm: Thresholds,
+    /// Crit rate and share of damage from crits; dummy parses only
+    #[serde(deserialize_with = "lenient")]
+    crit_percent: Thresholds,
+    #[serde(deserialize_with = "lenient")]
+    crit_damage_percent: Thresholds,
     /// Fight length in seconds, under `all` only
     #[serde(deserialize_with = "lenient")]
     ttk: Thresholds,
@@ -147,6 +152,11 @@ fn rating_key<'a>(thresholds: &'a Thresholds, slug: &str) -> Option<&'a str> {
         .keys()
         .map(String::as_str)
         .find(|key| key.split(',').any(|s| s == slug))
+}
+
+/// A discipline's slug in the rating tables (`advanced-prototype`)
+fn disc_slug(discipline: baras_core::game_data::Discipline) -> String {
+    discipline.name().to_ascii_lowercase().replace(' ', "-")
 }
 
 /// Percentile (1-100) of `value` among a discipline's thresholds; 0 when it
@@ -411,6 +421,48 @@ impl ServiceHandle {
         ratings
     }
 
+    /// Fill each row's DPS percentile from the dummy table; rows stay
+    /// unrated when the table can't be had.
+    pub(super) async fn rate_dummy_rows(&self, rows: &mut [baras_types::history::DummyRow]) {
+        use baras_core::encounter::summary::DUMMY_RATING_PATH;
+        if rows.is_empty() {
+            return;
+        }
+        let Some(table) = self.shared.parsely_ratings.get(DUMMY_RATING_PATH).await else {
+            return;
+        };
+        for row in rows {
+            row.dps_pct = row
+                .discipline
+                .as_deref()
+                .and_then(baras_core::game_data::Discipline::from_name)
+                .map(|d| percentile(&table.dps, &disc_slug(d), row.dps as f32))
+                .filter(|pct| *pct > 0);
+        }
+    }
+
+    /// Percentiles of a killed dummy parse on the table at `path`; None when
+    /// the table can't be had.
+    pub(super) async fn dummy_percentiles(
+        &self,
+        path: &str,
+        discipline: baras_core::game_data::Discipline,
+        parse: &DummyParse,
+    ) -> Option<DummyPercentiles> {
+        let table = self.shared.parsely_ratings.get(path).await?;
+        let slug = disc_slug(discipline);
+        let rate = |t: &Thresholds, v: f32| percentile(t, &slug, v);
+        Some(DummyPercentiles {
+            dps: rate(&table.dps, parse.dps as f32),
+            crit: rate(&table.crit_percent, parse.crit_pct),
+            crit_damage: rate(&table.crit_damage_percent, parse.crit_damage_pct),
+            apm: rate(&table.apm, parse.apm),
+            ttk: percentile(&table.ttk, "all", parse.duration_secs as f32),
+            count: rating_key(&table.dps, &slug).map_or(0, |key| table.meta.count(key)),
+            source: table.source(),
+        })
+    }
+
     /// Percentiles for a finished kill of a rated boss, from the encounter's
     /// final metrics; empty when there is nothing to rate. Healing is rated
     /// for healers only.
@@ -469,7 +521,7 @@ impl ServiceHandle {
                 .into_iter()
                 .filter_map(|pm| {
                     let disc = pm.discipline?;
-                    let slug = disc.name().to_ascii_lowercase().replace(' ', "-");
+                    let slug = disc_slug(disc);
                     let rate = |t: &Thresholds, v: f32| percentile(t, &slug, v);
                     let healer = disc.role() == Role::Healer;
                     let count = rating_key(&table.dps, &slug).map_or(0, |key| table.meta.count(key));

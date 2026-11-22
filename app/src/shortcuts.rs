@@ -25,7 +25,7 @@ const ENCOUNTERS: &str = ".data-explorer .sidebar-encounter-item:not(.live-query
 const VIEW_TABS: &str = ".explorer-views .data-tab";
 
 /// `[` / `]` cycle order, matching the header
-const TAB_ORDER: [MainTab; 10] = [
+const TAB_ORDER: [MainTab; 11] = [
     MainTab::DataExplorer,
     MainTab::Overlays,
     MainTab::EncounterBuilder,
@@ -33,6 +33,7 @@ const TAB_ORDER: [MainTab; 10] = [
     MainTab::BossStats,
     MainTab::RaidSummaries,
     MainTab::PvpStats,
+    MainTab::DummyStats,
     MainTab::LogManagement,
     MainTab::Characters,
     MainTab::Settings,
@@ -149,7 +150,7 @@ fn visible_all(doc: &Document, selector: &str) -> Vec<HtmlElement> {
 }
 
 /// `scrollIntoView({ block: "nearest" })`: only scrolls when the row is off-screen
-fn scroll_into_view_nearest(el: &HtmlElement) {
+pub(crate) fn scroll_into_view_nearest(el: &HtmlElement) {
     let opts = js_sys::Object::new();
     let _ = js_sys::Reflect::set(&opts, &"block".into(), &"nearest".into());
     if let Ok(f) = js_sys::Reflect::get(el, &"scrollIntoView".into())

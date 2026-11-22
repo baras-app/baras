@@ -4,15 +4,18 @@ default:
 # Development copies keep their config, history and caches here, apart from the installed app's
 dev_config := env("BARAS_DEV_CONFIG_DIR", config_directory() / "baras-dev")
 
+# No sidecar copy in dev: tauri-build repeats it on every definition edit, replacing the fresh parse-worker with the last bundled one
+tauri_dev := """cargo tauri dev --config '{"bundle":{"externalBin":[]}}'"""
+
 # Run the app with hot-reload against the dev config directory (the app finds the parse-worker next to its own exe in target/debug)
 dev:
   cargo build -p baras-parse-worker && \
-  cd app && BARAS_CONFIG_DIR="{{dev_config}}" DEBUG_LOGGING=1 cargo tauri dev 2>&1 | tee /tmp/baras.log
+  cd app && BARAS_CONFIG_DIR="{{dev_config}}" DEBUG_LOGGING=1 {{tauri_dev}} 2>&1 | tee /tmp/baras.log
 
 # Same as `dev`, but on the installed app's own config directory
 dev-live:
   cargo build -p baras-parse-worker && \
-  cd app && DEBUG_LOGGING=1 cargo tauri dev 2>&1 | tee /tmp/baras.log
+  cd app && DEBUG_LOGGING=1 {{tauri_dev}} 2>&1 | tee /tmp/baras.log
 
 # Copy the installed app's settings, definitions and characters into the dev config directory (not its history, parsed data or logs)
 dev-seed:

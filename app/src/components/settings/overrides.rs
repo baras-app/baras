@@ -19,9 +19,7 @@ pub fn OverridesSection(
     let appearance = appearance_for(&s, &key);
     let customized = s.frame_overrides.contains_key(&key)
         || (is_metric
-            && (appearance.bar_spacing.is_some()
-                || appearance.bar_radius.is_some()
-                || !appearance.overrides.is_empty()));
+            && (appearance.bar_gap.is_some() || appearance.bar_radius.is_some() || !appearance.overrides.is_empty()));
 
     rsx! {
         div { class: "settings-section",

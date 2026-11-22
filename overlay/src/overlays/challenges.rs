@@ -15,7 +15,7 @@ use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
 use crate::utils::{color_from_rgba, format_duration_short};
 use crate::widgets::{Footer, Header, ProgressBar, colors};
-use baras_types::{ClassIconMode, formatting};
+use baras_types::{ClassIconMode, MAX_BAR_GAP, formatting};
 
 /// Data for the challenges overlay
 #[derive(Debug, Clone, Default)]
@@ -99,7 +99,6 @@ pub struct PlayerContribution {
 const BASE_WIDTH: f32 = 320.0;
 const BASE_HEIGHT: f32 = 400.0;
 
-const BASE_PADDING: f32 = 6.0;
 const BASE_CARD_SPACING: f32 = 8.0;
 const BASE_BAR_HEIGHT: f32 = 18.0;
 const BASE_FONT_SIZE: f32 = 13.0;
@@ -165,14 +164,11 @@ impl ChallengeOverlay {
         let height = self.frame.height() as f32;
         let scale = self.frame.scale_factor();
 
-        let padding = self.frame.scaled(BASE_PADDING);
-        let card_spacing = self.frame.scaled(BASE_CARD_SPACING);
+        let padding = self.frame.edge_margin();
+        let card_spacing = BASE_CARD_SPACING;
         let mut bar_height = self.frame.scaled(BASE_BAR_HEIGHT);
-        // Gap between player bars is proportional to bar height so it stays
-        // consistent across scales/resolutions. 0.0 = connected. The 0.2 default
-        // closely matches the legacy fixed 3px gap at the 18px base bar height.
-        let spacing_ratio = self.config.bar_spacing_ratio.clamp(0.0, 0.6);
-        let mut bar_spacing = bar_height * spacing_ratio;
+        // Gap between player bars in flat pixels, never scaled. 0 = connected
+        let mut bar_spacing = self.config.bar_gap.clamp(0.0, MAX_BAR_GAP);
         let font_scale = self.config.font_scale.clamp(0.3, 3.0);
         let mut font_size = self.frame.scaled(BASE_FONT_SIZE * font_scale);
         let mut header_font_size = self.frame.scaled(BASE_HEADER_FONT_SIZE * font_scale);

@@ -5,7 +5,7 @@ use dioxus::prelude::*;
 
 use crate::components::Slider;
 use crate::types::{ClassColorConfig, ClassIconMode, Color};
-use baras_types::MAX_BAR_RADIUS;
+use baras_types::{MAX_BAR_GAP, MAX_BAR_RADIUS};
 
 use super::draft::{SettingsDraft, appearance_for, edit_appearance};
 use super::widgets::{
@@ -78,7 +78,7 @@ pub fn MetricsGlobalSection(draft: SettingsDraft) -> Element {
             }
             Section { group: Group::Layout,
                 PercentSlider { label: "Bar Thickness", value: s.metric_scaling_factor, min: 30.0, max: 200.0, on_change: move |v| draft.edit(|s| s.metric_scaling_factor = v) }
-                PercentSlider { label: "Bar Spacing", value: s.metric_bar_spacing, min: 0.0, max: 60.0, step: 1.0, on_change: move |v| draft.edit(|s| s.metric_bar_spacing = v) }
+                Slider { label: "Bar Spacing", value: s.metric_bar_gap as f64, min: 0.0, max: MAX_BAR_GAP as f64, suffix: "px", on_change: move |v: f64| draft.edit(|s| s.metric_bar_gap = v as f32) }
                 Check { label: "Stack from Bottom", checked: s.metric_stack_from_bottom, on_change: move |v| draft.edit(|s| s.metric_stack_from_bottom = v) }
             }
             Section { group: Group::Content,
@@ -104,7 +104,7 @@ pub fn MetricOverrideRows(draft: SettingsDraft, tab_key: Signal<String>) -> Elem
     let a = appearance_for(&s, &tab_key());
     let o = a.overrides;
     let m = s.metric_options_for(&o);
-    let spacing = a.bar_spacing.unwrap_or(s.metric_bar_spacing);
+    let spacing = a.bar_gap.unwrap_or(s.metric_bar_gap);
     let radius = a.bar_radius.unwrap_or(s.metric_bar_radius);
 
     rsx! {
@@ -142,9 +142,9 @@ pub fn MetricOverrideRows(draft: SettingsDraft, tab_key: Signal<String>) -> Elem
             PercentSlider { label: "Bar Thickness", value: m.scaling_factor, min: 30.0, max: 200.0, disabled: o.scaling_factor.is_none(), on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.scaling_factor = Some(v)) }
         }
         Override {
-            custom: a.bar_spacing.is_some(),
-            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.bar_spacing = on.then_some(spacing)),
-            PercentSlider { label: "Bar Spacing", value: spacing, min: 0.0, max: 60.0, step: 1.0, disabled: a.bar_spacing.is_none(), on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.bar_spacing = Some(v)) }
+            custom: a.bar_gap.is_some(),
+            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.bar_gap = on.then_some(spacing)),
+            Slider { label: "Bar Spacing", value: spacing as f64, min: 0.0, max: MAX_BAR_GAP as f64, suffix: "px", disabled: a.bar_gap.is_none(), on_change: move |v: f64| edit_appearance(draft, &tab_key(), |a| a.bar_gap = Some(v as f32)) }
         }
         Override {
             custom: o.stack_from_bottom.is_some(),

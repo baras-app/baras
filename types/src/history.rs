@@ -3,6 +3,7 @@
 //! The backend keeps the full per-log summaries; only these compact rows and
 //! aggregates cross IPC.
 
+mod dummy;
 mod library;
 mod meta;
 mod progress;
@@ -13,6 +14,7 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
+pub use dummy::DummyRow;
 pub use library::{
     ArchiveReport, CleanupCandidate, CleanupPlan, CleanupReport, ContentTag, DeleteReport, HistoryStatus, LOG_NOTE_MAX,
     LibraryRow, LogCleanup, LogLink, LogStatus,
@@ -21,8 +23,8 @@ pub use meta::{LogMeta, ParselyUpload, PullMeta};
 pub use progress::{BossHpRecord, PhaseRef, PullDeath, PullEnd, PullProgress};
 pub use pvp::{PvpMatchRow, PvpPlayer, PvpRound};
 pub use runs::{
-    AreaSeen, InstanceVisit, LogContinuity, NPC_COUNTER_SPAN, PlayerSpec, RunBoss, RunDetail, RunList, RunMeta,
-    RunPlayer, RunSummary, RunTimer, TimerStart, difficulty_parts, iso_to_ms, short_difficulty,
+    AreaSeen, InstanceVisit, LogContinuity, NPC_COUNTER_SPAN, PlayerSpec, RunBoss, RunDetail, RunLink, RunList,
+    RunMeta, RunPlayer, RunSummary, RunTimer, TimerStart, difficulty_parts, iso_to_ms, short_difficulty,
 };
 
 /// One recorded pull, reduced to what the History table shows.
@@ -243,6 +245,7 @@ pub enum HistorySubTab {
     Operations,
     Library,
     Pvp,
+    Dummy,
 }
 
 /// History tab selections kept across tab switches (see `UiSessionState`).

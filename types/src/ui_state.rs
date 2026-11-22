@@ -64,6 +64,8 @@ pub enum MainTab {
     Characters,
     /// Warzone and arena record, K/D and trends
     PvpStats,
+    /// Training dummy kills by discipline
+    DummyStats,
     /// Application settings page
     Settings,
 }
@@ -76,6 +78,7 @@ impl MainTab {
             MainTab::RaidSummaries => Some(history::HistorySubTab::Operations),
             MainTab::LogManagement => Some(history::HistorySubTab::Library),
             MainTab::PvpStats => Some(history::HistorySubTab::Pvp),
+            MainTab::DummyStats => Some(history::HistorySubTab::Dummy),
             _ => None,
         }
     }
@@ -92,6 +95,7 @@ impl MainTab {
             MainTab::LogManagement => "log_management",
             MainTab::Characters => "characters",
             MainTab::PvpStats => "pvp_stats",
+            MainTab::DummyStats => "dummy_stats",
             MainTab::Settings => "settings",
         }
     }
@@ -243,6 +247,8 @@ pub struct DataExplorerState {
     pub show_players_only: bool,
     /// Bosses-only filter in sidebar
     pub show_only_bosses: bool,
+    /// Parsely percentile badges hidden (display only)
+    pub hide_percentiles: bool,
     /// Sort column for ability table
     pub sort_column: SortColumn,
     /// Sort direction
@@ -273,6 +279,7 @@ impl Default for DataExplorerState {
             breakdown_mode: BreakdownMode::ability_only(),
             show_players_only: true,
             show_only_bosses: false,
+            hide_percentiles: false,
             sort_column: SortColumn::default(),
             sort_direction: SortDirection::default(),
             collapsed_sections: std::collections::HashSet::new(),

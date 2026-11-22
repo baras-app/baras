@@ -8,7 +8,7 @@ use dioxus::prelude::*;
 
 use crate::api;
 use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
-use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
+use crate::components::editor_drawer::use_drawer_guard;
 use crate::types::{BossWithPath, CounterDefinition, EncounterItem, EntityFilter, Trigger};
 
 use super::InlineNameCreator;
@@ -234,65 +234,64 @@ fn CounterRow(
                     let bwp_for_delete = boss_with_path.clone();
                     let is_reset = is_builtin || is_modified;
                     rsx! {
-                        EditorDrawer { title: counter.name.clone(), dirty: is_dirty(), on_close: on_collapse,
-                            CounterEditForm {
-                                counter: counter.clone(),
-                                is_builtin: is_builtin,
-                                is_modified: is_modified,
-                                encounter_data: encounter_data,
-                                on_dirty: move |dirty: bool| is_dirty.set(dirty),
-                                on_save: move |updated: CounterDefinition| {
-                                    // Update parent state synchronously so props refresh and dirty indicator clears
-                                    let mut current = all_counters_for_save.clone();
-                                    if let Some(idx) = current.iter().position(|c| c.id == updated.id) {
-                                        current[idx] = updated.clone();
-                                        on_change.call(current);
+                        CounterEditForm {
+                            counter: counter.clone(),
+                            is_builtin: is_builtin,
+                            is_modified: is_modified,
+                            encounter_data: encounter_data,
+                            on_dirty: move |dirty: bool| is_dirty.set(dirty),
+                            on_save: move |updated: CounterDefinition| {
+                                // Update parent state synchronously so props refresh and dirty indicator clears
+                                let mut current = all_counters_for_save.clone();
+                                if let Some(idx) = current.iter().position(|c| c.id == updated.id) {
+                                    current[idx] = updated.clone();
+                                    on_change.call(current);
+                                }
+                                on_status.call(("Saving...".to_string(), false));
+                                let boss_id = bwp_for_save.boss.id.clone();
+                                let file_path = bwp_for_save.file_path.clone();
+                                let item = EncounterItem::Counter(updated);
+                                spawn(async move {
+                                    match api::update_encounter_item(&boss_id, &file_path, &item, None).await {
+                                        Ok(_) => {
+                                            on_status.call(("Saved".to_string(), false));
+                                            on_refetch.call(());
+                                        }
+                                        Err(_) => on_status.call(("Failed to save".to_string(), true)),
                                     }
-                                    on_status.call(("Saving...".to_string(), false));
-                                    let boss_id = bwp_for_save.boss.id.clone();
-                                    let file_path = bwp_for_save.file_path.clone();
-                                    let item = EncounterItem::Counter(updated);
+                                });
+                            },
+                            on_delete: {
+                                let all_counters = all_counters.clone();
+                                move |counter_to_delete: CounterDefinition| {
+                                    let all_counters = all_counters.clone();
+                                    let boss_id = bwp_for_delete.boss.id.clone();
+                                    let file_path = bwp_for_delete.file_path.clone();
                                     spawn(async move {
-                                        match api::update_encounter_item(&boss_id, &file_path, &item, None).await {
+                                        match api::delete_encounter_item("counter", &counter_to_delete.id, &boss_id, &file_path).await {
                                             Ok(_) => {
-                                                on_status.call(("Saved".to_string(), false));
-                                                on_refetch.call(());
+                                                if is_reset {
+                                                    on_status.call(("Reset to built-in".to_string(), false));
+                                                    on_collapse.call(());
+                                                    on_refetch.call(());
+                                                } else {
+                                                    let updated: Vec<_> = all_counters.iter()
+                                                        .filter(|c| c.id != counter_to_delete.id)
+                                                        .cloned()
+                                                        .collect();
+                                                    on_change.call(updated);
+                                                    on_collapse.call(());
+                                                    on_status.call(("Deleted".to_string(), false));
+                                                }
                                             }
-                                            Err(_) => on_status.call(("Failed to save".to_string(), true)),
+                                            Err(err) => {
+                                                on_status.call((err, true));
+                                            }
                                         }
                                     });
-                                },
-                                on_delete: {
-                                    let all_counters = all_counters.clone();
-                                    move |counter_to_delete: CounterDefinition| {
-                                        let all_counters = all_counters.clone();
-                                        let boss_id = bwp_for_delete.boss.id.clone();
-                                        let file_path = bwp_for_delete.file_path.clone();
-                                        spawn(async move {
-                                            match api::delete_encounter_item("counter", &counter_to_delete.id, &boss_id, &file_path).await {
-                                                Ok(_) => {
-                                                    if is_reset {
-                                                        on_status.call(("Reset to built-in".to_string(), false));
-                                                        on_collapse.call(());
-                                                        on_refetch.call(());
-                                                    } else {
-                                                        let updated: Vec<_> = all_counters.iter()
-                                                            .filter(|c| c.id != counter_to_delete.id)
-                                                            .cloned()
-                                                            .collect();
-                                                        on_change.call(updated);
-                                                        on_collapse.call(());
-                                                        on_status.call(("Deleted".to_string(), false));
-                                                    }
-                                                }
-                                                Err(err) => {
-                                                    on_status.call((err, true));
-                                                }
-                                            }
-                                        });
-                                    }
-                                },
-                            }
+                                }
+                            },
+                            on_close: on_collapse,
                         }
                     }
                 }

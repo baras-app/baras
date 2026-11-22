@@ -390,6 +390,19 @@ impl CombatEncounter {
         let Some(boss) = self.active_boss_definition() else {
             return false;
         };
+        if !self.has_active_victory_trigger() {
+            // ExitCombat isn't suppressed here, so no EnterCombat follows: split on the pull itself
+            let npc = &event.source_entity;
+            return self.detect_boss_pull(event)
+                && self
+                    .npcs
+                    .get(&npc.log_id)
+                    .is_some_and(|n| n.first_seen_at == Some(event.timestamp))
+                && self
+                    .npcs
+                    .values()
+                    .any(|n| n.class_id == npc.class_id && n.log_id != npc.log_id && !n.is_dead);
+        }
 
         for entity in [&event.source_entity, &event.target_entity] {
             if entity.entity_type != EntityType::Npc
@@ -413,6 +426,23 @@ impl CombatEncounter {
             }
         }
         false
+    }
+
+    /// A single_instance boss (without a victory trigger) targeting a player
+    pub fn detect_boss_pull(&self, event: &CombatEvent) -> bool {
+        let npc = &event.source_entity;
+        event.effect.effect_id == crate::game_data::effect_id::TARGETSET
+            && npc.entity_type == EntityType::Npc
+            && event.target_entity.entity_type == EntityType::Player
+            && !npc.health.0.is_zero()
+            && !self.prior_dead_npc_log_ids.contains(&npc.log_id)
+            && self.boss_definitions().iter().any(|def| {
+                !def.has_victory_trigger
+                    && def
+                        .entities
+                        .iter()
+                        .any(|e| e.single_instance && e.ids.contains(&npc.class_id))
+            })
     }
 
     /// Set the encounter difficulty
@@ -1501,6 +1531,7 @@ impl CombatEncounter {
                 source.damage_hit_count += 1;
                 if event.details.is_crit {
                     source.damage_crit_count += 1;
+                    source.damage_crit_total += event.details.dmg_amount as i64;
                 }
                 if is_boss(event.target_entity.class_id) {
                     source.damge_dealt_boss += event.details.dmg_amount as i64;
@@ -1683,6 +1714,11 @@ impl CombatEncounter {
                     edps: (acc.damage_dealt_effective * 1000 / duration_ms) as i32,
                     bossdps: (acc.damge_dealt_boss * 1000 / duration_ms) as i32,
                     damage_crit_pct,
+                    crit_damage_pct: if acc.damage_dealt > 0 {
+                        (acc.damage_crit_total as f64 / acc.damage_dealt as f64 * 100.0) as f32
+                    } else {
+                        0.0
+                    },
                     total_healing: acc.healing_done + acc.shielding_given,
                     total_healing_effective: acc.healing_effective + acc.shielding_given,
                     hps: ((acc.healing_done + acc.shielding_given) * 1000 / duration_ms) as i32,

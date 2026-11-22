@@ -8,6 +8,9 @@
 
 mod charts;
 mod clears;
+mod disciplines;
+mod dummy;
+mod dummy_chart;
 mod heatmap;
 mod library;
 mod library_cleanup;
@@ -31,6 +34,7 @@ use crate::types::UiSessionState;
 
 pub use library_rules::CleanupRules;
 
+use dummy::DummyTab;
 use library::LibraryTab;
 use operations::OperationsTab;
 use overview::OverviewTab;
@@ -210,6 +214,9 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
                 },
                 HistorySubTab::Pvp => rsx! {
                     PvpTab { european: props.european, backfill }
+                },
+                HistorySubTab::Dummy => rsx! {
+                    DummyTab { european: props.european, backfill }
                 },
             }
         }

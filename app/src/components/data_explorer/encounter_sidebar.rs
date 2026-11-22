@@ -31,6 +31,17 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
     // Toast notifications
     let mut toast = use_toast();
 
+    // Which raid-summary run each pull belongs to; refetched when the log's
+    // encounters change or the backend writes a history file
+    let mut history_version = use_signal(|| 0u32);
+    api::use_tauri_event("history-updated", move |_| {
+        let _ = history_version.try_write().map(|mut w| *w += 1);
+    });
+    let run_links = use_resource(move || {
+        let (_, _) = (history_version(), encounters.read().len());
+        async move { api::get_session_run_links().await }
+    });
+
     // Parsely upload state for per-encounter uploads
     let mut parsely_upload = use_parsely_upload();
 
@@ -69,6 +80,24 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
                                 spawn(async move {
                                     if let Err(err) = api::patch_config(|cfg| {
                                         cfg.show_only_bosses = checked;
+                                    }).await {
+                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                    }
+                                });
+                            },
+                        }
+                        ToggleSwitch {
+                            label: "Percentiles",
+                            title: "Show Parsely percentile badges",
+                            class: "boss-filter-toggle",
+                            checked: !state.read().data_explorer.hide_percentiles,
+                            on_change: move |checked: bool| {
+                                if let Ok(mut state) = state.try_write() {
+                                    state.data_explorer.hide_percentiles = !checked;
+                                }
+                                spawn(async move {
+                                    if let Err(err) = api::patch_config(|cfg| {
+                                        cfg.hide_percentiles = !checked;
                                     }).await {
                                         toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                                     }
@@ -158,6 +187,14 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
                                 let is_collapsed = collapsed_sections().contains(&section_key);
                                 let section_key_toggle = section_key.clone();
                                 let chevron_class = if is_collapsed { "fa-chevron-right" } else { "fa-chevron-down" };
+                                // The run holding this section's most recent recorded pull
+                                let run_link = run_links.read().as_ref().and_then(|links| {
+                                    area_encounters
+                                        .iter()
+                                        .rev()
+                                        .find_map(|e| links.iter().find(|l| l.encounter_id == e.encounter_id))
+                                        .cloned()
+                                });
 
                                 rsx! {
                                     // Area header (collapsible)
@@ -185,11 +222,29 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
                                             }
                                         }
                                         span { class: "section-count", " ({area_encounters.len()})" }
+                                        if let Some(link) = run_link {
+                                            button {
+                                                class: "section-run-link",
+                                                title: "Open this run's raid summary",
+                                                onclick: move |e| {
+                                                    e.stop_propagation();
+                                                    let mut s = state.write();
+                                                    s.history.selected_run = Some((link.filename.clone(), link.start_ms));
+                                                    // Filters that would hide the run from the list
+                                                    s.history.run_search.clear();
+                                                    if link.is_flashpoint {
+                                                        s.history.filter.flashpoints = true;
+                                                    }
+                                                    s.active_tab = crate::types::MainTab::RaidSummaries;
+                                                },
+                                                i { class: "fa-solid fa-dungeon" }
+                                            }
+                                        }
                                     }
 
                                     // Encounter items (hidden if collapsed)
                                     if !is_collapsed {
-                                        for enc in area_encounters.iter() {
+                                        for (enc, alt) in area_encounters.iter().zip(boss_bands(area_encounters)) {
                                             {
                                                 // Use actual encounter_id for parquet file lookup
                                                 let enc_idx = enc.encounter_id as u32;
@@ -215,7 +270,9 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
 
                                                 rsx! {
                                                     div {
-                                                        class: if is_selected { "sidebar-encounter-item selected" } else { "sidebar-encounter-item" },
+                                                        class: "sidebar-encounter-item",
+                                                        class: if is_selected { "selected" },
+                                                        class: if alt { "alt-boss" },
                                                         onclick: move |_| {
                                                             auto_follow.set(false);
                                                             live_query_active.set(false);
@@ -325,4 +382,21 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
             }
         }
     }
+}
+
+/// Per encounter, whether it sits in an alternate band: the band flips each
+/// time the boss changes, and trash stays with the boss before it.
+fn boss_bands(encounters: &[crate::components::encounter_types::EncounterSummary]) -> Vec<bool> {
+    let mut prev = None;
+    let mut alt = false;
+    encounters
+        .iter()
+        .map(|e| {
+            if let Some(boss) = e.boss_name.as_deref() {
+                alt ^= prev.is_some_and(|p| p != boss);
+                prev = Some(boss);
+            }
+            alt
+        })
+        .collect()
 }

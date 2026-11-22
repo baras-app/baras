@@ -178,6 +178,11 @@ where
                         overlay.invalidate();
                         needs_render = true;
                     }
+                    OverlayCommand::SetScale(scale) => {
+                        overlay.frame_mut().set_fixed_scale(scale);
+                        overlay.invalidate();
+                        needs_render = true;
+                    }
                     OverlayCommand::SetPosition(x, y) => {
                         overlay.frame_mut().window_mut().set_position(x, y);
                         needs_render = true;
@@ -372,6 +377,14 @@ where
                         dispatch::Queue::main().exec_sync(move || {
                             let overlay = unsafe { &mut *overlay_ptr.get() };
                             overlay.frame_mut().set_style(style);
+                            overlay.invalidate();
+                        });
+                        needs_render = true;
+                    }
+                    OverlayCommand::SetScale(scale) => {
+                        dispatch::Queue::main().exec_sync(move || {
+                            let overlay = unsafe { &mut *overlay_ptr.get() };
+                            overlay.frame_mut().set_fixed_scale(scale);
                             overlay.invalidate();
                         });
                         needs_render = true;

@@ -112,7 +112,27 @@ pub fn OriginFilter(
     }
 }
 
-/// Save, optional Duplicate, any extra buttons (`children`), then the removal
+/// An edit form's draft of `stored`, and whether it has unsaved edits. A save
+/// clears them once it reaches `stored`, so a failed one stays unsaved. Without
+/// edits the draft follows `stored`: the refetch after a save changes origin
+/// flags, which must not read as an edit.
+pub fn use_item_draft<T: Clone + PartialEq + 'static>(stored: T) -> (Signal<T>, Memo<bool>) {
+    let mut draft = use_signal(|| stored.clone());
+    let mut baseline = use_signal(|| stored.clone());
+    use_effect(use_reactive!(|stored| {
+        if *baseline.peek() == stored {
+            return;
+        }
+        if *draft.peek() == *baseline.peek() {
+            draft.set(stored.clone());
+        }
+        baseline.set(stored);
+    }));
+    let has_changes = use_memo(move || *draft.read() != *baseline.read());
+    (draft, has_changes)
+}
+
+/// An edit form's buttons, for its drawer's header: Save, optional Duplicate, any extra buttons (`children`), then the removal
 /// action that fits the origin: none for an unedited built-in, Reset for an
 /// edited one, Delete for a custom one, Cancel for an unsaved draft.
 #[component]
@@ -131,7 +151,7 @@ pub fn ItemActions(
     };
 
     rsx! {
-        div { class: "form-actions",
+        span { class: "item-actions",
             button {
                 class: if has_changes { "btn btn-success btn-sm" } else { "btn btn-sm" },
                 disabled: !has_changes,
@@ -147,10 +167,10 @@ pub fn ItemActions(
             match origin {
                 Origin::Builtin => rsx! {},
                 Origin::New => rsx! {
-                    button { class: "btn btn-sm ml-auto", onclick: move |_| on_delete.call(()), "Cancel" }
+                    button { class: "btn btn-sm", onclick: move |_| on_delete.call(()), "Cancel" }
                 },
                 _ if confirm() => rsx! {
-                    span { class: "flex items-center gap-xs ml-auto",
+                    span { class: "flex items-center gap-xs",
                         "{prompt}"
                         button {
                             class: "btn {tone} btn-sm",
@@ -164,7 +184,7 @@ pub fn ItemActions(
                     }
                 },
                 _ => rsx! {
-                    button { class: "btn {tone} btn-sm ml-auto", onclick: move |_| confirm.set(true), "{label}" }
+                    button { class: "btn {tone} btn-sm", onclick: move |_| confirm.set(true), "{label}" }
                 },
             }
         }

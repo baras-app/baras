@@ -51,9 +51,12 @@ pub(super) fn detailed_view(
             // Entity breakdown sidebar
             {entity_sidebar(ctx, shown, european, on_source_click)}
 
+            // The panels below are keyed in one-item lists: a single node's key
+            // is ignored, and another encounter has to mount a new panel to fade in
             if matches!(shown, ViewMode::Charts) {
                 // Charts view in right column
-                div { class: "charts-main",
+                for nav in [shown_encounter()] {
+                div { key: "{nav:?}", class: "charts-main",
                     if *entity_collapsed.read() {
                         EntityPicker {
                             entities: entity_list,
@@ -83,9 +86,11 @@ pub(super) fn detailed_view(
                         }
                     }
                 }
+                }
             } else if matches!(shown, ViewMode::Rotation) {
                 // Rotation view in right column
-                div { class: "ability-section",
+                for nav in [shown_encounter()] {
+                div { key: "{nav:?}", class: "ability-section",
                     if *entity_collapsed.read() {
                         EntityPicker {
                             entities: entity_list,
@@ -106,8 +111,10 @@ pub(super) fn detailed_view(
                         european: eu,
                     }
                 }
+                }
             } else if matches!(shown, ViewMode::Uptime) {
-                div { class: "ability-section",
+                for nav in [shown_encounter()] {
+                div { key: "{nav:?}", class: "ability-section",
                     if *entity_collapsed.read() {
                         EntityPicker {
                             entities: entity_list,
@@ -127,9 +134,11 @@ pub(super) fn detailed_view(
                         european: eu,
                     }
                 }
+                }
             } else if matches!(shown, ViewMode::Usage) {
                 // Ability Usage view in right column
-                div { class: "ability-section",
+                for nav in [shown_encounter()] {
+                div { key: "{nav:?}", class: "ability-section",
                     if *entity_collapsed.read() {
                         EntityPicker {
                             entities: entity_list,
@@ -149,6 +158,7 @@ pub(super) fn detailed_view(
                         timeline: timeline,
                         european: eu,
                     }
+                }
                 }
             } else if let Some(current_tab) = current_tab {
             // Ability breakdown table

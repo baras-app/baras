@@ -105,7 +105,7 @@ pub fn MetricTab(draft: SettingsDraft, tab_key: String, actions: Element) -> Ele
                     let mut default = s.default_appearances.get(&tab_reset).cloned().unwrap_or_default();
                     if let Some(current) = s.appearances.get(&tab_reset) {
                         default.overrides = current.overrides;
-                        default.bar_spacing = current.bar_spacing;
+                        default.bar_gap = current.bar_gap;
                         default.bar_radius = current.bar_radius;
                     }
                     s.appearances.insert(tab_reset.clone(), default);

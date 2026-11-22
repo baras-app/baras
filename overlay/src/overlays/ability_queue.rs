@@ -51,7 +51,6 @@ const BASE_GCD_BAR_HEIGHT: f32 = 26.0;
 const BASE_GCD_GAP: f32 = 6.0;
 /// Spacing between regular (non-GCD) entries — matches timers A/B
 const BASE_ENTRY_SPACING: f32 = 4.0;
-const BASE_PADDING: f32 = 6.0;
 const BASE_FONT_SIZE: f32 = 11.0;
 /// Horizontal inset applied on each side of bars that belong to a
 /// tied-priority group, so the bars sit visibly inside the group outline.
@@ -140,10 +139,10 @@ impl AbilityQueueOverlay {
 
     fn render_preview(&mut self) {
         let width = self.frame.width() as f32;
-        let padding = self.frame.scaled(BASE_PADDING);
+        let padding = self.frame.edge_margin();
         let gcd_h = self.frame.scaled(BASE_GCD_BAR_HEIGHT);
         let bar_h = self.frame.scaled(BASE_BAR_HEIGHT);
-        let entry_spacing = self.frame.scaled(BASE_ENTRY_SPACING);
+        let entry_spacing = BASE_ENTRY_SPACING;
         let gcd_gap = self.frame.scaled(BASE_GCD_GAP);
         let font_scale = self.config.font_scale.clamp(0.3, 3.0);
         let font_size = self.frame.scaled(BASE_FONT_SIZE * font_scale);
@@ -258,10 +257,10 @@ impl AbilityQueueOverlay {
         }
 
         let width = self.frame.width() as f32;
-        let padding = self.frame.scaled(BASE_PADDING);
+        let padding = self.frame.edge_margin();
         let gcd_h = self.frame.scaled(BASE_GCD_BAR_HEIGHT);
         let bar_h = self.frame.scaled(BASE_BAR_HEIGHT);
-        let entry_spacing = self.frame.scaled(BASE_ENTRY_SPACING);
+        let entry_spacing = BASE_ENTRY_SPACING;
         let gcd_gap = self.frame.scaled(BASE_GCD_GAP);
         let font_scale = self.config.font_scale.clamp(0.3, 3.0);
         let font_size = self.frame.scaled(BASE_FONT_SIZE * font_scale);

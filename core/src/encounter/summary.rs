@@ -113,6 +113,10 @@ pub struct EncounterSummary {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parsely_rating: Option<String>,
 
+    /// Max HP of the training dummy parsed on (dummy parses only)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dummy_hp: Option<i64>,
+
     // ─── Pull Progress (History tab) ─────────────────────────────────────────
     /// Boss HP / phase progress; None for PvP, dummies and unknown bosses
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -347,6 +351,17 @@ pub fn classify_encounter(
     (phase, boss_info)
 }
 
+/// Training dummy NPCs seen in the encounter
+fn training_dummies(encounter: &CombatEncounter) -> impl Iterator<Item = &super::entity_info::NpcInfo> {
+    encounter
+        .npcs
+        .values()
+        .filter(|npc| lookup_boss(npc.class_id).is_some_and(|b| b.content_type == ContentType::TrainingDummy))
+}
+
+/// Parsely percentile table of operations training dummy parses
+pub const DUMMY_RATING_PATH: &str = "operations-dummy";
+
 /// Determine if an encounter was successful (not a wipe)
 /// Returns false (wipe) if all players died or kill targets are still alive
 /// For victory-trigger encounters, success requires the trigger to have fired
@@ -387,6 +402,14 @@ pub fn determine_success(encounter: &CombatEncounter) -> bool {
             }
             // Victory trigger doesn't apply to this difficulty, fall through to normal logic
         }
+    }
+
+    // A training dummy parse is a kill only once a dummy is down: leaving
+    // combat early (or dying to reset it) is an abandoned parse. The death
+    // line is logged after ExitCombat, so the dummy's HP decides it too.
+    let mut dummies = training_dummies(encounter).peekable();
+    if dummies.peek().is_some() {
+        return !encounter.all_players_dead && dummies.any(|npc| npc.is_dead || npc.current_hp <= 0);
     }
 
     // Standard encounters: use is_likely_wipe()
@@ -471,7 +494,9 @@ pub fn create_encounter_summary(
         .active_boss_definition()
         .and_then(|def| def.parsely_slug.as_deref())
         .zip(Difficulty::from_difficulty_id(difficulty_id_for_classification))
-        .map(|(slug, d)| d.parsely_rating_path(slug));
+        .map(|(slug, d)| d.parsely_rating_path(slug))
+        // Dummy parses share one table whatever area the dummy stands in
+        .or_else(|| (encounter_type == PhaseType::DummyParse).then(|| DUMMY_RATING_PATH.to_string()));
 
     // Get boss name: prefer active definition, fall back to detected boss NPC
     // This allows non-boss trigger entities to classify the encounter
@@ -736,6 +761,7 @@ pub fn create_encounter_summary(
         // Parsely link (set after successful upload)
         parsely_link: None,
         parsely_rating,
+        dummy_hp: training_dummies(encounter).map(|npc| npc.max_hp as i64).max(),
         progress,
         deaths,
         end_reason,

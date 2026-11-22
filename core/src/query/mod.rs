@@ -10,6 +10,7 @@ mod combat_log;
 mod death_recap;
 mod effects;
 pub mod error;
+mod gcd;
 mod overview;
 mod rotation;
 mod search_parser;

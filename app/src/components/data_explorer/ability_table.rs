@@ -21,6 +21,20 @@ pub(super) struct TableCols {
     pub is_outgoing_tab: bool,
 }
 
+impl TableCols {
+    /// Columns `table_head` lays out. The table has a fixed layout, so a cell
+    /// spanning more than this adds columns and squeezes the real ones.
+    pub(super) fn count(&self) -> usize {
+        let on = |b: bool| b as usize;
+        8 + on(self.show_ability_col)
+            + 4 * on(self.is_healing_tab)
+            + 2 * on(self.is_damage_tab)
+            + 4 * on(self.is_damage_taken)
+            + on(!self.is_damage_taken)
+            + on(self.is_outgoing_tab)
+    }
+}
+
 pub(super) fn ability_table(ctx: ExplorerCtx, tab: DataTab, european: bool) -> Element {
     repaint_with(ctx.abilities);
     let mode = *ctx.breakdown_mode.read();
@@ -47,11 +61,15 @@ pub(super) fn ability_table(ctx: ExplorerCtx, tab: DataTab, european: bool) -> E
     rsx! {
         // Scrolls on its own under the fixed controls, header pinned, so a
         // longer or shorter list never moves anything above it
-        div { class: "ability-table-scroll",
-            table { class: table_class,
-                {table_head(ctx.sort_column, ctx.sort_direction, cols)}
-                {table_body(ctx.grouped_abilities, cols, european)}
-                {table_foot(ctx.grouped_abilities, cols, european)}
+        // Keyed in a one-item list so another encounter or tab mounts a new
+        // table, which fades in; sorting and filtering keep this one
+        for nav in [format!("{:?}-{tab:?}", (ctx.shown_encounter)())] {
+            div { key: "{nav}", class: "ability-table-scroll fade-in",
+                table { class: table_class,
+                    {table_head(ctx.sort_column, ctx.sort_direction, cols)}
+                    {table_body(ctx.grouped_abilities, cols, european)}
+                    {table_foot(ctx.grouped_abilities, cols, european)}
+                }
             }
         }
     }

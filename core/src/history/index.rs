@@ -12,11 +12,12 @@ use std::time::SystemTime;
 use hashbrown::{HashMap, HashSet};
 
 use baras_types::history::{
-    AreaSeen, BossNode, HistoryStatus, InstanceVisit, LogContinuity, LogLink, PullFilter, PullHistoryOverview, PullRow,
-    PvpMatchRow, RunSummary, TimerStart, keeps,
+    AreaSeen, BossNode, DummyRow, HistoryStatus, InstanceVisit, LogContinuity, LogLink, PullFilter,
+    PullHistoryOverview, PullRow, PvpMatchRow, RunLink, RunSummary, TimerStart, keeps,
 };
 
 use super::catalog::AreaCatalog;
+use super::dummy::dummy_rows;
 use super::meta::LibraryMeta;
 use super::pvp::pvp_rows;
 use super::record::PullRecord;
@@ -43,6 +44,9 @@ struct IndexedLog {
     /// Warzone matches and arena rounds, kept out of `rows` so the boss views
     /// never see them
     pvp: Vec<PvpMatchRow>,
+    /// Training dummy kills; the dummy parses in `rows` are there for the
+    /// library only and never reach the boss views
+    dummy: Vec<DummyRow>,
     timer_starts: Vec<TimerStart>,
     visits: Vec<InstanceVisit>,
     continuity: LogContinuity,
@@ -122,6 +126,7 @@ impl PullIndex {
                         .map(|p| row_from(&history, p))
                         .collect();
                     let pvp = pvp_rows(&history);
+                    let dummy = dummy_rows(&history);
                     let server = rows
                         .iter()
                         .map(|r| r.server.clone())
@@ -139,6 +144,7 @@ impl PullIndex {
                             stale,
                             rows,
                             pvp,
+                            dummy,
                             timer_starts: history.timer_starts,
                             visits: history.visits,
                             continuity: history.continuity,
@@ -242,14 +248,7 @@ impl PullIndex {
                 },
             )
             .collect();
-        keyed.sort_by(|(oa, a), (ob, b)| {
-            (a.operation == DUMMY_GROUP, &a.operation, oa, &a.boss).cmp(&(
-                b.operation == DUMMY_GROUP,
-                &b.operation,
-                ob,
-                &b.boss,
-            ))
-        });
+        keyed.sort_by(|(oa, a), (ob, b)| (&a.operation, oa, &a.boss).cmp(&(&b.operation, ob, &b.boss)));
         let bosses: Vec<BossNode> = keyed.into_iter().map(|(_, n)| n).collect();
         PullHistoryOverview {
             characters,
@@ -346,6 +345,21 @@ impl PullIndex {
         Some((run.summary, rows))
     }
 
+    /// The run each pull of one log belongs to.
+    pub fn run_links(&self, log_filename: &str, catalog: &AreaCatalog, meta: &LibraryMeta) -> Vec<RunLink> {
+        self.built_runs(catalog, meta)
+            .iter()
+            .flat_map(|run| {
+                run.rows.iter().filter(|r| r.filename == log_filename).map(|r| RunLink {
+                    encounter_id: r.encounter_id,
+                    filename: run.summary.filename.clone(),
+                    start_ms: run.summary.start_ms,
+                    is_flashpoint: run.summary.is_flashpoint,
+                })
+            })
+            .collect()
+    }
+
     /// Runs across every log, with the user's tags and note attached. A run
     /// merged from several logs keeps whichever of its old keys carries them.
     fn built_runs(&self, catalog: &AreaCatalog, meta: &LibraryMeta) -> Vec<BuiltRun<'_>> {
@@ -397,7 +411,11 @@ impl PullIndex {
         let mut out = Vec::new();
         let pull_tags = (!filter.tags.is_empty()).then(|| self.pull_tags(catalog, meta));
         for log in self.logs.values() {
-            for r in log.rows.iter().filter(|r| matches(r, filter)) {
+            for r in log
+                .rows
+                .iter()
+                .filter(|r| r.operation != DUMMY_GROUP && matches(r, filter))
+            {
                 // Hidden pulls stay out of the boss counts too
                 if !filter.show_hidden && meta.is_pull_hidden(&r.filename, r.start_ms) {
                     continue;
@@ -436,8 +454,30 @@ impl PullIndex {
         })
     }
 
+    /// Boss pulls across logs; dummy parses have their own view
     fn rows(&self) -> impl Iterator<Item = &PullRow> {
-        self.logs.values().flat_map(|l| l.rows.iter())
+        self.logs
+            .values()
+            .flat_map(|l| l.rows.iter())
+            .filter(|r| r.operation != DUMMY_GROUP)
+    }
+
+    /// Every training dummy kill, newest first, with `path` set when the
+    /// log exists.
+    pub fn dummy_parses(&self) -> Vec<DummyRow> {
+        let mut out = Vec::new();
+        for log in self.logs.values().filter(|l| !l.dummy.is_empty()) {
+            let path = log
+                .log_path
+                .is_file()
+                .then(|| log.log_path.to_string_lossy().into_owned());
+            out.extend(log.dummy.iter().cloned().map(|mut d| {
+                d.path = path.clone();
+                d
+            }));
+        }
+        out.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+        out
     }
 
     /// Every PvP match and arena round, newest first, with `path` set when

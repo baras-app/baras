@@ -663,7 +663,7 @@ fn parse_file(
     }
 
     // Parallel parse
-    let parser = LogParser::new(date_stamp);
+    let parser = LogParser::for_file(file_path, date_stamp);
     let events: Vec<CombatEvent> = line_ranges
         .par_iter()
         .enumerate()
@@ -823,11 +823,9 @@ fn process_and_write_encounters(
 
                             cache.load_boss_definitions(bosses, false);
                             // Region-based timer start, so timed runs are recorded in the history store
-                            let timer_start = load_area_config(&entry.file_path)
-                                .ok()
-                                .flatten()
-                                .and_then(|a| a.timer_start);
-                            cache.set_timer_start(area_id, timer_start);
+                            let area = load_area_config(&entry.file_path).ok().flatten().unwrap_or_default();
+                            cache.set_timer_start(area_id, area.timer_start);
+                            cache.set_combat_end(area_id, area.combat_end);
                         }
                         Err(e) => {
                             tracing::warn!(area_id, error = %e, "Failed to load definitions for area");

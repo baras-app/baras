@@ -1,6 +1,6 @@
 //! Challenge overlay
 
-use crate::appearance::{default_bar_spacing_ratio, default_font_color};
+use crate::appearance::{default_bar_gap, default_font_color, unmigrated_bar_gap};
 use crate::serde_defaults::{default_scaling_factor, default_true};
 use crate::{Color, overlay_colors};
 use serde::{Deserialize, Serialize};
@@ -73,10 +73,12 @@ pub struct ChallengeOverlayConfig {
     /// Enabled by default for the challenges overlay.
     #[serde(default = "default_true")]
     pub bar_gradient: bool,
-    /// Vertical gap between player bars as a fraction of bar height. 0.0 =
-    /// connected, ~0.2 = default. Keeps spacing consistent across resolutions.
-    #[serde(default = "default_bar_spacing_ratio")]
-    pub bar_spacing_ratio: f32,
+    /// Vertical gap between player bars in pixels, unscaled (0 = connected)
+    #[serde(default = "unmigrated_bar_gap")]
+    pub bar_gap: f32,
+    /// Pre-`bar_gap` gap as a fraction of bar height; read once by `migrate_legacy`
+    #[serde(default, skip_serializing, rename = "bar_spacing_ratio")]
+    pub legacy_bar_spacing_ratio: Option<f32>,
     /// How many challenge cards the window is sized for. 0 = auto (cards
     /// fill the window). When set, each card takes 1/N of the window width
     /// (horizontal layout) or height (vertical) and only compresses when
@@ -109,7 +111,8 @@ impl Default for ChallengeOverlayConfig {
             font_scale: 1.0,
             dynamic_background: false,
             bar_gradient: true,
-            bar_spacing_ratio: 0.2,
+            bar_gap: default_bar_gap(),
+            legacy_bar_spacing_ratio: None,
             visible_challenges: 0,
             stack_from_end: false,
         }

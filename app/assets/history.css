@@ -166,6 +166,40 @@
   border-radius: var(--radius-md);
 }
 
+/* Per-discipline breakdown above the charts: natural height, never squeezed */
+.pull-history-main > .discipline-breakdown {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+/* The folded table is a card of its own, the whole header line clickable */
+.discipline-card {
+  background: var(--well-bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+}
+
+.discipline-card > .collapsible-summary {
+  padding: 0.5em 0.8em;
+}
+
+.discipline-card > .discipline-breakdown-table {
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border-light);
+  border-radius: 0;
+}
+
+/* Open: a few rows tall at most, scrolling under its pinned header, so many
+   disciplines never push the pull list off the page */
+.discipline-breakdown-table {
+  max-height: 11.5em;
+  overflow: auto;
+  background: var(--well-bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+}
+
 .pull-history-table {
   width: 100%;
   border-collapse: collapse;

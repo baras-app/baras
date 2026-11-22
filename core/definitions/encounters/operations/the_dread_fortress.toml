@@ -4,6 +4,14 @@ id = 137438993402
 area_type = "operation"
 timed_run_minutes = 60
 
+# Story doesn't need the puzzle, so nobody runs up to kill Qor'thest's shield
+# guards. They follow the raid to Draxus and the game never exits combat.
+# Story only: on higher difficulties they get killed after the last Soldier.
+[area.combat_end]
+difficulties = ["story"]
+final_kills = [3316784199368704]
+lingering = [3270364192833536, 3272541741252608]
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 1: Nefra, Who Bars The Way
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -216,6 +224,7 @@ name = "Draxus"
 ids = [3273924720721920, 3303401081274368, 3303392491339776, 3303405376241664]
 is_boss = true
 is_kill_target = true
+single_instance = true
 
 [[boss.entities.hp_markers]]
 hp_percent = 90.0

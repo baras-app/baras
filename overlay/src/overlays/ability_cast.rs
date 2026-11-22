@@ -74,7 +74,6 @@ pub struct AbilityCastData {
 
 const BASE_WIDTH: f32 = 200.0;
 const BASE_HEIGHT: f32 = 240.0;
-const BASE_PADDING: f32 = 6.0;
 const BASE_ROW_SPACING: f32 = 3.0;
 const BASE_ICON_GAP: f32 = 6.0;
 const BASE_FONT_SIZE: f32 = 12.0;
@@ -152,7 +151,7 @@ impl AbilityCastOverlay {
     /// Y of the first row and of the background rect for `rows` rows,
     /// honouring the stack direction.
     fn rows_origin(&self, rows: usize) -> (f32, f32) {
-        let padding = self.frame.scaled(BASE_PADDING);
+        let padding = self.frame.edge_margin();
         if !self.config.stack_from_bottom || rows == 0 {
             return (padding, 0.0);
         }
@@ -165,15 +164,15 @@ impl AbilityCastOverlay {
         if rows == 0 {
             return 0.0;
         }
-        let padding = self.frame.scaled(BASE_PADDING);
-        let spacing = self.frame.scaled(BASE_ROW_SPACING);
+        let padding = self.frame.edge_margin();
+        let spacing = BASE_ROW_SPACING;
         padding * 2.0 + rows as f32 * self.row_height() + (rows - 1) as f32 * spacing
     }
 
     /// Draw one `[icon] name` row at `y`. `icon` is the scaled cache key
     /// (ability id) plus a fallback source image when the cache misses.
     fn draw_row(&mut self, y: f32, name: &str, icon: Option<(u64, Option<&Arc<(u32, u32, Vec<u8>)>>)>, color: [u8; 4]) {
-        let padding = self.frame.scaled(BASE_PADDING);
+        let padding = self.frame.edge_margin();
         let icon_size = self.icon_px();
         let icon_size_u32 = icon_size.round() as u32;
         let font_size = self.font_px();
@@ -236,7 +235,7 @@ impl AbilityCastOverlay {
 
     fn render_preview(&mut self) {
         const PREVIEW: [&str; 3] = ["Force Leap", "Sundering Assault", "Blade Storm"];
-        let spacing = self.frame.scaled(BASE_ROW_SPACING);
+        let spacing = BASE_ROW_SPACING;
         let row_h = self.row_height();
         let color = self.config.font_color;
 
@@ -271,7 +270,7 @@ impl AbilityCastOverlay {
             return;
         }
 
-        let spacing = self.frame.scaled(BASE_ROW_SPACING);
+        let spacing = BASE_ROW_SPACING;
         let row_h = self.row_height();
         let color = self.config.font_color;
 

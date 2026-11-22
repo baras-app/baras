@@ -18,6 +18,8 @@ mod ctx;
 mod derived;
 mod detail_loaders;
 mod detailed_view;
+mod dummy_charts;
+mod dummy_view;
 mod encounter_sidebar;
 mod entity_sidebar;
 mod grouping;
@@ -29,6 +31,7 @@ mod view_tabs;
 
 use ctx::{ExplorerCtx, LoadState, use_explorer_ctx};
 use detailed_view::detailed_view;
+use dummy_view::{DummyParseView, dummy_target};
 use encounter_sidebar::encounter_sidebar;
 use overview_view::overview_view;
 use view_tabs::{encounter_strip, view_tab_bar};
@@ -76,7 +79,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
     let eu = *use_memo(move || shared.read().european_number_format).read();
 
     rsx! {
-        div { class: "data-explorer",
+        div { class: if ctx.state.read().data_explorer.hide_percentiles { "data-explorer hide-percentiles" } else { "data-explorer" },
             // Sidebar with encounter list
             {encounter_sidebar(ctx)}
 
@@ -145,7 +148,19 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                     if matches!(shown, ViewMode::CombatLog) {
                         // Rendered by the host above
                     } else if matches!(shown, ViewMode::Overview) {
-                        {overview_view(ctx, eu)}
+                        // A dummy parse has one player and no mechanics: its own summary
+                        if let Some((encounter_idx, player)) = dummy_target(ctx) {
+                            DummyParseView {
+                                encounter_idx,
+                                player,
+                                european: eu,
+                                time_range: ctx.time_range,
+                                view_mode: ctx.view_mode,
+                                chart: overview_view::overview_chart(ctx, eu),
+                            }
+                        } else {
+                            {overview_view(ctx, eu)}
+                        }
                     } else if matches!(shown, ViewMode::Detailed(_) | ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts | ViewMode::Uptime) {
                         // Two-column layout (Detailed breakdown, Rotation, Usage, or Charts)
                         {detailed_view(ctx, shown, eu, on_source_click)}

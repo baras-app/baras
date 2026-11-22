@@ -3,6 +3,7 @@
 use dioxus::prelude::*;
 
 use crate::components::editor_common::{FormCard, ItemActions, Origin};
+use crate::components::editor_drawer::EditorDrawer;
 use crate::components::form_fields::{CheckField, Field, NumberField, SubSection, TextField, TogglePill};
 use crate::types::{Condition, EntityDefinition, EntityFilter, HpMarker, ShieldDefinition, ShieldHpEntry, Trigger};
 
@@ -19,6 +20,7 @@ pub(super) fn EntityEditForm(
     encounter_data: EncounterData,
     on_save: EventHandler<(EntityDefinition, String)>,
     on_delete: EventHandler<EntityDefinition>,
+    on_close: EventHandler<()>,
     #[props(default)] on_dirty: EventHandler<bool>,
 ) -> Element {
     let original_name = entity.name.clone();
@@ -54,7 +56,7 @@ pub(super) fn EntityEditForm(
 
     let d = draft();
 
-    rsx! {
+    let body = rsx! {
         div { class: "entity-edit-form",
             FormCard { icon: "fa-tag", title: "Identity",
                 TextField { label: "Name", value: d.name.clone(), on_input: move |v| draft.write().name = v }
@@ -152,13 +154,23 @@ pub(super) fn EntityEditForm(
                     ShieldEditor { key: "{i}", draft, i, shield, encounter_data: encounter_data.clone() }
                 }
             }
+        }
+    };
 
-            ItemActions {
-                has_changes: has_changes(),
-                origin: Origin::Custom,
-                on_save: handle_save,
-                on_delete: handle_delete,
-            }
+    rsx! {
+        EditorDrawer {
+            title: entity.name.clone(),
+            dirty: has_changes(),
+            on_close: on_close,
+            actions: rsx! {
+                ItemActions {
+                    has_changes: has_changes(),
+                    origin: Origin::Custom,
+                    on_save: handle_save,
+                    on_delete: handle_delete,
+                }
+            },
+            {body}
         }
     }
 }

@@ -687,6 +687,44 @@ impl ServiceHandle {
             .unwrap_or_default()
     }
 
+    /// Every recorded training dummy kill, newest first, rated on Parsely.
+    pub async fn dummy_parses(&self) -> Vec<baras_types::history::DummyRow> {
+        let mut rows = self
+            .with_pull_index(|index| index.dummy_parses())
+            .await
+            .unwrap_or_default();
+        {
+            let meta = self.shared.library_meta.locked();
+            for r in &mut rows {
+                r.hidden = meta.is_pull_hidden(&r.filename, r.start_ms);
+            }
+        }
+        self.rate_dummy_rows(&mut rows).await;
+        rows
+    }
+
+    /// The run each pull of the open log belongs to.
+    pub async fn session_run_links(&self) -> Vec<baras_types::history::RunLink> {
+        let Some(filename) = self
+            .shared
+            .with_session(|s| {
+                s.active_file
+                    .as_ref()?
+                    .file_name()
+                    .map(|f| f.to_string_lossy().into_owned())
+            })
+            .await
+            .flatten()
+        else {
+            return Vec::new();
+        };
+        let catalog = self.area_catalog();
+        let shared = self.shared.clone();
+        self.with_pull_index(move |index| index.run_links(&filename, &catalog, &shared.library_meta.locked()))
+            .await
+            .unwrap_or_default()
+    }
+
     /// One run with its bosses, players and pulls.
     pub async fn operation_run(&self, filename: String, start_ms: i64) -> Option<RunDetail> {
         let catalog = self.area_catalog();
@@ -1185,7 +1223,7 @@ impl ServiceHandle {
 
     /// Point the query context at an encounter's parquet file, or at the live
     /// buffer when `encounter_idx` is None.
-    async fn register_encounter(&self, encounter_idx: Option<u32>) -> Result<(), String> {
+    pub(super) async fn register_encounter(&self, encounter_idx: Option<u32>) -> Result<(), String> {
         let session_guard = self.shared.session.read().await;
         let session = session_guard.as_ref().ok_or("No active session")?;
         let session = session.read().await;

@@ -75,12 +75,11 @@ pub fn ChallengesTab(draft: SettingsDraft, actions: Element) -> Element {
                 }
                 Slider {
                     label: "Bar Spacing",
-                    value: (cfg.bar_spacing_ratio * 100.0) as i32 as f64,
+                    value: cfg.bar_gap as f64,
                     min: 0.0,
-                    max: 60.0,
-                    step: 5.0,
-                    suffix: "%",
-                    on_change: move |v: f64| draft.edit(|s| s.challenge_overlay.bar_spacing_ratio = (v as f32 / 100.0).clamp(0.0, 0.6)),
+                    max: baras_types::MAX_BAR_GAP as f64,
+                    suffix: "px",
+                    on_change: move |v: f64| draft.edit(|s| s.challenge_overlay.bar_gap = v as f32),
                 }
             }
             Section { group: Group::Content,

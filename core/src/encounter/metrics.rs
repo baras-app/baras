@@ -83,6 +83,8 @@ pub struct MetricAccumulator {
     pub damage_dealt_effective: i64,
     pub damage_hit_count: u32,
     pub damage_crit_count: u32,
+    /// Damage dealt by critical hits
+    pub damage_crit_total: i64,
 
     // Damage receiving
     pub damage_received: i64,
@@ -136,6 +138,8 @@ pub struct EntityMetrics {
     pub edps: i32,
     pub bossdps: i32,
     pub damage_crit_pct: f32,
+    /// Share of damage dealt by crits, 0-100
+    pub crit_damage_pct: f32,
 
     // Healing dealing
     pub total_healing: i64,
@@ -194,6 +198,7 @@ impl EntityMetrics {
             total_damage_effective: self.total_damage_effective,
             total_damage_boss: self.total_damage_boss,
             damage_crit_pct: self.damage_crit_pct,
+            crit_damage_pct: self.crit_damage_pct,
 
             // Healing
             hps: self.hps as i64,
@@ -258,6 +263,9 @@ pub struct PlayerMetrics {
     pub total_damage_effective: i64,
     pub total_damage_boss: i64,
     pub damage_crit_pct: f32,
+    /// Share of damage dealt by crits, 0-100
+    #[serde(default)]
+    pub crit_damage_pct: f32,
 
     // Healing
     pub hps: i64,
