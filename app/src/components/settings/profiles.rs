@@ -12,7 +12,6 @@ pub fn ProfilesSection(
     mut settings: Signal<OverlaySettings>,
     mut profile_names: Signal<Vec<String>>,
     mut active_profile: Signal<Option<String>>,
-    mut profile_dirty: Signal<bool>,
     mut overlays_enabled: Signal<std::collections::HashSet<String>>,
     mut overlays_visible: Signal<bool>,
 ) -> Element {
@@ -97,7 +96,6 @@ pub fn ProfilesSection(
                                                                 toast.show(format!("Failed to load profile: {}", err), ToastSeverity::Normal);
                                                             } else {
                                                                 active_profile.set(Some(pname.clone()));
-                                                                profile_dirty.set(false);
                                                                 profile_status.set(format!("Loaded '{}'", pname));
                                                                 if let Some(config) = api::get_config().await {
                                                                     settings.set(config.overlay_settings);
@@ -134,7 +132,6 @@ pub fn ProfilesSection(
                                                                         toast.show(format!("Failed to save profile: {}", err), ToastSeverity::Normal);
                                                                     } else {
                                                                         active_profile.set(Some(pname.clone()));
-                                                                        profile_dirty.set(false);
                                                                         profile_status.set(format!("Saved '{}'", pname));
                                                                     }
                                                                 });
@@ -263,7 +260,6 @@ pub fn ProfilesSection(
                                             profile_names.set(api::get_profile_names().await);
                                             active_profile.set(Some(name.clone()));
                                             new_profile_name.set(String::new());
-                                            profile_dirty.set(false);
                                             profile_status.set(format!("Created '{}'", name));
                                         }
                                     });

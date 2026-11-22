@@ -892,7 +892,6 @@ impl OverlayManager {
             }
             if changed {
                 service.update_config(config).await?;
-                service.emit_overlay_positions_changed();
             }
         }
 
