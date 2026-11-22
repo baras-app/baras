@@ -70,7 +70,7 @@ pub(super) fn view_tab_bar(ctx: ExplorerCtx) -> Element {
     } = ctx;
 
     rsx! {
-        div { class: "data-tab-selector",
+        div { class: "data-tab-selector explorer-views",
             for (mode, label) in VIEW_TABS {
                 button {
                     class: if view_mode() == mode { "data-tab active" } else { "data-tab" },
