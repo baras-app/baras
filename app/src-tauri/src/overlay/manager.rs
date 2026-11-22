@@ -344,10 +344,11 @@ impl OverlayManager {
     // Config Updates
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// Font and window style for an overlay, with its overrides applied.
-    pub fn frame_commands(kind: OverlayType, settings: &OverlaySettings) -> [OverlayCommand; 2] {
+    /// Scale, font and window style for an overlay, with its overrides applied.
+    pub fn frame_commands(kind: OverlayType, settings: &OverlaySettings) -> [OverlayCommand; 3] {
         let key = kind.config_key();
         [
+            OverlayCommand::SetScale(settings.list_scale(key)),
             OverlayCommand::SetFrameStyle(settings.frame_style_for(key)),
             OverlayCommand::SetFontFamily(settings.font_family_for(key).to_string()),
         ]

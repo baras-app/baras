@@ -1,6 +1,6 @@
 //! Overlay profiles and combined overlay settings
 
-use crate::appearance::{default_bar_radius, default_bar_spacing_ratio};
+use crate::appearance::{MAX_BAR_GAP, default_bar_gap, default_bar_radius, unmigrated_bar_gap};
 use crate::serde_defaults::{default_scaling_factor, default_true};
 use crate::{
     AbilityCastOverlayConfig, AbilityQueueOverlayConfig, AlertsOverlayConfig, BossHealthConfig, ChallengeOverlayConfig,
@@ -55,6 +55,10 @@ pub struct OverlaySettings {
     /// Per-overlay chrome and font overrides, keyed like `positions`
     #[serde(default)]
     pub frame_overrides: HashMap<String, FrameStyleOverride>,
+    /// Fixed render scale of each list overlay, keyed like `positions`; the
+    /// window size only sets bounds. Filled by `migrate_legacy`.
+    #[serde(default)]
+    pub scales: HashMap<String, f32>,
     /// Redraw rate (5–30 FPS) of the countdown overlays (timers, effects,
     /// raid frames, alerts, cooldowns, DoTs) while locked
     #[serde(default = "default_overlay_fps")]
@@ -67,10 +71,13 @@ pub struct OverlaySettings {
     pub metric_stack_from_bottom: bool,
     #[serde(default = "default_scaling_factor")]
     pub metric_scaling_factor: f32,
-    /// Gap between metric bars as a fraction of bar height; overlays may
-    /// override it with `OverlayAppearanceConfig::bar_spacing`
-    #[serde(default = "default_bar_spacing_ratio")]
-    pub metric_bar_spacing: f32,
+    /// Gap between metric bars in pixels, unscaled; overlays may override it
+    /// with `OverlayAppearanceConfig::bar_gap`
+    #[serde(default = "unmigrated_bar_gap")]
+    pub metric_bar_gap: f32,
+    /// Pre-`metric_bar_gap` gap as a fraction of bar height; read once by `migrate_legacy`
+    #[serde(default, skip_serializing, rename = "metric_bar_spacing")]
+    pub legacy_metric_bar_spacing: Option<f32>,
     /// Corner radius of metric bars in pixels at base size; overlays may
     /// override it with `OverlayAppearanceConfig::bar_radius`
     #[serde(default = "default_bar_radius")]
@@ -204,7 +211,7 @@ fn default_gradient_intensity() -> f32 {
 
 impl Default for OverlaySettings {
     fn default() -> Self {
-        Self {
+        let mut settings = Self {
             positions: HashMap::new(),
             appearances: HashMap::new(),
             enabled: HashMap::new(),
@@ -212,12 +219,14 @@ impl Default for OverlaySettings {
             overlay_font_family: default_overlay_font_family(),
             frame_style: FrameStyle::default(),
             frame_overrides: HashMap::new(),
+            scales: HashMap::new(),
             overlay_fps: default_overlay_fps(),
             personal_overlay: PersonalOverlayConfig::default(),
             metric_show_empty_bars: true,
             metric_stack_from_bottom: false,
             metric_scaling_factor: 1.0,
-            metric_bar_spacing: default_bar_spacing_ratio(),
+            metric_bar_gap: default_bar_gap(),
+            legacy_metric_bar_spacing: None,
             metric_bar_radius: default_bar_radius(),
             metric_font_scale: 1.0,
             metric_gradient_intensity: 0.32,
@@ -268,9 +277,64 @@ impl Default for OverlaySettings {
             ability_cast_opacity: None,
             hide_during_conversations: false,
             hide_when_not_live: false,
-        }
+        };
+        settings.freeze_list_scales();
+        settings
     }
 }
+
+/// Metric overlay config keys
+const METRIC_KEYS: [&str; 11] = [
+    "dps",
+    "edps",
+    "bossdps",
+    "hps",
+    "ehps",
+    "abs",
+    "dtps",
+    "tps",
+    "apm",
+    "interrupts",
+    "incoming_damage",
+];
+
+/// Scale bounds offered for list overlays
+pub const MIN_LIST_SCALE: f32 = 0.25;
+pub const MAX_LIST_SCALE: f32 = 4.0;
+
+/// Base window size of a list overlay (mirrors its `BASE_WIDTH`/`BASE_HEIGHT`
+/// in baras-overlay), `None` for overlays that still scale with their window.
+fn list_overlay_base_size(key: &str) -> Option<(f32, f32)> {
+    Some(match key {
+        "timers_a" | "timers_b" => (220.0, 150.0),
+        "alerts" => (220.0, 120.0),
+        "challenges" => (320.0, 400.0),
+        "effects_a" | "effects_b" | "effects_c" => (300.0, 300.0),
+        "cooldowns" | "cooldowns_b" => (180.0, 300.0),
+        "dot_tracker" => (280.0, 200.0),
+        "notes" => (400.0, 300.0),
+        "ability_queue" => (220.0, 200.0),
+        "ability_cast" => (200.0, 240.0),
+        k if METRIC_KEYS.contains(&k) => (280.0, 200.0),
+        _ => return None,
+    })
+}
+
+const LIST_OVERLAY_KEYS: [&str; 13] = [
+    "timers_a",
+    "timers_b",
+    "alerts",
+    "challenges",
+    "effects_a",
+    "effects_b",
+    "effects_c",
+    "cooldowns",
+    "cooldowns_b",
+    "dot_tracker",
+    "notes",
+    "ability_queue",
+    "ability_cast",
+];
 
 impl OverlaySettings {
     pub fn get_position(&self, overlay_type: &str) -> OverlayPositionConfig {
@@ -289,22 +353,95 @@ impl OverlaySettings {
         self.appearances.insert(overlay_type.to_string(), config);
     }
 
+    /// Render scale of a list overlay, `None` for overlays that scale with
+    /// their window. An overlay without a stored scale gets the one its saved
+    /// window size produced under the old window-driven model.
+    pub fn list_scale(&self, overlay_type: &str) -> Option<f32> {
+        let (base_w, base_h) = list_overlay_base_size(overlay_type)?;
+        Some(self.scales.get(overlay_type).copied().unwrap_or_else(|| {
+            let pos = self.get_position(overlay_type);
+            ((pos.width as f32 / base_w) * (pos.height as f32 / base_h)).sqrt()
+        }))
+    }
+
+    pub fn set_list_scale(&mut self, overlay_type: &str, scale: f32) {
+        self.scales
+            .insert(overlay_type.to_string(), scale.clamp(MIN_LIST_SCALE, MAX_LIST_SCALE));
+    }
+
+    /// Pin every list overlay's scale to what it currently renders at, so
+    /// later window resizes stop changing it. Stored scales are left alone.
+    fn freeze_list_scales(&mut self) {
+        for key in METRIC_KEYS.into_iter().chain(LIST_OVERLAY_KEYS) {
+            if !self.scales.contains_key(key)
+                && let Some(scale) = self.list_scale(key)
+            {
+                self.scales.insert(key.to_string(), scale);
+            }
+        }
+    }
+
+    /// Turn the old bar spacing (a fraction of bar height, scaled with the
+    /// overlay) into pixel gaps: the global one as drawn at 100% scale, plus an
+    /// override on each placed overlay whose scale drew it differently.
+    fn migrate_bar_gaps(&mut self) {
+        /// Metric bar height at 100% scale and thickness
+        const BASE_BAR_HEIGHT: f32 = 20.0;
+        let gap = |ratio: f32, thickness: f32, scale: f32| {
+            (ratio.clamp(0.0, 0.6) * BASE_BAR_HEIGHT * thickness.clamp(0.3, 2.0) * scale)
+                .round()
+                .min(MAX_BAR_GAP)
+        };
+        let challenge_ratio = self.challenge_overlay.legacy_bar_spacing_ratio.take().unwrap_or(0.2);
+        if self.challenge_overlay.bar_gap < 0.0 {
+            /// Challenge bar height at 100% scale
+            const CHALLENGE_BAR_HEIGHT: f32 = 18.0;
+            let scale = self.list_scale("challenges").unwrap_or(1.0);
+            self.challenge_overlay.bar_gap = gap(challenge_ratio * CHALLENGE_BAR_HEIGHT / BASE_BAR_HEIGHT, 1.0, scale);
+        }
+
+        let ratio = self.legacy_metric_bar_spacing.take().unwrap_or(0.2);
+        let migrate = self.metric_bar_gap < 0.0;
+        if migrate {
+            self.metric_bar_gap = gap(ratio, self.metric_scaling_factor, 1.0);
+        }
+        for key in METRIC_KEYS {
+            let a = self.appearances.get_mut(key);
+            let old = a.and_then(|a| a.legacy_bar_spacing.take().or(a.legacy_bar_spacing_ratio.take()));
+            if !migrate {
+                continue;
+            }
+            let thickness = self
+                .appearances
+                .get(key)
+                .and_then(|a| a.overrides.scaling_factor)
+                .unwrap_or(self.metric_scaling_factor);
+            let scale = match self.positions.contains_key(key) {
+                true => self.list_scale(key).unwrap_or(1.0),
+                false => 1.0,
+            };
+            let px = gap(old.unwrap_or(ratio), thickness, scale);
+            if px != self.metric_bar_gap {
+                self.appearances
+                    .entry(key.to_string())
+                    .or_insert_with(|| OverlayAppearanceConfig::default_for_type(key))
+                    .bar_gap = Some(px);
+            }
+        }
+    }
+
     /// Move the old per-overlay `*_opacity` fields into `frame_overrides`, old
-    /// per-overlay bar spacing into overrides of `metric_bar_spacing`, and the
-    /// old metric column toggles into templates.
+    /// bar spacing fractions into pixel gaps, and the old metric column toggles
+    /// into templates; freeze list overlay scales.
     /// Idempotent: the legacy fields are consumed and never written back.
     pub fn migrate_legacy(&mut self) {
-        let spacing = self.metric_bar_spacing;
+        self.freeze_list_scales();
+        self.migrate_bar_gaps();
         for a in self
             .appearances
             .values_mut()
             .chain(self.default_appearances.values_mut())
         {
-            if let Some(legacy) = a.legacy_bar_spacing.take()
-                && legacy != spacing
-            {
-                a.bar_spacing = Some(legacy);
-            }
             let (per_second, total) = (a.legacy_show_per_second.take(), a.legacy_show_total.take());
             if per_second.is_some() || total.is_some() {
                 a.template = match (per_second.unwrap_or(true), total.unwrap_or(false)) {
@@ -317,20 +454,6 @@ impl OverlaySettings {
             }
         }
 
-        /// Metric overlays that shared `metric_opacity`
-        const METRIC_KEYS: [&str; 11] = [
-            "dps",
-            "edps",
-            "bossdps",
-            "hps",
-            "ehps",
-            "abs",
-            "dtps",
-            "tps",
-            "apm",
-            "interrupts",
-            "incoming_damage",
-        ];
         // The raid and legacy effects overlays never drew this background
         self.raid_opacity = None;
         self.effects_opacity = None;

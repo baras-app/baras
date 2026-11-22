@@ -122,7 +122,6 @@ impl Default for DotTrackerConfig {
 /// Base dimensions
 const BASE_WIDTH: f32 = 280.0;
 const BASE_HEIGHT: f32 = 200.0;
-const BASE_PADDING: f32 = 4.0;
 const BASE_ROW_SPACING: f32 = 4.0;
 const BASE_ICON_SPACING: f32 = 2.0;
 const BASE_FONT_SIZE: f32 = 10.0;
@@ -261,9 +260,9 @@ impl DotTrackerOverlay {
         }
         self.last_rendered = current_state;
 
-        let padding = self.frame.scaled(BASE_PADDING);
-        let row_spacing = self.frame.scaled(BASE_ROW_SPACING);
-        let icon_spacing = self.frame.scaled(BASE_ICON_SPACING);
+        let padding = self.frame.edge_margin();
+        let row_spacing = BASE_ROW_SPACING;
+        let icon_spacing = BASE_ICON_SPACING;
         let font_scale = self.config.font_scale.clamp(0.3, 3.0);
         let font_size = self.frame.scaled(BASE_FONT_SIZE * font_scale);
         let icon_size = self.frame.scaled(self.config.icon_size as f32);
@@ -501,8 +500,8 @@ impl DotTrackerOverlay {
         let bar_height = self.frame.scaled(self.config.icon_size as f32).round() + 4.0 * scale;
         let font_size = self.frame.scaled(BASE_BAR_FONT_SIZE * font_scale);
         let name_font_size = font_size * 0.85;
-        let entry_spacing = self.frame.scaled(BASE_ROW_SPACING);
-        let padding = self.frame.scaled(BASE_PADDING);
+        let entry_spacing = BASE_ROW_SPACING;
+        let padding = self.frame.edge_margin();
         let bar_radius = 3.0 * scale;
         let content_width = self.frame.width() as f32 - 2.0 * padding;
         let header_font_size = font_size * 1.4;
@@ -656,8 +655,8 @@ impl DotTrackerOverlay {
         let bar_height = icon_size + 4.0 * scale;
         let font_size = self.frame.scaled(BASE_BAR_FONT_SIZE * font_scale);
         let name_font_size = font_size * 0.85;
-        let entry_spacing = self.frame.scaled(BASE_ROW_SPACING);
-        let padding = self.frame.scaled(BASE_PADDING);
+        let entry_spacing = BASE_ROW_SPACING;
+        let padding = self.frame.edge_margin();
         let bar_radius = 3.0 * scale;
         let content_width = self.frame.width() as f32 - 2.0 * padding;
         let header_font_size = font_size * 1.4;
@@ -749,9 +748,9 @@ impl DotTrackerOverlay {
 
     /// Render preview placeholders in move mode
     fn render_preview(&mut self) {
-        let padding = self.frame.scaled(BASE_PADDING);
-        let row_spacing = self.frame.scaled(BASE_ROW_SPACING);
-        let icon_spacing = self.frame.scaled(BASE_ICON_SPACING);
+        let padding = self.frame.edge_margin();
+        let row_spacing = BASE_ROW_SPACING;
+        let icon_spacing = BASE_ICON_SPACING;
         let font_scale = self.config.font_scale.clamp(0.3, 3.0);
         let font_size = self.frame.scaled(BASE_FONT_SIZE * font_scale);
         let icon_size = self.frame.scaled(self.config.icon_size as f32);

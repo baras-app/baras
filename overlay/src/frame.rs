@@ -15,6 +15,9 @@ use crate::widgets::colors;
 use baras_types::frame_style::{FrameStyle, MAX_BORDER_WIDTH, MAX_CORNER_RADIUS};
 use tiny_skia::Color;
 
+/// Flat margin list overlays keep inside the window border
+const EDGE_MARGIN: f32 = 2.0;
+
 /// A frame wrapper around an overlay window that handles common rendering
 pub struct OverlayFrame {
     window: OverlayWindow,
@@ -23,6 +26,10 @@ pub struct OverlayFrame {
     style: FrameStyle,
     base_width: f32,
     base_height: f32,
+    /// Scale that ignores the window size (list overlays)
+    fixed_scale: Option<f32>,
+    /// Shrink applied on top of the scale so content fits the window (≤ 1)
+    fit: f32,
     /// Optional label shown in move mode to identify the overlay
     label: Option<String>,
 }
@@ -43,6 +50,8 @@ impl OverlayFrame {
             style: FrameStyle::default(),
             base_width,
             base_height,
+            fixed_scale: None,
+            fit: 1.0,
             label: None,
         })
     }
@@ -71,10 +80,27 @@ impl OverlayFrame {
     // Scaling
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// Calculate scale factor based on current window size vs base dimensions
-    ///
-    /// Uses geometric mean of width and height ratios for balanced scaling
+    /// Unscaled gap between the window edge and list content, clear of the border
+    pub fn edge_margin(&self) -> f32 {
+        EDGE_MARGIN + self.style.border_width.clamp(0.0, MAX_BORDER_WIDTH)
+    }
+
+    /// Pin the scale factor (`None` = follow the window size)
+    pub fn set_fixed_scale(&mut self, scale: Option<f32>) {
+        self.fixed_scale = scale;
+    }
+
+    /// Shrink every scaled value by `fit` (1.0 = none) until set again
+    pub fn set_fit(&mut self, fit: f32) {
+        self.fit = fit;
+    }
+
+    /// The fixed scale if one is set, else the geometric mean of the window's
+    /// width and height ratios vs the base dimensions; times the fit shrink
     pub fn scale_factor(&self) -> f32 {
+        if let Some(scale) = self.fixed_scale {
+            return scale * self.fit;
+        }
         let width = self.window.width() as f32;
         let height = self.window.height() as f32;
         let width_ratio = width / self.base_width;

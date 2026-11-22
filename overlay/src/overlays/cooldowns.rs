@@ -130,7 +130,6 @@ impl Default for CooldownConfig {
 /// Base dimensions
 const BASE_WIDTH: f32 = 180.0;
 const BASE_HEIGHT: f32 = 300.0;
-const BASE_PADDING: f32 = 4.0;
 const BASE_ROW_SPACING: f32 = 2.0;
 const BASE_FONT_SIZE: f32 = 11.0;
 
@@ -257,8 +256,8 @@ impl CooldownOverlay {
         }
         self.last_rendered = current_state;
 
-        let padding = self.frame.scaled(BASE_PADDING);
-        let row_spacing = self.frame.scaled(BASE_ROW_SPACING);
+        let padding = self.frame.edge_margin();
+        let row_spacing = BASE_ROW_SPACING;
         let font_scale = self.config.font_scale.clamp(0.3, 3.0);
         let font_size = self.frame.scaled(BASE_FONT_SIZE * font_scale);
         let icon_size = self.frame.scaled(self.config.icon_size as f32);
@@ -463,8 +462,8 @@ impl CooldownOverlay {
 
     /// Render preview placeholders in move mode
     fn render_preview(&mut self) {
-        let padding = self.frame.scaled(BASE_PADDING);
-        let row_spacing = self.frame.scaled(BASE_ROW_SPACING);
+        let padding = self.frame.edge_margin();
+        let row_spacing = BASE_ROW_SPACING;
         let font_size = self.frame.scaled(BASE_FONT_SIZE);
         let icon_size = self.frame.scaled(self.config.icon_size as f32);
         let row_height = icon_size + row_spacing;
@@ -611,8 +610,8 @@ impl CooldownOverlay {
         // Bar height wraps the icon (icon_size = geometry); font_scale = text only
         let bar_height = self.frame.scaled(self.config.icon_size as f32).round() + 4.0 * scale;
         let font_size = self.frame.scaled(BASE_BAR_FONT_SIZE * font_scale);
-        let entry_spacing = self.frame.scaled(BASE_ROW_SPACING);
-        let padding = self.frame.scaled(BASE_PADDING);
+        let entry_spacing = BASE_ROW_SPACING;
+        let padding = self.frame.edge_margin();
         let bar_radius = 3.0 * scale;
         let content_width = self.frame.width() as f32 - 2.0 * padding;
         let header_font_size = font_size * 1.4;
@@ -731,8 +730,8 @@ impl CooldownOverlay {
     }
 
     fn render_preview_bar(&mut self) {
-        let padding = self.frame.scaled(BASE_PADDING);
-        let entry_spacing = self.frame.scaled(BASE_ROW_SPACING);
+        let padding = self.frame.edge_margin();
+        let entry_spacing = BASE_ROW_SPACING;
         let font_scale = self.config.font_scale.clamp(0.3, 3.0);
         let bar_height = self.frame.scaled(self.config.icon_size as f32).round() + 4.0 * self.frame.scale_factor();
         let font_size = self.frame.scaled(BASE_BAR_FONT_SIZE * font_scale);

@@ -29,8 +29,10 @@ mod widgets;
 use dioxus::prelude::*;
 
 use crate::api;
+use crate::components::slider::Slider;
 use crate::components::{ToastSeverity, use_toast};
 use crate::types::{MetricType, OverlaySettings};
+use baras_types::{MAX_LIST_SCALE, MIN_LIST_SCALE};
 
 use ability_cast::AbilityCastTab;
 use alerts::AlertsTab;
@@ -169,11 +171,12 @@ pub fn SettingsPanel(
                 config.overlay_settings.appearances = new_settings.appearances.clone();
                 config.overlay_settings.frame_style = new_settings.frame_style;
                 config.overlay_settings.frame_overrides = new_settings.frame_overrides.clone();
+                config.overlay_settings.scales = new_settings.scales.clone();
                 config.overlay_settings.personal_overlay = new_settings.personal_overlay.clone();
                 config.overlay_settings.metric_show_empty_bars = new_settings.metric_show_empty_bars;
                 config.overlay_settings.metric_stack_from_bottom = new_settings.metric_stack_from_bottom;
                 config.overlay_settings.metric_scaling_factor = new_settings.metric_scaling_factor;
-                config.overlay_settings.metric_bar_spacing = new_settings.metric_bar_spacing;
+                config.overlay_settings.metric_bar_gap = new_settings.metric_bar_gap;
                 config.overlay_settings.metric_bar_radius = new_settings.metric_bar_radius;
                 config.overlay_settings.metric_font_scale = new_settings.metric_font_scale;
                 config.overlay_settings.metric_gradient_intensity = new_settings.metric_gradient_intensity;
@@ -306,6 +309,17 @@ pub fn SettingsPanel(
                         }
                     }
                     h4 { class: "overlay-options-title", "{overlay_label(&tab)} Options" }
+                    if let Some(scale) = draft.current().list_scale(&tab) {
+                        Slider {
+                            label: "Scale",
+                            value: (scale * 100.0).round() as f64,
+                            min: (MIN_LIST_SCALE * 100.0) as f64,
+                            max: (MAX_LIST_SCALE * 100.0) as f64,
+                            suffix: "%",
+                            tooltip: "Size of this overlay's rows, icons and text. Resizing the window only changes how much fits.",
+                            on_change: move |v: f64| draft.edit(|s| s.set_list_scale(&selected_tab(), v as f32 / 100.0)),
+                        }
+                    }
                 }
                 if showing_overlays {
                     OverridesSection {

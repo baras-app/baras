@@ -7,7 +7,7 @@ use std::sync::Arc;
 use baras_core::PlayerMetrics;
 use baras_core::context::OverlayAppearanceConfig;
 use baras_types::metric_template::{self, MetricTemplate};
-use baras_types::{ClassColorConfig, ClassIconMode, MAX_BAR_RADIUS};
+use baras_types::{ClassColorConfig, ClassIconMode, MAX_BAR_GAP, MAX_BAR_RADIUS};
 use tiny_skia::Color;
 
 use super::metric_values::{entry_value, footer_value};
@@ -150,7 +150,6 @@ const BASE_HEIGHT: f32 = 200.0;
 /// Base layout values (at BASE_WIDTH x BASE_HEIGHT)
 const BASE_BAR_HEIGHT: f32 = 20.0;
 const BASE_BAR_SPACING: f32 = 4.0;
-const BASE_PADDING: f32 = 8.0;
 const MIN_BAR_HEIGHT_ABSOLUTE: f32 = 16.0; // Absolute minimum bar height (not scaled)
 const MIN_BAR_SPACING_ABSOLUTE: f32 = 2.0; // Absolute minimum spacing (not scaled)
 const BASE_FONT_SIZE: f32 = 14.0;
@@ -290,13 +289,49 @@ impl MetricOverlay {
         self.entries.len()
     }
 
+    /// How far the whole layout (header, bars, footer) must shrink to fit the
+    /// window at the user's scale; 1.0 when it already fits. Stops where bars
+    /// would drop under their minimum height, leaving the rest to bar compression.
+    fn fit_to_window(&self, height: f32) -> f32 {
+        let scale = self.frame.scale_factor();
+        let visible = || self.entries.iter().filter(|e| self.show_empty_bars || e.value != 0);
+        let n = visible().count().min(self.appearance.max_entries as usize) as f32;
+        if n == 0.0 || scale <= 0.0 {
+            return 1.0;
+        }
+        let divided = visible().any(|e| e.is_enemy) && visible().any(|e| !e.is_enemy);
+        let bar = BASE_BAR_HEIGHT * self.scaling_factor;
+        let gap = self.appearance.bar_gap.unwrap_or(4.0).clamp(0.0, MAX_BAR_GAP);
+        // Mirrors render's layout; every term is linear in the scale
+        let total = |s: f32| {
+            let spacing = BASE_BAR_SPACING * s;
+            let header = Header::space(self.appearance.show_header, BASE_FONT_SIZE * s, spacing, s);
+            let footer = match self.appearance.show_footer {
+                true => 2.0 + spacing + BASE_FONT_SIZE * self.font_scale * s + 6.0 * s,
+                false => 0.0,
+            };
+            let divider = if divided { spacing * 2.0 + 2.0 } else { 0.0 };
+            self.frame.edge_margin() * 2.0 + header + n * bar * s + (n - 1.0) * gap + divider + footer
+        };
+        if total(scale) <= height {
+            return 1.0;
+        }
+        let flat = total(0.0);
+        let per_scale = total(1.0) - flat;
+        let fitted = ((height - flat) / per_scale).max(MIN_BAR_HEIGHT_ABSOLUTE / bar);
+        (fitted / scale).min(1.0)
+    }
+
     /// Render the metric
     pub fn render(&mut self) {
         let width = self.frame.width() as f32;
         let height = self.frame.height() as f32;
+        self.frame.set_fit(1.0);
+        let fit = self.fit_to_window(height);
+        self.frame.set_fit(fit);
 
         // Get scaled layout values
-        let padding = self.frame.scaled(BASE_PADDING);
+        let padding = self.frame.edge_margin();
         // Base font size for the header (NOT affected by font_scale or scaling_factor)
         let base_font_size = self.frame.scaled(BASE_FONT_SIZE);
         // Font scale from global metric settings — affects bar text and footer, not header
@@ -304,11 +339,9 @@ impl MetricOverlay {
         let bar_font_size = self.frame.scaled(BASE_FONT_SIZE * font_scale);
         let scaled_bar_height = BASE_BAR_HEIGHT * self.scaling_factor;
         let ideal_bar_height = self.frame.scaled(scaled_bar_height);
-        // Inter-bar gap is proportional to bar height so it stays consistent
-        // across scales/resolutions. 0.0 = connected (no gap). Default 0.2
-        // reproduces the legacy fixed 4px gap at the default 20px bar height.
-        let spacing_ratio = self.appearance.bar_spacing.unwrap_or(0.2).clamp(0.0, 0.6);
-        let bar_spacing = ideal_bar_height * spacing_ratio;
+        // Inter-bar gap in flat pixels: never scaled, so growing the overlay
+        // spends the window on bars rather than whitespace. 0 = connected
+        let bar_spacing = self.appearance.bar_gap.unwrap_or(4.0).clamp(0.0, MAX_BAR_GAP);
         // Header/footer separators keep a stable gap regardless of bar density.
         let header_spacing = self.frame.scaled(BASE_BAR_SPACING);
         // Use absolute minimum bar height (not scaled) to handle extreme aspect ratios
@@ -378,13 +411,8 @@ impl MetricOverlay {
                 // Compress both bars and spacing proportionally (divider stays fixed)
                 let compression_ratio = (available_for_bars - divider_space).max(0.0) / (ideal_total - divider_space);
                 let compressed_bar = (ideal_bar_height * compression_ratio).max(min_bar_height);
-                // Preserve a fully-connected look (ratio 0) under compression;
-                // otherwise keep a readable minimum gap.
-                let min_spacing = if spacing_ratio <= 0.0 {
-                    0.0
-                } else {
-                    MIN_BAR_SPACING_ABSOLUTE
-                };
+                // Never widen a gap under compression (0 stays connected)
+                let min_spacing = bar_spacing.min(MIN_BAR_SPACING_ABSOLUTE);
                 let compressed_spacing = (bar_spacing * compression_ratio).max(min_spacing);
                 (compressed_bar, compressed_spacing)
             } else {
