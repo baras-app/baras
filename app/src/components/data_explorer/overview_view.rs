@@ -11,6 +11,39 @@ use crate::components::overview_chart::OverviewGroupChart;
 use crate::components::overview_table::OverviewTable;
 use baras_types::formatting;
 
+/// Damage/healing chart of the shown encounter. PvP plots the friendly side
+/// only (shares across sides are meaningless)
+pub(super) fn overview_chart(ctx: ExplorerCtx, eu: bool) -> Element {
+    let ExplorerCtx {
+        shown_encounter,
+        mut time_range,
+        overview_table_data,
+        overview_chart_col,
+        overview_hovered,
+        overview_alive_view,
+        overview_stacked,
+        overview_show_deaths,
+        player_deaths,
+        ..
+    } = ctx;
+    let table_data = overview_table_data.read();
+    rsx! {
+        OverviewGroupChart {
+            encounter_idx: shown_encounter(),
+            time_range: time_range(),
+            rows: table_data.rows.iter().filter(|r| r.faction != Some(PvpFaction::Enemy)).cloned().collect::<Vec<_>>(),
+            chart_col: overview_chart_col,
+            hovered: overview_hovered,
+            alive_view: overview_alive_view,
+            stacked: overview_stacked,
+            show_deaths: overview_show_deaths,
+            european: eu,
+            deaths: player_deaths.read().clone(),
+            on_time_range_change: move |r: TimeRange| time_range.set(r),
+        }
+    }
+}
+
 pub(super) fn overview_view(ctx: ExplorerCtx, european: bool) -> Element {
     let ExplorerCtx {
         encounters,
@@ -19,13 +52,8 @@ pub(super) fn overview_view(ctx: ExplorerCtx, european: bool) -> Element {
         overview_layouts,
         state,
         overview_sort_asc,
-        overview_alive_view,
-        overview_chart_col,
-        overview_stacked,
-        overview_show_deaths,
         overview_hovered,
         mut expanded_npc_groups,
-        mut time_range,
         player_deaths,
         npc_health,
         mut recap_death,
@@ -130,20 +158,7 @@ pub(super) fn overview_view(ctx: ExplorerCtx, european: bool) -> Element {
                            }
                        }
 
-                       // Group chart: PvP plots the friendly side only (shares across sides are meaningless)
-                       OverviewGroupChart {
-                           encounter_idx: shown_encounter(),
-                           time_range: time_range(),
-                           rows: table_data.rows.iter().filter(|r| r.faction != Some(PvpFaction::Enemy)).cloned().collect::<Vec<_>>(),
-                           chart_col: overview_chart_col,
-                           hovered: overview_hovered,
-                           alive_view: overview_alive_view,
-                           stacked: overview_stacked,
-                           show_deaths: overview_show_deaths,
-                           european: eu,
-                           deaths: player_deaths.read().clone(),
-                           on_time_range_change: move |r: TimeRange| time_range.set(r),
-                       }
+                       {overview_chart(ctx, eu)}
 
                        // Side-by-side: Deaths + NPC Health + Challenges
                        {

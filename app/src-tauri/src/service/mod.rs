@@ -10,6 +10,7 @@ mod cleanup;
 mod combat_data;
 mod definitions;
 mod directory;
+mod dummy_parse;
 mod effect_data;
 mod handler;
 mod history;

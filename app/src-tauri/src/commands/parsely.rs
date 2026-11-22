@@ -433,6 +433,16 @@ pub async fn query_parsely_ttk_ratings(
     Ok(handle.parsely_ttk_ratings().await)
 }
 
+/// One player's training dummy parse: stats, GCD delays and percentiles.
+#[tauri::command]
+pub async fn query_dummy_parse(
+    encounter_idx: u32,
+    source_name: String,
+    handle: State<'_, ServiceHandle>,
+) -> Result<baras_types::DummyParse, String> {
+    handle.dummy_parse(encounter_idx, source_name).await
+}
+
 /// Parsely percentiles for a finished kill; empty when the encounter isn't
 /// rated. With `local_only`, None means the table has to be
 /// downloaded first (ask again without it).

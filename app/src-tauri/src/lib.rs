@@ -368,6 +368,7 @@ pub fn run() {
             // Parsely upload
             commands::upload_to_parsely,
             commands::query_parsely_percentiles,
+            commands::query_dummy_parse,
             commands::query_parsely_ttk_ratings,
             commands::upload_encounter_to_parsely,
             // URL opening

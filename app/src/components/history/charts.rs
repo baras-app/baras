@@ -19,7 +19,7 @@ use baras_types::history::PullRow;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 
 use crate::components::echarts::{
-    dispose_chart, init_chart, json_to_js, next_animation_frame, on_column_click, set_js_fn, set_option_replace,
+    dispose_chart, escape, init_chart, json_to_js, next_animation_frame, on_column_click, set_js_fn, set_option_replace,
 };
 
 /// What a chart click selects. Carried on every data item as `pick`, so the
@@ -80,14 +80,6 @@ fn pull_label(iso: &str) -> String {
         (Some(m), Some(d)) => format!("{m} {d} {time}"),
         _ => iso.to_string(),
     }
-}
-
-/// Minimal HTML escape for names placed in the tooltip markup
-fn escape(s: &str) -> String {
-    s.replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('"', "&quot;")
 }
 
 /// A pull point: its value plus what the tooltip shows (character with role

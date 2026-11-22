@@ -149,7 +149,7 @@ fn visible_all(doc: &Document, selector: &str) -> Vec<HtmlElement> {
 }
 
 /// `scrollIntoView({ block: "nearest" })`: only scrolls when the row is off-screen
-fn scroll_into_view_nearest(el: &HtmlElement) {
+pub(crate) fn scroll_into_view_nearest(el: &HtmlElement) {
     let opts = js_sys::Object::new();
     let _ = js_sys::Reflect::set(&opts, &"block".into(), &"nearest".into());
     if let Ok(f) = js_sys::Reflect::get(el, &"scrollIntoView".into())

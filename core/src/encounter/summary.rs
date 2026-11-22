@@ -347,6 +347,9 @@ pub fn classify_encounter(
     (phase, boss_info)
 }
 
+/// Parsely percentile table of operations training dummy parses
+const DUMMY_RATING_PATH: &str = "operations-dummy";
+
 /// Determine if an encounter was successful (not a wipe)
 /// Returns false (wipe) if all players died or kill targets are still alive
 /// For victory-trigger encounters, success requires the trigger to have fired
@@ -483,7 +486,9 @@ pub fn create_encounter_summary(
         .active_boss_definition()
         .and_then(|def| def.parsely_slug.as_deref())
         .zip(Difficulty::from_difficulty_id(difficulty_id_for_classification))
-        .map(|(slug, d)| d.parsely_rating_path(slug));
+        .map(|(slug, d)| d.parsely_rating_path(slug))
+        // Dummy parses share one table whatever area the dummy stands in
+        .or_else(|| (encounter_type == PhaseType::DummyParse).then(|| DUMMY_RATING_PATH.to_string()));
 
     // Get boss name: prefer active definition, fall back to detected boss NPC
     // This allows non-boss trigger entities to classify the encounter
