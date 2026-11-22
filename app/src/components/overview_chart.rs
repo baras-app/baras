@@ -337,6 +337,7 @@ pub fn OverviewGroupChart(
             drawn_marks.set(death_marks(&mut option).map(|m| m.clone()).unwrap_or_default());
             let Some(js) = json_to_js(&option) else { return };
             set_js_fn(&js, &["xAxis", "axisLabel", "formatter"], "v", MMSS);
+            set_js_fn(&js, &["xAxis", "axisLabel", "interval"], "i, v", &tick_filter_js(&option));
             if alive {
                 set_js_fn(&js, &["tooltip", "formatter"], "p", &alive_tooltip_js());
             } else {
@@ -563,6 +564,23 @@ fn stagger_death_labels(option: &mut Value, chart_px: f64) {
         rows[row] = left + w;
         m["label"] = json!({ "align": align, "offset": [0.0, (row + 1) as f64 * LABEL_ROW_PX] });
     }
+}
+
+/// `axisLabel.interval` body: label the first bucket at or past each multiple
+/// of a round step, the finest that leaves about a dozen labels. The category
+/// axis would otherwise label as many buckets as fit, on no particular times.
+fn tick_filter_js(option: &Value) -> String {
+    let times: Vec<f64> = option["xAxis"]["data"]
+        .as_array()
+        .map(|a| a.iter().filter_map(Value::as_f64).collect())
+        .unwrap_or_default();
+    let span = times.last().unwrap_or(&0.0) - times.first().unwrap_or(&0.0);
+    let bucket = times.windows(2).next().map_or(1.0, |w| w[1] - w[0]);
+    let step = [5.0, 10.0, 15.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0]
+        .into_iter()
+        .find(|s| span / s <= 14.0)
+        .unwrap_or(3600.0);
+    format!("return Math.floor(v / {step}) !== Math.floor((v - {bucket}) / {step});")
 }
 
 /// The death markers' `markLine.data`, if the option has any
