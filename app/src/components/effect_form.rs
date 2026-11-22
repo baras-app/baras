@@ -13,7 +13,7 @@ use super::effect_trigger::{
 use super::encounter_editor::selectors::{EffectSelectorEditor, EntityFilterDropdown};
 use super::sound_picker::SoundPicker;
 use super::toggle_switch::ToggleSwitch;
-use crate::api;
+use crate::components::ability_icon::use_icon_url;
 use crate::components::editor_common::{FormCard, ItemActions, PreviewButton, preview_audio};
 use crate::components::form_fields::{CheckField, Field, NumberField, PickField, SubSection, TextField, TogglePill};
 use crate::types::{
@@ -116,28 +116,14 @@ pub(crate) fn EffectEditForm(
     let effect_original = effect.clone();
     let mut draft = use_signal(|| effect_for_draft);
     let mut trigger_type = use_signal(|| EffectTriggerType::from_effect(&effect_for_trigger));
-    let mut icon_preview_url = use_signal(|| None::<String>);
+    // Explicit icon_ability_id, or the trigger's id when it is blank
+    let (icon_preview_url, icon_loaded) = {
+        let d = draft.read();
+        use_icon_url(effect_icon_id(d.icon_ability_id, &d.trigger))
+    };
 
     // Track if form was just saved (resets dirty state)
     let mut just_saved = use_signal(|| false);
-
-    // Load icon preview - use explicit icon_ability_id, or fall back to trigger ID
-    use_effect(move || {
-        let current_draft = draft(); // Read inside effect for reactivity
-        let preview_id = effect_icon_id(current_draft.icon_ability_id, &current_draft.trigger);
-
-        if let Some(ability_id) = preview_id {
-            spawn(async move {
-                if let Some(url) = api::get_icon_preview(ability_id).await {
-                    icon_preview_url.set(Some(url));
-                } else {
-                    icon_preview_url.set(None);
-                }
-            });
-        } else {
-            icon_preview_url.set(None);
-        }
-    });
 
     // Reset just_saved when user makes new changes after saving
     let effect_original_for_effect = effect_original.clone();
@@ -221,6 +207,8 @@ pub(crate) fn EffectEditForm(
                             Field { label: "Icon ID", help: "Ability ID to use for the icon. Leave blank to auto-detect from trigger.",
                                 if let Some(ref url) = icon_preview_url() {
                                     img { src: "{url}", class: "icon-preview", width: "24", height: "24", alt: "Icon preview" }
+                                } else if !icon_loaded() {
+                                    span { class: "icon-preview pending" }
                                 }
                                 input {
                                     r#type: "text",
@@ -228,7 +216,7 @@ pub(crate) fn EffectEditForm(
                                     value: "{draft().icon_ability_id.map(|id| id.to_string()).unwrap_or_default()}",
                                     oninput: move |e| draft.write().icon_ability_id = e.value().parse::<u64>().ok(),
                                 }
-                                if icon_preview_url().is_none() && draft().icon_ability_id.is_some() {
+                                if icon_loaded() && icon_preview_url().is_none() && draft().icon_ability_id.is_some() {
                                     span { class: "field-unit", "(not found)" }
                                 }
                             }
