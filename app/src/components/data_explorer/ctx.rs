@@ -71,6 +71,7 @@ pub(super) struct ExplorerCtx {
     pub overview_layouts: Memo<OverviewLayouts>,
     pub overview_sort_asc: Signal<bool>,
     pub overview_alive_view: Signal<bool>,
+    pub overview_chart_col: Signal<OverviewColumn>,
     pub overview_stacked: Signal<bool>,
     pub overview_show_deaths: Signal<bool>,
     pub overview_hovered: Signal<Option<String>>,
@@ -154,6 +155,7 @@ pub(super) fn use_explorer_ctx(state: Signal<UiSessionState>) -> ExplorerCtx {
     let overview_sort_asc = use_signal(|| false);
     // Group chart view toggles; live here so they survive encounter switches (the chart remounts)
     let overview_alive_view = use_signal(|| false);
+    let overview_chart_col = use_signal(OverviewColumn::default);
     let overview_stacked = use_signal(|| false);
     let overview_show_deaths = use_signal(|| true);
     // Overview table row under the pointer, highlighted on the group chart
@@ -309,6 +311,7 @@ pub(super) fn use_explorer_ctx(state: Signal<UiSessionState>) -> ExplorerCtx {
         overview_layouts,
         overview_sort_asc,
         overview_alive_view,
+        overview_chart_col,
         overview_stacked,
         overview_show_deaths,
         overview_hovered,

@@ -258,8 +258,8 @@ pub fn OverviewGroupChart(
     time_range: TimeRange,
     /// Table rows, in table order: the players to plot (and a refresh signal while live)
     rows: Vec<RaidOverviewRow>,
-    sort_col: Signal<OverviewColumn>,
-    sort_asc: Signal<bool>,
+    /// Which metric is plotted, as its table column; independent of the table's sort
+    mut chart_col: Signal<OverviewColumn>,
     /// Player whose table row is hovered
     hovered: ReadSignal<Option<String>>,
     /// View toggles, owned by the parent so they persist across encounters
@@ -272,7 +272,7 @@ pub fn OverviewGroupChart(
     /// Drag across the chart to narrow the timeline to that span
     on_time_range_change: EventHandler<TimeRange>,
 ) -> Element {
-    let metric = metric_of(sort_col());
+    let metric = metric_of(chart_col());
     let roster: Vec<String> = rows.iter().map(|r| r.name.clone()).collect();
     // Colours resolve from CSS when the option is built; reading the theme
     // subscribes this render, so a theme flip rebuilds the option
@@ -406,14 +406,13 @@ pub fn OverviewGroupChart(
     rsx! {
         div { class: "overview-chart-box",
             div { class: "overview-chart-header",
-                div { class: "filter-pills", title: "Metric (follows the table's sort column)",
+                div { class: "filter-pills", title: "Metric to plot",
                     for (label, sort) in TABS {
                         button {
                             class: if !alive_view() && metric_of(sort) == metric { "seg active" } else { "seg" },
                             onclick: move |_| {
                                 alive_view.set(false);
-                                sort_col.set(sort);
-                                sort_asc.set(false);
+                                chart_col.set(sort);
                             },
                             "{label}"
                         }
