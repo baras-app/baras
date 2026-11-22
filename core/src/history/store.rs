@@ -22,7 +22,7 @@ use crate::state::ipc::WorkerPlayerDiscipline;
 
 /// Bump whenever `PullRecord` gains a field that old files cannot default
 /// sensibly. Files below this version are "stale" and need a re-scan.
-pub const HISTORY_VERSION: u32 = 7;
+pub const HISTORY_VERSION: u32 = 8;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogHistory {

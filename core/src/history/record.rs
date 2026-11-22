@@ -59,6 +59,9 @@ pub struct PullRecord {
     /// Arena round that ended its best-of-3 match
     #[serde(default, skip_serializing_if = "crate::serde_defaults::is_false")]
     pub pvp_match_end: bool,
+    /// Max HP of the dummy (dummy parses only)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dummy_hp: Option<i64>,
 }
 
 /// One player's numbers on the pull.
@@ -77,6 +80,12 @@ pub struct RosterLine {
     pub ehps: i64,
     pub dtps: i64,
     pub apm: f32,
+    /// Crit rate of damaging hits, 0-100
+    #[serde(default)]
+    pub crit_pct: f32,
+    /// Share of damage dealt by crits, 0-100
+    #[serde(default)]
+    pub crit_damage_pct: f32,
     /// Side relative to the logging character; PvP matches only
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pvp_faction: Option<PvpFaction>,
@@ -145,6 +154,8 @@ impl From<&EncounterSummary> for PullRecord {
                     ehps: m.ehps,
                     dtps: m.dtps,
                     apm: m.apm,
+                    crit_pct: m.damage_crit_pct,
+                    crit_damage_pct: m.crit_damage_pct,
                     pvp_faction: m.pvp_faction,
                 })
                 .collect(),
@@ -152,6 +163,7 @@ impl From<&EncounterSummary> for PullRecord {
             pvp_outcome: s.pvp_outcome,
             is_warzone: s.is_warzone,
             pvp_match_end: s.pvp_match_end,
+            dummy_hp: s.dummy_hp,
         }
     }
 }
