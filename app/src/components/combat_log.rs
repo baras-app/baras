@@ -349,6 +349,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     // Data state
     let mut rows = use_signal(Vec::<CombatLogRow>::new);
     let mut total_count = use_signal(|| 0u64);
+    let mut count_loaded = use_signal(|| false);
     let mut source_names = use_signal(GroupedEntityNames::default);
     let mut target_names = use_signal(GroupedEntityNames::default);
 
@@ -502,6 +503,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
             .await;
             if let Some(count) = count {
                 total_count.set(count);
+                count_loaded.set(true);
             }
             if let Some(data) = data {
                 rows.set(data);
@@ -1032,6 +1034,8 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                         }
                         if find_match_count > 0 {
                             span { class: "find-count", "{find_idx + 1}/{find_match_count}" }
+                        } else if !find_debounce.read().is_empty() && *find_debounce.read() == *find_text.read() {
+                            span { class: "find-count", "No matches" }
                         }
                     }
 
@@ -1180,6 +1184,10 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                         div { class: "log-resize-handle", onmousedown: move |e| { e.prevent_default(); resizing_col.set(Some(10)); resize_start_x.set(e.client_coordinates().x); resize_start_width.set(*col_dmg_type.read()); let _ = js_sys::eval("document.body.style.cursor='col-resize'"); } }
                     }
                     div { class: "log-cell log-threat sortable", style: "width: {col_threat}px; min-width: {col_threat}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Threat), "Threat{sort_ind_threat}" }
+                }
+
+                if count_loaded() && total == 0 {
+                    div { class: "uptime-empty", "No events match these filters" }
                 }
 
                 // Virtual scroll container
