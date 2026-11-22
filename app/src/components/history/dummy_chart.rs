@@ -64,7 +64,7 @@ fn trend_option(rows: &[DummyRow], european: bool) -> Option<Value> {
     let muted = css_var("--text-muted");
     let series: Vec<Value> = lines
         .into_iter()
-        .map(|(name, data)| json!({ "name": name, "type": "line", "data": data, "connectNulls": true, "symbolSize": 6, "lineStyle": { "width": 1.5 } }))
+        .map(|(name, data)| json!({ "name": name, "type": "line", "data": data, "connectNulls": true, "symbol": "circle", "symbolSize": 7, "showAllSymbol": true, "lineStyle": { "width": 1.5 } }))
         .collect();
     Some(json!({
         "animation": false,
