@@ -14,7 +14,7 @@ use web_sys::{Document, HtmlElement, KeyboardEvent};
 use crate::types::{MainTab, UiSessionState};
 
 /// Click-to-dismiss layers, which always sit above drawers
-const BACKDROPS: &str = ".modal-backdrop, .modal-overlay, .nav-menu-backdrop";
+const BACKDROPS: &str = ".modal-backdrop, .modal-overlay, .nav-menu-backdrop, .context-menu-backdrop";
 const DRAWER_CLOSE: &str = "[data-esc-close]";
 
 /// `[` / `]` cycle order, matching the header

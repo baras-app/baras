@@ -2774,6 +2774,13 @@
    Context Menu (right-click "Set as range start/end")
    ───────────────────────────────────────────────────────────────────────────── */
 
+/* Click-away (and Esc) layer under a right-click menu */
+.context-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+}
+
 .log-context-menu {
   background: var(--bg-light);
   border: 1px solid var(--border-subtle, var(--border-strong));

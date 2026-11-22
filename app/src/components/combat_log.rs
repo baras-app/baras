@@ -1294,12 +1294,13 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
             if let Some((x, y)) = *context_menu_pos.read() {
                 // Transparent backdrop for click-outside dismissal
                 div {
-                    style: "position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 999;",
+                    class: "context-menu-backdrop",
                     onclick: move |_| context_menu_pos.set(None),
                 }
                 div {
                     class: "log-context-menu",
-                    style: "position: fixed; left: {x}px; top: {y}px; z-index: 1000;",
+                    // Kept inside the window when opened near its right or bottom edge
+                    style: "position: fixed; left: min({x}px, calc(100vw - 17em)); top: min({y}px, calc(100vh - 13em)); z-index: 1000;",
                     div {
                         class: "context-menu-item",
                         onclick: move |_| {
