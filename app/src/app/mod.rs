@@ -588,9 +588,12 @@ pub fn App() -> Element {
 
     // Session status chip actions (shared by every session bar variant)
     let restart_watcher = move |_| {
+        let mut toast = use_toast();
         spawn(async move {
-            api::restart_watcher().await;
-            is_live_tailing.set(true);
+            match api::restart_watcher().await {
+                Ok(()) => is_live_tailing.set(true),
+                Err(err) => toast.show(format!("Couldn't restart the log watcher: {err}"), ToastSeverity::Normal),
+            }
         });
     };
     let resume_live = move |_| {
@@ -806,10 +809,13 @@ pub fn App() -> Element {
                                     class: if is_move_mode { "btn btn-header-overlay active" } else { "btn btn-header-overlay" },
                                     title: if is_move_mode { "Lock overlays" } else { "Unlock overlays (move/resize)" },
                                     disabled: !is_visible || !any_enabled || is_rearrange || overlays_auto_hidden,
-                                    onclick: move |_| { spawn(async move {
-                                        if let Ok(new_mode) = api::toggle_move_mode().await {
-                                            move_mode.set(new_mode);
-                                            if new_mode { rearrange_mode.set(false); }
+                                    onclick: move |_| { let mut toast = use_toast(); spawn(async move {
+                                        match api::toggle_move_mode().await {
+                                            Ok(new_mode) => {
+                                                move_mode.set(new_mode);
+                                                if new_mode { rearrange_mode.set(false); }
+                                            }
+                                            Err(err) => toast.show(format!("Couldn't unlock overlays: {err}"), ToastSeverity::Normal),
                                         }
                                     }); },
                                     i { class: if is_move_mode { "fa-solid fa-lock-open" } else { "fa-solid fa-lock" } }
@@ -818,9 +824,12 @@ pub fn App() -> Element {
                                     class: if is_rearrange { "btn btn-header-overlay active" } else { "btn btn-header-overlay" },
                                     title: "Rearrange raid frames",
                                     disabled: !is_visible || !raid_on || is_move_mode || overlays_auto_hidden,
-                                    onclick: move |_| { spawn(async move {
-                                        if let Ok(new_mode) = api::toggle_raid_rearrange().await {
-                                            rearrange_mode.set(new_mode);
+                                    onclick: move |_| { let mut toast = use_toast(); spawn(async move {
+                                        match api::toggle_raid_rearrange().await {
+                                            Ok(new_mode) => {
+                                                rearrange_mode.set(new_mode);
+                                            }
+                                            Err(err) => toast.show(format!("Couldn't rearrange raid frames: {err}"), ToastSeverity::Normal),
                                         }
                                     }); },
                                     i { class: "fa-solid fa-grip" }
@@ -1091,10 +1100,13 @@ pub fn App() -> Element {
                                 class: if is_move_mode { "btn btn-control btn-unlocked" } else { "btn btn-control btn-locked" },
                                 title: if is_move_mode { "Lock overlays in place" } else { "Unlock overlays to move and resize them" },
                                 disabled: !is_visible || !any_enabled || is_rearrange || overlays_auto_hidden,
-                                onclick: move |_| { spawn(async move {
-                                    if let Ok(new_mode) = api::toggle_move_mode().await {
-                                        move_mode.set(new_mode);
-                                        if new_mode { rearrange_mode.set(false); }
+                                onclick: move |_| { let mut toast = use_toast(); spawn(async move {
+                                    match api::toggle_move_mode().await {
+                                        Ok(new_mode) => {
+                                            move_mode.set(new_mode);
+                                            if new_mode { rearrange_mode.set(false); }
+                                        }
+                                        Err(err) => toast.show(format!("Couldn't unlock overlays: {err}"), ToastSeverity::Normal),
                                     }
                                 }); },
                                 if is_move_mode { i { class: "fa-solid fa-lock-open" } span { " Unlocked" } }
@@ -1104,9 +1116,12 @@ pub fn App() -> Element {
                                 class: if is_rearrange { "btn btn-control btn-rearrange btn-active" } else { "btn btn-control btn-rearrange" },
                                 title: "Drag raid frames into a new order",
                                 disabled: !is_visible || !raid_on || is_move_mode || overlays_auto_hidden,
-                                onclick: move |_| { spawn(async move {
-                                    if let Ok(new_mode) = api::toggle_raid_rearrange().await {
-                                        rearrange_mode.set(new_mode);
+                                onclick: move |_| { let mut toast = use_toast(); spawn(async move {
+                                    match api::toggle_raid_rearrange().await {
+                                        Ok(new_mode) => {
+                                            rearrange_mode.set(new_mode);
+                                        }
+                                        Err(err) => toast.show(format!("Couldn't rearrange raid frames: {err}"), ToastSeverity::Normal),
                                     }
                                 }); },
                                 i { class: "fa-solid fa-grip" }
@@ -1302,7 +1317,9 @@ pub fn App() -> Element {
                                                         toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                                                     } else {
                                                         // Restart watcher and rebuild index for new directory
-                                                        api::restart_watcher().await;
+                                                        if let Err(err) = api::restart_watcher().await {
+                                                            toast.show(format!("Couldn't restart the log watcher: {err}"), ToastSeverity::Normal);
+                                                        }
                                                         api::refresh_log_index().await;
                                                         is_watching.set(true);
                                                         // Now fetch updated stats
@@ -1612,8 +1629,11 @@ pub fn App() -> Element {
                                     class: "btn",
                                     disabled: !audio_enabled(),
                                     onclick: move |_| {
+                                        let mut toast = use_toast();
                                         spawn(async move {
-                                            api::preview_sound("Alert.mp3").await;
+                                            if let Err(err) = api::preview_sound("Alert.mp3").await {
+                                                toast.show(format!("Couldn't play the test sound: {err}"), ToastSeverity::Normal);
+                                            }
                                         });
                                     },
                                     "Test sound"
@@ -1622,8 +1642,11 @@ pub fn App() -> Element {
                                     class: "btn",
                                     disabled: !audio_enabled() || !audio_tts_enabled(),
                                     onclick: move |_| {
+                                        let mut toast = use_toast();
                                         spawn(async move {
-                                            api::preview_tts().await;
+                                            if let Err(err) = api::preview_tts().await {
+                                                toast.show(format!("Couldn't play text-to-speech: {err}"), ToastSeverity::Normal);
+                                            }
                                         });
                                     },
                                     "Test TTS"

@@ -291,8 +291,12 @@ pub fn OpTimerControl(
                 title: if !live { "Only available while live" } else if running { "Pause" } else if started { "Resume" } else { "Start operation timer" },
                 onclick: move |e| {
                     e.stop_propagation();
+                    let mut toast = use_toast();
                     spawn(async move {
-                        if running { api::stop_operation_timer().await; } else { api::start_operation_timer().await; }
+                        let result = if running { api::stop_operation_timer().await } else { api::start_operation_timer().await };
+                        if let Err(err) = result {
+                            toast.show(format!("Operation timer: {err}"), ToastSeverity::Normal);
+                        }
                     });
                 },
                 i { class: if running { "fa-solid fa-pause" } else { "fa-solid fa-play" } }
@@ -304,7 +308,12 @@ pub fn OpTimerControl(
                     title: "Reset",
                     onclick: move |e| {
                         e.stop_propagation();
-                        spawn(async move { api::reset_operation_timer().await; });
+                        let mut toast = use_toast();
+                        spawn(async move {
+                            if let Err(err) = api::reset_operation_timer().await {
+                                toast.show(format!("Operation timer: {err}"), ToastSeverity::Normal);
+                            }
+                        });
                     },
                     i { class: "fa-solid fa-rotate-left" }
                 }
