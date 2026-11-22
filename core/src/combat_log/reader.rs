@@ -73,7 +73,7 @@ impl Reader {
         }
         let bytes = &mmap.as_ref()[start_byte as usize..];
 
-        let parser = LogParser::new(session_date);
+        let parser = LogParser::for_file(&self.path, session_date);
         let mut event_count = 0usize;
         let mut line_number = start_line;
         let mut start = 0usize;
@@ -137,7 +137,7 @@ impl Reader {
                 source,
             })?;
 
-        let parser = LogParser::new(session_date);
+        let parser = LogParser::for_file(&self.path, session_date);
         let mut buf = Vec::new();
         let mut consecutive_errors = 0u32;
 

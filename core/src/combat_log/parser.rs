@@ -1,15 +1,19 @@
 use super::*;
 use crate::context::{empty_istr, intern};
 use crate::game_data::{defense_type, effect_id, effect_type_id};
-use chrono::{Days, NaiveDateTime};
+use chrono::{Days, NaiveDateTime, NaiveTime};
+use std::io::Read;
+use std::path::Path;
+use std::sync::OnceLock;
 use memchr::memchr_iter;
 use memchr::{memchr, memmem};
 
 #[cfg(test)]
 mod tests;
 
-/// How far a line's time may trail the filename time and still be the same day.
-const FILENAME_LEAD_TOLERANCE_MS: i64 = 5 * 60 * 1000;
+/// A first line stamped this far ahead of the filename time was written before
+/// midnight into a file created just after it.
+const PREVIOUS_DAY_LEAD_HOURS: i64 = 12;
 
 macro_rules! parse_i64 {
     ($s:expr) => {
@@ -22,13 +26,64 @@ macro_rules! parse_i32 {
     };
 }
 
+/// Lines carry a time of day only. The date comes from the filename, and the
+/// log's first line is the reference for midnight: lines are written in order,
+/// so one earlier than the first is on the next day. The filename's time is not
+/// that reference, because the game stamps the first lines before it creates
+/// the file.
+/// `HH:MM:SS.mmm`
+fn parse_time(segment: &str) -> Option<NaiveTime> {
+    let b = segment.as_bytes();
+    if b.len() != 12 || b[2] != b':' || b[5] != b':' || b[8] != b'.' {
+        return None;
+    }
+    let hour = (b[0] - b'0') * 10 + (b[1] - b'0');
+    let minute = (b[3] - b'0') * 10 + (b[4] - b'0');
+    let second = (b[6] - b'0') * 10 + (b[7] - b'0');
+    let millis = (b[9] - b'0') as u16 * 100 + (b[10] - b'0') as u16 * 10 + (b[11] - b'0') as u16;
+    NaiveTime::from_hms_milli_opt(hour as u32, minute as u32, second as u32, millis as u32)
+}
+
 pub struct LogParser {
-    session_date: NaiveDateTime,
+    /// Date and time in the filename
+    file_time: NaiveDateTime,
+    /// The log's first line, dated
+    anchor: OnceLock<NaiveDateTime>,
 }
 
 impl LogParser {
+    /// The first line parsed is taken as the log's first line: for parsing a
+    /// log in order from its start.
     pub fn new(session_date: NaiveDateTime) -> Self {
-        Self { session_date }
+        Self {
+            file_time: session_date,
+            anchor: OnceLock::new(),
+        }
+    }
+
+    /// Anchored on the file's actual first line, for parsing out of order or
+    /// from the middle. A file with no line yet falls back to `new`.
+    pub fn for_file(path: &Path, session_date: NaiveDateTime) -> Self {
+        let parser = Self::new(session_date);
+        let mut head = [0u8; 13];
+        if let Ok(mut file) = std::fs::File::open(path)
+            && file.read_exact(&mut head).is_ok()
+            && head[0] == b'['
+            && let Some(first) = std::str::from_utf8(&head[1..]).ok().and_then(parse_time)
+        {
+            let _ = parser.anchor.set(parser.anchor_at(first));
+        }
+        parser
+    }
+
+    fn anchor_at(&self, first: NaiveTime) -> NaiveDateTime {
+        let date = self.file_time.date();
+        let lead = first.signed_duration_since(self.file_time.time());
+        if lead.num_hours() >= PREVIOUS_DAY_LEAD_HOURS {
+            date.pred_opt().unwrap_or(date).and_time(first)
+        } else {
+            date.and_time(first)
+        }
     }
 
     pub fn parse_line(&self, line_number: u64, _line: &str) -> Option<CombatEvent> {
@@ -104,31 +159,11 @@ impl LogParser {
         Some(event)
     }
 
-    // parse HH:MM:SS.mmm
     fn parse_timestamp(&self, segment: &str) -> Option<NaiveDateTime> {
-        let b = segment.as_bytes();
-        if b.len() != 12 || b[2] != b':' || b[5] != b':' || b[8] != b'.' {
-            return None;
-        }
-
-        let hour = (b[0] - b'0') * 10 + (b[1] - b'0');
-        let minute = (b[3] - b'0') * 10 + (b[4] - b'0');
-        let second = (b[6] - b'0') * 10 + (b[7] - b'0');
-        let millis = (b[9] - b'0') as u16 * 100 + (b[10] - b'0') as u16 * 10 + (b[11] - b'0') as u16;
-
-        let timestamp = chrono::NaiveTime::from_hms_milli_opt(hour as u32, minute as u32, second as u32, millis as u32);
-
-        let compare_time = timestamp?;
-        let date = self.session_date.date().and_time(compare_time);
-        // A line earlier than the filename time normally means the log crossed
-        // midnight. The first lines of a log can however predate the filename by
-        // up to a few seconds (the game stamps the event before it creates the file).
-        let behind_ms = self
-            .session_date
-            .time()
-            .signed_duration_since(compare_time)
-            .num_milliseconds();
-        if behind_ms > FILENAME_LEAD_TOLERANCE_MS {
+        let time = parse_time(segment)?;
+        let anchor = *self.anchor.get_or_init(|| self.anchor_at(time));
+        let date = anchor.date().and_time(time);
+        if time < anchor.time() {
             date.checked_add_days(Days::new(1))
         } else {
             Some(date)

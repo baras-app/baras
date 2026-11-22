@@ -663,7 +663,7 @@ fn parse_file(
     }
 
     // Parallel parse
-    let parser = LogParser::new(date_stamp);
+    let parser = LogParser::for_file(file_path, date_stamp);
     let events: Vec<CombatEvent> = line_ranges
         .par_iter()
         .enumerate()

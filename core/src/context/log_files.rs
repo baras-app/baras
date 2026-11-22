@@ -442,7 +442,7 @@ pub fn extract_character_name(path: &Path, session_date: NaiveDateTime) -> Resul
     buffer.truncate(bytes_read);
 
     let (content, _, _) = WINDOWS_1252.decode(&buffer);
-    let parser = LogParser::new(session_date);
+    let parser = LogParser::for_file(path, session_date);
 
     // Take first 25 lines. If not in first 25 something is probably wrong
     for (idx, line) in content.lines().take(CHECK_N_LINES).enumerate() {
@@ -486,7 +486,7 @@ pub fn extract_last_event_time(path: &Path, session_date: NaiveDateTime) -> Resu
     buffer.truncate(bytes_read);
 
     let (content, _, _) = WINDOWS_1252.decode(&buffer);
-    let parser = LogParser::new(session_date);
+    let parser = LogParser::for_file(path, session_date);
 
     // Find last non-empty line and parse its timestamp
     for line in content.lines().rev() {
