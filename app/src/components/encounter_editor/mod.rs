@@ -108,8 +108,19 @@ pub fn InlineNameCreator(
 #[component]
 pub fn NpcIdChipEditor(ids: Vec<i64>, on_change: EventHandler<Vec<i64>>) -> Element {
     let mut new_input = use_signal(String::new);
-    let ids_for_keydown = ids.clone();
-    let ids_for_click = ids.clone();
+    let list = ids.clone();
+    let mut add = move || {
+        // Text that isn't a number stays in the box to be corrected
+        let Ok(id) = new_input.peek().trim().parse::<i64>() else {
+            return;
+        };
+        if !list.contains(&id) {
+            let mut next = list.clone();
+            next.push(id);
+            on_change.call(next);
+        }
+        new_input.set(String::new());
+    };
 
     rsx! {
         div { class: "flex-col gap-xs",
@@ -146,32 +157,17 @@ pub fn NpcIdChipEditor(ids: Vec<i64>, on_change: EventHandler<Vec<i64>>) -> Elem
                     placeholder: "NPC ID (Enter)",
                     value: "{new_input}",
                     oninput: move |e| new_input.set(e.value()),
-                    onkeydown: move |e| {
-                        if e.key() == Key::Enter && !new_input().trim().is_empty()
-                            && let Ok(id) = new_input().trim().parse::<i64>() {
-                                let mut new_ids = ids_for_keydown.clone();
-                                if !new_ids.contains(&id) {
-                                    new_ids.push(id);
-                                    on_change.call(new_ids);
-                                }
-                                new_input.set(String::new());
-                            }
-                    }
-                }
-                button {
-                    class: "btn btn-sm",
-                    onclick: move |_| {
-                        if let Ok(id) = new_input().trim().parse::<i64>() {
-                            let mut new_ids = ids_for_click.clone();
-                            if !new_ids.contains(&id) {
-                                new_ids.push(id);
-                                on_change.call(new_ids);
-                            }
-                            new_input.set(String::new());
-                        }
+                    onkeydown: {
+                        let mut add = add.clone();
+                        move |e| if e.key() == Key::Enter { add() }
                     },
-                    "Add"
+                    // A typed value counts without Enter: Save would otherwise drop it
+                    onblur: {
+                        let mut add = add.clone();
+                        move |_| add()
+                    },
                 }
+                button { class: "btn btn-sm", onclick: move |_| add(), "Add" }
             }
         }
     }
