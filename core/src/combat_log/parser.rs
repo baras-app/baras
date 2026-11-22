@@ -2,11 +2,11 @@ use super::*;
 use crate::context::{empty_istr, intern};
 use crate::game_data::{defense_type, effect_id, effect_type_id};
 use chrono::{Days, NaiveDateTime, NaiveTime};
+use memchr::memchr_iter;
+use memchr::{memchr, memmem};
 use std::io::Read;
 use std::path::Path;
 use std::sync::OnceLock;
-use memchr::memchr_iter;
-use memchr::{memchr, memmem};
 
 #[cfg(test)]
 mod tests;

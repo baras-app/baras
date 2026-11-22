@@ -112,7 +112,12 @@ pub(super) fn DummyTrend(rows: Vec<DummyRow>, european: bool) -> Element {
                 if let Some(ticks) = option.get("_ticks") {
                     apply_period_ticks(&js, ticks);
                 }
-                set_js_fn(&js, &["yAxis", "axisLabel", "formatter"], "v", "return v >= 1000 ? (v / 1000) + 'K' : v;");
+                set_js_fn(
+                    &js,
+                    &["yAxis", "axisLabel", "formatter"],
+                    "v",
+                    "return v >= 1000 ? (v / 1000) + 'K' : v;",
+                );
                 set_option_replace(&chart, &js);
             }
         });

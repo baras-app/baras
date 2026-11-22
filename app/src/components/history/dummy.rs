@@ -223,7 +223,12 @@ pub fn DummyTab(european: bool, backfill: Backfill) -> Element {
     let limit = paged.limit("dummy");
     let dec = |v: f32| formatting::format_decimal(v, 1, eu);
     let pct = |v: f32| format!("{} %", formatting::format_decimal(v, 1, eu));
-    let Stats { best_dps, avg_dps, avg_apm, fastest } = stats;
+    let Stats {
+        best_dps,
+        avg_dps,
+        avg_apm,
+        fastest,
+    } = stats;
     let compact = |v: Option<i64>| {
         v.map(|v| formatting::format_compact(v, eu))
             .unwrap_or_else(|| "—".into())
