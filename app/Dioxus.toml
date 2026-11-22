@@ -14,9 +14,3 @@ watch_path = ["src", "assets"]
 
 [web.resource]
 script = []
-
-[web.resource.dev]
-script = ["https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"]
-
-[web.resource.release]
-script = ["https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"]

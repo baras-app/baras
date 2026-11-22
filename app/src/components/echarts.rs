@@ -9,6 +9,14 @@ use wasm_bindgen::prelude::*;
 
 use crate::utils::js_set;
 
+/// ECharts 5.6.0, shipped with the app and loaded by a blocking `<script>` that
+/// dx writes into the page head, so `echarts` exists before the app starts and
+/// charts work offline.
+const _: Asset = asset!(
+    "/assets/echarts.min.js",
+    AssetOptions::js().with_static_head(true).with_minify(false)
+);
+
 #[wasm_bindgen]
 extern "C" {
     // `catch`: when the CDN script failed to load, `echarts` is undefined and
