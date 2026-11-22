@@ -7,6 +7,7 @@
 //! notes, Parsely links) that a re-parse never rewrites.
 
 mod catalog;
+mod dummy;
 mod index;
 mod lineage;
 mod meta;

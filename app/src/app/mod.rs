@@ -610,6 +610,7 @@ pub fn App() -> Element {
                                     (MainTab::BossStats, "fa-solid fa-chart-column", "Boss Statistics", "One boss across every log"),
                                     (MainTab::RaidSummaries, "fa-solid fa-dungeon", "Raid Summaries", ""),
                                     (MainTab::PvpStats, "fa-solid fa-crosshairs", "PvP Statistics", "Warzone and arena record, kills and deaths, trends"),
+                                    (MainTab::DummyStats, "fa-solid fa-bullseye", "Dummy Parses", "Training dummy kills by discipline"),
                                 ],
                                 state: ui_state,
                             }

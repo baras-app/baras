@@ -64,6 +64,8 @@ pub enum MainTab {
     Characters,
     /// Warzone and arena record, K/D and trends
     PvpStats,
+    /// Training dummy kills by discipline
+    DummyStats,
     /// Application settings page
     Settings,
 }
@@ -76,6 +78,7 @@ impl MainTab {
             MainTab::RaidSummaries => Some(history::HistorySubTab::Operations),
             MainTab::LogManagement => Some(history::HistorySubTab::Library),
             MainTab::PvpStats => Some(history::HistorySubTab::Pvp),
+            MainTab::DummyStats => Some(history::HistorySubTab::Dummy),
             _ => None,
         }
     }
@@ -92,6 +95,7 @@ impl MainTab {
             MainTab::LogManagement => "log_management",
             MainTab::Characters => "characters",
             MainTab::PvpStats => "pvp_stats",
+            MainTab::DummyStats => "dummy_stats",
             MainTab::Settings => "settings",
         }
     }
