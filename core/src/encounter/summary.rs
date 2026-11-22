@@ -389,6 +389,18 @@ pub fn determine_success(encounter: &CombatEncounter) -> bool {
         }
     }
 
+    // A training dummy parse is a kill only once a dummy is down: leaving
+    // combat early (or dying to reset it) is an abandoned parse. The death
+    // line is logged after ExitCombat, so the dummy's HP decides it too.
+    let mut dummies = encounter
+        .npcs
+        .values()
+        .filter(|npc| lookup_boss(npc.class_id).is_some_and(|b| b.content_type == ContentType::TrainingDummy))
+        .peekable();
+    if dummies.peek().is_some() {
+        return !encounter.all_players_dead && dummies.any(|npc| npc.is_dead || npc.current_hp <= 0);
+    }
+
     // Standard encounters: use is_likely_wipe()
     !encounter.is_likely_wipe()
 }
