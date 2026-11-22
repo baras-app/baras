@@ -1216,7 +1216,7 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                                     if empty && !loading_now && !is_live {
                                         div { key: "{id}", class: "chart-empty", "{msg}" }
                                     } else {
-                                        div { key: "{id}", class: "chart-slot",
+                                        div { key: "{id}", class: if loading_now { "chart-slot stale" } else { "chart-slot" },
                                             div { id: "{id}", class: "chart-container" }
                                             if loading_now {
                                                 div { class: "charts-loading", i { class: "fa-solid fa-spinner fa-spin" } }

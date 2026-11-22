@@ -1939,6 +1939,17 @@
   border-radius: var(--radius-md);
 }
 
+/* Plot of the previous selection, held dimmed while the next one loads
+   (same timing as the effects table: quick loads never dim) */
+.chart-container > div:first-child {
+  transition: opacity 0.15s;
+}
+
+.chart-slot.stale .chart-container > div:first-child {
+  opacity: 0.5;
+  transition-delay: 0.3s;
+}
+
 /* Empty chart state */
 .chart-empty {
   display: flex;
