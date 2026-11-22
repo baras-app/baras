@@ -6720,7 +6720,7 @@ a.contributor-name:hover {
    host and draws into its first child, so the card itself stays put and data
    updates on a live instance (live parsing, brushing) never re-trigger it. */
 [_echarts_instance_] > div:first-child {
-  animation: fade-in 0.25s ease-out;
+  animation: fade-in var(--transition-normal);
 }
 
 @keyframes fade-in {
@@ -8425,7 +8425,19 @@ a.contributor-name:hover {
 
 /* The combat log's first page of rows, once it replaces the previous view */
 .combat-log-host:not(.pending) {
-  animation: fade-in var(--transition-slow);
+  animation: fade-in var(--transition-normal);
+}
+
+/* Navigation: whatever a page, history view, explorer view or encounter change
+   mounts. Hidden editors restart theirs when they are shown again. `.fade-in`
+   marks content re-keyed on navigation (see `ability_table`). */
+.tab-content > *,
+.kept-page > *,
+.history-panel > *,
+.overview-section,
+.explorer-content > *,
+.fade-in {
+  animation: fade-in var(--transition-normal);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -8436,6 +8448,12 @@ a.contributor-name:hover {
   .nav-menu-list,
   .log-context-menu,
   .combat-log-host:not(.pending),
+  .tab-content > *,
+  .kept-page > *,
+  .history-panel > *,
+  .overview-section,
+  .explorer-content > *,
+  .fade-in,
   .drawer,
   .death-recap-drawer,
   .toast,

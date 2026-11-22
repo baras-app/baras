@@ -47,11 +47,15 @@ pub(super) fn ability_table(ctx: ExplorerCtx, tab: DataTab, european: bool) -> E
     rsx! {
         // Scrolls on its own under the fixed controls, header pinned, so a
         // longer or shorter list never moves anything above it
-        div { class: "ability-table-scroll",
-            table { class: table_class,
-                {table_head(ctx.sort_column, ctx.sort_direction, cols)}
-                {table_body(ctx.grouped_abilities, cols, european)}
-                {table_foot(ctx.grouped_abilities, cols, european)}
+        // Keyed in a one-item list so another encounter or tab mounts a new
+        // table, which fades in; sorting and filtering keep this one
+        for nav in [format!("{:?}-{tab:?}", (ctx.shown_encounter)())] {
+            div { key: "{nav}", class: "ability-table-scroll fade-in",
+                table { class: table_class,
+                    {table_head(ctx.sort_column, ctx.sort_direction, cols)}
+                    {table_body(ctx.grouped_abilities, cols, european)}
+                    {table_foot(ctx.grouped_abilities, cols, european)}
+                }
             }
         }
     }

@@ -69,7 +69,8 @@ pub(super) fn overview_view(ctx: ExplorerCtx, european: bool) -> Element {
     rsx! {
            // Raid Overview - Donut Charts + Table
            // Uses memoized overview_table_data - charts initialized via use_effect above
-           div { class: "overview-section",
+           for nav in [shown_encounter()] {
+           div { key: "{nav:?}", class: "overview-section",
                // Overview table - uses memoized data
                {
                    let table_data = overview_table_data.read();
@@ -462,6 +463,7 @@ pub(super) fn overview_view(ctx: ExplorerCtx, european: bool) -> Element {
 
                    }
                }
+           }
            }
        }
 }
