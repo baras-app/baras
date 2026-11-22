@@ -68,6 +68,8 @@ fn ChipList(
                     value: "{text}",
                     oninput: move |e| text.set(e.value()),
                     onkeydown: move |e| if e.key() == Key::Enter { add() },
+                    // A typed value counts without Enter: Save would otherwise drop it
+                    onblur: move |_| add(),
                 }
                 button { class: "btn btn-sm", onclick: move |_| add(), "Add" }
             }
