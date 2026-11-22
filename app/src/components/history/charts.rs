@@ -172,7 +172,12 @@ pub(super) fn period_ticks(timestamps: &[&str]) -> Value {
 /// Label, tick and gridline of a category axis at the `period_ticks` indices only
 pub(super) fn apply_period_ticks(js: &JsValue, ticks: &Value) {
     let show = format!("var t = {ticks}; return t[i] !== undefined;");
-    set_js_fn(js, &["xAxis", "axisLabel", "formatter"], "v, i", &format!("var t = {ticks}; return t[i] || '';"));
+    set_js_fn(
+        js,
+        &["xAxis", "axisLabel", "formatter"],
+        "v, i",
+        &format!("var t = {ticks}; return t[i] || '';"),
+    );
     set_js_fn(js, &["xAxis", "axisLabel", "interval"], "i, v", &show);
     set_js_fn(js, &["xAxis", "axisTick", "interval"], "i, v", &show);
     set_js_fn(js, &["xAxis", "splitLine", "interval"], "i, v", &show);
