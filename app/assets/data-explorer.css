@@ -657,6 +657,33 @@
   border-radius: 2px 2px 0 0;
 }
 
+/* Data Explorer views: natural width from the left, in three groups
+   (summary, breakdowns, tools) rather than stretched across the panel */
+.explorer-views .data-tab {
+  flex: 0 0 auto;
+  padding: 9px 14px;
+}
+
+.explorer-views .data-tab:not(.active):not(:hover) {
+  color: var(--text-tertiary);
+}
+
+.explorer-views .data-tab:nth-child(3),
+.explorer-views .data-tab:nth-child(7) {
+  margin-left: 17px;
+}
+
+.explorer-views .data-tab:nth-child(3)::before,
+.explorer-views .data-tab:nth-child(7)::before {
+  content: "";
+  position: absolute;
+  left: -9px;
+  top: 28%;
+  bottom: 28%;
+  width: 1px;
+  background: var(--border-medium);
+}
+
 /* Tab-specific accent colors */
 .data-tab:nth-child(1).active::after {
   background: var(--accent-gold);
