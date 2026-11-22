@@ -19,6 +19,10 @@ on:
         description: "Build macOS artifacts"
         type: boolean
         default: true
+      discord_preview:
+        description: "Only preview the Discord announcement in the draft channel (no build)"
+        type: boolean
+        default: false
 
 # One release at a time; plain builds never queue behind each other.
 concurrency:
@@ -39,6 +43,7 @@ jobs:
   # opens the draft release every build job uploads into.
   # ───────────────────────────────────────────────────────────────────────────
   preflight:
+    if: ${{ !inputs.discord_preview }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -328,22 +333,26 @@ jobs:
           git pull --rebase origin master
           git push origin HEAD:master
 
-      # Last and allowed to fail: the release is already out. An embed
-      # description holds 4096 characters, so a longer changelog is cut at a
-      # line break and links to the rest.
+      # Last and allowed to fail: the release is already out.
       - name: Announce on Discord
         continue-on-error: true
         env:
           WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+        run: .github/scripts/discord-announce.sh
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Posts the current version's announcement to the private draft channel and
+  # builds nothing, to see how a changelog will look before releasing it.
+  # ───────────────────────────────────────────────────────────────────────────
+  discord-preview:
+    if: ${{ inputs.discord_preview }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Post to the draft channel
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_DRAFT_WEBHOOK }}
         run: |
-          set -euo pipefail
-          jq -n \
-            --arg title "BARAS v$VERSION" \
-            --arg url "https://github.com/$GITHUB_REPOSITORY/releases/tag/v$VERSION" \
-            --arg body "$(tail -n +3 "changelogs/v$VERSION.md")" '
-            ($body
-              | if length > 3900
-                then .[:3900] | sub("\n[^\n]*$"; "") + "\n\n[Full release notes](\($url))"
-                else . end) as $description
-            | { embeds: [{ title: $title, url: $url, description: $description }] }' \
-            | curl --fail-with-body -sS -H "Content-Type: application/json" -d @- "$WEBHOOK"
+          VERSION=$(jq -r '.version' app/src-tauri/tauri.conf.json) .github/scripts/discord-announce.sh
