@@ -93,7 +93,8 @@ pub fn ContributorsModal(open: Signal<bool>) -> Element {
                     button {
                         class: "btn btn-close",
                         onclick: move |_| open.set(false),
-                        "X"
+                        title: "Close",
+                        i { class: "fa-solid fa-xmark" }
                     }
                 }
                 div { class: "changelog-content",

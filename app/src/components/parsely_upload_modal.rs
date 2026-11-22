@@ -173,7 +173,8 @@ pub fn ParselyUploadModal(
                     button {
                         class: "btn btn-close",
                         onclick: move |_| manager.close(),
-                        "X"
+                        title: "Close",
+                        i { class: "fa-solid fa-xmark" }
                     }
                 }
 
