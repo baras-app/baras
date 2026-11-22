@@ -60,6 +60,7 @@ pub fn PersonalTab(draft: SettingsDraft, actions: Element) -> Element {
                                     "▼"
                                 }
                                 button {
+                                    title: "Remove",
                                     class: "btn-remove",
                                     onclick: move |_| draft.edit(|s| {
                                         let stats = &mut s.personal_overlay.visible_stats;

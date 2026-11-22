@@ -324,6 +324,7 @@ pub fn IdChipEditor(ids: Vec<u64>, placeholder: &'static str, on_change: EventHa
                                 span { class: "chip text-mono",
                                     "{id}"
                                     button {
+                                        title: "Remove",
                                         class: "chip-remove",
                                         onclick: move |_| {
                                             let mut new_ids = ids_clone.clone();

@@ -330,6 +330,7 @@ fn ShieldEditor(
                                 }
                             }
                             button {
+                                title: "Remove",
                                 class: "btn btn-danger btn-xs",
                                 class: "ml-auto",
                                 onclick: move |_| { draft.write().shields[i].hp.remove(j); },

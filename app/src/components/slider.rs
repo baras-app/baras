@@ -76,6 +76,7 @@ pub fn NumberInput(
             }
             div { class: "slider-steppers",
                 button {
+                    title: "Increase",
                     r#type: "button",
                     class: "slider-step",
                     tabindex: "-1",
@@ -84,6 +85,7 @@ pub fn NumberInput(
                     i { class: "fa-solid fa-caret-up" }
                 }
                 button {
+                    title: "Decrease",
                     r#type: "button",
                     class: "slider-step",
                     tabindex: "-1",

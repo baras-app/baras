@@ -233,6 +233,7 @@ pub(crate) fn TriggerAbilitiesEditor(
                             span { class: "chip",
                                 "{display}"
                                 button {
+                                    title: "Remove",
                                     class: "chip-remove",
                                     onclick: move |_| {
                                         let mut new_abs = abilities_clone.clone();
@@ -338,6 +339,7 @@ pub(crate) fn RefreshAbilitiesEditor(
                             span { class: "chip",
                                 "{display}"
                                 button {
+                                    title: "Remove",
                                     class: "chip-remove",
                                     onclick: move |_| {
                                         let mut next = abilities_rm.clone();

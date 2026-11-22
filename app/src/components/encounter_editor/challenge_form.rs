@@ -446,6 +446,7 @@ fn ChallengeConditionRow(
 
             // Remove button
             button {
+                title: "Remove",
                 class: "btn btn-danger btn-xs",
                 onclick: move |_| on_remove.call(()),
                 "×"

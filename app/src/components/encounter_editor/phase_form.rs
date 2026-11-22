@@ -223,6 +223,7 @@ fn CounterListEditor(
                                 span { class: "chip",
                                     "{label_of(counter)}"
                                     button {
+                                        title: "Remove",
                                         class: "chip-remove",
                                         onclick: move |_| {
                                             let mut next = counters_clone.clone();

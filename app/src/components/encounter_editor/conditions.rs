@@ -319,6 +319,7 @@ fn CompositeConditionEditor(
                                 }
                                 if children_len > 1 {
                                     button {
+                                        title: "Remove condition",
                                         class: "btn btn-danger btn-sm",
                                         onclick: {
                                             let is_all = is_all_of;

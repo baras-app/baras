@@ -155,6 +155,7 @@ fn CompositeEditor(
                                 }
                                 if conditions_len > 1 {
                                     button {
+                                        title: "Remove condition",
                                         class: "btn btn-danger btn-sm",
                                         onclick: move |_| {
                                             let mut new_conditions = conditions_for_remove.clone();

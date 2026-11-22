@@ -82,6 +82,7 @@ pub fn InlineNameCreator(
                     "Create"
                 }
                 button {
+                    title: "Cancel",
                     class: "btn btn-ghost btn-sm",
                     onclick: move |_| {
                         show_input.set(false);
@@ -134,6 +135,7 @@ pub fn NpcIdChipEditor(ids: Vec<i64>, on_change: EventHandler<Vec<i64>>) -> Elem
                                 span { class: "chip text-mono",
                                     "{id}"
                                     button {
+                                        title: "Remove",
                                         class: "chip-remove",
                                         onclick: move |_| {
                                             let mut new_ids = ids_clone.clone();
@@ -634,6 +636,7 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                 }
                 span { "{msg}" }
                 button {
+                    title: "Dismiss",
                     class: "btn btn-ghost btn-sm",
                     style: "padding: 2px 6px; min-width: auto;",
                     onclick: move |_| status_message.set(None),

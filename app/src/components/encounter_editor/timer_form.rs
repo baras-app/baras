@@ -648,6 +648,7 @@ fn AbilityQueueCard(
                                     span { class: "chip",
                                         {all_timers.iter().find(|t| t.id == blocker_id).map(|t| t.name.clone()).unwrap_or(blocker_id)}
                                         button {
+                                            title: "Remove",
                                             class: "chip-remove",
                                             onclick: move |_| { draft.write().queue_blocking_timers.remove(idx); },
                                             "×"

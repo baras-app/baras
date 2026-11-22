@@ -33,7 +33,7 @@ fn Chips(labels: Vec<String>, on_remove: EventHandler<usize>) -> Element {
                 for (idx, label) in labels.into_iter().enumerate() {
                     span { class: "chip",
                         "{label}"
-                        button { class: "chip-remove", onclick: move |_| on_remove.call(idx), "×" }
+                        button { title: "Remove", class: "chip-remove", onclick: move |_| on_remove.call(idx), "×" }
                     }
                 }
             }

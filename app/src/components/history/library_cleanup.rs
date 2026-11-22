@@ -188,7 +188,7 @@ fn CleanupModal(plan: CleanupPlan, on_close: EventHandler<()>, on_done: EventHan
             div { class: "modal-content library-cleanup", onclick: move |e| e.stop_propagation(),
                 div { class: "modal-header",
                     h3 { "Run cleanup" }
-                    button { class: "btn btn-xs btn-ghost", onclick: move |_| on_close.call(()), i { class: "fa-solid fa-xmark" } }
+                    button { title: "Close", class: "btn btn-xs btn-ghost", onclick: move |_| on_close.call(()), i { class: "fa-solid fa-xmark" } }
                 }
                 div { class: "library-delete-body",
                     div { class: "library-preview warn",
