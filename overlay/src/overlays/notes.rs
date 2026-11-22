@@ -312,7 +312,7 @@ impl NotesOverlay {
 
     /// Render the overlay
     pub fn render(&mut self) {
-        let padding = self.frame.scaled(BASE_PADDING);
+        let padding = BASE_PADDING;
         let line_height = self.frame.scaled(BASE_LINE_HEIGHT);
         let header_spacing = self.frame.scaled(BASE_HEADER_SPACING);
         let font_size = self.frame.scaled(self.config.font_size as f32);

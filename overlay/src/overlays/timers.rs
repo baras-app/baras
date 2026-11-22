@@ -108,7 +108,6 @@ const BASE_HEIGHT: f32 = 150.0;
 /// Base layout values (at BASE_WIDTH x BASE_HEIGHT)
 const BASE_BAR_HEIGHT: f32 = 18.0;
 const BASE_ENTRY_SPACING: f32 = 2.0;
-const BASE_PADDING: f32 = 6.0;
 const BASE_FONT_SIZE: f32 = 11.0;
 
 /// Timer bar overlay
@@ -158,9 +157,9 @@ impl TimerOverlay {
     fn render_preview(&mut self) {
         let width = self.frame.width() as f32;
 
-        let padding = self.frame.scaled(BASE_PADDING);
+        let padding = self.frame.edge_margin();
         let bar_height = self.frame.scaled(BASE_BAR_HEIGHT);
-        let entry_spacing = self.frame.scaled(BASE_ENTRY_SPACING);
+        let entry_spacing = BASE_ENTRY_SPACING;
         let font_scale = self.config.font_scale.clamp(0.3, 3.0);
         let font_size = self.frame.scaled(BASE_FONT_SIZE * font_scale);
         let font_color = color_from_rgba(self.config.font_color);
@@ -218,9 +217,9 @@ impl TimerOverlay {
 
         let width = self.frame.width() as f32;
 
-        let padding = self.frame.scaled(BASE_PADDING);
+        let padding = self.frame.edge_margin();
         let bar_height = self.frame.scaled(BASE_BAR_HEIGHT);
-        let entry_spacing = self.frame.scaled(BASE_ENTRY_SPACING);
+        let entry_spacing = BASE_ENTRY_SPACING;
         let font_scale = self.config.font_scale.clamp(0.3, 3.0);
         let font_size = self.frame.scaled(BASE_FONT_SIZE * font_scale);
 

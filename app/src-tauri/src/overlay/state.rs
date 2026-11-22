@@ -28,6 +28,8 @@ pub enum OverlayCommand {
     SetFontFamily(String),
     /// Set the window background colour, border and corner radius
     SetFrameStyle(baras_types::FrameStyle),
+    /// Pin the render scale (`None` = follow the window size)
+    SetScale(Option<f32>),
     /// Set overlay position (x, y in screen coordinates)
     SetPosition(i32, i32),
     /// Set overlay size (width, height in pixels)

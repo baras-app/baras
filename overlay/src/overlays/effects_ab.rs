@@ -165,7 +165,6 @@ impl Default for EffectsABConfig {
 /// Base dimensions
 const BASE_WIDTH: f32 = 300.0;
 const BASE_HEIGHT: f32 = 300.0;
-const BASE_PADDING: f32 = 4.0;
 const BASE_SPACING: f32 = 4.0;
 const BASE_FONT_SIZE: f32 = 10.0;
 /// Icon-layout fonts track the configured icon size so countdown/stack text
@@ -295,8 +294,8 @@ impl EffectsABOverlay {
         }
         self.last_rendered = current_state;
 
-        let padding = self.frame.scaled(BASE_PADDING);
-        let spacing = self.frame.scaled(BASE_SPACING);
+        let padding = self.frame.edge_margin();
+        let spacing = BASE_SPACING;
         let font_scale = self.config.font_scale.clamp(0.3, 3.0);
         let font_size = self
             .frame
@@ -474,8 +473,8 @@ impl EffectsABOverlay {
         }
         self.last_rendered = current_state;
 
-        let padding = self.frame.scaled(BASE_PADDING);
-        let row_spacing = self.frame.scaled(BASE_SPACING);
+        let padding = self.frame.edge_margin();
+        let row_spacing = BASE_SPACING;
         let font_scale = self.config.font_scale.clamp(0.3, 3.0);
         let font_size = self
             .frame
@@ -665,8 +664,8 @@ impl EffectsABOverlay {
         // Bar height wraps the icon (icon_size = geometry); font_scale = text only
         let bar_height = self.frame.scaled(self.config.icon_size as f32).round() + 4.0 * scale;
         let font_size = self.frame.scaled(BASE_BAR_FONT_SIZE * font_scale);
-        let entry_spacing = self.frame.scaled(BASE_SPACING);
-        let padding = self.frame.scaled(BASE_PADDING);
+        let entry_spacing = BASE_SPACING;
+        let padding = self.frame.edge_margin();
         let bar_radius = 3.0 * scale;
         let content_width = self.frame.width() as f32 - 2.0 * padding;
         let font_color = colors::white();
@@ -944,8 +943,8 @@ impl EffectsABOverlay {
 
     /// Render horizontal preview (row of icons)
     fn render_preview_horizontal(&mut self) {
-        let padding = self.frame.scaled(BASE_PADDING);
-        let spacing = self.frame.scaled(BASE_SPACING);
+        let padding = self.frame.edge_margin();
+        let spacing = BASE_SPACING;
         let font_size = self.frame.scaled(self.config.icon_size as f32 * ICON_FONT_RATIO);
         let icon_size = self.frame.scaled(self.config.icon_size as f32);
         let scale = self.frame.scale_factor();
@@ -1035,8 +1034,8 @@ impl EffectsABOverlay {
 
     /// Render vertical preview (column with text beside icons)
     fn render_preview_vertical(&mut self) {
-        let padding = self.frame.scaled(BASE_PADDING);
-        let row_spacing = self.frame.scaled(BASE_SPACING);
+        let padding = self.frame.edge_margin();
+        let row_spacing = BASE_SPACING;
         let font_size = self.frame.scaled(self.config.icon_size as f32 * ICON_FONT_RATIO);
         let icon_size = self.frame.scaled(self.config.icon_size as f32);
         let row_height = icon_size + row_spacing;
@@ -1136,8 +1135,8 @@ impl EffectsABOverlay {
         let scale = self.frame.scale_factor();
         let bar_height = self.frame.scaled(self.config.icon_size as f32).round() + 4.0 * scale;
         let font_size = self.frame.scaled(BASE_BAR_FONT_SIZE * font_scale);
-        let entry_spacing = self.frame.scaled(BASE_SPACING);
-        let padding = self.frame.scaled(BASE_PADDING);
+        let entry_spacing = BASE_SPACING;
+        let padding = self.frame.edge_margin();
         let bar_radius = 3.0 * scale;
         let content_width = self.frame.width() as f32 - 2.0 * padding;
         let font_color = colors::white();

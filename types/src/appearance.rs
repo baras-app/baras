@@ -194,17 +194,20 @@ pub struct OverlayAppearanceConfig {
     /// Enabled by default for metric overlays.
     #[serde(default = "default_true")]
     pub bar_gradient: bool,
-    /// Vertical gap between bars as a fraction of bar height (0.0 = connected).
-    /// `None` follows `OverlaySettings::metric_bar_spacing`.
+    /// Vertical gap between bars in pixels, unscaled (0 = connected).
+    /// `None` follows `OverlaySettings::metric_bar_gap`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub bar_spacing: Option<f32>,
+    pub bar_gap: Option<f32>,
+    /// Pre-`bar_gap` override as a fraction of bar height; read once by `migrate_legacy`
+    #[serde(default, skip_serializing, rename = "bar_spacing")]
+    pub legacy_bar_spacing: Option<f32>,
     /// Corner radius of each bar in pixels at base size (0 = square).
     /// `None` follows `OverlaySettings::metric_bar_radius`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bar_radius: Option<f32>,
-    /// Pre-`bar_spacing` per-overlay value; read once by `migrate_legacy`
+    /// Oldest per-overlay spacing fraction; read once by `migrate_legacy`
     #[serde(default, skip_serializing, rename = "bar_spacing_ratio")]
-    pub legacy_bar_spacing: Option<f32>,
+    pub legacy_bar_spacing_ratio: Option<f32>,
     #[serde(default, skip_serializing_if = "MetricOverrides::is_empty")]
     pub overrides: MetricOverrides,
 }
@@ -255,8 +258,16 @@ fn default_metric_template() -> String {
     "{rate}".to_string()
 }
 
-pub(crate) fn default_bar_spacing_ratio() -> f32 {
-    0.2
+/// Largest gap between metric bars, in pixels
+pub const MAX_BAR_GAP: f32 = 40.0;
+
+pub(crate) fn default_bar_gap() -> f32 {
+    4.0
+}
+
+/// Marks a config written before `metric_bar_gap` existed
+pub(crate) fn unmigrated_bar_gap() -> f32 {
+    -1.0
 }
 
 pub const MAX_BAR_RADIUS: f32 = 16.0;
@@ -291,9 +302,10 @@ impl Default for OverlayAppearanceConfig {
             show_duration: true,
             use_class_color: false,
             bar_gradient: true,
-            bar_spacing: None,
-            bar_radius: None,
+            bar_gap: None,
             legacy_bar_spacing: None,
+            bar_radius: None,
+            legacy_bar_spacing_ratio: None,
             overrides: MetricOverrides::default(),
         }
     }
