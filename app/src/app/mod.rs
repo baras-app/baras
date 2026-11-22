@@ -77,6 +77,7 @@ pub fn App() -> Element {
     // File browser state
     let mut file_browser_open = use_signal(|| false);
     let mut log_files = use_signal(Vec::<LogFileInfo>::new);
+    let mut log_files_loaded = use_signal(|| false);
     let mut upload_status = use_signal(HashMap::<String, (bool, String)>::new); // path -> (success, message)
     let mut file_browser_filter = use_signal(String::new);
     let mut hide_small_log_files = use_signal(|| true);
@@ -232,6 +233,7 @@ pub fn App() -> Element {
         if let Ok(files) = serde_wasm_bindgen::from_value::<Vec<LogFileInfo>>(result) {
             log_files.set(files);
         }
+        log_files_loaded.set(true);
 
         is_watching.set(api::get_watching_status().await);
         if let Some(file) = api::get_active_file().await {
@@ -1948,10 +1950,22 @@ pub fn App() -> Element {
                             let key = format!("{}|{}", file_browser_filter().to_lowercase(), hide_small_log_files());
                             file_paged.on_scroll(FILE_LIST, &key, log_files.read().len());
                         },
-                        if log_files().is_empty() {
+                        if !log_files_loaded() {
                             div { class: "file-browser-empty",
                                 i { class: "fa-solid fa-spinner fa-spin" }
                                 " Loading files..."
+                            }
+                        } else if log_files().is_empty() {
+                            div { class: "file-browser-empty",
+                                "No log files found — "
+                                span {
+                                    class: "settings-link",
+                                    onclick: move |_| {
+                                        file_browser_open.set(false);
+                                        ui_state.write().active_tab = MainTab::Settings;
+                                    },
+                                    "set log directory"
+                                }
                             }
                         } else {
                             {
@@ -1993,6 +2007,15 @@ pub fn App() -> Element {
                                 }).cloned().collect();
                                 let shown = file_paged.limit(&format!("{filter}|{hide_small}"));
                                 rsx! {
+                                    if filtered.is_empty() {
+                                        div { class: "file-browser-empty",
+                                            if filter.trim().is_empty() {
+                                                "Every log is under 1MB — turn off \"Hide <1MB\" to see them"
+                                            } else {
+                                                "No logs match this filter"
+                                            }
+                                        }
+                                    }
                                     for file in filtered.iter().take(shown) {
                                 {
                                     let path = file.path.clone();
