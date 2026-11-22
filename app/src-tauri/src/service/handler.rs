@@ -1202,7 +1202,7 @@ impl ServiceHandle {
 
     /// Point the query context at an encounter's parquet file, or at the live
     /// buffer when `encounter_idx` is None.
-    async fn register_encounter(&self, encounter_idx: Option<u32>) -> Result<(), String> {
+    pub(super) async fn register_encounter(&self, encounter_idx: Option<u32>) -> Result<(), String> {
         let session_guard = self.shared.session.read().await;
         let session = session_guard.as_ref().ok_or("No active session")?;
         let session = session.read().await;

@@ -1420,6 +1420,14 @@ pub async fn query_parsely_ttk_ratings() -> std::collections::HashMap<u64, baras
         .collect()
 }
 
+/// One player's training dummy parse: stats, GCD delays and percentiles.
+pub async fn query_dummy_parse(encounter_idx: u32, source_name: &str) -> Option<baras_types::DummyParse> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "encounterIdx", &to_js(&encounter_idx));
+    js_set(&obj, "sourceName", &JsValue::from_str(source_name));
+    from_js(invoke("query_dummy_parse", obj.into()).await)
+}
+
 /// Parsely percentiles; empty unless the encounter is a finished kill of a rated boss.
 /// With `local_only`, None means the table isn't downloaded yet (ask again without it).
 pub async fn query_parsely_percentiles(encounter_idx: u32, local_only: bool) -> Option<EncounterRatings> {
