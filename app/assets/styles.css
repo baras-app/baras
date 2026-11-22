@@ -962,6 +962,25 @@ button:active {
   background-color: rgba(15, 15, 15, 0.4);
 }
 
+/* Pressed: every button dims the moment it is clicked, whatever its colors
+   (a filter, so it cannot fight a button's own transform or background) */
+button:active:not(:disabled),
+[role="button"]:active {
+  filter: brightness(0.85);
+}
+
+/* Keyboard focus. Text inputs keep their own border highlight (their `:focus`
+   rules outrank this), and rules further down can still opt out. */
+:focus-visible {
+  outline: 2px solid var(--swtor-blue);
+  outline-offset: 1px;
+}
+
+/* Focusable only so the keys scroll it: no ring around the whole log */
+.log-table-container:focus-visible {
+  outline: none;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════════
    3. BASE COMPONENTS - Buttons
    ═══════════════════════════════════════════════════════════════════════════════ */
