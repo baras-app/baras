@@ -211,7 +211,6 @@ dependencies = [
  "dioxus",
  "dioxus-logger",
  "futures-util",
- "getrandom 0.4.3",
  "gloo-timers 0.4.1",
  "js-sys",
  "serde",
