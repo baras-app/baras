@@ -77,20 +77,21 @@ pub(super) fn TimerEditForm(
             just_saved.set(true);
             let updated = draft();
             let mut current = timers.clone();
-            if let Some(idx) = current.iter().position(|t| t.id == updated.id) {
-                current[idx] = updated.clone();
-                on_change.call(current);
-            }
             let boss_id = bwp.boss.id.clone();
             let file_path = bwp.file_path.clone();
-            let item = EncounterItem::Timer(updated);
+            let item = EncounterItem::Timer(updated.clone());
             spawn(async move {
                 match api::update_encounter_item(&boss_id, &file_path, &item, None).await {
                     Ok(_) => {
+                        // Only a stored save reaches the list: the form stays unsaved on failure
+                        if let Some(idx) = current.iter().position(|t| t.id == updated.id) {
+                            current[idx] = updated;
+                            on_change.call(current);
+                        }
                         on_status.call(("Saved".to_string(), false));
                         on_refetch.call(());
                     }
-                    Err(_) => on_status.call(("Failed to save".to_string(), true)),
+                    Err(e) => on_status.call((format!("Failed to save: {e}"), true)),
                 }
             });
         }
