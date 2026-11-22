@@ -344,13 +344,25 @@ pub fn SettingsPanel(
                     class: if draft.has_changes() || profile_dirty() { "btn btn-save btn-unsaved" } else { "btn btn-save" },
                     disabled: !draft.has_changes() && !profile_dirty(),
                     onclick: move |_| save_to_backend(),
-                    if draft.has_changes() || profile_dirty() { "Save *" } else { "Save" }
+                    // Says where the changes go; the highlight is the unsaved marker
+                    match active_profile() {
+                        Some(profile) if draft.has_changes() || profile_dirty() => "Save to '{profile}'",
+                        _ => "Save",
+                    }
+                }
+                if draft.has_changes() {
+                    button {
+                        class: "btn",
+                        title: "Drop the unsaved style changes and put the overlays back as saved",
+                        onclick: move |_| {
+                            draft.replace(settings());
+                            spawn(async move { api::refresh_overlay_settings().await; });
+                        },
+                        "Discard"
+                    }
                 }
                 if !draft.status().is_empty() {
                     span { class: "save-status", "{draft.status()}" }
-                }
-                if draft.has_changes() || profile_dirty() {
-                    span { class: "unsaved-indicator", title: "Overlay changes not saved to the active profile" }
                 }
             }
         }

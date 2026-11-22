@@ -77,7 +77,7 @@ impl SettingsDraft {
 
     /// Replace the draft with persisted settings, dropping any pending preview
     /// so a stale edit can't land on the newly loaded settings
-    fn replace(&self, settings: OverlaySettings) {
+    pub fn replace(&self, settings: OverlaySettings) {
         let (mut current, mut has_changes, mut request_id) = (self.settings, self.has_changes, self.preview_request_id);
         current.set(settings);
         has_changes.set(false);
