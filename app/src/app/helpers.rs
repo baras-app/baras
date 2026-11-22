@@ -94,11 +94,12 @@ pub(super) fn apply_status(
     rearrange_mode: &mut Signal<bool>,
     auto_hidden: &mut Signal<bool>,
 ) {
-    overlays_visible.set(status.overlays_visible);
-    move_mode.set(status.move_mode);
-    rearrange_mode.set(status.rearrange_mode);
-    auto_hidden.set(status.auto_hidden);
-    overlays_enabled.set(status.enabled);
+    // try_write: also called from Tauri event callbacks, outside the Dioxus runtime
+    let _ = overlays_visible.try_write().map(|mut w| *w = status.overlays_visible);
+    let _ = move_mode.try_write().map(|mut w| *w = status.move_mode);
+    let _ = rearrange_mode.try_write().map(|mut w| *w = status.rearrange_mode);
+    let _ = auto_hidden.try_write().map(|mut w| *w = status.auto_hidden);
+    let _ = overlays_enabled.try_write().map(|mut w| *w = status.enabled);
 }
 
 pub(super) fn set_overlay_enabled(overlays_enabled: &mut Signal<HashSet<String>>, key: &str, on: bool) {

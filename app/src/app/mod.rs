@@ -314,12 +314,12 @@ pub fn App() -> Element {
             // Refresh profile state from backend
             let names = api::get_profile_names().await;
             let active = api::get_active_profile().await;
-            profile_names.set(names);
-            active_profile.set(active);
-            profile_dirty.set(false);
+            let _ = profile_names.try_write().map(|mut w| *w = names);
+            let _ = active_profile.try_write().map(|mut w| *w = active);
+            let _ = profile_dirty.try_write().map(|mut w| *w = false);
             // Refresh overlay settings to match the newly loaded profile
             if let Some(cfg) = api::get_config().await {
-                overlay_settings.set(cfg.overlay_settings);
+                let _ = overlay_settings.try_write().map(|mut w| *w = cfg.overlay_settings);
             }
             api::refresh_overlay_settings().await;
             if let Some(status) = api::get_overlay_status().await {
