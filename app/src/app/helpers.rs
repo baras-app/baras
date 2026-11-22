@@ -5,7 +5,18 @@ use std::collections::HashSet;
 
 use crate::api;
 use crate::components::{ToastSeverity, use_toast};
-use crate::types::{OverlayStatus, OverlayType};
+use crate::types::{AppConfig, OverlayStatus, OverlayType};
+
+/// Persist one settings change as it is made; a failure is the only feedback.
+/// Call from an event handler.
+pub(super) fn save_setting(what: &'static str, change: impl FnOnce(&mut AppConfig) + 'static) {
+    let mut toast = use_toast();
+    spawn(async move {
+        if let Err(err) = api::patch_config(change).await {
+            toast.show(format!("Failed to save {what}: {err}"), ToastSeverity::Normal);
+        }
+    });
+}
 
 /// WASM cannot cfg on the host OS, so ask the webview instead.
 pub(super) fn is_macos() -> bool {
@@ -43,21 +54,10 @@ pub(super) fn set_light_theme(mut light_theme: Signal<bool>, on: bool) {
 /// Persist guild fields (`guilds` + `selected_guild`) to the config without
 /// touching unrelated parsely settings. Used by add/remove handlers so the
 /// chip list stays in sync with what the upload modal sees.
-pub(super) fn save_parsely_guild_fields(
-    guilds: Vec<String>,
-    selected: Option<String>,
-    mut save_status: Signal<String>,
-) {
-    let mut toast = use_toast();
-    spawn(async move {
-        if let Some(mut cfg) = api::get_config().await {
-            cfg.parsely.guilds = guilds;
-            cfg.parsely.selected_guild = selected;
-            match api::update_config(&cfg).await {
-                Ok(_) => save_status.set("Saved!".to_string()),
-                Err(err) => toast.show(format!("Failed to save guilds: {}", err), ToastSeverity::Normal),
-            }
-        }
+pub(super) fn save_parsely_guild_fields(guilds: Vec<String>, selected: Option<String>) {
+    save_setting("guilds", move |cfg| {
+        cfg.parsely.guilds = guilds;
+        cfg.parsely.selected_guild = selected;
     });
 }
 
@@ -67,7 +67,6 @@ pub(super) fn add_parsely_guild(
     mut input: Signal<String>,
     mut guilds: Signal<Vec<String>>,
     mut selected: Signal<Option<String>>,
-    save_status: Signal<String>,
 ) {
     let trimmed = input.read().trim().to_string();
     if trimmed.is_empty() || guilds.read().iter().any(|g| g == &trimmed) {
@@ -79,7 +78,7 @@ pub(super) fn add_parsely_guild(
     }
     input.set(String::new());
 
-    save_parsely_guild_fields(guilds.read().clone(), selected.read().clone(), save_status);
+    save_parsely_guild_fields(guilds.read().clone(), selected.read().clone());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
