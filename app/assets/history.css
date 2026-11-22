@@ -1827,7 +1827,9 @@
   min-width: 0;
   max-width: 100%;
 }
-.clears-col.recent { flex: 1 1 520px; }
+/* Wide enough for every run column: below that the runs drop under the summary
+   rather than scroll sideways inside their card */
+.clears-col.recent { flex: 1 1 1000px; }
 .clears-col .pull-history-table-wrap { flex: 0 0 auto; }
 .pull-history-table-wrap.clears-wrap {
   flex: 0 1 auto;
