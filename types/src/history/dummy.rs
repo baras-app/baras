@@ -40,4 +40,7 @@ pub struct DummyRow {
     /// when the table can't be had or the discipline isn't rated
     #[serde(default)]
     pub dps_pct: Option<u8>,
+    /// The user hid this parse (`PullMeta::excluded`); set at query time
+    #[serde(default)]
+    pub hidden: bool,
 }

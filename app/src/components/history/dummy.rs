@@ -1,5 +1,5 @@
 //! Dummy Parses: every training dummy kill, by discipline. Abandoned parses
-//! never reach this view. One fetch of compact rows; the cards, the
+//! never reach this view, and hidden ones never count. One fetch of compact rows; the cards, the
 //! discipline table and the parse list are derived from them locally.
 
 use dioxus::prelude::*;
@@ -15,6 +15,7 @@ use crate::api;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::components::multi_select::{MultiSelect, discipline_entries, plain_entries, toggle_value};
 use crate::components::overview_table::pct_tier;
+use crate::components::toggle_switch::ToggleSwitch;
 use crate::components::use_file_opener;
 
 const TABLE_ID: &str = "hist-dummy-table";
@@ -102,6 +103,26 @@ fn by_discipline(rows: &[DummyRow]) -> Vec<DisciplineLine<'_>> {
     out
 }
 
+/// The cards' numbers over the counted parses
+struct Stats {
+    best_dps: Option<i64>,
+    avg_dps: Option<i64>,
+    avg_apm: Option<f32>,
+    fastest: Option<i64>,
+}
+
+impl Stats {
+    fn of(rows: &[DummyRow]) -> Self {
+        let n = rows.len();
+        Self {
+            best_dps: rows.iter().map(|r| r.dps).max(),
+            avg_dps: (n > 0).then(|| rows.iter().map(|r| r.dps).sum::<i64>() / n as i64),
+            avg_apm: (n > 0).then(|| rows.iter().map(|r| r.apm).sum::<f32>() / n as f32),
+            fastest: rows.iter().map(|r| r.duration_seconds).min(),
+        }
+    }
+}
+
 /// DPS with its Parsely percentile, when rated
 fn dps_cell(r: &DummyRow, european: bool) -> Element {
     rsx! {
@@ -139,6 +160,7 @@ pub fn DummyTab(european: bool, backfill: Backfill) -> Element {
     let paged = use_paged("dummy");
     let mut sort_key = use_signal(|| DummySort::Date);
     let mut sort_desc = use_signal(|| true);
+    let mut show_hidden = use_signal(|| false);
 
     let mut parses = use_resource(|| async move { api::get_dummy_parses().await.unwrap_or_default() });
     // A live parse just ended, or a re-scan finished
@@ -151,7 +173,16 @@ pub fn DummyTab(european: bool, backfill: Backfill) -> Element {
     let all = parses.read().clone().unwrap_or_default();
     let loaded = parses.read().is_some();
     let f = filter.read().clone();
-    let mut rows: Vec<DummyRow> = all.iter().filter(|r| f.matches(r, eu)).cloned().collect();
+    // Hidden parses are listed (dimmed) on request but never counted
+    let (hidden, kills): (Vec<DummyRow>, Vec<DummyRow>) =
+        all.iter().filter(|r| f.matches(r, eu)).cloned().partition(|r| r.hidden);
+    let lines = by_discipline(&kills);
+    let counted = kills.len();
+    let stats = Stats::of(&kills);
+    let mut rows = kills.clone();
+    if show_hidden() {
+        rows.extend(hidden);
+    }
     rows.sort_by(|a, b| {
         let ord = match *sort_key.read() {
             DummySort::Date => a.timestamp.cmp(&b.timestamp),
@@ -186,13 +217,9 @@ pub fn DummyTab(european: bool, backfill: Backfill) -> Element {
 
     let total = rows.len();
     let limit = paged.limit("dummy");
-    let lines = by_discipline(&rows);
     let dec = |v: f32| formatting::format_decimal(v, 1, eu);
     let pct = |v: f32| format!("{} %", formatting::format_decimal(v, 1, eu));
-    let best_dps = rows.iter().map(|r| r.dps).max();
-    let avg_dps = (total > 0).then(|| rows.iter().map(|r| r.dps).sum::<i64>() / total as i64);
-    let avg_apm = (total > 0).then(|| rows.iter().map(|r| r.apm).sum::<f32>() / total as f32);
-    let fastest = rows.iter().map(|r| r.duration_seconds).min();
+    let Stats { best_dps, avg_dps, avg_apm, fastest } = stats;
     let compact = |v: Option<i64>| {
         v.map(|v| formatting::format_compact(v, eu))
             .unwrap_or_else(|| "—".into())
@@ -246,7 +273,14 @@ pub fn DummyTab(european: bool, backfill: Backfill) -> Element {
                         onclick: move |_| filter.set(DummyFilter::default()),
                         i { class: "fa-solid fa-filter-circle-xmark" } " Clear filters"
                     }
-                    span { class: "pull-history-count", "{total} of {all.len()} kills" }
+                    ToggleSwitch {
+                        label: "Show hidden",
+                        title: "List the parses you hid (dimmed); they stay out of the numbers",
+                        class: "history-switch",
+                        checked: show_hidden(),
+                        on_change: move |checked: bool| show_hidden.set(checked),
+                    }
+                    span { class: "pull-history-count", "{counted} of {all.len()} kills" }
                 }
             }
 
@@ -261,7 +295,7 @@ pub fn DummyTab(european: bool, backfill: Backfill) -> Element {
                 }
             } else {
                 div { class: "history-cards",
-                    div { class: "history-card", div { class: "k", "Kills" } div { class: "v", "{total}" } }
+                    div { class: "history-card", div { class: "k", "Kills" } div { class: "v", "{counted}" } }
                     div { class: "history-card", div { class: "k", "Best DPS" } div { class: "v", {compact(best_dps)} } }
                     div { class: "history-card", div { class: "k", "Avg DPS" } div { class: "v", {compact(avg_dps)} } }
                     div { class: "history-card", div { class: "k", "Avg APM" } div { class: "v", {avg_apm.map(dec).unwrap_or_else(|| "—".into())} } }
@@ -332,9 +366,11 @@ pub fn DummyTab(european: bool, backfill: Backfill) -> Element {
                                 {
                                     let path = r.path.clone();
                                     let encounter_id = r.encounter_id;
+                                    let (filename, start_ms, is_hidden) = (r.filename.clone(), r.start_ms, r.hidden);
                                     rsx! {
                                         tr { key: "{r.filename}:{r.start_ms}",
-                                            class: if path.is_some() { "run-row" } else { "" },
+                                            class: if path.is_some() { "run-row" },
+                                            class: if is_hidden { "pull-hidden" },
                                             onclick: {
                                                 let path = path.clone();
                                                 move |_| {
@@ -352,7 +388,7 @@ pub fn DummyTab(european: bool, backfill: Backfill) -> Element {
                                             td { {dec(r.apm)} }
                                             td { {pct(r.crit_pct)} }
                                             td { {pct(r.crit_damage_pct)} }
-                                            td { onclick: move |e| e.stop_propagation(),
+                                            td { class: "pull-row-actions", onclick: move |e| e.stop_propagation(),
                                                 if let Some(path) = path.clone() {
                                                     button {
                                                         class: "btn btn-xs btn-ghost",
@@ -363,6 +399,19 @@ pub fn DummyTab(european: bool, backfill: Backfill) -> Element {
                                                     }
                                                 } else {
                                                     span { class: "pull-log-missing", title: "Log file no longer on disk", i { class: "fa-solid fa-file-circle-xmark" } }
+                                                }
+                                                button {
+                                                    class: "btn btn-xs btn-ghost",
+                                                    title: if is_hidden { "Count this parse again" } else { "Hide this parse (wrong gear, botched opener) from the numbers" },
+                                                    onclick: move |_| {
+                                                        let filename = filename.clone();
+                                                        spawn(async move {
+                                                            if api::set_pull_hidden(&filename, start_ms, !is_hidden).await.is_ok() {
+                                                                parses.restart();
+                                                            }
+                                                        });
+                                                    },
+                                                    i { class: if is_hidden { "fa-solid fa-eye" } else { "fa-solid fa-eye-slash" } }
                                                 }
                                             }
                                         }
