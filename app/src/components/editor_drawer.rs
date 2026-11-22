@@ -184,18 +184,23 @@ pub fn EditorDrawer(
             }
             div { class: "editor-drawer-header",
                 CollapseButton {}
-                h3 { title: "{title}", onclick: move |_| if collapsed { *DRAWER_COLLAPSED.write() = false }, "{title}" }
-                if dirty {
-                    span { class: "unsaved-indicator", title: "Unsaved changes" }
-                }
-                span { class: "editor-drawer-actions",
-                    if !collapsed {
-                        {actions}
+                // The actions drop below the title when both do not fit
+                div { class: "editor-drawer-heading",
+                    h3 { title: "{title}", onclick: move |_| if collapsed { *DRAWER_COLLAPSED.write() = false }, "{title}" }
+                    if dirty {
+                        span { class: "unsaved-indicator", title: "Unsaved changes" }
                     }
-                    if on_close.is_some() {
-                        button { class: "btn btn-xs btn-ghost", title: "Close (Esc)", "data-esc-close": true, onclick: move |_| close(),
-                            i { class: "fa-solid fa-xmark" }
-                        }
+                    if !collapsed {
+                        span { class: "editor-drawer-actions", {actions} }
+                    }
+                }
+                if on_close.is_some() {
+                    button {
+                        class: "btn btn-xs btn-ghost editor-drawer-close",
+                        title: "Close (Esc)",
+                        "data-esc-close": true,
+                        onclick: move |_| close(),
+                        i { class: "fa-solid fa-xmark" }
                     }
                 }
             }

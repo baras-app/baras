@@ -8,7 +8,7 @@ use crate::components::editor_sort::{ENCOUNTER_SORT_AZ, SortToggle, apply_rank, 
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
+use crate::components::editor_drawer::use_drawer_guard;
 use crate::types::{BossWithPath, EncounterItem, EntityDefinition};
 
 use super::InlineNameCreator;
@@ -206,59 +206,58 @@ fn EntityRow(
                     let file_path_delete = file_path.clone();
 
                     rsx! {
-                        EditorDrawer { title: entity.name.clone(), dirty: is_dirty(), on_close: on_collapse,
-                            EntityEditForm {
-                                entity: entity.clone(),
-                                encounter_data: encounter_data.clone(),
-                                on_dirty: move |dirty: bool| is_dirty.set(dirty),
-                                on_save: move |(updated, original_name): (EntityDefinition, String)| {
-                                    let all = all_entities_for_save.clone();
-                                    let boss_id = boss_id_save.clone();
-                                    let file_path = file_path_save.clone();
-                                    let item = EncounterItem::Entity(updated.clone());
-                                    // Entity uses name as ID, so pass original_name for lookup
-                                    let orig_id = if original_name != updated.name { Some(original_name.clone()) } else { None };
-                                    // Update parent state synchronously so props refresh and dirty indicator clears
-                                    let new_list: Vec<_> = all.iter()
-                                        .map(|e| if e.name == original_name { updated.clone() } else { e.clone() })
-                                        .collect();
-                                    on_change.call(new_list);
-                                    on_status.call(("Saving...".to_string(), false));
+                        EntityEditForm {
+                            entity: entity.clone(),
+                            encounter_data: encounter_data.clone(),
+                            on_dirty: move |dirty: bool| is_dirty.set(dirty),
+                            on_save: move |(updated, original_name): (EntityDefinition, String)| {
+                                let all = all_entities_for_save.clone();
+                                let boss_id = boss_id_save.clone();
+                                let file_path = file_path_save.clone();
+                                let item = EncounterItem::Entity(updated.clone());
+                                // Entity uses name as ID, so pass original_name for lookup
+                                let orig_id = if original_name != updated.name { Some(original_name.clone()) } else { None };
+                                // Update parent state synchronously so props refresh and dirty indicator clears
+                                let new_list: Vec<_> = all.iter()
+                                    .map(|e| if e.name == original_name { updated.clone() } else { e.clone() })
+                                    .collect();
+                                on_change.call(new_list);
+                                on_status.call(("Saving...".to_string(), false));
+                                spawn(async move {
+                                    match api::update_encounter_item(&boss_id, &file_path, &item, orig_id.as_deref()).await {
+                                        Ok(_) => {
+                                            on_status.call(("Saved".to_string(), false));
+                                        }
+                                        Err(_) => on_status.call(("Failed to save".to_string(), true)),
+                                    }
+                                });
+                            },
+                            on_delete: {
+                                let all_entities = all_entities_for_delete.clone();
+                                move |entity_to_delete: EntityDefinition| {
+                                    let all_entities = all_entities.clone();
+                                    let boss_id = boss_id_delete.clone();
+                                    let file_path = file_path_delete.clone();
+                                    let entity_name = entity_to_delete.name.clone();
                                     spawn(async move {
-                                        match api::update_encounter_item(&boss_id, &file_path, &item, orig_id.as_deref()).await {
+                                        match api::delete_encounter_item("entity", &entity_name, &boss_id, &file_path).await {
                                             Ok(_) => {
-                                                on_status.call(("Saved".to_string(), false));
+                                                let updated: Vec<_> = all_entities.iter()
+                                                    .filter(|e| e.name != entity_name)
+                                                    .cloned()
+                                                    .collect();
+                                                on_change.call(updated);
+                                                on_collapse.call(());
+                                                on_status.call(("Deleted".to_string(), false));
                                             }
-                                            Err(_) => on_status.call(("Failed to save".to_string(), true)),
+                                            Err(err) => {
+                                                on_status.call((err, true));
+                                            }
                                         }
                                     });
-                                },
-                                on_delete: {
-                                    let all_entities = all_entities_for_delete.clone();
-                                    move |entity_to_delete: EntityDefinition| {
-                                        let all_entities = all_entities.clone();
-                                        let boss_id = boss_id_delete.clone();
-                                        let file_path = file_path_delete.clone();
-                                        let entity_name = entity_to_delete.name.clone();
-                                        spawn(async move {
-                                            match api::delete_encounter_item("entity", &entity_name, &boss_id, &file_path).await {
-                                                Ok(_) => {
-                                                    let updated: Vec<_> = all_entities.iter()
-                                                        .filter(|e| e.name != entity_name)
-                                                        .cloned()
-                                                        .collect();
-                                                    on_change.call(updated);
-                                                    on_collapse.call(());
-                                                    on_status.call(("Deleted".to_string(), false));
-                                                }
-                                                Err(err) => {
-                                                    on_status.call((err, true));
-                                                }
-                                            }
-                                        });
-                                    }
-                                },
-                            }
+                                }
+                            },
+                            on_close: on_collapse,
                         }
                     }
                 }

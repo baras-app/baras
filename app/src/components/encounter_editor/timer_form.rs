@@ -6,7 +6,8 @@ use dioxus::prelude::*;
 use crate::api;
 use crate::components::SoundPicker;
 use crate::components::ability_icon::use_icon_url;
-use crate::components::editor_common::{FormCard, ItemActions, Origin, PreviewButton, preview_audio};
+use crate::components::editor_common::{FormCard, ItemActions, Origin, PreviewButton, preview_audio, use_item_draft};
+use crate::components::editor_drawer::EditorDrawer;
 use crate::components::form_fields::{
     CheckField, Deprecated, Field, NumberField, PickField, SubSection, TextField, TogglePill,
 };
@@ -38,12 +39,9 @@ pub(super) fn TimerEditForm(
     #[props(default)] on_dirty: EventHandler<bool>,
 ) -> Element {
     let timer_display = timer.clone();
-    let timer_for_draft = timer.clone();
     let timer_for_delete = timer.clone();
     let timer_id = timer.id.clone();
-    let timer_original = timer.clone();
-    let mut draft = use_signal(|| timer_for_draft);
-    let mut just_saved = use_signal(|| false);
+    let (mut draft, has_changes) = use_item_draft(timer.clone());
 
     // The row's role and audio toggles save straight to the stored timer: follow
     // them, or the next Save here would write the draft's stale values back
@@ -55,16 +53,6 @@ pub(super) fn TimerEditForm(
             d.audio.enabled = row_audio;
         }
     }));
-
-    // Reset just_saved when user makes new changes after saving
-    let timer_original_for_effect = timer_original.clone();
-    use_effect(move || {
-        if draft() != timer_original_for_effect && just_saved() {
-            just_saved.set(false);
-        }
-    });
-
-    let has_changes = use_memo(move || !just_saved() && draft() != timer_original);
 
     // Notify parent when dirty state changes
     use_effect(move || {
@@ -98,7 +86,6 @@ pub(super) fn TimerEditForm(
                 on_status.call((reason.to_string(), true));
                 return;
             }
-            just_saved.set(true);
             let mut current = timers.clone();
             let boss_id = bwp.boss.id.clone();
             let file_path = bwp.file_path.clone();
@@ -187,7 +174,7 @@ pub(super) fn TimerEditForm(
         .map(|t| t.id.clone())
         .collect();
 
-    rsx! {
+    let body = rsx! {
         div { class: "list-item-body",
             div { class: "edit-grid left-55",
                 // ═══ LEFT COLUMN: Identity, Trigger ════════════════════════════
@@ -535,17 +522,27 @@ pub(super) fn TimerEditForm(
                     }
                 }
             }
+        }
+    };
 
-            ItemActions {
-                has_changes: has_changes(),
-                origin: Origin::of(is_builtin, is_modified),
-                on_save: handle_save,
-                on_delete: handle_delete,
-                on_duplicate: handle_duplicate,
-                PreviewButton {
-                    request: preview_request(&draft()),
+    rsx! {
+        EditorDrawer {
+            title: timer.name.clone(),
+            dirty: has_changes(),
+            on_close: on_collapse,
+            actions: rsx! {
+                ItemActions {
+                    has_changes: has_changes(),
+                    origin: Origin::of(is_builtin, is_modified),
+                    on_save: handle_save,
+                    on_delete: handle_delete,
+                    on_duplicate: handle_duplicate,
+                    PreviewButton {
+                        request: preview_request(&draft()),
+                    }
                 }
-            }
+            },
+            {body}
         }
     }
 }

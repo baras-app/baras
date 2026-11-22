@@ -9,7 +9,7 @@ use dioxus::prelude::*;
 use crate::api;
 use crate::components::ability_icon::ColorIcon;
 use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
-use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
+use crate::components::editor_drawer::use_drawer_guard;
 use crate::types::{
     AlertTrigger, AudioConfig, BossTimerDefinition, BossWithPath, EncounterItem, TimerDisplayTarget, Trigger,
 };
@@ -391,7 +391,6 @@ fn TimerRow(
 
             // Edit form
             if expanded {
-                EditorDrawer { title: timer.name.clone(), dirty: is_dirty(), on_close: on_collapse,
                 TimerEditForm {
                     timer: timer.clone(),
                     all_timers: all_timers,
@@ -404,7 +403,6 @@ fn TimerRow(
                     on_status: on_status,
                     on_collapse: on_collapse,
                     on_dirty: move |dirty: bool| is_dirty.set(dirty),
-                }
                 }
             }
         }

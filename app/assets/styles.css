@@ -5210,13 +5210,31 @@ a.contributor-name:hover {
 
 .editor-drawer-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
   border-bottom: 1px solid var(--border-subtle);
 }
 
+/* Fold and close hold the corners; title and actions share what is between */
+.editor-drawer-heading {
+  flex: 1;
+  min-width: 0;
+  min-height: 30px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-sm);
+}
+
+/* As tall as the heading's first row, so they line up with the title */
+.editor-drawer-fold,
+.editor-drawer-close {
+  min-height: 30px;
+}
+
 .editor-drawer-header h3 {
+  flex: 1 1 8em;
   margin: 0;
   min-width: 0;
   overflow: hidden;
@@ -5226,10 +5244,16 @@ a.contributor-name:hover {
   color: var(--text-primary);
 }
 
-.editor-drawer-actions {
+.editor-drawer-actions,
+.item-actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--space-xs);
+}
+
+.editor-drawer-actions {
   margin-left: auto;
 }
 
@@ -5259,16 +5283,6 @@ a.contributor-name:hover {
   padding: 0;
   border: none;
   background: none;
-}
-
-/* Save / Delete stay in reach while the form scrolls */
-.editor-drawer-body .form-actions {
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
-  margin-top: var(--space-md);
-  padding: var(--space-sm) 0;
-  background: var(--bg-mid);
 }
 
 /* In the drawer the form's two columns stack until the drawer is wide enough
@@ -5346,20 +5360,25 @@ a.contributor-name:hover {
 .editor-drawer.collapsed .editor-drawer-header {
   flex: 1;
   flex-direction: column;
+  align-items: center;
   padding: var(--space-sm) 0;
   border-bottom: none;
 }
 
+.editor-drawer.collapsed .editor-drawer-heading {
+  display: contents;
+}
+
 .editor-drawer.collapsed .editor-drawer-header h3 {
+  flex: 0 1 auto;
+  min-height: 0;
   writing-mode: vertical-rl;
   cursor: pointer;
   font-size: 0.9em;
   color: var(--text-secondary);
 }
 
-.editor-drawer.collapsed .editor-drawer-actions {
-  flex-direction: column;
-  margin-left: 0;
+.editor-drawer.collapsed .editor-drawer-close {
   margin-top: auto;
 }
 
