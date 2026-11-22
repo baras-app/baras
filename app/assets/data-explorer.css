@@ -531,6 +531,14 @@
   color: var(--text-muted);
 }
 
+.showing-source {
+  margin-right: var(--space-md);
+}
+
+.showing-source strong {
+  color: var(--text-primary);
+}
+
 .breakdown-options {
   display: flex;
   align-items: center;

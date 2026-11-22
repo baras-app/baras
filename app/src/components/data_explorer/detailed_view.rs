@@ -209,6 +209,17 @@ pub(super) fn detailed_view(
                         let show_instance = matches!(tab, DataTab::Damage | DataTab::DamageTaken);
                         rsx! {
                             div { class: "breakdown-controls",
+                                // Whose rows these are: clicking the selected name again shows everyone
+                                span {
+                                    class: "breakdown-label showing-source",
+                                    title: "Click a name in the sidebar to show only it; click it again to show everyone listed",
+                                    if let Some(name) = selected_source.read().as_ref() {
+                                        "Showing "
+                                        strong { "{name}" }
+                                    } else {
+                                        "Showing everyone listed"
+                                    }
+                                }
                                 span { class: "breakdown-label", "Breakdown by" }
                                 div { class: "breakdown-options",
                                     label { class: "breakdown-option primary",
