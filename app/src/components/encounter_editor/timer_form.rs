@@ -5,6 +5,7 @@ use dioxus::prelude::*;
 
 use crate::api;
 use crate::components::SoundPicker;
+use crate::components::ability_icon::use_icon_url;
 use crate::components::editor_common::{FormCard, ItemActions, Origin, PreviewButton, preview_audio};
 use crate::components::form_fields::{
     CheckField, Deprecated, Field, NumberField, PickField, SubSection, TextField, TogglePill,
@@ -66,21 +67,7 @@ pub(super) fn TimerEditForm(
     );
 
     // Icon preview for timer bar icon
-    let mut icon_preview_url = use_signal(|| None::<String>);
-    use_effect(move || {
-        let current_draft = draft();
-        if let Some(ability_id) = current_draft.icon_ability_id {
-            spawn(async move {
-                if let Some(url) = api::get_icon_preview(ability_id).await {
-                    icon_preview_url.set(Some(url));
-                } else {
-                    icon_preview_url.set(None);
-                }
-            });
-        } else {
-            icon_preview_url.set(None);
-        }
-    });
+    let (icon_preview_url, icon_loaded) = use_icon_url(draft.read().icon_ability_id);
 
     // Save handler
     let handle_save = {
@@ -235,6 +222,8 @@ pub(super) fn TimerEditForm(
                         Field { label: "Icon ID", help: "Ability ID to use for the icon on the timer bar. Leave blank for no icon.",
                             if let Some(ref url) = icon_preview_url() {
                                 img { src: "{url}", class: "icon-preview", width: "24", height: "24", alt: "Icon preview" }
+                            } else if !icon_loaded() {
+                                span { class: "icon-preview pending" }
                             }
                             input {
                                 r#type: "text",
@@ -242,7 +231,7 @@ pub(super) fn TimerEditForm(
                                 value: "{draft().icon_ability_id.map(|id| id.to_string()).unwrap_or_default()}",
                                 oninput: move |e| draft.write().icon_ability_id = e.value().parse::<u64>().ok(),
                             }
-                            if icon_preview_url().is_none() && draft().icon_ability_id.is_some() {
+                            if icon_loaded() && icon_preview_url().is_none() && draft().icon_ability_id.is_some() {
                                 span { class: "field-unit", "(not found)" }
                             }
                         }

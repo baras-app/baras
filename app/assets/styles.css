@@ -6005,6 +6005,14 @@ a.contributor-name:hover {
   border: 1px solid var(--border-light);
 }
 
+/* Holds the icon's place while it is looked up, so the input does not shift */
+.icon-preview.pending {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-color: transparent;
+}
+
 /* ─── Form Section (grouped fields) ────────────────────────────────────────────── */
 .form-section {
   margin-top: var(--space-sm);
