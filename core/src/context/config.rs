@@ -183,6 +183,9 @@ impl AppConfigExt for AppConfig {
     }
 
     fn delete_profile(&mut self, name: &str) -> Result<(), &'static str> {
+        if self.profiles.len() <= 1 {
+            return Err("The last profile can't be deleted");
+        }
         let len_before = self.profiles.len();
         self.profiles.retain(|p| p.name != name);
         if self.profiles.len() == len_before {
