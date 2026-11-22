@@ -51,7 +51,7 @@
   display: flex;
   justify-content: space-between;
   padding: 2px 2px 0;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 12px;
   font-family: var(--font-mono);
   color: rgba(var(--fg-rgb), 0.5);
@@ -67,7 +67,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 9px;
+  font-size: 10px;
   color: rgba(var(--fg-rgb), 0.8);
   overflow: hidden;
   white-space: nowrap;
@@ -95,7 +95,7 @@
 /* Phase time marker (start time) */
 .phase-time {
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: 10px;
   opacity: 0.7;
 }
 
@@ -232,7 +232,7 @@
   gap: 5px;
   height: 20px;
   padding: 0 8px 0 6px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--text-secondary);
   background: color-mix(in srgb, var(--chip) 12%, transparent);
@@ -576,7 +576,7 @@
 }
 
 .breakdown-option.nested {
-  font-size: 10px;
+  font-size: 11px;
   padding: 2px 6px;
 }
 
@@ -1092,7 +1092,7 @@
 }
 
 .overview-table tr.sub-header th {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--text-muted);
   border-bottom: 2px solid var(--border-subtle);
@@ -1193,7 +1193,7 @@
   padding: 1px 0;
   border-radius: 3px;
   text-align: center;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   line-height: 14px;
   color: var(--text-muted);
@@ -1526,7 +1526,7 @@
 }
 
 .recap-stat-label {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -1547,7 +1547,7 @@
 .spark-axis-label {
   position: absolute;
   left: 6px;
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   font-family: var(--font-mono);
   pointer-events: none;
@@ -1567,7 +1567,7 @@
   position: relative;
   height: 1.4em;
   margin-top: 2px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
   font-family: var(--font-mono);
 }
@@ -1637,7 +1637,7 @@
   padding: 5px 6px;
   background: var(--bg-dark);
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1686,7 +1686,7 @@
 
 .recap-source {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .recap-row-source {
@@ -1705,7 +1705,7 @@
 }
 
 .recap-row-ability td {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-secondary);
   background: rgba(0, 0, 0, calc(0.12 * var(--recess-k)));
 }
@@ -1768,7 +1768,7 @@
   overflow: hidden;
   color: #fff;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
   line-height: 13px;
   text-align: center;
@@ -1782,7 +1782,7 @@
   text-align: right;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   white-space: nowrap;
 }
 
@@ -1862,7 +1862,7 @@
   text-align: right;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -2120,7 +2120,7 @@
   white-space: nowrap;
   font-weight: 600;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 11px;
   text-transform: uppercase;
   background: var(--bg-deep);
   position: sticky;
@@ -2309,7 +2309,7 @@
   z-index: 100;
   background: var(--bg-deep);
   border-bottom: 2px solid var(--border-subtle);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -2403,7 +2403,7 @@
 }
 .log-type {
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: 11px;
 }
 .log-target {
   flex-shrink: 0;
@@ -2514,7 +2514,7 @@
   flex-shrink: 0;
   text-align: center;
   color: var(--lt-violet, hsl(280, 60%, 70%));
-  font-size: 10px;
+  font-size: 11px;
   text-transform: uppercase;
 }
 
@@ -2621,7 +2621,7 @@
 }
 
 .find-count {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
   min-width: 30px;
   text-align: center;
@@ -2651,7 +2651,7 @@
 /* ID prefix in names */
 .log-id-prefix {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 10px;
   opacity: 0.7;
   flex-shrink: 0;
 }
@@ -3288,7 +3288,7 @@
   top: 0;
   transform: translateX(-50%);
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .uptime-tick:first-child { transform: none; }
@@ -3465,7 +3465,7 @@
   border-radius: var(--radius-sm);
   background: rgba(var(--fg-rgb), 0.06);
   font-family: inherit;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--text-muted);
   text-transform: capitalize;
