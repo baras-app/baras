@@ -345,9 +345,11 @@ pub fn SettingsPanel(
                     disabled: !draft.has_changes() && !profile_dirty(),
                     onclick: move |_| save_to_backend(),
                     // Says where the changes go; the highlight is the unsaved marker
-                    match active_profile() {
-                        Some(profile) if draft.has_changes() || profile_dirty() => "Save to '{profile}'",
-                        _ => "Save",
+                    {
+                        match active_profile() {
+                            Some(profile) if draft.has_changes() || profile_dirty() => format!("Save to '{profile}'"),
+                            _ => "Save".to_string(),
+                        }
                     }
                 }
                 if draft.has_changes() {
