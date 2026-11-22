@@ -192,6 +192,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
             / kills as i64
     });
     let max_dps = rows.iter().filter_map(|r| r.dps).max();
+    let by_discipline = super::disciplines::summarize(rows);
 
     let key = *sort_key.read();
     let picked = pick.read().clone();
@@ -343,6 +344,10 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                             div { class: "v", {avg_ttk.map(formatting::format_duration).unwrap_or_else(|| "—".into())} }
                         }
                         div { class: "history-card", title: "Your highest DPS on a pull", div { class: "k", "Max DPS" } div { class: "v", {fmt_opt(max_dps)} } }
+                    }
+                    // One discipline says nothing the cards above don't
+                    if by_discipline.len() > 1 {
+                        super::disciplines::DisciplineTable { stats: by_discipline, european: eu }
                     }
                     PullCharts { pulls, pick, kills_only: filter.read().kills_only }
                     if let Some(p) = picked.as_ref() {

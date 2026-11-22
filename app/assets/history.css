@@ -166,6 +166,15 @@
   border-radius: var(--radius-md);
 }
 
+/* Per-discipline breakdown above the charts: natural height, never squeezed */
+.pull-history-main > .discipline-breakdown {
+  flex-shrink: 0;
+  overflow-x: auto;
+  background: var(--well-bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+}
+
 .pull-history-table {
   width: 100%;
   border-collapse: collapse;
