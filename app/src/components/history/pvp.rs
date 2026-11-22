@@ -161,6 +161,14 @@ fn keyed(names: Vec<&str>) -> Vec<(&str, Option<&str>)> {
     names.into_iter().map(|n| (n, None)).collect()
 }
 
+#[derive(Clone, Copy, PartialEq)]
+enum PvpSort {
+    Date,
+    Map,
+    Duration,
+    Character,
+}
+
 #[component]
 pub fn PvpTab(european: bool, backfill: Backfill) -> Element {
     let opener = use_file_opener();
@@ -168,6 +176,8 @@ pub fn PvpTab(european: bool, backfill: Backfill) -> Element {
     let mut filter = use_signal(PvpFilter::default);
     let day_range: Signal<Option<DayRange>> = use_signal(|| None);
     let paged = use_paged("pvp");
+    let mut sort_key = use_signal(|| PvpSort::Date);
+    let mut sort_desc = use_signal(|| true);
 
     let mut matches = use_resource(|| async move { api::get_pvp_matches().await.unwrap_or_default() });
     // A live match just ended, or a re-scan finished
@@ -184,11 +194,38 @@ pub fn PvpTab(european: bool, backfill: Backfill) -> Element {
     let range = day_range.read().clone();
     // The mode scopes everything, filters narrow within it
     let pool: Vec<&PvpMatchRow> = all.iter().filter(|r| r.arena == is_arena).collect();
-    let rows: Vec<PvpMatchRow> = pool
+    let mut rows: Vec<PvpMatchRow> = pool
         .iter()
         .filter(|r| f.matches(r) && range.as_ref().is_none_or(|rg| in_range(&r.timestamp, rg)))
         .map(|r| (*r).clone())
         .collect();
+    rows.sort_by(|a, b| {
+        let ord = match *sort_key.read() {
+            PvpSort::Date => a.timestamp.cmp(&b.timestamp),
+            PvpSort::Map => a.map.cmp(&b.map),
+            PvpSort::Duration => a.duration_seconds.cmp(&b.duration_seconds),
+            PvpSort::Character => a.character.cmp(&b.character),
+        };
+        if *sort_desc.read() { ord.reverse() } else { ord }
+    });
+    let mut on_sort = move |key: PvpSort| {
+        if *sort_key.read() == key {
+            sort_desc.toggle();
+        } else {
+            sort_key.set(key);
+            // Names read A–Z first, dates and durations largest first
+            sort_desc.set(matches!(key, PvpSort::Date | PvpSort::Duration));
+        }
+    };
+    let sort_class = move |k: PvpSort| {
+        if *sort_key.read() != k {
+            "sortable-header"
+        } else if *sort_desc.read() {
+            "sortable-header sorted desc"
+        } else {
+            "sortable-header sorted asc"
+        }
+    };
 
     let characters = distinct(pool.iter().map(|r| r.character.as_str()));
     let maps = distinct(pool.iter().map(|r| r.map.as_str()));
@@ -370,11 +407,11 @@ pub fn PvpTab(european: bool, backfill: Backfill) -> Element {
                     table { class: "pull-history-table",
                         thead {
                             tr {
-                                th { "Date" }
-                                th { "Map" }
+                                th { class: sort_class(PvpSort::Date), onclick: move |_| on_sort(PvpSort::Date), "Date" }
+                                th { class: sort_class(PvpSort::Map), onclick: move |_| on_sort(PvpSort::Map), "Map" }
                                 if is_arena { th { "Result" } }
-                                th { "Duration" }
-                                th { "Character" }
+                                th { class: sort_class(PvpSort::Duration), onclick: move |_| on_sort(PvpSort::Duration), "Duration" }
+                                th { class: sort_class(PvpSort::Character), onclick: move |_| on_sort(PvpSort::Character), "Character" }
                                 th { "Discipline" }
                                 th { "With" }
                                 th { "Against" }
@@ -391,6 +428,16 @@ pub fn PvpTab(european: bool, backfill: Backfill) -> Element {
                                     let against = names(r, false).join(", ");
                                     rsx! {
                                         tr { key: "{r.filename}:{r.encounter_id}",
+                                            class: if path.is_some() { "run-row" } else { "" },
+                                            // The whole row opens the match; the action cell keeps its own clicks
+                                            onclick: {
+                                                let path = path.clone();
+                                                move |_| {
+                                                    if let Some(path) = path.clone() && !opener.busy() {
+                                                        opener.open(path, Some(encounter_id));
+                                                    }
+                                                }
+                                            },
                                             td { {short_ts(&r.timestamp)} }
                                             td { "{r.map}" }
                                             if is_arena { td { span { class: "{class}", "{label}" } } }
@@ -409,8 +456,8 @@ pub fn PvpTab(european: bool, backfill: Backfill) -> Element {
                                             }
                                             td { class: "people", title: "{with}", "{with}" }
                                             td { class: "people", title: "{against}", "{against}" }
-                                            td {
-                                                if let Some(path) = path {
+                                            td { onclick: move |e| e.stop_propagation(),
+                                                if let Some(path) = path.clone() {
                                                     button {
                                                         class: "btn btn-xs btn-ghost",
                                                         title: "Open in Analysis",
