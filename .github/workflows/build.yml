@@ -327,3 +327,23 @@ jobs:
           git commit -m "Update latest.json for v$VERSION"
           git pull --rebase origin master
           git push origin HEAD:master
+
+      # Last and allowed to fail: the release is already out. An embed
+      # description holds 4096 characters, so a longer changelog is cut at a
+      # line break and links to the rest.
+      - name: Announce on Discord
+        continue-on-error: true
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+        run: |
+          set -euo pipefail
+          jq -n \
+            --arg title "BARAS v$VERSION" \
+            --arg url "https://github.com/$GITHUB_REPOSITORY/releases/tag/v$VERSION" \
+            --arg body "$(tail -n +3 "changelogs/v$VERSION.md")" '
+            ($body
+              | if length > 3900
+                then .[:3900] | sub("\n[^\n]*$"; "") + "\n\n[Full release notes](\($url))"
+                else . end) as $description
+            | { embeds: [{ title: $title, url: $url, description: $description }] }' \
+            | curl --fail-with-body -sS -H "Content-Type: application/json" -d @- "$WEBHOOK"
