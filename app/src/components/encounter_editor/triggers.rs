@@ -317,31 +317,47 @@ pub fn SimpleTriggerEditor(
                     };
                     on_change.call(new_trigger);
                 },
-                option { value: "combat_start", selected: trigger_type == "combat_start", "Combat Start" }
-                option { value: "combat_end", selected: trigger_type == "combat_end", "Combat End" }
-                option { value: "ability_cast", selected: trigger_type == "ability_cast", "Ability Cast" }
-                option { value: "effect_applied", selected: trigger_type == "effect_applied", "Effect Applied" }
-                option { value: "effect_removed", selected: trigger_type == "effect_removed", "Effect Removed" }
-                option { value: "damage_taken", selected: trigger_type == "damage_taken", "Damage Taken" }
-                option { value: "healing_taken", selected: trigger_type == "healing_taken", "Healing Taken" }
-                option { value: "threat_modified", selected: trigger_type == "threat_modified", "Threat Modified" }
-                option { value: "timer_expires", selected: trigger_type == "timer_expires", "Timer Expires" }
-                option { value: "timer_started", selected: trigger_type == "timer_started", "Timer Started" }
-                option { value: "timer_canceled", selected: trigger_type == "timer_canceled", "Timer Canceled" }
-                option { value: "phase_entered", selected: trigger_type == "phase_entered", "Phase Entered" }
-                option { value: "phase_ended", selected: trigger_type == "phase_ended", "Phase Ended" }
-                option { value: "any_phase_change", selected: trigger_type == "any_phase_change", "Any Phase Change" }
-                option { value: "boss_hp_below", selected: trigger_type == "boss_hp_below", "Boss HP Below" }
-                option { value: "counter_reaches", selected: trigger_type == "counter_reaches", "Counter Reaches" }
-                option { value: "counter_changes", selected: trigger_type == "counter_changes", "Counter Changes" }
-                option { value: "npc_appears", selected: trigger_type == "npc_appears", "NPC Appears" }
-                option { value: "entity_death", selected: trigger_type == "entity_death", "Entity Death" }
-                // Timer-only options (hidden for phases/counters)
+                // Timer-only events (time_elapsed, target_set, manual, never) are hidden for phases/counters
+                optgroup { label: "Combat",
+                    option { value: "combat_start", selected: trigger_type == "combat_start", "Combat Start" }
+                    option { value: "combat_end", selected: trigger_type == "combat_end", "Combat End" }
+                    if !hide_timer_only {
+                        option { value: "time_elapsed", selected: trigger_type == "time_elapsed", "Time Elapsed" }
+                    }
+                    option { value: "boss_hp_below", selected: trigger_type == "boss_hp_below", "Boss HP Below" }
+                }
+                optgroup { label: "Abilities & Effects",
+                    option { value: "ability_cast", selected: trigger_type == "ability_cast", "Ability Cast" }
+                    option { value: "effect_applied", selected: trigger_type == "effect_applied", "Effect Applied" }
+                    option { value: "effect_removed", selected: trigger_type == "effect_removed", "Effect Removed" }
+                    option { value: "damage_taken", selected: trigger_type == "damage_taken", "Damage Taken" }
+                    option { value: "healing_taken", selected: trigger_type == "healing_taken", "Healing Taken" }
+                    option { value: "threat_modified", selected: trigger_type == "threat_modified", "Threat Modified" }
+                    if !hide_timer_only {
+                        option { value: "target_set", selected: trigger_type == "target_set", "Target Set" }
+                    }
+                }
+                optgroup { label: "Timers",
+                    option { value: "timer_expires", selected: trigger_type == "timer_expires", "Timer Expires" }
+                    option { value: "timer_started", selected: trigger_type == "timer_started", "Timer Started" }
+                    option { value: "timer_canceled", selected: trigger_type == "timer_canceled", "Timer Canceled" }
+                }
+                optgroup { label: "Phases & Counters",
+                    option { value: "phase_entered", selected: trigger_type == "phase_entered", "Phase Entered" }
+                    option { value: "phase_ended", selected: trigger_type == "phase_ended", "Phase Ended" }
+                    option { value: "any_phase_change", selected: trigger_type == "any_phase_change", "Any Phase Change" }
+                    option { value: "counter_reaches", selected: trigger_type == "counter_reaches", "Counter Reaches" }
+                    option { value: "counter_changes", selected: trigger_type == "counter_changes", "Counter Changes" }
+                }
+                optgroup { label: "Entities",
+                    option { value: "npc_appears", selected: trigger_type == "npc_appears", "NPC Appears" }
+                    option { value: "entity_death", selected: trigger_type == "entity_death", "Entity Death" }
+                }
                 if !hide_timer_only {
-                    option { value: "target_set", selected: trigger_type == "target_set", "Target Set" }
-                    option { value: "time_elapsed", selected: trigger_type == "time_elapsed", "Time Elapsed" }
-                    option { value: "manual", selected: trigger_type == "manual", "Manual" }
-                    option { value: "never", selected: trigger_type == "never", "Never" }
+                    optgroup { label: "Other",
+                        option { value: "manual", selected: trigger_type == "manual", "Manual" }
+                        option { value: "never", selected: trigger_type == "never", "Never" }
+                    }
                 }
             }
             }
