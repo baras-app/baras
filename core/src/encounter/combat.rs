@@ -390,6 +390,19 @@ impl CombatEncounter {
         let Some(boss) = self.active_boss_definition() else {
             return false;
         };
+        if !self.has_active_victory_trigger() {
+            // ExitCombat isn't suppressed here, so no EnterCombat follows: split on the pull itself
+            let npc = &event.source_entity;
+            return self.detect_boss_pull(event)
+                && self
+                    .npcs
+                    .get(&npc.log_id)
+                    .is_some_and(|n| n.first_seen_at == Some(event.timestamp))
+                && self
+                    .npcs
+                    .values()
+                    .any(|n| n.class_id == npc.class_id && n.log_id != npc.log_id && !n.is_dead);
+        }
 
         for entity in [&event.source_entity, &event.target_entity] {
             if entity.entity_type != EntityType::Npc
@@ -413,6 +426,23 @@ impl CombatEncounter {
             }
         }
         false
+    }
+
+    /// A single_instance boss (without a victory trigger) targeting a player
+    pub fn detect_boss_pull(&self, event: &CombatEvent) -> bool {
+        let npc = &event.source_entity;
+        event.effect.effect_id == crate::game_data::effect_id::TARGETSET
+            && npc.entity_type == EntityType::Npc
+            && event.target_entity.entity_type == EntityType::Player
+            && !npc.health.0.is_zero()
+            && !self.prior_dead_npc_log_ids.contains(&npc.log_id)
+            && self.boss_definitions().iter().any(|def| {
+                !def.has_victory_trigger
+                    && def
+                        .entities
+                        .iter()
+                        .any(|e| e.single_instance && e.ids.contains(&npc.class_id))
+            })
     }
 
     /// Set the encounter difficulty
