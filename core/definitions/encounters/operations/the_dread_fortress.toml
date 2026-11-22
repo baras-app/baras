@@ -4,8 +4,9 @@ id = 137438993402
 area_type = "operation"
 timed_run_minutes = 60
 
-# Qor'thest's invulnerable shield guards follow the raid to Draxus in Story, so
-# the game never exits combat after the last two Dread Host Soldiers die.
+# Story doesn't need the puzzle, so nobody runs up to kill Qor'thest's shield
+# guards. They follow the raid to Draxus and the game never exits combat.
+# Story only: on higher difficulties they get killed after the last Soldier.
 [area.combat_end]
 difficulties = ["story"]
 final_kills = [3316784199368704]
