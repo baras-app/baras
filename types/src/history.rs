@@ -21,8 +21,8 @@ pub use meta::{LogMeta, ParselyUpload, PullMeta};
 pub use progress::{BossHpRecord, PhaseRef, PullDeath, PullEnd, PullProgress};
 pub use pvp::{PvpMatchRow, PvpPlayer, PvpRound};
 pub use runs::{
-    AreaSeen, InstanceVisit, LogContinuity, NPC_COUNTER_SPAN, PlayerSpec, RunBoss, RunDetail, RunList, RunMeta,
-    RunPlayer, RunSummary, RunTimer, TimerStart, difficulty_parts, iso_to_ms, short_difficulty,
+    AreaSeen, InstanceVisit, LogContinuity, NPC_COUNTER_SPAN, PlayerSpec, RunBoss, RunDetail, RunLink, RunList,
+    RunMeta, RunPlayer, RunSummary, RunTimer, TimerStart, difficulty_parts, iso_to_ms, short_difficulty,
 };
 
 /// One recorded pull, reduced to what the History table shows.

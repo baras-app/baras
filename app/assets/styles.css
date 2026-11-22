@@ -6427,6 +6427,21 @@ a.contributor-name:hover {
   white-space: nowrap;
 }
 
+/* Opens the section's run in Raid Summaries */
+.sidebar-section-header .section-run-link {
+  flex-shrink: 0;
+  margin-left: 0.4em;
+  padding: 0 0.2em;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.sidebar-section-header .section-run-link:hover {
+  color: var(--text-primary);
+}
+
 /* Top level of the history sidebars: Operations / Flashpoints / Other */
 .sidebar-group-header {
   display: flex;

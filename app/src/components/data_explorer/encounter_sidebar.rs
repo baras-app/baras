@@ -31,6 +31,17 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
     // Toast notifications
     let mut toast = use_toast();
 
+    // Which raid-summary run each pull belongs to; refetched when the log's
+    // encounters change or the backend writes a history file
+    let mut history_version = use_signal(|| 0u32);
+    api::use_tauri_event("history-updated", move |_| {
+        let _ = history_version.try_write().map(|mut w| *w += 1);
+    });
+    let run_links = use_resource(move || {
+        let (_, _) = (history_version(), encounters.read().len());
+        async move { api::get_session_run_links().await }
+    });
+
     // Parsely upload state for per-encounter uploads
     let mut parsely_upload = use_parsely_upload();
 
@@ -158,6 +169,14 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
                                 let is_collapsed = collapsed_sections().contains(&section_key);
                                 let section_key_toggle = section_key.clone();
                                 let chevron_class = if is_collapsed { "fa-chevron-right" } else { "fa-chevron-down" };
+                                // The run holding this section's most recent recorded pull
+                                let run_link = run_links.read().as_ref().and_then(|links| {
+                                    area_encounters
+                                        .iter()
+                                        .rev()
+                                        .find_map(|e| links.iter().find(|l| l.encounter_id == e.encounter_id))
+                                        .cloned()
+                                });
 
                                 rsx! {
                                     // Area header (collapsible)
@@ -185,6 +204,24 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
                                             }
                                         }
                                         span { class: "section-count", " ({area_encounters.len()})" }
+                                        if let Some(link) = run_link {
+                                            button {
+                                                class: "section-run-link",
+                                                title: "Open this run's raid summary",
+                                                onclick: move |e| {
+                                                    e.stop_propagation();
+                                                    let mut s = state.write();
+                                                    s.history.selected_run = Some((link.filename.clone(), link.start_ms));
+                                                    // Filters that would hide the run from the list
+                                                    s.history.run_search.clear();
+                                                    if link.is_flashpoint {
+                                                        s.history.filter.flashpoints = true;
+                                                    }
+                                                    s.active_tab = crate::types::MainTab::RaidSummaries;
+                                                },
+                                                i { class: "fa-solid fa-dungeon" }
+                                            }
+                                        }
                                     }
 
                                     // Encounter items (hidden if collapsed)

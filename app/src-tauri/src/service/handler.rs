@@ -687,6 +687,23 @@ impl ServiceHandle {
             .unwrap_or_default()
     }
 
+    /// The run each pull of the open log belongs to.
+    pub async fn session_run_links(&self) -> Vec<baras_types::history::RunLink> {
+        let Some(filename) = self
+            .shared
+            .with_session(|s| s.active_file.as_ref()?.file_name().map(|f| f.to_string_lossy().into_owned()))
+            .await
+            .flatten()
+        else {
+            return Vec::new();
+        };
+        let catalog = self.area_catalog();
+        let shared = self.shared.clone();
+        self.with_pull_index(move |index| index.run_links(&filename, &catalog, &shared.library_meta.locked()))
+            .await
+            .unwrap_or_default()
+    }
+
     /// One run with its bosses, players and pulls.
     pub async fn operation_run(&self, filename: String, start_ms: i64) -> Option<RunDetail> {
         let catalog = self.area_catalog();
