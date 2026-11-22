@@ -1143,7 +1143,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                         "Source{sort_ind_source}"
                         div { class: "log-resize-handle", onmousedown: move |e| { e.prevent_default(); resizing_col.set(Some(1)); resize_start_x.set(e.client_coordinates().x); resize_start_width.set(*col_source.read()); let _ = js_sys::eval("document.body.style.cursor='col-resize'"); } }
                     }
-                    div { class: "log-cell log-type sortable", style: "width: {col_type}px; min-width: {col_type}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Type),
+                    div { class: "log-cell log-type sortable", style: "width: {col_type}px; min-width: {col_type}px;", title: "Event type", onclick: move |_| on_sort_click(CombatLogSortColumn::Type),
                         "Type{sort_ind_type}"
                         div { class: "log-resize-handle", onmousedown: move |e| { e.prevent_default(); resizing_col.set(Some(2)); resize_start_x.set(e.client_coordinates().x); resize_start_width.set(*col_type.read()); let _ = js_sys::eval("document.body.style.cursor='col-resize'"); } }
                     }
@@ -1163,7 +1163,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                         "Value{sort_ind_value}"
                         div { class: "log-resize-handle", onmousedown: move |e| { e.prevent_default(); resizing_col.set(Some(6)); resize_start_x.set(e.client_coordinates().x); resize_start_width.set(*col_value.read()); let _ = js_sys::eval("document.body.style.cursor='col-resize'"); } }
                     }
-                    div { class: "log-cell log-absorbed sortable", style: "width: {col_abs}px; min-width: {col_abs}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Absorbed),
+                    div { class: "log-cell log-absorbed sortable", style: "width: {col_abs}px; min-width: {col_abs}px;", title: "Absorbed by shields", onclick: move |_| on_sort_click(CombatLogSortColumn::Absorbed),
                         "Abs{sort_ind_abs}"
                         div { class: "log-resize-handle", onmousedown: move |e| { e.prevent_default(); resizing_col.set(Some(7)); resize_start_x.set(e.client_coordinates().x); resize_start_width.set(*col_abs.read()); let _ = js_sys::eval("document.body.style.cursor='col-resize'"); } }
                     }
@@ -1171,12 +1171,12 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                         "Over{sort_ind_over}"
                         div { class: "log-resize-handle", onmousedown: move |e| { e.prevent_default(); resizing_col.set(Some(8)); resize_start_x.set(e.client_coordinates().x); resize_start_width.set(*col_over.read()); let _ = js_sys::eval("document.body.style.cursor='col-resize'"); } }
                     }
-                    div { class: "log-cell log-mitigation", style: "width: {col_mit}px; min-width: {col_mit}px;",
+                    div { class: "log-cell log-mitigation", style: "width: {col_mit}px; min-width: {col_mit}px;", title: "Mitigation: miss, dodge, parry, shield, resist, immune",
                         "Mit"
                         div { class: "log-resize-handle", onmousedown: move |e| { e.prevent_default(); resizing_col.set(Some(9)); resize_start_x.set(e.client_coordinates().x); resize_start_width.set(*col_mit.read()); let _ = js_sys::eval("document.body.style.cursor='col-resize'"); } }
                     }
-                    div { class: "log-cell log-dmg-type", style: "width: {col_dmg_type}px; min-width: {col_dmg_type}px;",
-                        "Type"
+                    div { class: "log-cell log-dmg-type", style: "width: {col_dmg_type}px; min-width: {col_dmg_type}px;", title: "Damage type",
+                        "Dmg"
                         div { class: "log-resize-handle", onmousedown: move |e| { e.prevent_default(); resizing_col.set(Some(10)); resize_start_x.set(e.client_coordinates().x); resize_start_width.set(*col_dmg_type.read()); let _ = js_sys::eval("document.body.style.cursor='col-resize'"); } }
                     }
                     div { class: "log-cell log-threat sortable", style: "width: {col_threat}px; min-width: {col_threat}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Threat), "Threat{sort_ind_threat}" }

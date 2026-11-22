@@ -288,6 +288,7 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
                 div {
                     id: "phase-timeline-track",
                     class: "phase-timeline-track",
+                    title: "Drag to select a time range · click a phase to select it · click empty track to reset",
                     onmousedown: on_track_mousedown,
                     // Click on bare track (phase segments stop propagation) resets to full
                     onclick: move |_| {
@@ -484,6 +485,7 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
                     if !range.is_full(duration) {
                         button {
                             class: "phase-timeline-reset",
+                            title: "Reset to the full fight",
                             onclick: reset_range,
                             "\u{2715}"
                         }
