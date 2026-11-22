@@ -8,6 +8,7 @@
 
 mod charts;
 mod clears;
+mod disciplines;
 mod heatmap;
 mod library;
 mod library_cleanup;
