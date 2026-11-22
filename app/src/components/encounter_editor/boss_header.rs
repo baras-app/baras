@@ -1,5 +1,5 @@
 //! One header row over the encounter editor: area › boss, the open boss's
-//! final-boss / enabled toggles and export, and the area's own actions in a menu.
+//! final-boss / enabled toggles, export and delete, and the area's own actions in a menu.
 
 use dioxus::prelude::*;
 
@@ -15,8 +15,12 @@ pub fn EditorHeader(
     on_status: EventHandler<(String, bool)>,
     on_export_area: EventHandler<()>,
     on_import: EventHandler<()>,
+    /// Offered only for an area the user created
+    #[props(default)]
+    on_delete_area: Option<EventHandler<()>>,
 ) -> Element {
     let mut menu_open = use_signal(|| false);
+    let mut confirm_delete_area = use_signal(|| false);
 
     rsx! {
         div { class: "editor-header",
@@ -30,6 +34,20 @@ pub fn EditorHeader(
             div { class: "editor-header-actions",
                 if let Some(bwp) = boss.clone() {
                     BossActions { bwp, on_refetch, on_status }
+                }
+                if let Some(delete_area) = on_delete_area.filter(|_| confirm_delete_area()) {
+                    span { class: "flex items-center gap-xs",
+                        "Delete this area and every boss in it?"
+                        button {
+                            class: "btn btn-danger btn-sm",
+                            onclick: move |_| {
+                                confirm_delete_area.set(false);
+                                delete_area.call(());
+                            },
+                            "Yes"
+                        }
+                        button { class: "btn btn-sm", onclick: move |_| confirm_delete_area.set(false), "No" }
+                    }
                 }
                 div { class: "nav-menu",
                     button { class: "btn btn-sm btn-ghost", title: "Area actions", onclick: move |_| menu_open.toggle(),
@@ -52,6 +70,17 @@ pub fn EditorHeader(
                                     " {label}"
                                 }
                             }
+                            if on_delete_area.is_some() {
+                                button {
+                                    class: "nav-menu-item",
+                                    onclick: move |_| {
+                                        menu_open.set(false);
+                                        confirm_delete_area.set(true);
+                                    },
+                                    i { class: "fa-solid fa-trash" }
+                                    " Delete area"
+                                }
+                            }
                         }
                     }
                 }
@@ -60,13 +89,15 @@ pub fn EditorHeader(
     }
 }
 
-/// Final-boss flag, enabled toggle and export for one boss
+/// Final-boss flag, enabled toggle, export and (for a user-created boss) delete
 #[component]
 fn BossActions(bwp: BossWithPath, on_refetch: EventHandler<()>, on_status: EventHandler<(String, bool)>) -> Element {
     let (id, path) = (bwp.boss.id.clone(), bwp.file_path.clone());
     let is_final = bwp.boss.is_final_boss;
     let enabled = bwp.boss.enabled;
     let (id_f, path_f, id_e, path_e) = (id.clone(), path.clone(), id.clone(), path.clone());
+    let (id_d, path_d) = (id.clone(), path.clone());
+    let mut confirm_delete = use_signal(|| false);
 
     rsx! {
         button {
@@ -118,6 +149,36 @@ fn BossActions(bwp: BossWithPath, on_refetch: EventHandler<()>, on_status: Event
                 });
             },
             "Export"
+        }
+        if !bwp.is_builtin && confirm_delete() {
+            span { class: "flex items-center gap-xs",
+                "Delete boss?"
+                button {
+                    class: "btn btn-danger btn-sm",
+                    onclick: move |_| {
+                        confirm_delete.set(false);
+                        let (bid, fp) = (id_d.clone(), path_d.clone());
+                        spawn(async move {
+                            match api::delete_boss(&bid, &fp).await {
+                                Ok(()) => {
+                                    on_status.call(("Boss deleted".to_string(), false));
+                                    on_refetch.call(());
+                                }
+                                Err(e) => on_status.call((e, true)),
+                            }
+                        });
+                    },
+                    "Yes"
+                }
+                button { class: "btn btn-sm", onclick: move |_| confirm_delete.set(false), "No" }
+            }
+        } else if !bwp.is_builtin {
+            button {
+                class: "btn btn-sm btn-ghost text-muted",
+                title: "Delete this boss and its timers, phases and counters",
+                onclick: move |_| confirm_delete.set(true),
+                i { class: "fa-solid fa-trash" }
+            }
         }
     }
 }
