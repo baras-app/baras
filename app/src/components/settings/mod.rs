@@ -287,27 +287,32 @@ pub fn SettingsPanel(
                 }
             }
 
-            div { class: "settings-content",
-                div { class: "settings-top-tabs",
-                    TabButton { label: "Overlays", active: section() == SettingsSection::Overlays, onclick: move |_| section.set(SettingsSection::Overlays) }
-                    TabButton { label: "Profiles", active: section() == SettingsSection::Profiles, onclick: move |_| section.set(SettingsSection::Profiles) }
-                    TabButton { label: "Global", active: section() == SettingsSection::Global, onclick: move |_| section.set(SettingsSection::Global) }
-                }
-                if showing_overlays {
-                    div { class: "setting-row overlay-select-row",
-                        label { "Overlay" }
-                        select {
-                            value: "{tab}",
-                            onchange: move |e: Event<FormData>| selected_tab.set(e.value()),
-                            for (group, items) in overlay_groups.iter() {
-                                optgroup { label: "{group}",
-                                    for (label, key) in items.iter() {
-                                        option { key: "{key}", value: "{key}", selected: *key == tab, "{label}" }
-                                    }
+            // Outside the scrolling content, so the section and the overlay being
+            // edited stay in view
+            div { class: "settings-top-tabs",
+                TabButton { label: "Overlays", active: section() == SettingsSection::Overlays, onclick: move |_| section.set(SettingsSection::Overlays) }
+                TabButton { label: "Profiles", active: section() == SettingsSection::Profiles, onclick: move |_| section.set(SettingsSection::Profiles) }
+                TabButton { label: "Global", active: section() == SettingsSection::Global, onclick: move |_| section.set(SettingsSection::Global) }
+            }
+            if showing_overlays {
+                div { class: "setting-row overlay-select-row",
+                    label { "Overlay" }
+                    select {
+                        value: "{tab}",
+                        onchange: move |e: Event<FormData>| selected_tab.set(e.value()),
+                        for (group, items) in overlay_groups.iter() {
+                            optgroup { label: "{group}",
+                                for (label, key) in items.iter() {
+                                    option { key: "{key}", value: "{key}", selected: *key == tab, "{label}" }
                                 }
                             }
                         }
                     }
+                }
+            }
+
+            div { class: "settings-content",
+                if showing_overlays {
                     h4 { class: "overlay-options-title", "{overlay_label(&tab)} Options" }
                     if let Some(scale) = draft.current().list_scale(&tab) {
                         div { class: "settings-section",

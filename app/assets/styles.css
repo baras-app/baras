@@ -1978,6 +1978,7 @@ button:active:not(:disabled),
    under "Segments are flat until hovered"), sharing the width equally */
 .settings-top-tabs {
   margin: 0.75em 0;
+  flex-shrink: 0;
 }
 .settings-top-tabs .tab-btn {
   flex: 1;
@@ -1986,7 +1987,8 @@ button:active:not(:disabled),
   font-size: 0.9em;
 }
 .overlay-select-row {
-  margin-bottom: 0.25em;
+  margin-bottom: 0.5em;
+  flex-shrink: 0;
 }
 .overlay-select-row select {
   flex: 1;
