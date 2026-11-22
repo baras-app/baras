@@ -566,6 +566,7 @@ fn handle_in_combat(
 
     if all_players_dead
         || effect_id == effect_id::EXITCOMBAT
+        || trash_combat_over(event, cache)
         || all_kill_targets_dead
         || should_end_on_local_revive
         || local_player_ooc_revived
@@ -630,6 +631,30 @@ fn handle_in_combat(
     }
 
     (signals, was_accumulated)
+}
+
+/// `[area.combat_end]`: the final kill died and only lingering NPCs are left alive.
+fn trash_combat_over(event: &CombatEvent, cache: &SessionCache) -> bool {
+    use crate::combat_log::EntityType;
+
+    if event.effect.effect_id != effect_id::DEATH {
+        return false;
+    }
+    let (Some(rule), Some(enc)) = (cache.combat_end(), cache.current_encounter()) else {
+        return false;
+    };
+    if enc.active_boss_idx().is_some()
+        || !rule.final_kills.contains(&event.target_entity.class_id)
+        || !rule.applies_to(enc.difficulty)
+    {
+        return false;
+    }
+    let mut alive = enc
+        .npcs
+        .values()
+        .filter(|n| n.entity_type == EntityType::Npc && !n.is_dead && n.current_hp > 0)
+        .peekable();
+    alive.peek().is_some() && alive.all(|n| rule.lingering.contains(&n.class_id))
 }
 
 fn handle_post_combat(

@@ -373,6 +373,10 @@ impl CombatService {
                     // Send notes to overlay
                     self.send_notes_from_bosses(&bosses);
                     session_guard.load_boss_definitions(bosses, false);
+                    // Not timer_start: installing it would re-arm a start the worker already recorded
+                    let area_id = parse_result.area.area_id;
+                    let combat_end = self.load_area_rules(area_id).and_then(|area| area.combat_end);
+                    session_guard.set_combat_end(area_id, combat_end);
                 }
 
                 session_guard.finalize_session();

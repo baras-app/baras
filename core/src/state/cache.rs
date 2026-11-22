@@ -2,7 +2,7 @@ use baras_types::history::{AreaSeen, InstanceVisit, LogContinuity, TimerStart};
 use chrono::NaiveDateTime;
 
 use crate::combat_log::EntityType;
-use crate::dsl::{BossEncounterDefinition, OperationTimerStart};
+use crate::dsl::{BossEncounterDefinition, OperationTimerStart, TrashCombatEnd};
 use crate::encounter::entity_info::PlayerInfo;
 use crate::encounter::summary::{EncounterHistory, create_encounter_summary};
 use crate::encounter::{CombatEncounter, EncounterState, OverlayHealthEntry, ProcessingMode};
@@ -41,6 +41,8 @@ pub struct SessionCache {
     /// areas without one). `area_id` guards against stale definitions
     /// between an area change and its definition reload.
     timer_start: Option<(i64, OperationTimerStart)>,
+    /// `[area.combat_end]` rule, guarded by `area_id` like `timer_start`.
+    combat_end: Option<(i64, TrashCombatEnd)>,
     /// Set once the start signal fires; cleared when a new area is loaded.
     timer_start_fired: bool,
     /// Every timer start of this session, persisted with the pull history
@@ -116,6 +118,7 @@ impl SessionCache {
             encounter_history: EncounterHistory::new(),
             boss_definitions: Arc::new(Vec::new()),
             timer_start: None,
+            combat_end: None,
             timer_start_fired: false,
             timer_starts: Vec::new(),
             visits: Vec::new(),
@@ -478,6 +481,18 @@ impl SessionCache {
         clear_boss_registry();
         self.boss_definitions = Arc::new(Vec::new());
         self.timer_start = None;
+        self.combat_end = None;
+    }
+
+    pub fn set_combat_end(&mut self, area_id: i64, combat_end: Option<TrashCombatEnd>) {
+        self.combat_end = combat_end.map(|c| (area_id, c));
+    }
+
+    pub fn combat_end(&self) -> Option<&TrashCombatEnd> {
+        self.combat_end
+            .as_ref()
+            .filter(|(area_id, _)| *area_id == self.current_area.area_id)
+            .map(|(_, c)| c)
     }
 
     /// Install the area's region-based timer start (called alongside

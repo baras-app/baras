@@ -7,7 +7,7 @@ use tracing;
 
 use crate::combat_log::{CombatEvent, Reader};
 use crate::context::{AppConfig, parse_log_filename};
-use crate::dsl::{BossEncounterDefinition, OperationTimerStart};
+use crate::dsl::{BossEncounterDefinition, OperationTimerStart, TrashCombatEnd};
 use crate::effects::{DefinitionSet, EffectTracker};
 use crate::game_data::effect_type_id;
 use crate::signal_processor::{EventProcessor, GameSignal, SignalHandler};
@@ -749,6 +749,13 @@ impl ParsingSession {
     pub fn set_timer_start(&mut self, area_id: i64, timer_start: Option<OperationTimerStart>) {
         if let Some(cache) = &mut self.session_cache {
             cache.set_timer_start(area_id, timer_start);
+        }
+    }
+
+    /// Install the area's trash combat end rule (see `[area.combat_end]`).
+    pub fn set_combat_end(&mut self, area_id: i64, combat_end: Option<TrashCombatEnd>) {
+        if let Some(cache) = &mut self.session_cache {
+            cache.set_combat_end(area_id, combat_end);
         }
     }
 

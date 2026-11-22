@@ -399,7 +399,7 @@ impl CombatService {
                                 // Send notes from new area's boss definitions
                                 self.send_notes_from_bosses(&bosses);
                                 // Also load definitions into the session
-                                let timer_start = self.load_area_timer_start(area_id);
+                                let area_rules = self.load_area_rules(area_id).unwrap_or_default();
                                 let session_guard = self.shared.session.read().await;
                                 if let Some(session) = session_guard.as_ref() {
                                     let mut session = session.write().await;
@@ -419,7 +419,8 @@ impl CombatService {
                                         tokio::spawn(async move { shared.parsely_ratings.load_set(paths).await });
                                     }
                                     session.load_boss_definitions(bosses, false);
-                                    session.set_timer_start(area_id, timer_start);
+                                    session.set_timer_start(area_id, area_rules.timer_start);
+                                    session.set_combat_end(area_id, area_rules.combat_end);
                                 }
                             } else {
                                 // No definitions for this area - clear notes
