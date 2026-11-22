@@ -310,17 +310,20 @@ pub fn SettingsPanel(
                     }
                     h4 { class: "overlay-options-title", "{overlay_label(&tab)} Options" }
                     if let Some(scale) = draft.current().list_scale(&tab) {
-                        Slider {
-                            label: "Scale",
-                            value: (scale * 100.0).round() as f64,
-                            min: (MIN_LIST_SCALE * 100.0) as f64,
-                            max: (MAX_LIST_SCALE * 100.0) as f64,
-                            suffix: "%",
-                            tooltip: "Size of this overlay's rows, icons and text. Resizing the window only changes how much fits.",
-                            on_change: move |v: f64| draft.edit(|s| s.set_list_scale(&selected_tab(), v as f32 / 100.0)),
+                        div { class: "settings-section",
+                            Slider {
+                                label: "Scale",
+                                value: (scale * 100.0).round() as f64,
+                                min: (MIN_LIST_SCALE * 100.0) as f64,
+                                max: (MAX_LIST_SCALE * 100.0) as f64,
+                                suffix: "%",
+                                tooltip: "Size of this overlay's rows, icons and text. Resizing the window only changes how much fits.",
+                                on_change: move |v: f64| draft.edit(|s| s.set_list_scale(&selected_tab(), v as f32 / 100.0)),
+                            }
                         }
                     }
                 }
+                {tab_content}
                 if showing_overlays {
                     OverridesSection {
                         draft,
@@ -329,7 +332,6 @@ pub fn SettingsPanel(
                         on_open_global: move |_| section.set(SettingsSection::Global),
                     }
                 }
-                {tab_content}
             }
 
             // Style edits are the only thing left to save (toggles and moves save
