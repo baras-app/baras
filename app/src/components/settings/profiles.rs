@@ -40,6 +40,7 @@ pub fn ProfilesSection(
                                 let profile_name = name.clone();
                                 let is_active = active_profile().as_ref() == Some(&profile_name);
                                 let is_renaming = renaming_profile().as_ref() == Some(&profile_name);
+                                let only_profile = profile_names().len() <= 1;
                                 rsx! {
                                     div {
                                         key: "{profile_name}",
@@ -194,7 +195,8 @@ pub fn ProfilesSection(
                                             } else {
                                                 button {
                                                     class: "btn btn-small btn-delete",
-                                                    title: "Delete profile",
+                                                    title: if only_profile { "The last profile can't be deleted" } else { "Delete profile" },
+                                                    disabled: only_profile,
                                                     onclick: {
                                                         let pname = profile_name.clone();
                                                         move |_| deleting_profile.set(Some(pname.clone()))
