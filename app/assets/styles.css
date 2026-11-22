@@ -867,52 +867,6 @@ select optgroup {
 /* Big entry point to the same modal on the Overlays tab: the header
    customize button's gold, at panel-button size */
 
-/* Profile unsaved hint (compact, in header nav row) */
-.header-unsaved-hint {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  gap: 0.35em;
-  font-size: 0.75em;
-  color: var(--text-gold);
-  white-space: nowrap;
-  padding: 0.2em 0.5em;
-  border-radius: var(--radius-sm);
-  background: rgba(240, 173, 78, 0.06);
-}
-
-.header-unsaved-hint > i {
-  font-size: 0.9em;
-}
-
-
-.header-unsaved-save-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25em;
-  padding: 0.1em 0.5em;
-  margin-left: 0.25em;
-  background: rgba(240, 173, 78, 0.15);
-  border: 1px solid rgba(240, 173, 78, 0.35);
-  border-radius: var(--radius-sm);
-  color: var(--text-gold);
-  font-size: 1em;
-  cursor: pointer;
-  transition: var(--transition-normal);
-  transition-property: var(--transition-props);
-  line-height: 1;
-}
-
-.header-unsaved-save-btn:hover {
-  background: rgba(240, 173, 78, 0.25);
-  border-color: rgba(240, 173, 78, 0.5);
-  color: var(--text-gold);
-}
-
-.header-unsaved-save-btn i {
-  font-size: 0.85em;
-}
-
 a {
   font-weight: 500;
   color: var(--swtor-blue);
@@ -2695,6 +2649,21 @@ details[open] .collapsible-summary::before {
   flex-shrink: 0;
 }
 
+/* Unsaved style edits: the footer turns into a notice bar */
+.settings-footer.unsaved {
+  flex-wrap: wrap;
+  padding: 0.75em 1em;
+  border: 1px solid rgba(240, 173, 78, 0.45);
+  border-radius: var(--radius-md);
+  background: rgba(240, 173, 78, 0.08);
+}
+
+.settings-footer-note {
+  flex: 1 1 100%;
+  font-weight: 600;
+  color: var(--text-gold);
+}
+
 .btn-save {
   min-width: 120px;
   background: var(--color-success-bg);
@@ -4331,10 +4300,6 @@ a.contributor-name:hover {
   .header-nav {
     --nav-room: calc(96vw - 405px);
   }
-  /* Shorten unsaved hint text */
-  .header-unsaved-hint {
-    font-size: 0.6em;
-  }
 }
 
 /* Below ~1300px the labels would start to ellipsize. Before that happens,
@@ -4389,10 +4354,6 @@ a.contributor-name:hover {
   }
   .header-controls-divider {
     height: 16px;
-  }
-  /* Hide unsaved hint */
-  .header-unsaved-hint {
-    display: none;
   }
 }
 

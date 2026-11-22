@@ -12,7 +12,7 @@ use crate::components::toggle_switch::ToggleSwitch;
 use crate::components::{
     AlacrityPill, BossNotesMenu, CharactersPanel, CleanupRules, ContributorsModal, DataExplorerPanel,
     EffectEditorPanel, EncounterEditorPanel, FileOpenBanner, HistoryPanel, HotkeyInput, LockoutResetSetting, NavMenu,
-    NumberInput, OpTimerControl, OverlayToggle, ParselyUploadModal, ProfileUnsavedHint, SessionStatusChip,
+    NumberInput, OpTimerControl, OverlayToggle, ParselyUploadModal, SessionStatusChip,
     SettingsPanel, SettingsSection, Slider, ToastFrame, ToastSeverity, use_file_opener_provider, use_parsely_upload,
     use_parsely_upload_provider, use_toast, use_toast_provider,
 };
@@ -906,7 +906,6 @@ pub fn App() -> Element {
                                     i { class: "fa-solid fa-inbox dashboard-status-icon" }
                                     span { class: "dashboard-empty-text", "No active session" }
                                 }
-                                ProfileUnsavedHint { active_profile }
                                 SessionStatusChip { live_tailing, watching, prior: false, on_restart: restart_watcher, on_resume: resume_live }
                             }
                             }
@@ -922,7 +921,6 @@ pub fn App() -> Element {
                                     } else {
                                         span { class: "dashboard-empty-text", "Incomplete log file — boss encounters and timers unavailable" }
                                     }
-                                    ProfileUnsavedHint { active_profile }
                                     SessionStatusChip { live_tailing, watching, prior: false, on_restart: restart_watcher, on_resume: resume_live }
                                 }
                             }
@@ -1015,7 +1013,6 @@ pub fn App() -> Element {
                                             }
                                         }
 
-                                        ProfileUnsavedHint { active_profile }
 
                                         // Session facts on the right: who, how long, then live / prior
                                         span { class: "dashboard-identity",
