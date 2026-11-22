@@ -493,11 +493,9 @@ pub fn App() -> Element {
     });
 
     // Listen for auto-hidden toast events (from hotkey/tray show while auto-hidden)
+    let mut auto_hidden_toast = use_toast();
     api::use_tauri_event("overlays-auto-hidden-toast", move |_event: JsValue| {
-        spawn_local(async move {
-            let mut toast = use_toast();
-            toast.show("Overlays are currently auto-hidden".to_string(), ToastSeverity::Normal);
-        });
+        auto_hidden_toast.show("Overlays are currently auto-hidden", ToastSeverity::Normal);
     });
 
     // Check for changelog on startup
