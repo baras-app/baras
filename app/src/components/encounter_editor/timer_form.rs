@@ -85,8 +85,20 @@ pub(super) fn TimerEditForm(
         let timers = all_timers.clone();
         let bwp = boss_with_path.clone();
         move |_: ()| {
-            just_saved.set(true);
             let updated = draft();
+            // A countdown with no duration is stored fine and then never shows
+            let invalid = if updated.name.trim().is_empty() {
+                Some("A timer needs a name")
+            } else if !updated.is_alert && updated.duration_secs <= 0.0 {
+                Some("A countdown needs a duration above 0 seconds")
+            } else {
+                None
+            };
+            if let Some(reason) = invalid {
+                on_status.call((reason.to_string(), true));
+                return;
+            }
+            just_saved.set(true);
             let mut current = timers.clone();
             let boss_id = bwp.boss.id.clone();
             let file_path = bwp.file_path.clone();
