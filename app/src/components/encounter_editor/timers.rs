@@ -149,7 +149,9 @@ pub fn TimersTab(
                                         let file_path = bwp_bulk.file_path.clone();
                                         let roles = new_roles.clone();
                                         spawn(async move {
-                                            let _ = api::set_all_timer_roles(&boss_id, &file_path, &roles).await;
+                                            if let Err(e) = api::set_all_timer_roles(&boss_id, &file_path, &roles).await {
+                                                on_status.call((format!("Failed to save: {e}"), true));
+                                            }
                                             on_refetch.call(());
                                         });
                                     },
@@ -340,7 +342,9 @@ fn TimerRow(
                             let file_path = bwp_for_visibility.file_path.clone();
                             let item = EncounterItem::Timer(updated);
                             spawn(async move {
-                                let _ = api::update_encounter_item(&boss_id, &file_path, &item, None).await;
+                                if let Err(e) = api::update_encounter_item(&boss_id, &file_path, &item, None).await {
+                                    on_status.call((format!("Failed to save: {e}"), true));
+                                }
                                 on_refetch.call(());
                             });
                         },
@@ -366,7 +370,9 @@ fn TimerRow(
                             let file_path = bwp_for_audio.file_path.clone();
                             let item = EncounterItem::Timer(updated);
                             spawn(async move {
-                                let _ = api::update_encounter_item(&boss_id, &file_path, &item, None).await;
+                                if let Err(e) = api::update_encounter_item(&boss_id, &file_path, &item, None).await {
+                                    on_status.call((format!("Failed to save: {e}"), true));
+                                }
                                 on_refetch.call(());
                             });
                         },
@@ -375,9 +381,9 @@ fn TimerRow(
 
                     // Role toggles [T] [H] [D]
                     div { class: "flex items-center role-toggle-group",
-                        {role_toggle("T", "Tank", has_tank, timer_for_tank, timers_for_tank, bwp_for_tank, on_change, on_refetch)}
-                        {role_toggle("H", "Healer", has_healer, timer_for_healer, timers_for_healer, bwp_for_healer, on_change, on_refetch)}
-                        {role_toggle("D", "Dps", has_dps, timer_for_dps, timers_for_dps, bwp_for_dps, on_change, on_refetch)}
+                        {role_toggle("T", "Tank", has_tank, timer_for_tank, timers_for_tank, bwp_for_tank, on_change, on_refetch, on_status)}
+                        {role_toggle("H", "Healer", has_healer, timer_for_healer, timers_for_healer, bwp_for_healer, on_change, on_refetch, on_status)}
+                        {role_toggle("D", "Dps", has_dps, timer_for_dps, timers_for_dps, bwp_for_dps, on_change, on_refetch, on_status)}
                     }
                     OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "timer" }
                 }
@@ -415,6 +421,7 @@ fn role_toggle(
     bwp: BossWithPath,
     on_change: EventHandler<Vec<BossTimerDefinition>>,
     on_refetch: EventHandler<()>,
+    on_status: EventHandler<(String, bool)>,
 ) -> Element {
     let role_name = role_name.to_string();
     let css_class = match label {
@@ -480,7 +487,9 @@ fn role_toggle(
                 let file_path = bwp.file_path.clone();
                 let item = EncounterItem::Timer(updated);
                 spawn(async move {
-                    let _ = api::update_encounter_item(&boss_id, &file_path, &item, None).await;
+                    if let Err(e) = api::update_encounter_item(&boss_id, &file_path, &item, None).await {
+                        on_status.call((format!("Failed to save: {e}"), true));
+                    }
                     on_refetch.call(());
                 });
             },

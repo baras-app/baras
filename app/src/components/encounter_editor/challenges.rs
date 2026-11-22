@@ -212,7 +212,9 @@ fn ChallengeRow(
                             let file_path = bwp_for_enable.file_path.clone();
                             let item = EncounterItem::Challenge(updated);
                             spawn(async move {
-                                let _ = api::update_encounter_item(&boss_id, &file_path, &item, None).await;
+                                if let Err(e) = api::update_encounter_item(&boss_id, &file_path, &item, None).await {
+                                    on_status.call((format!("Failed to save: {e}"), true));
+                                }
                             });
                         },
                         i { class: if challenge.enabled { "fa-solid fa-power-off text-success" } else { "fa-solid fa-power-off text-muted" } }
