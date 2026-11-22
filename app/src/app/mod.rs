@@ -91,6 +91,17 @@ pub fn App() -> Element {
     crate::shortcuts::use_app_shortcuts(ui_state);
     // Render reads only this, so explorer filter and sort writes to `ui_state` don't re-render App
     let active_tab = use_memo(move || ui_state.read().active_tab);
+    // The editors and the overlay settings stay mounted (hidden) once opened, so
+    // unsaved edits survive a visit to another tab; nothing mounts before its first visit
+    let mut opened_tabs = use_signal(Vec::<MainTab>::new);
+    use_effect(move || {
+        let tab = active_tab();
+        if !opened_tabs.peek().contains(&tab) {
+            opened_tabs.write().push(tab);
+        }
+    });
+    let kept = move |tab: MainTab| active_tab() == tab || opened_tabs.read().contains(&tab);
+    let shown = move |tab: MainTab| if active_tab() == tab { "display: contents" } else { "display: none" };
 
     // Other UI state (not part of session persistence)
     let mut overlay_settings = use_signal(OverlaySettings::default);
@@ -1269,18 +1280,22 @@ pub fn App() -> Element {
                 // ─────────────────────────────────────────────────────────────
                 // Encounter Editor Tab
                 // ─────────────────────────────────────────────────────────────
-                if active_tab() == MainTab::EncounterBuilder {
-                    EncounterEditorPanel {
-                        state: ui_state,
+                if kept(MainTab::EncounterBuilder) {
+                    div { style: shown(MainTab::EncounterBuilder),
+                        EncounterEditorPanel {
+                            state: ui_state,
+                        }
                     }
                 }
 
                 // ─────────────────────────────────────────────────────────────
                 // Effects Tab
                 // ─────────────────────────────────────────────────────────────
-                if active_tab() == MainTab::Effects {
-                    EffectEditorPanel {
-                        state: ui_state,
+                if kept(MainTab::Effects) {
+                    div { style: shown(MainTab::Effects),
+                        EffectEditorPanel {
+                            state: ui_state,
+                        }
                     }
                 }
 
@@ -1902,8 +1917,9 @@ pub fn App() -> Element {
             }
 
             // Overlay settings: docked beside the Overlays page whenever it is open
-            if active_tab() == MainTab::Overlays {
+            if kept(MainTab::Overlays) {
                 SettingsPanel {
+                    parked: active_tab() != MainTab::Overlays,
                     settings: overlay_settings,
                     selected_tab: selected_overlay_tab,
                     profile_names: profile_names,
