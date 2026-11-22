@@ -53,7 +53,7 @@ pub fn apply_theme(light: bool) {
 /// Parse a hex color string (e.g., "#ff0000") to RGBA bytes
 pub fn parse_hex_color(hex: &str) -> Option<Color> {
     let hex = hex.trim_start_matches('#');
-    if hex.len() != 6 {
+    if hex.len() != 6 || !hex.is_ascii() {
         return None;
     }
     let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
