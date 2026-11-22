@@ -27,6 +27,7 @@ struct DummyFilter {
     characters: Vec<String>,
     disciplines: Vec<String>,
     sizes: Vec<String>,
+    versions: Vec<String>,
 }
 
 impl DummyFilter {
@@ -34,10 +35,11 @@ impl DummyFilter {
         keeps(&self.characters, &r.character)
             && (self.disciplines.is_empty() || r.discipline.as_ref().is_some_and(|d| self.disciplines.contains(d)))
             && keeps(&self.sizes, &size_label(r.dummy_hp, european))
+            && keeps(&self.versions, &r.game_version)
     }
 
     fn active(&self) -> usize {
-        [&self.characters, &self.disciplines, &self.sizes]
+        [&self.characters, &self.disciplines, &self.sizes, &self.versions]
             .iter()
             .filter(|v| !v.is_empty())
             .count()
@@ -215,6 +217,7 @@ pub fn DummyTab(european: bool, backfill: Backfill) -> Element {
     let characters = distinct(all.iter().map(|r| r.character.clone()));
     let disciplines = distinct(all.iter().filter_map(|r| r.discipline.clone()));
     let sizes = distinct(all.iter().map(|r| size_label(r.dummy_hp, eu)));
+    let versions = distinct(all.iter().map(|r| r.game_version.clone()));
 
     let total = rows.len();
     let limit = paged.limit("dummy");
@@ -264,6 +267,15 @@ pub fn DummyTab(european: bool, backfill: Backfill) -> Element {
                             entries: plain_entries(&sizes),
                             picked: f.sizes.clone(),
                             on_change: move |v| pick(|f| &mut f.sizes, v),
+                        }
+                    }
+                    if versions.len() > 1 || !f.versions.is_empty() {
+                        MultiSelect {
+                            any_label: "Any patch",
+                            noun: "patches",
+                            entries: plain_entries(&versions),
+                            picked: f.versions.clone(),
+                            on_change: move |v| pick(|f| &mut f.versions, v),
                         }
                     }
                     button {
