@@ -659,6 +659,11 @@
 
 /* Data Explorer views: natural width from the left, in three groups
    (summary, breakdowns, tools) rather than stretched across the panel */
+/* Wraps to a second row rather than clipping the last views off a narrow window */
+.explorer-views {
+  flex-wrap: wrap;
+}
+
 .explorer-views .data-tab {
   flex: 0 0 auto;
   padding: 9px 14px;
