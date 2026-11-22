@@ -21,6 +21,7 @@ pub fn ProfilesSection(
     let mut renaming_profile: Signal<Option<String>> = use_signal(|| None);
     let mut rename_input = use_signal(String::new);
     let mut deleting_profile: Signal<Option<String>> = use_signal(|| None);
+    let mut overwriting_profile: Signal<Option<String>> = use_signal(|| None);
     let mut toast = use_toast();
 
     let mut role_defaults: Signal<HashMap<String, String>> = use_signal(HashMap::new);
@@ -110,26 +111,44 @@ pub fn ProfilesSection(
                                                 },
                                                 if is_active { "Active" } else { "Load" }
                                             }
-                                            // Save button
-                                            button {
-                                                class: "btn btn-small btn-update",
-                                                title: "Overwrite profile with current settings",
-                                                onclick: {
-                                                    let pname = profile_name.clone();
-                                                    move |_| {
-                                                        let pname = pname.clone();
-                                                        spawn(async move {
-                                                            if let Err(err) = api::save_profile(&pname).await {
-                                                                toast.show(format!("Failed to save profile: {}", err), ToastSeverity::Normal);
-                                                            } else {
-                                                                active_profile.set(Some(pname.clone()));
-                                                                profile_dirty.set(false);
-                                                                profile_status.set(format!("Saved '{}'", pname));
+                                            // Save button; overwriting a profile that isn't the open one is confirmed inline
+                                            {
+                                                let confirming = overwriting_profile().as_ref() == Some(&profile_name);
+                                                rsx! {
+                                                    if confirming { "Overwrite?" }
+                                                    button {
+                                                        class: "btn btn-small btn-update",
+                                                        title: "Overwrite profile with current settings",
+                                                        onclick: {
+                                                            let pname = profile_name.clone();
+                                                            move |_| {
+                                                                let pname = pname.clone();
+                                                                if !is_active && !confirming {
+                                                                    overwriting_profile.set(Some(pname));
+                                                                    return;
+                                                                }
+                                                                overwriting_profile.set(None);
+                                                                spawn(async move {
+                                                                    if let Err(err) = api::save_profile(&pname).await {
+                                                                        toast.show(format!("Failed to save profile: {}", err), ToastSeverity::Normal);
+                                                                    } else {
+                                                                        active_profile.set(Some(pname.clone()));
+                                                                        profile_dirty.set(false);
+                                                                        profile_status.set(format!("Saved '{}'", pname));
+                                                                    }
+                                                                });
                                                             }
-                                                        });
+                                                        },
+                                                        if confirming { "Yes" } else { "Save" }
                                                     }
-                                                },
-                                                "Save"
+                                                    if confirming {
+                                                        button {
+                                                            class: "btn btn-small",
+                                                            onclick: move |_| overwriting_profile.set(None),
+                                                            "No"
+                                                        }
+                                                    }
+                                                }
                                             }
                                             // Rename button
                                             button {
