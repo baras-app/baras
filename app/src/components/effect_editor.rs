@@ -169,15 +169,15 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
 
     // Handlers
     let on_save = move |updated_effect: EffectListItem| {
-        let mut current = effects();
-        if let Some(idx) = current.iter().position(|e| e.id == updated_effect.id) {
-            current[idx] = updated_effect.clone();
-            effects.set(current);
-        }
-
         spawn(async move {
             match api::update_effect_definition(&updated_effect).await {
                 Ok(()) => {
+                    // Only a stored save reaches the list: the form stays unsaved on failure
+                    let mut current = effects();
+                    if let Some(idx) = current.iter().position(|e| e.id == updated_effect.id) {
+                        current[idx] = updated_effect.clone();
+                        effects.set(current);
+                    }
                     save_status.set("Saved".to_string());
                     status_is_error.set(false);
                     // Refetch to get updated is_bundled/is_user_override flags
