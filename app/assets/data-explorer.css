@@ -705,6 +705,13 @@
   gap: 5px;
 }
 
+/* Side by side, each half fills its column: several challenge cards wrap
+   within theirs. Alone, a section keeps its reading width. */
+.overview-column:not(:only-child) .npc-health-box,
+.overview-column:not(:only-child) .challenge-card {
+  max-width: none;
+}
+
 .overview-column-header i {
   font-size: 10px;
 }
