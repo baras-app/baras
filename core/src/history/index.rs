@@ -12,14 +12,13 @@ use std::time::SystemTime;
 use hashbrown::{HashMap, HashSet};
 
 use baras_types::history::{
-    RunLink,
-    AreaSeen, BossNode, HistoryStatus, InstanceVisit, LogContinuity, LogLink, PullFilter, PullHistoryOverview, PullRow,
-    DummyRow, PvpMatchRow, RunSummary, TimerStart, keeps,
+    AreaSeen, BossNode, DummyRow, HistoryStatus, InstanceVisit, LogContinuity, LogLink, PullFilter,
+    PullHistoryOverview, PullRow, PvpMatchRow, RunLink, RunSummary, TimerStart, keeps,
 };
 
 use super::catalog::AreaCatalog;
-use super::meta::LibraryMeta;
 use super::dummy::dummy_rows;
+use super::meta::LibraryMeta;
 use super::pvp::pvp_rows;
 use super::record::PullRecord;
 use super::runs::{BuiltRun, RunSource, apply_meta, build_runs, run_matches};
@@ -412,7 +411,11 @@ impl PullIndex {
         let mut out = Vec::new();
         let pull_tags = (!filter.tags.is_empty()).then(|| self.pull_tags(catalog, meta));
         for log in self.logs.values() {
-            for r in log.rows.iter().filter(|r| r.operation != DUMMY_GROUP && matches(r, filter)) {
+            for r in log
+                .rows
+                .iter()
+                .filter(|r| r.operation != DUMMY_GROUP && matches(r, filter))
+            {
                 // Hidden pulls stay out of the boss counts too
                 if !filter.show_hidden && meta.is_pull_hidden(&r.filename, r.start_ms) {
                     continue;

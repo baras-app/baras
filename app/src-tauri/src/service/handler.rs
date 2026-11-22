@@ -701,7 +701,12 @@ impl ServiceHandle {
     pub async fn session_run_links(&self) -> Vec<baras_types::history::RunLink> {
         let Some(filename) = self
             .shared
-            .with_session(|s| s.active_file.as_ref()?.file_name().map(|f| f.to_string_lossy().into_owned()))
+            .with_session(|s| {
+                s.active_file
+                    .as_ref()?
+                    .file_name()
+                    .map(|f| f.to_string_lossy().into_owned())
+            })
             .await
             .flatten()
         else {

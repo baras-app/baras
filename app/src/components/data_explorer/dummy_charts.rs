@@ -14,8 +14,7 @@ use baras_types::formatting;
 use baras_types::{DummyParse, GcdAnalysis};
 
 use crate::components::echarts::{
-    TOOLTIP_ROWS_JS, dispose_chart, escape, init_chart, json_to_js, next_animation_frame, set_js_fn,
-    set_option_replace,
+    TOOLTIP_ROWS_JS, dispose_chart, escape, init_chart, json_to_js, next_animation_frame, set_js_fn, set_option_replace,
 };
 use crate::utils::{LightTheme, css_var};
 
@@ -165,7 +164,9 @@ pub(super) fn PressTimeline(
             let pick = Closure::new(move |index: JsValue| {
                 let hit = index.as_f64().map(|i| i as usize);
                 // Outside the Dioxus runtime (JS callback), so never panic on a lock
-                let _ = selected.try_write().map(|mut w| *w = if *w == hit { None } else { hit });
+                let _ = selected
+                    .try_write()
+                    .map(|mut w| *w = if *w == hit { None } else { hit });
             });
             let install = js_sys::Function::new_with_args("chart, cb", NEAREST_CLICK_JS);
             let _ = install.call2(&JsValue::NULL, &chart, pick.as_ref().unchecked_ref());
@@ -230,9 +231,7 @@ fn density_option(gcd: &GcdAnalysis) -> Option<Value> {
     }
     let (label, _) = axis_style();
     let color = css_var("--text-accent");
-    let line = |x: f32, kind: &str| {
-        json!({ "xAxis": x, "lineStyle": { "color": css_var("--text-primary"), "type": kind, "width": 1 } })
-    };
+    let line = |x: f32, kind: &str| json!({ "xAxis": x, "lineStyle": { "color": css_var("--text-primary"), "type": kind, "width": 1 } });
     Some(json!({
         "animation": false,
         "grid": { "left": 12, "right": 16, "top": 12, "bottom": 22 },

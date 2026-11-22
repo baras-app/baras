@@ -33,10 +33,10 @@ use crate::types::UiSessionState;
 
 pub use library_rules::CleanupRules;
 
+use dummy::DummyTab;
 use library::LibraryTab;
 use operations::OperationsTab;
 use overview::OverviewTab;
-use dummy::DummyTab;
 use pvp::PvpTab;
 
 #[derive(Props, Clone, PartialEq)]
