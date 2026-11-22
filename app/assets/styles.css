@@ -159,6 +159,9 @@
   --transition-fast: 0.1s ease;
   --transition-normal: 0.15s ease;
   --transition-slow: 0.25s ease;
+  /* What interactive elements animate between states, in place of `all`:
+     `all` also eased sizes and font changes nobody meant to animate */
+  --transition-props: background-color, color, border-color, box-shadow, opacity, transform;
 
   /* ─── Legacy (for compatibility) ─────────────────────────────────────────────── */
   --swtor-bg-dark: var(--bg-dark);
@@ -695,7 +698,7 @@ select optgroup {
   color: var(--swtor-blue);
   font-size: clamp(0.75rem, 1.4vh, 1rem);
   opacity: 0.5;
-  transition: opacity 0.2s;
+  transition: opacity var(--transition-normal);
 }
 
 .app-header .header-link:hover {
@@ -719,7 +722,8 @@ select optgroup {
   padding: 0.2em 0.6em;
   border-radius: 4px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition-normal);
+  transition-property: var(--transition-props);
   font-family: inherit;
   display: inline-flex;
   align-items: center;
@@ -808,7 +812,8 @@ select optgroup {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all var(--transition-normal);
+  transition: var(--transition-normal);
+  transition-property: var(--transition-props);
 }
 
 .btn-header-overlay:hover:not(:disabled) {
@@ -887,7 +892,8 @@ select optgroup {
   color: var(--text-gold);
   font-size: 1em;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: var(--transition-normal);
+  transition-property: var(--transition-props);
   line-height: 1;
 }
 
@@ -974,7 +980,8 @@ button:active {
   background: var(--bg-light);
   color: var(--text-tertiary);
   cursor: pointer;
-  transition: all var(--transition-normal);
+  transition: var(--transition-normal);
+  transition-property: var(--transition-props);
 }
 
 .btn:hover:not(:disabled) {
@@ -1259,7 +1266,7 @@ button:active {
   display: flex;
   align-items: stretch;
   border-radius: var(--radius-sm);
-  transition: background 0.15s;
+  transition: background var(--transition-normal);
 }
 .overlay-toggle + .overlay-toggle {
   border-top: 1px solid var(--border-subtle);
@@ -1288,7 +1295,7 @@ button:active {
   border-radius: 0;
   box-shadow: inset 3px 0 0 transparent;
   color: var(--text-tertiary);
-  transition: color 0.15s, box-shadow 0.15s;
+  transition: color var(--transition-normal), box-shadow var(--transition-normal);
 }
 /* State dot */
 .overlay-toggle .btn-overlay::after {
@@ -1299,7 +1306,7 @@ button:active {
   height: 8px;
   border-radius: 50%;
   background: var(--border-medium);
-  transition: background 0.15s, box-shadow 0.15s;
+  transition: background var(--transition-normal), box-shadow var(--transition-normal);
 }
 .overlay-toggle .btn-overlay:hover:not(:disabled) {
   color: var(--text-secondary);
@@ -1345,7 +1352,7 @@ button:active {
   border-radius: 0;
   box-shadow: none;
   color: rgba(var(--fg-rgb), 0.28);
-  transition: color 0.15s;
+  transition: color var(--transition-normal);
 }
 .overlay-toggle .btn-overlay-gear.btn-active {
   color: rgba(var(--fg-rgb), 0.4);
@@ -1357,7 +1364,7 @@ button:active {
   box-shadow: none;
 }
 .overlay-toggle .btn-overlay-gear i {
-  transition: transform 0.2s ease;
+  transition: transform var(--transition-normal);
 }
 .overlay-toggle .btn-overlay-gear:hover:not(:disabled) i,
 .overlay-toggle .btn-overlay-gear.open i {
@@ -1379,7 +1386,8 @@ button:active {
     var(--btn-bottom) 100%
   );
   border: 1px solid rgba(80, 80, 90, 0.4);
-  transition: all 0.2s ease;
+  transition: var(--transition-normal);
+  transition-property: var(--transition-props);
 }
 
 /* Lock button - locked state (neutral) */
@@ -1481,7 +1489,7 @@ button:active {
   border-top: 1px solid var(--border-subtle);
   padding: 0.4em 2vw;
   box-sizing: border-box;
-  transition: padding 0.2s;
+  transition: padding var(--transition-normal);
 }
 
 .session-dashboard-bar.collapsed {
@@ -1594,7 +1602,7 @@ button:active {
   opacity: 0.7;
   font-size: 1em;
   cursor: pointer;
-  transition: opacity 0.15s, color 0.15s, background 0.15s;
+  transition: opacity var(--transition-normal), color var(--transition-normal), background var(--transition-normal);
 }
 .session-status-action:hover {
   opacity: 1;
@@ -1624,7 +1632,7 @@ button:active {
   background: rgba(95, 217, 142, 0.08);
   border: 1px solid rgba(95, 217, 142, 0.25);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background var(--transition-normal), border-color var(--transition-normal);
 }
 .session-status-resume:hover {
   background: var(--color-success-bg);
@@ -1775,7 +1783,8 @@ button:active {
   border-radius: var(--radius-md);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: var(--transition-normal);
+  transition-property: var(--transition-props);
 }
 
 .btn-session-upload:hover {
@@ -1812,7 +1821,8 @@ button:active {
   border-radius: var(--radius-sm);
   padding: 0.3em 0.5em;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: var(--transition-normal);
+  transition-property: var(--transition-props);
 }
 
 .btn-session-upload-result:hover {
@@ -2125,7 +2135,7 @@ button:active {
 .collapsible-summary::before {
   content: "▶";
   font-size: 0.7em;
-  transition: transform 0.2s;
+  transition: transform var(--transition-normal);
 }
 
 details[open] .collapsible-summary::before {
@@ -2551,7 +2561,8 @@ details[open] .collapsible-summary::before {
   font-size: 0.9em;
   line-height: 1;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: var(--transition-normal);
+  transition-property: var(--transition-props);
 }
 
 .hotkey-clear:hover {
@@ -3021,7 +3032,7 @@ details[open] .collapsible-summary::before {
   font-size: 0.8em;
   color: var(--text-muted);
   white-space: nowrap;
-  transition: color 0.2s;
+  transition: color var(--transition-normal);
 }
 
 .toggle-switch-label:hover .toggle-text {
@@ -3052,7 +3063,8 @@ details[open] .collapsible-summary::before {
   border: 1px solid var(--border-strong);
   border-radius: 9px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition-normal);
+  transition-property: var(--transition-props);
 }
 
 .toggle-slider::before {
@@ -3064,7 +3076,8 @@ details[open] .collapsible-summary::before {
   bottom: 2px;
   background: #888;
   border-radius: 50%;
-  transition: all 0.2s ease;
+  transition: var(--transition-normal);
+  transition-property: var(--transition-props);
 }
 
 /* Checked state */
@@ -3228,7 +3241,8 @@ details[open] .collapsible-summary::before {
   margin-bottom: 0.25em;
   background: rgba(0, 0, 0, calc(0.2 * var(--recess-k)));
   border: 1px solid transparent;
-  transition: all var(--transition-normal);
+  transition: var(--transition-normal);
+  transition-property: var(--transition-props);
 }
 
 .file-item:hover {
@@ -3308,7 +3322,8 @@ details[open] .collapsible-summary::before {
   color: var(--swtor-blue);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all var(--transition-normal);
+  transition: var(--transition-normal);
+  transition-property: var(--transition-props);
   flex-shrink: 0;
 }
 
@@ -3339,7 +3354,8 @@ details[open] .collapsible-summary::before {
   color: var(--text-heading);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all var(--transition-normal);
+  transition: var(--transition-normal);
+  transition-property: var(--transition-props);
 }
 
 .file-item .btn-upload:hover:not(:disabled) {
@@ -3614,7 +3630,8 @@ details[open] .collapsible-summary::before {
   border-radius: var(--radius-md);
   cursor: pointer;
   font-weight: 600;
-  transition: all var(--transition-normal);
+  transition: var(--transition-normal);
+  transition-property: var(--transition-props);
 }
 
 .changelog-footer .btn-primary:hover {
@@ -3854,8 +3871,8 @@ a.contributor-name:hover {
   padding: 4px 8px;
   border-radius: 4px;
   transition:
-    color 0.15s,
-    background 0.15s;
+    color var(--transition-normal),
+    background var(--transition-normal);
 }
 
 .parsely-upload-btn:hover {
@@ -3903,7 +3920,7 @@ a.contributor-name:hover {
 .sortable-header {
   cursor: pointer;
   user-select: none;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--transition-normal);
   white-space: nowrap;
 }
 
@@ -4061,7 +4078,8 @@ a.contributor-name:hover {
   cursor: pointer;
   font-size: 0.8em;
   font-weight: 500;
-  transition: all 0.2s;
+  transition: var(--transition-normal);
+  transition-property: var(--transition-props);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5068,7 +5086,7 @@ a.contributor-name:hover {
   cursor: pointer;
   border-radius: var(--radius-sm);
   font-size: 0.85em;
-  transition: background 0.15s;
+  transition: background var(--transition-normal);
 }
 
 .row-toggle:hover {
@@ -5092,9 +5110,9 @@ a.contributor-name:hover {
   font-weight: 700;
   line-height: 1;
   transition:
-    background 0.15s,
-    border-color 0.15s,
-    color 0.15s;
+    background var(--transition-normal),
+    border-color var(--transition-normal),
+    color var(--transition-normal);
   color: var(--text-muted);
 }
 
@@ -5683,7 +5701,8 @@ a.contributor-name:hover {
   color: var(--text-muted);
   font-size: 0.85em;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: var(--transition-fast);
+  transition-property: var(--transition-props);
 }
 
 .tab-btn:hover {
@@ -5983,7 +6002,8 @@ a.contributor-name:hover {
   color: var(--text-secondary);
   font-size: 0.9rem;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: var(--transition-fast);
+  transition-property: var(--transition-props);
   text-transform: capitalize;
 }
 
@@ -6383,7 +6403,7 @@ a.contributor-name:hover {
   color: var(--text-heading);
   background: var(--blue-alpha-5);
   border-radius: var(--radius-sm);
-  transition: background 0.15s;
+  transition: background var(--transition-normal);
 }
 
 .sidebar-section-header:hover {
@@ -6465,7 +6485,8 @@ a.contributor-name:hover {
   cursor: pointer;
   border-radius: var(--radius-sm);
   border-left: 3px solid transparent;
-  transition: all 0.15s;
+  transition: var(--transition-normal);
+  transition-property: var(--transition-props);
 }
 
 .sidebar-encounter-item:hover {
@@ -6619,7 +6640,7 @@ a.contributor-name:hover {
   font-size: 1em;
   padding: 0 0.3em;
   opacity: 0.6;
-  transition: opacity 0.15s;
+  transition: opacity var(--transition-normal);
   line-height: 1;
   vertical-align: middle;
 }
@@ -6738,7 +6759,7 @@ a.contributor-name:hover {
   padding: 0.5em 0.75em;
   cursor: pointer;
   border-bottom: 1px solid var(--border-subtle);
-  transition: background 0.15s;
+  transition: background var(--transition-normal);
   text-align: left;
 }
 
@@ -6845,8 +6866,8 @@ a.contributor-name:hover {
   cursor: pointer;
   user-select: none;
   transition:
-    background 0.15s,
-    color 0.15s;
+    background var(--transition-normal),
+    color var(--transition-normal);
 }
 
 .ability-table th.sortable:hover {
@@ -7176,7 +7197,7 @@ a.contributor-name:hover {
   padding: 4px 8px;
   font-size: 14px;
   opacity: 0.7;
-  transition: opacity 0.2s;
+  transition: opacity var(--transition-normal);
   flex-shrink: 0;
 }
 
@@ -8011,7 +8032,8 @@ a.contributor-name:hover {
   border: 1px solid rgba(var(--fg-rgb), 0.1);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: var(--transition-normal);
+  transition-property: var(--transition-props);
 }
 
 .btn-session-settings:hover,
