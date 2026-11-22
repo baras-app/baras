@@ -118,7 +118,10 @@ fn handle_not_started(
         && event.target_entity.log_id == cache.player.id
         && cache.current_encounter().is_some_and(|e| e.is_pvp());
 
-    if effect_id == effect_id::ENTERCOMBAT || pvp_round_started {
+    // Still in combat from leftover adds, so no EnterCombat will come for this pull
+    let boss_pulled = cache.current_encounter().is_some_and(|e| e.detect_boss_pull(event));
+
+    if effect_id == effect_id::ENTERCOMBAT || pvp_round_started || boss_pulled {
         if let Some(enc) = cache.current_encounter_mut() {
             enc.state = EncounterState::InCombat;
             enc.enter_combat_time = Some(timestamp);
@@ -256,15 +259,15 @@ fn handle_in_combat(
         }
     }
 
-    // Boss reset detection (victory-trigger encounters only): a fresh live
-    // instance of a single_instance boss class means the fight reset and was
-    // re-pulled without a wipe or victory (e.g. Zorn & Toth pulled with a
-    // player outside the arena). Split here — the re-pull's EnterCombat was
-    // already swallowed as a rejoin, so the new encounter starts InCombat
-    // immediately instead of waiting for the next EnterCombat.
+    // Boss reset detection: a fresh live instance of a single_instance boss
+    // class means the fight reset and was re-pulled without a wipe or victory
+    // (e.g. Zorn & Toth pulled with a player outside the arena). Split here —
+    // the re-pull's EnterCombat was already swallowed as a rejoin, so the new
+    // encounter starts InCombat immediately instead of waiting for the next
+    // EnterCombat.
     let boss_reset = cache
         .current_encounter()
-        .is_some_and(|enc| enc.has_active_victory_trigger() && !enc.victory_triggered && enc.detect_boss_reset(event));
+        .is_some_and(|enc| !enc.victory_triggered && enc.detect_boss_reset(event));
     if boss_reset {
         let encounter_id = cache.current_encounter().map(|e| e.id).unwrap_or(0);
         let exit_time = cache
@@ -294,7 +297,8 @@ fn handle_in_combat(
         });
 
         let new_encounter_id = cache.push_new_encounter();
-        if event.effect.effect_id == effect_id::DAMAGE {
+        let is_pull = cache.current_encounter().is_some_and(|e| e.detect_boss_pull(event));
+        if is_pull || event.effect.effect_id == effect_id::DAMAGE {
             // Reset first noticed mid-combat — the re-pull's EnterCombat was
             // already swallowed by the old encounter, so start immediately.
             if let Some(enc) = cache.current_encounter_mut() {
