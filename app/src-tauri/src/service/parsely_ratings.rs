@@ -1,10 +1,10 @@
 //! Parsely percentile tables (`/api/rating/{boss}/{mode}/{size}`).
 //!
-//! Parsely rebuilds its tables once a UTC day and stamps each with when
-//! (`_meta.updated_at`). A table carrying today's stamp is final for the day;
-//! one fetched before today's rebuild is asked for again, at most once per
-//! `RECHECK_INTERVAL`, until the rebuild shows up. One JSON file per table
-//! under `parsely_ratings/`. The tables of one area (the one entered live, or
+//! Parsely rebuilds its tables once a day and stamps each with when
+//! (`_meta.updated_at`). A table is final until a day after its stamp, so it
+//! is downloaded once per rebuild; only when that rebuild is overdue is it
+//! asked for again, at most once per `RECHECK_INTERVAL`. One JSON file per
+//! table under `parsely_ratings/`. The tables of one area (the one entered live, or
 //! the one being viewed) stay in memory so tabbing between its bosses touches
 //! neither disk nor network.
 //!
@@ -13,7 +13,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Deserializer, Serialize};
@@ -28,7 +28,10 @@ use crate::state::MutexExt;
 
 const RATING_URL: &str = "https://parsely.io/api/rating";
 const FETCH_TIMEOUT: Duration = Duration::from_secs(10);
-/// How often a table still carrying an earlier day's data is asked for again
+/// A table is superseded this long after Parsely built it: the daily rebuild
+/// plus slack for one that runs a little late
+const REBUILD_PERIOD_SECS: i64 = 24 * 60 * 60 + 30 * 60;
+/// How often a table whose rebuild is overdue is asked for again
 const RECHECK_INTERVAL_SECS: i64 = 60 * 60;
 /// No requests at all for this long after the site couldn't be reached
 const UNREACHABLE_PAUSE: Duration = Duration::from_secs(15 * 60);
@@ -117,11 +120,12 @@ fn lenient<'de, D: Deserializer<'de>>(d: D) -> Result<Thresholds, D::Error> {
 }
 
 impl RatingTable {
-    /// Nothing newer to fetch: Parsely already rebuilt it today, or we asked
-    /// recently and it hadn't yet
+    /// Nothing newer to fetch: the next rebuild isn't due, or we asked
+    /// recently and it hadn't happened yet
     fn is_current(&self) -> bool {
-        self.meta.updated_at.starts_with(&today())
-            || chrono::Utc::now().timestamp() - self.checked < RECHECK_INTERVAL_SECS
+        let now = chrono::Utc::now().timestamp();
+        let built = chrono::DateTime::parse_from_rfc3339(&self.meta.updated_at).map_or(0, |t| t.timestamp());
+        now - built < REBUILD_PERIOD_SECS || now - self.checked < RECHECK_INTERVAL_SECS
     }
 
     fn source(&self) -> RatingSource {
@@ -185,7 +189,9 @@ struct ApiError {
 
 async fn fetch(path: &str) -> Result<RatingTable, FetchError> {
     let unreachable = |e: reqwest::Error| FetchError::Unreachable(e.to_string());
-    let bytes = reqwest::Client::new()
+    // One client for every table, so a prefetch reuses its connection
+    static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(reqwest::Client::new);
+    let bytes = CLIENT
         .get(format!("{RATING_URL}/{path}"))
         .header("User-Agent", USER_AGENT)
         .timeout(FETCH_TIMEOUT)
