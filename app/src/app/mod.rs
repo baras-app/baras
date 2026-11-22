@@ -697,7 +697,6 @@ pub fn App() -> Element {
                                     file_browser_open.set(false);
                                     return;
                                 }
-                                file_browser_filter.set(String::new());
                                 file_browser_open.set(true);
                                 spawn(async move {
                                     api::refresh_file_sizes().await;
@@ -1910,12 +1909,23 @@ pub fn App() -> Element {
                                 "X"
                             }
                         }
-                        input {
-                            class: "file-browser-search",
-                            r#type: "text",
-                            placeholder: "Filter by name, date, day, or operation (comma = AND, e.g. \"ToonName,Dxun\")...",
-                            value: "{file_browser_filter}",
-                            oninput: move |e| file_browser_filter.set(e.value()),
+                        div { class: "file-browser-search-wrap",
+                            input {
+                                class: "file-browser-search",
+                                r#type: "text",
+                                title: "Comma = AND. Besides names and dates: nim, hm, sm, fp, pvp, arena, warzone, dc",
+                                placeholder: "Filter by name, date, day, area or tag (comma = AND, e.g. \"ToonName,Dxun\")...",
+                                value: "{file_browser_filter}",
+                                oninput: move |e| file_browser_filter.set(e.value()),
+                            }
+                            if !file_browser_filter().is_empty() {
+                                button {
+                                    class: "file-browser-search-clear",
+                                    title: "Clear filter",
+                                    onclick: move |_| file_browser_filter.set(String::new()),
+                                    i { class: "fa-solid fa-xmark" }
+                                }
+                            }
                         }
                     }
 
@@ -1948,14 +1958,19 @@ pub fn App() -> Element {
                                     let date = f.date.to_lowercase();
                                     let day = f.day_of_week.to_lowercase();
                                     terms.iter().all(|term| {
-                                        // Also check area names for operation search
+                                        // Area names, plus the badge tier as a keyword
+                                        // ("nim", "fp", "arena", ...; "pvp" covers both PvP tiers)
                                         let areas_match = f.areas.as_ref().is_some_and(|areas| {
                                             areas.iter().any(|a| {
+                                                let tier = a.difficulty_tier.as_deref();
                                                 a.display.to_lowercase().contains(term)
                                                     || a.area_name.to_lowercase().contains(term)
+                                                    || tier == Some(*term)
+                                                    || (*term == "pvp" && matches!(tier, Some("arena" | "warzone")))
                                             })
                                         });
-                                        name.contains(term) || date.contains(term) || day.contains(term) || areas_match
+                                        let dc_match = matches!(*term, "dc" | "d/c") && !f.link.tags().is_empty();
+                                        name.contains(term) || date.contains(term) || day.contains(term) || areas_match || dc_match
                                     })
                                 }).cloned().collect();
                                 rsx! {
@@ -1994,15 +2009,19 @@ pub fn App() -> Element {
                                                     span { class: "file-char", "{char_name}" }
                                                     span { class: "file-sep", " • " }
                                                     span { class: "file-size", "{size_str}" }
+                                                    for (label, tip) in file.link.tags() {
+                                                        span { class: "file-dc", title: "{tip}", "{label}" }
+                                                    }
                                                 }
                                                 // Show areas/operations visited in this file
-                                                // Only show areas with difficulty (actual instances, not open world)
+                                                // Only instances and PvP maps, not open world
                                                 {
                                                     // Helper to get difficulty CSS class; prefers the
                                                     // ID-derived tier (language-independent), falls back
                                                     // to English string matching for unknown IDs
                                                     fn difficulty_class(area: &AreaVisitInfo) -> &'static str {
                                                         match area.difficulty_tier.as_deref() {
+                                                            Some("arena" | "warzone") => return "area-tag diff-pvp",
                                                             Some("fp") => return "area-tag diff-fp",
                                                             Some("nim") => return "area-tag diff-nim",
                                                             Some("hm") => return "area-tag diff-hm",
@@ -2026,7 +2045,7 @@ pub fn App() -> Element {
                                                     }
 
                                                     let instanced_areas: Vec<_> = file.areas.as_ref()
-                                                        .map(|areas| areas.iter().filter(|a| !a.difficulty.is_empty()).collect())
+                                                        .map(|areas| areas.iter().filter(|a| !a.difficulty.is_empty() || a.difficulty_tier.is_some()).collect())
                                                         .unwrap_or_default();
                                                     let area_count = instanced_areas.len();
                                                     rsx! {

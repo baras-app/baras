@@ -12,7 +12,7 @@ use std::time::SystemTime;
 use encoding_rs::WINDOWS_1252;
 use serde::{Deserialize, Serialize};
 
-use crate::game_data::Difficulty;
+use crate::game_data::{Difficulty, PvpAreaKind, pvp_area_kind};
 
 /// A single area visit entry extracted from a log file
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,9 +74,15 @@ impl FileAreaEntry {
         format!("{} {}", self.area_name, self.difficulty_name)
     }
 
-    /// Badge tier for the file browser, derived from the difficulty ID
-    /// (language-independent): "fp" for 4-player, "nim"/"hm"/"sm" for 8/16.
+    /// Badge tier for the file browser, derived from the area and difficulty
+    /// IDs (language-independent): "arena"/"warzone" for PvP maps, "fp" for
+    /// 4-player, "nim"/"hm"/"sm" for 8/16.
     pub fn difficulty_tier(&self) -> Option<&'static str> {
+        match pvp_area_kind(self.area_id) {
+            Some(PvpAreaKind::Arena) => return Some("arena"),
+            Some(PvpAreaKind::Warzone) => return Some("warzone"),
+            None => {}
+        }
         let diff = Difficulty::from_difficulty_id(self.difficulty_id)?;
         Some(if diff.group_size() == 4 {
             "fp"

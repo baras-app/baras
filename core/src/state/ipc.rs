@@ -179,6 +179,12 @@ pub struct ParseWorkerOutput {
     /// Instanced-area stays, for the pull history store.
     #[serde(default)]
     pub visits: Vec<baras_types::history::InstanceVisit>,
+    /// Mid-session start, resumed log and final roaming area, for the pull history store.
+    #[serde(default)]
+    pub continuity: baras_types::history::LogContinuity,
+    /// Distinct areas entered, for the pull history store.
+    #[serde(default)]
+    pub areas_seen: Vec<baras_types::history::AreaSeen>,
     /// Elapsed time in milliseconds.
     pub elapsed_ms: u128,
 }

@@ -22,7 +22,7 @@ use baras_types::history::{
     CleanupPlan, CleanupReport, ContentTag, HistoryStatus, LibraryRow, LogStatus, ParselyUpload, PullFilter,
     PullHistoryOverview, PullRow, RunDetail, RunList, RunMeta,
 };
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 
 use super::{AreaVisitInfo, CombatData, LogFileInfo, ServiceCommand, SessionInfo, cleanup};
 use crate::state::MutexExt;
@@ -75,43 +75,49 @@ impl ServiceHandle {
 
     /// Get log file entries for the UI
     pub async fn log_files(&self) -> Vec<LogFileInfo> {
+        let log_dir = PathBuf::from(self.config().await.log_directory);
+        let catalog = self.area_catalog();
         let index = self.shared.directory_index.read().await;
         let area_cache = self.shared.area_cache.read().await;
-        let meta = self.shared.library_meta.locked();
+        let shared = self.shared.clone();
+        tokio::task::block_in_place(|| {
+            let pulls = cleanup::pull_index(&shared, &log_dir);
+            let meta = shared.library_meta.locked();
 
-        index
-            .entries()
-            .into_iter()
-            .map(|e| {
-                // Look up areas from the cache
-                let areas = area_cache.get(&e.path).map(|file_index| {
-                    file_index
-                        .areas
-                        .iter()
-                        .map(|a| AreaVisitInfo {
-                            display: a.display_name(),
-                            area_name: a.area_name.clone(),
-                            difficulty: a.difficulty_name.clone(),
-                            difficulty_tier: a.difficulty_tier(),
-                        })
-                        .collect()
-                });
+            index
+                .entries()
+                .into_iter()
+                .map(|e| {
+                    let facts = pulls.facts_for(&e.filename);
+                    let areas = baras_core::library::log_areas(area_cache.get(&e.path), facts, &catalog).map(|areas| {
+                        areas
+                            .iter()
+                            .map(|a| AreaVisitInfo {
+                                display: a.display_name(),
+                                area_name: a.area_name.clone(),
+                                difficulty: a.difficulty_name.clone(),
+                                difficulty_tier: a.difficulty_tier(),
+                            })
+                            .collect()
+                    });
 
-                LogFileInfo {
-                    path: e.path.clone(),
-                    display_name: e.display_name(),
-                    character_name: e.character_name.clone(),
-                    date: e.formatted_datetime(),
-                    day_of_week: e.day_of_week(),
-                    is_empty: e.is_empty,
-                    file_size: e.file_size,
-                    areas,
-                    parsely: meta
-                        .log(&e.filename)
-                        .and_then(|m| m.parsely.as_ref().map(|p| p.link.clone())),
-                }
-            })
-            .collect()
+                    LogFileInfo {
+                        link: facts.map(|f| f.link()).unwrap_or_default(),
+                        path: e.path.clone(),
+                        display_name: e.display_name(),
+                        character_name: e.character_name.clone(),
+                        date: e.formatted_datetime(),
+                        day_of_week: e.day_of_week(),
+                        is_empty: e.is_empty,
+                        file_size: e.file_size,
+                        areas,
+                        parsely: meta
+                            .log(&e.filename)
+                            .and_then(|m| m.parsely.as_ref().map(|p| p.link.clone())),
+                    }
+                })
+                .collect()
+        })
     }
 
     /// Get total size of all log files in bytes
@@ -129,7 +135,7 @@ impl ServiceHandle {
     /// Dry run of the saved cleanup rules. Nothing is touched.
     pub async fn preview_log_cleanup(&self) -> CleanupPlan {
         let live = cleanup::live_path(&self.shared).await;
-        cleanup::plan(&self.shared, live.as_deref()).await
+        cleanup::plan(&self.shared, &self.app_handle, live.as_deref()).await
     }
 
     /// Archive and delete whatever the saved rules select right now.
@@ -157,6 +163,7 @@ impl ServiceHandle {
         let tailing = self.shared.is_live_tailing.load(std::sync::atomic::Ordering::SeqCst);
         let log_dir = PathBuf::from(self.config().await.log_directory);
         let shared = self.shared.clone();
+        let catalog = self.area_catalog();
         let directory = self.shared.directory_index.read().await;
         let areas = self.shared.area_cache.read().await;
         tokio::task::block_in_place(|| {
@@ -179,8 +186,11 @@ impl ServiceHandle {
                         }
                     };
                     let log_meta = meta.log(&e.filename);
-                    let log_areas = baras_core::library::log_areas(areas.get(&e.path), pulls.visits_for(&e.filename));
+                    let facts = pulls.facts_for(&e.filename);
+                    let log_areas =
+                        baras_core::library::log_areas(areas.get(&e.path), facts, &catalog).unwrap_or_default();
                     LibraryRow {
+                        link: facts.map(|f| f.link()).unwrap_or_default(),
                         content: baras_core::library::content_tags(&log_areas, rows),
                         path: e.path.to_string_lossy().into_owned(),
                         filename: e.filename.clone(),
@@ -222,8 +232,10 @@ impl ServiceHandle {
                     LogStatus::Archived
                 };
                 let log_meta = meta.log(&a.filename);
-                let log_areas = baras_core::library::log_areas(areas.get(&a.path), pulls.visits_for(&a.filename));
+                let facts = pulls.facts_for(&a.filename);
+                let log_areas = baras_core::library::log_areas(areas.get(&a.path), facts, &catalog).unwrap_or_default();
                 rows_out.push(LibraryRow {
+                    link: facts.map(|f| f.link()).unwrap_or_default(),
                     content: baras_core::library::content_tags(&log_areas, rows),
                     path: a.path.to_string_lossy().into_owned(),
                     date: baras_core::context::parse_log_filename(&a.filename)
@@ -709,24 +721,8 @@ impl ServiceHandle {
         }
     }
 
-    /// Definitions are read once per app run; an edited encounter file shows
-    /// up after a restart.
     pub(super) fn area_catalog(&self) -> Arc<baras_core::history::AreaCatalog> {
-        self.shared
-            .area_catalog
-            .get_or_init(|| {
-                let bundled = self
-                    .app_handle
-                    .path()
-                    .resolve("definitions/encounters", tauri::path::BaseDirectory::Resource)
-                    .ok();
-                let user = baras_core::paths::config_dir().map(|p| p.join("definitions").join("encounters"));
-                Arc::new(baras_core::history::AreaCatalog::load(
-                    bundled.as_deref(),
-                    user.as_deref(),
-                ))
-            })
-            .clone()
+        cleanup::area_catalog(&self.shared, &self.app_handle)
     }
 
     /// Backfill pull history for every log in the configured directory

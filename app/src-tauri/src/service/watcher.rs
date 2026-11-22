@@ -1,7 +1,7 @@
 //! Log directory watching and tailing lifecycle
 
 use super::effect_data::clear_uptime_tracking;
-use super::{CombatService, OverlayUpdate, cleanup, directory, process_monitor};
+use super::{CombatService, OverlayUpdate, cleanup, directory, history, process_monitor};
 use baras_core::context::DirectoryIndex;
 use baras_core::directory_watcher;
 use baras_core::directory_watcher::DirectoryWatcher;
@@ -335,7 +335,12 @@ impl CombatService {
             let _ = handle.await;
         }
 
-        *self.shared.session.write().await = None;
+        let ended = self.shared.session.write().await.take();
+        if let Some(session) = ended
+            && self.shared.is_live_tailing.load(Ordering::SeqCst)
+        {
+            history::persist_final(&session).await;
+        }
     }
 
     /// Start monitoring the game process continuously.

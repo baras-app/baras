@@ -1,4 +1,4 @@
-use baras_types::history::{InstanceVisit, TimerStart};
+use baras_types::history::{AreaSeen, InstanceVisit, LogContinuity, TimerStart};
 use chrono::NaiveDateTime;
 
 use crate::combat_log::EntityType;
@@ -47,6 +47,12 @@ pub struct SessionCache {
     pub timer_starts: Vec<TimerStart>,
     /// Instanced-area stays in this log, oldest first (see `InstanceVisit`)
     pub visits: Vec<InstanceVisit>,
+    /// The current area while it is not an instanced visit (see `LogContinuity::roaming`)
+    pub roaming: Option<InstanceVisit>,
+    /// Every distinct area + difficulty entered in this log, in order
+    pub areas_seen: Vec<AreaSeen>,
+    /// The log this one resumed after a crash or disconnect (see `history::AreaResume`)
+    pub resumed_from: Option<String>,
     /// The instance being played. A visit that is not a return to it (a
     /// reset) starts a new encounter section and restarts the run clock.
     lineage: Option<LiveInstance>,
@@ -113,6 +119,9 @@ impl SessionCache {
             timer_start_fired: false,
             timer_starts: Vec::new(),
             visits: Vec::new(),
+            roaming: None,
+            areas_seen: Vec::new(),
+            resumed_from: None,
             lineage: None,
             instance_reset: false,
             seen_npc_instances: HashSet::new(),
@@ -228,6 +237,9 @@ impl SessionCache {
     pub fn observe_npc(&mut self, log_id: i64) {
         let area = &self.current_area;
         if area.difficulty_id == 0 {
+            if let Some(roaming) = self.roaming.as_mut().filter(|r| r.area_id == area.area_id) {
+                roaming.observe_npc(log_id);
+            }
             return;
         }
         let Some(idx) = self
@@ -501,17 +513,50 @@ impl SessionCache {
         });
     }
 
-    /// Open a visit for the instanced area just entered.
-    pub fn begin_visit(&mut self, at: chrono::NaiveDateTime) {
-        self.visits.push(InstanceVisit {
-            area_id: self.current_area.area_id,
-            difficulty_id: self.current_area.difficulty_id,
+    /// Record the area just entered: an instanced one (the entry line
+    /// carrying its difficulty) opens a visit, anything else is roaming.
+    pub fn enter_area(&mut self, at: chrono::NaiveDateTime, instanced: bool) {
+        let area = &self.current_area;
+        let visit = InstanceVisit {
+            area_id: area.area_id,
+            difficulty_id: if instanced { area.difficulty_id } else { 0 },
             entered: at.format("%Y-%m-%dT%H:%M:%S").to_string(),
-            area_name: self.current_area.area_name.clone(),
-            difficulty: self.current_area.difficulty_name.clone(),
-            server: self.current_area.server.clone(),
+            area_name: area.area_name.clone(),
+            difficulty: if instanced {
+                area.difficulty_name.clone()
+            } else {
+                String::new()
+            },
+            server: area.server.clone(),
             ..Default::default()
-        });
+        };
+        if !self
+            .areas_seen
+            .iter()
+            .any(|a| a.area_id == visit.area_id && a.difficulty_id == visit.difficulty_id)
+        {
+            self.areas_seen.push(AreaSeen {
+                area_id: visit.area_id,
+                area_name: visit.area_name.clone(),
+                difficulty_id: visit.difficulty_id,
+                difficulty: visit.difficulty.clone(),
+            });
+        }
+        if instanced {
+            self.roaming = None;
+            self.visits.push(visit);
+        } else {
+            self.roaming = Some(visit);
+        }
+    }
+
+    /// What the pull history records about this log's start and end.
+    pub fn continuity(&self) -> LogContinuity {
+        LogContinuity {
+            mid_start: self.missing_area || self.resumed_from.is_some(),
+            resumed_from: self.resumed_from.clone(),
+            roaming: self.roaming.clone(),
+        }
     }
 
     /// Load boss definitions for the current area.
@@ -617,6 +662,8 @@ impl SessionCache {
             missing_area: self.missing_area,
             timer_starts: self.timer_starts.clone(),
             visits: self.visits.clone(),
+            continuity: self.continuity(),
+            areas_seen: self.areas_seen.clone(),
             elapsed_ms: 0, // Filled in by caller
         }
     }
@@ -661,6 +708,9 @@ impl SessionCache {
         }
         self.timer_starts.extend(output.timer_starts.iter().cloned());
         self.visits.extend(output.visits.iter().cloned());
+        self.roaming.clone_from(&output.continuity.roaming);
+        self.resumed_from.clone_from(&output.continuity.resumed_from);
+        self.areas_seen.clone_from(&output.areas_seen);
         self.restore_lineage();
 
         // Restore generation counter to prevent raid splitting

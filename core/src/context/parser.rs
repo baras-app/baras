@@ -220,7 +220,7 @@ impl ParsingSession {
     /// The entry lines a log resumed after a crash or disconnect never
     /// wrote, once it shows the player is still in the instance the previous
     /// log ended in (see `AreaResume`).
-    fn resumed_entry_events(&mut self, event: &CombatEvent) -> Option<[CombatEvent; 2]> {
+    fn resumed_entry_events(&mut self, event: &CombatEvent) -> Option<(String, [CombatEvent; 2])> {
         if matches!(self.area_resume, Some(None))
             || matches!(
                 event.effect.type_id,
@@ -239,18 +239,20 @@ impl ParsingSession {
                 .as_deref()
                 .and_then(crate::history::AreaResume::for_log)
         });
-        let outcome = resume.as_mut().map(|r| r.entry_events(event))?;
-        match outcome {
-            // Still waiting for the player and an NPC to show up
-            None => None,
-            Some(found) => {
-                self.area_resume = Some(None);
-                if found.is_ok() {
-                    tracing::info!("Log started mid-instance: resumed the previous log's area and player");
-                }
-                found.ok()
-            }
+        let resume = resume.as_mut()?;
+        // None: still waiting for the player and an NPC to show up
+        let found = resume
+            .entry_events(event)?
+            .ok()
+            .map(|e| (resume.previous_log().to_owned(), e));
+        self.area_resume = Some(None);
+        if let Some((previous, _)) = &found {
+            tracing::info!(
+                previous,
+                "Log started mid-session: resumed the previous log's area and player"
+            );
         }
+        found
     }
 
     /// Process a single event through the processor and dispatch signals
@@ -259,12 +261,13 @@ impl ParsingSession {
         // This is read by is_session_stale() and interpolated_game_time().
         self.advance_game_time_anchor(event.timestamp);
 
-        if let Some(entry) = self.resumed_entry_events(&event) {
+        if let Some((previous, entry)) = self.resumed_entry_events(&event) {
             for replayed in entry {
                 self.process_event(replayed);
             }
             if let Some(cache) = &mut self.session_cache {
                 cache.missing_area = false;
+                cache.resumed_from = Some(previous);
             }
         }
 

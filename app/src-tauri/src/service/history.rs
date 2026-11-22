@@ -41,6 +41,8 @@ pub fn build_pull_history(session: &ParsingSession) -> Option<LogHistory> {
         cache.encounter_history.summaries(),
         &cache.timer_starts,
         &cache.visits,
+        cache.continuity(),
+        &cache.areas_seen,
     )
 }
 
@@ -58,6 +60,33 @@ pub async fn persist_pull_history(session: &Arc<RwLock<ParsingSession>>, app: &A
     let history = build_pull_history(&*session.read().await);
     if let Some(history) = history {
         save_in_background(history, app.clone());
+    }
+}
+
+/// Final write for a live session that is being replaced. Awaited, unlike
+/// the per-fight saves: a log that resumes this one after a crash or
+/// disconnect looks up where it ended (`history::AreaResume`), and a fight
+/// cut off mid-pull never produced a `CombatEnded` save of its own.
+pub async fn persist_final(session: &Arc<RwLock<ParsingSession>>) {
+    let history = {
+        let session = session.read().await;
+        let open_pull = session
+            .session_cache
+            .as_ref()
+            .and_then(|c| c.current_encounter())
+            .is_some_and(|e| e.state == baras_core::encounter::EncounterState::InCombat);
+        build_pull_history(&session).map(|mut h| {
+            if open_pull {
+                // The open pull is not recorded: leave the file stale so the next scan adds it
+                h.source_len = 0;
+            }
+            h
+        })
+    };
+    if let Some(history) = history
+        && let Ok(Err(e)) = tokio::task::spawn_blocking(move || history.save()).await
+    {
+        warn!(error = %e, "Failed to persist pull history on session end");
     }
 }
 

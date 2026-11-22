@@ -677,6 +677,7 @@ fn parse_file(
     // them from the previous log's history when it shows the same player
     // in the same instance
     let mut events = events;
+    let mut resumed_from = None;
     if events
         .first()
         .is_some_and(|e| e.effect.type_id != baras_core::game_data::effect_type_id::AREAENTERED)
@@ -687,6 +688,7 @@ fn parse_file(
             .find_map(|e| resume.entry_events(e))
     {
         let (line_number, timestamp) = (events[0].line_number, events[0].timestamp);
+        resumed_from = Some(resume.previous_log().to_owned());
         events.splice(
             0..0,
             entry.map(|e| CombatEvent {
@@ -700,8 +702,9 @@ fn parse_file(
     let event_count = events.len();
 
     // Process events and write encounters (definitions loaded lazily on AreaEntered)
-    let (cache, incomplete_line) =
+    let (mut cache, incomplete_line) =
         process_and_write_encounters(events, output_dir, area_index, user_dir, summary_only)?;
+    cache.resumed_from = resumed_from;
 
     // If there's an incomplete encounter, set end_pos to the byte position of its first line
     // and line_count to match that line number for correct tailing

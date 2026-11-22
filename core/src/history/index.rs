@@ -12,8 +12,8 @@ use std::time::SystemTime;
 use hashbrown::{HashMap, HashSet};
 
 use baras_types::history::{
-    BossNode, HistoryStatus, InstanceVisit, PullFilter, PullHistoryOverview, PullRow, PvpMatchRow, RunSummary,
-    TimerStart, keeps,
+    AreaSeen, BossNode, HistoryStatus, InstanceVisit, LogContinuity, LogLink, PullFilter, PullHistoryOverview, PullRow,
+    PvpMatchRow, RunSummary, TimerStart, keeps,
 };
 
 use super::catalog::AreaCatalog;
@@ -45,6 +45,31 @@ struct IndexedLog {
     pvp: Vec<PvpMatchRow>,
     timer_starts: Vec<TimerStart>,
     visits: Vec<InstanceVisit>,
+    continuity: LogContinuity,
+    areas: Vec<AreaSeen>,
+}
+
+/// What one log's history says about its content and its neighbours.
+#[derive(Clone, Copy)]
+pub struct LogFacts<'a> {
+    /// Every area entered; empty for files written before areas were recorded
+    pub areas: &'a [AreaSeen],
+    /// Instanced visits, including one a resumed log never named with an
+    /// `AreaEntered` line
+    pub visits: &'a [InstanceVisit],
+    pub continuity: &'a LogContinuity,
+    /// Filename of the log that resumed this one after a crash or disconnect
+    pub continued_in: Option<&'a str>,
+}
+
+impl LogFacts<'_> {
+    pub fn link(&self) -> LogLink {
+        LogLink {
+            mid_start: self.continuity.mid_start,
+            resumed_from: self.continuity.resumed_from.clone(),
+            continued_in: self.continued_in.map(str::to_owned),
+        }
+    }
 }
 
 /// What a refresh found that the caller may want to act on.
@@ -58,6 +83,8 @@ pub struct RefreshReport {
 #[derive(Default)]
 pub struct PullIndex {
     logs: HashMap<String, IndexedLog>,
+    /// Resumed log filename -> the log that resumed it (see `LogContinuity::resumed_from`)
+    continued_in: HashMap<String, String>,
 }
 
 impl PullIndex {
@@ -114,6 +141,8 @@ impl PullIndex {
                             pvp,
                             timer_starts: history.timer_starts,
                             visits: history.visits,
+                            continuity: history.continuity,
+                            areas: history.areas,
                         },
                     );
                 }
@@ -123,6 +152,11 @@ impl PullIndex {
             }
         }
         self.logs.retain(|name, _| seen.contains(name));
+        self.continued_in = self
+            .logs
+            .iter()
+            .filter_map(|(name, l)| Some((l.continuity.resumed_from.clone()?, log_file_name(name))))
+            .collect();
         self.backfill_area_ids();
         Ok(report)
     }
@@ -391,12 +425,15 @@ impl PullIndex {
             .map(|l| (l.rows.as_slice(), l.stale))
     }
 
-    /// Instanced visits recorded for one log; these include an area a
-    /// resumed log never named with an `AreaEntered` line.
-    pub fn visits_for(&self, log_filename: &str) -> &[InstanceVisit] {
-        self.logs
-            .get(history_file_name(log_filename).as_str())
-            .map_or(&[], |l| l.visits.as_slice())
+    /// None when the log has no history file.
+    pub fn facts_for(&self, log_filename: &str) -> Option<LogFacts<'_>> {
+        let log = self.logs.get(history_file_name(log_filename).as_str())?;
+        Some(LogFacts {
+            areas: &log.areas,
+            visits: &log.visits,
+            continuity: &log.continuity,
+            continued_in: self.continued_in.get(log_filename).map(String::as_str),
+        })
     }
 
     fn rows(&self) -> impl Iterator<Item = &PullRow> {
@@ -467,6 +504,11 @@ fn tags_of<'a>(pull_tags: &'a HashMap<(&'a str, i64), Vec<String>>, r: &'a PullR
 /// Old store version, or the log (in the directory or the archive) no longer
 /// matches the header. A log that is gone from both is not stale: there is
 /// nothing to re-scan from.
+/// The log filename an index key (`<log stem>.json`) stands for.
+fn log_file_name(history_name: &str) -> String {
+    format!("{}.txt", history_name.strip_suffix(".json").unwrap_or(history_name))
+}
+
 fn is_stale(history: &LogHistory, log_path: &Path) -> bool {
     let header = HistoryHeader {
         character_name: None,

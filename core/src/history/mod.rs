@@ -23,7 +23,7 @@ use crate::encounter::summary::EncounterSummary;
 
 pub use baras_types::history::difficulty_parts;
 pub use catalog::AreaCatalog;
-pub use index::{LogRef, PullIndex, RefreshReport};
+pub use index::{LogFacts, LogRef, PullIndex, RefreshReport};
 pub use lineage::InstanceLineage;
 pub use meta::{LibraryMeta, meta_path, now_iso, pull_key};
 pub use record::{ChallengeLine, PullRecord, RosterLine, start_ms_of};

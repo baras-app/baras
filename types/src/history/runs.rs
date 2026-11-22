@@ -87,6 +87,37 @@ impl InstanceVisit {
     }
 }
 
+/// One distinct `AreaEntered` of a log: the area and the difficulty it was
+/// entered at (0 and empty for open world, and for the first of the two
+/// entry lines an instance logs).
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct AreaSeen {
+    pub area_id: i64,
+    pub area_name: String,
+    #[serde(default)]
+    pub difficulty_id: i64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub difficulty: String,
+}
+
+/// How a log relates to the one before it, and where it left off for the
+/// one after it.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct LogContinuity {
+    /// Started without an `AreaEntered` line: the game resumed logging after
+    /// a crash or disconnect
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub mid_start: bool,
+    /// Filename of the log whose area and player this one resumed
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resumed_from: Option<String>,
+    /// The area the log ended in when that is not an instanced visit (open
+    /// world, fleet, stronghold), with the NPC ids seen there. None while
+    /// inside an instance: the last of `visits` is then where it ended.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub roaming: Option<InstanceVisit>,
+}
+
 /// User-owned per-run metadata, keyed like a pull by `filename#start_ms` of
 /// the run's first pull.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]

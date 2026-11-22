@@ -15,8 +15,9 @@ pub struct AreaVisitInfo {
     pub area_name: String,
     /// Difficulty string (may be empty)
     pub difficulty: String,
-    /// Badge tier derived from the difficulty ID ("fp"/"nim"/"hm"/"sm"),
-    /// language-independent; None if the ID is unknown
+    /// Badge tier derived from the area and difficulty IDs
+    /// ("arena"/"warzone"/"fp"/"nim"/"hm"/"sm"), language-independent; None
+    /// for anything else
     pub difficulty_tier: Option<&'static str>,
 }
 
@@ -34,6 +35,7 @@ pub struct LogFileInfo {
     pub areas: Option<Vec<AreaVisitInfo>>,
     /// Saved Parsely link from a previous upload
     pub parsely: Option<String>,
+    pub link: baras_types::history::LogLink,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]

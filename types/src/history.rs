@@ -15,14 +15,14 @@ use serde::{Deserialize, Serialize};
 
 pub use library::{
     ArchiveReport, CleanupCandidate, CleanupPlan, CleanupReport, ContentTag, DeleteReport, HistoryStatus, LOG_NOTE_MAX,
-    LibraryRow, LogCleanup, LogStatus,
+    LibraryRow, LogCleanup, LogLink, LogStatus,
 };
 pub use meta::{LogMeta, ParselyUpload, PullMeta};
 pub use progress::{BossHpRecord, PhaseRef, PullDeath, PullEnd, PullProgress};
 pub use pvp::{PvpMatchRow, PvpPlayer, PvpRound};
 pub use runs::{
-    InstanceVisit, NPC_COUNTER_SPAN, PlayerSpec, RunBoss, RunDetail, RunList, RunMeta, RunPlayer, RunSummary, RunTimer,
-    TimerStart, difficulty_parts, iso_to_ms, short_difficulty,
+    AreaSeen, InstanceVisit, LogContinuity, NPC_COUNTER_SPAN, PlayerSpec, RunBoss, RunDetail, RunList, RunMeta,
+    RunPlayer, RunSummary, RunTimer, TimerStart, difficulty_parts, iso_to_ms, short_difficulty,
 };
 
 /// One recorded pull, reduced to what the History table shows.
