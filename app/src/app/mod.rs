@@ -1945,7 +1945,7 @@ pub fn App() -> Element {
                                 title: "Close (Esc)",
                                 "data-esc-close": true,
                                 onclick: move |_| file_browser_open.set(false),
-                                "X"
+                                i { class: "fa-solid fa-xmark" }
                             }
                         }
                         div { class: "file-browser-search-wrap",
@@ -2216,7 +2216,8 @@ pub fn App() -> Element {
                                         changelog_open.set(false);
                                     });
                                 },
-                                "X"
+                                title: "Close",
+                                i { class: "fa-solid fa-xmark" }
                             }
                         }
                         div {
@@ -2254,7 +2255,8 @@ pub fn App() -> Element {
                                 class: "btn btn-close",
                                 disabled: screen_capture_starting(),
                                 onclick: move |_| screen_capture_permission_open.set(false),
-                                "X"
+                                title: "Close",
+                                i { class: "fa-solid fa-xmark" }
                             }
                         }
                         div { class: "screen-capture-content",
