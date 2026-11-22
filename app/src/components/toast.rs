@@ -192,11 +192,12 @@ pub fn ToastFrame() -> Element {
                     }
                     button {
                         class: "toast-close",
+                        title: "Dismiss",
                         onclick: {
                             let id = toast.id;
                             move |_| manager.dismiss(id)
                         },
-                        "X"
+                        i { class: "fa-solid fa-xmark" }
                     }
                 }
             }

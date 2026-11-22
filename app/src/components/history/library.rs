@@ -389,7 +389,7 @@ pub fn LibraryTab(
                                         }
                                     }
                                     let msg = if failed == 0 { format!("Restored {} logs", names.len()) } else { format!("Restored {} logs, {failed} failed", names.len() - failed) };
-                                    toast.show(msg, ToastSeverity::Normal);
+                                    toast.show(msg, if failed == 0 { ToastSeverity::Success } else { ToastSeverity::Normal });
                                     selected.set(HashSet::new());
                                     rows.restart();
                                 });
@@ -561,7 +561,7 @@ pub fn LibraryTab(
                                                 title: "Copy file path",
                                                 onclick: move |_| {
                                                     copy_to_clipboard(&copy_path);
-                                                    toast.show("Path copied", ToastSeverity::Normal);
+                                                    toast.show("Path copied", ToastSeverity::Success);
                                                 },
                                                 i { class: "fa-solid fa-copy" }
                                             }
@@ -685,7 +685,7 @@ pub fn LibraryTab(
                                 spawn(async move {
                                     match api::delete_logs(&paths).await {
                                         Ok(r) if r.failed.is_empty() => {
-                                            toast.show(format!("Deleted {}, freed {}", r.deleted, fmt_bytes(r.bytes_freed)), ToastSeverity::Normal);
+                                            toast.show(format!("Deleted {}, freed {}", r.deleted, fmt_bytes(r.bytes_freed)), ToastSeverity::Success);
                                             selected.set(HashSet::new());
                                             rows.restart();
                                             status.restart();
