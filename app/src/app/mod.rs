@@ -171,6 +171,7 @@ pub fn App() -> Element {
             parsely_selected_guild.set(config.parsely.selected_guild);
             // UI preferences - now in unified state
             ui_state.write().data_explorer.show_only_bosses = config.show_only_bosses;
+            ui_state.write().data_explorer.hide_percentiles = config.hide_percentiles;
             ui_state.write().history.filter.flashpoints = config.raid_summaries_include_flashpoints;
             ui_state.write().data_explorer.auto_live = config.data_explorer_auto_live;
             ui_state.write().data_explorer.overview_columns = config.overview_columns.clone();

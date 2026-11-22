@@ -1207,6 +1207,12 @@
 .pct-badge.p100 { color: var(--text-gold); }
 
 /* Why percentiles are missing or old (Parsely unreachable) */
+/* Sidebar "Percentiles" toggle off: the badges and their notes are not drawn */
+.hide-percentiles .pct-badge,
+.hide-percentiles .overview-ratings-note {
+  display: none;
+}
+
 .overview-ratings-note {
   margin: 4px 2px 0;
   font-size: 11px;

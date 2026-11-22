@@ -243,6 +243,8 @@ pub struct DataExplorerState {
     pub show_players_only: bool,
     /// Bosses-only filter in sidebar
     pub show_only_bosses: bool,
+    /// Parsely percentile badges hidden (display only)
+    pub hide_percentiles: bool,
     /// Sort column for ability table
     pub sort_column: SortColumn,
     /// Sort direction
@@ -273,6 +275,7 @@ impl Default for DataExplorerState {
             breakdown_mode: BreakdownMode::ability_only(),
             show_players_only: true,
             show_only_bosses: false,
+            hide_percentiles: false,
             sort_column: SortColumn::default(),
             sort_direction: SortDirection::default(),
             collapsed_sections: std::collections::HashSet::new(),
