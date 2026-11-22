@@ -102,7 +102,7 @@ fn by_discipline(rows: &[DummyRow]) -> Vec<DisciplineLine<'_>> {
             }),
         }
     }
-    out.sort_by(|a, b| b.kills.len().cmp(&a.kills.len()));
+    out.sort_by_key(|d| std::cmp::Reverse(d.kills.len()));
     out
 }
 
