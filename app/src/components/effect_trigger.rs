@@ -205,8 +205,20 @@ pub(crate) fn TriggerAbilitiesEditor(
 ) -> Element {
     let mut new_input = use_signal(String::new);
 
-    let abilities_for_keydown = abilities.clone();
-    let abilities_for_click = abilities.clone();
+    let list = abilities.clone();
+    let mut add = move || {
+        let text = new_input.peek().trim().to_string();
+        if text.is_empty() {
+            return;
+        }
+        let selector = AbilitySelector::from_input(&text);
+        if !list.iter().any(|s| s.display() == selector.display()) {
+            let mut next = list.clone();
+            next.push(selector);
+            on_change.call(next);
+        }
+        new_input.set(String::new());
+    };
 
     rsx! {
         div { class: "chip-box wide",
@@ -242,33 +254,17 @@ pub(crate) fn TriggerAbilitiesEditor(
                     placeholder: "Ability ID or Name (Enter)",
                     value: "{new_input}",
                     oninput: move |e| new_input.set(e.value()),
-                    onkeydown: move |e| {
-                        if e.key() == Key::Enter && !new_input().trim().is_empty() {
-                            let selector = AbilitySelector::from_input(&new_input());
-                            let mut new_abs = abilities_for_keydown.clone();
-                            if !new_abs.iter().any(|s| s.display() == selector.display()) {
-                                new_abs.push(selector);
-                                on_change.call(new_abs);
-                            }
-                            new_input.set(String::new());
-                        }
-                    }
-                }
-                button {
-                    class: "btn btn-sm",
-                    onclick: move |_| {
-                        if !new_input().trim().is_empty() {
-                            let selector = AbilitySelector::from_input(&new_input());
-                            let mut new_abs = abilities_for_click.clone();
-                            if !new_abs.iter().any(|s| s.display() == selector.display()) {
-                                new_abs.push(selector);
-                                on_change.call(new_abs);
-                            }
-                            new_input.set(String::new());
-                        }
+                    onkeydown: {
+                        let mut add = add.clone();
+                        move |e| if e.key() == Key::Enter { add() }
                     },
-                    "Add"
+                    // A typed value counts without Enter: Save would otherwise drop it
+                    onblur: {
+                        let mut add = add.clone();
+                        move |_| add()
+                    },
                 }
+                button { class: "btn btn-sm", onclick: move |_| add(), "Add" }
             }
         }
     }
@@ -307,8 +303,20 @@ pub(crate) fn RefreshAbilitiesEditor(
 ) -> Element {
     let mut new_input = use_signal(String::new);
 
-    let abilities_for_keydown = abilities.clone();
-    let abilities_for_click = abilities.clone();
+    let list = abilities.clone();
+    let mut add = move || {
+        let text = new_input.peek().trim().to_string();
+        if text.is_empty() {
+            return;
+        }
+        let selector = AbilitySelector::from_input(&text);
+        if !list.iter().any(|r| r.ability().display() == selector.display()) {
+            let mut next = list.clone();
+            next.push(RefreshAbility::Simple(selector));
+            on_change.call(next);
+        }
+        new_input.set(String::new());
+    };
 
     rsx! {
         div { class: "chip-box wide",
@@ -459,33 +467,17 @@ pub(crate) fn RefreshAbilitiesEditor(
                     placeholder: "Ability ID or Name (Enter)",
                     value: "{new_input}",
                     oninput: move |e| new_input.set(e.value()),
-                    onkeydown: move |e| {
-                        if e.key() == Key::Enter && !new_input().trim().is_empty() {
-                            let selector = AbilitySelector::from_input(&new_input());
-                            let mut next = abilities_for_keydown.clone();
-                            if !next.iter().any(|r| r.ability().display() == selector.display()) {
-                                next.push(RefreshAbility::Simple(selector));
-                                on_change.call(next);
-                            }
-                            new_input.set(String::new());
-                        }
-                    }
-                }
-                button {
-                    class: "btn btn-sm",
-                    onclick: move |_| {
-                        if !new_input().trim().is_empty() {
-                            let selector = AbilitySelector::from_input(&new_input());
-                            let mut next = abilities_for_click.clone();
-                            if !next.iter().any(|r| r.ability().display() == selector.display()) {
-                                next.push(RefreshAbility::Simple(selector));
-                                on_change.call(next);
-                            }
-                            new_input.set(String::new());
-                        }
+                    onkeydown: {
+                        let mut add = add.clone();
+                        move |e| if e.key() == Key::Enter { add() }
                     },
-                    "Add"
+                    // A typed value counts without Enter: Save would otherwise drop it
+                    onblur: {
+                        let mut add = add.clone();
+                        move |_| add()
+                    },
                 }
+                button { class: "btn btn-sm", onclick: move |_| add(), "Add" }
             }
         }
     }
