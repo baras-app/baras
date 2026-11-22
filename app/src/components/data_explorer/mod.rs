@@ -79,7 +79,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
     let eu = *use_memo(move || shared.read().european_number_format).read();
 
     rsx! {
-        div { class: "data-explorer",
+        div { class: if ctx.state.read().data_explorer.hide_percentiles { "data-explorer hide-percentiles" } else { "data-explorer" },
             // Sidebar with encounter list
             {encounter_sidebar(ctx)}
 

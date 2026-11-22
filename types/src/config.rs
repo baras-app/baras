@@ -144,6 +144,9 @@ pub struct AppConfig {
     pub audio: AudioSettings,
     #[serde(default)]
     pub show_only_bosses: bool,
+    /// Hide Parsely percentile badges in the Data Explorer (display only)
+    #[serde(default)]
+    pub hide_percentiles: bool,
 
     /// Show ability/entity IDs in the combat log.
     #[serde(default)]
@@ -259,6 +262,7 @@ impl AppConfig {
             parsely: ParselySettings::default(),
             audio: AudioSettings::default(),
             show_only_bosses: false,
+            hide_percentiles: false,
             show_log_ids: false,
             hide_small_log_files: true,
             alacrity_percent: 0.0,
