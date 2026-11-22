@@ -19,10 +19,11 @@ on:
         description: "Build macOS artifacts"
         type: boolean
         default: true
-      discord_preview:
-        description: "Only preview the Discord announcement in the draft channel (no build)"
-        type: boolean
-        default: false
+      announce_only:
+        description: "Build nothing, only post the current version's Discord announcement"
+        type: choice
+        options: ["no", "draft channel", "release channel"]
+        default: "no"
 
 # One release at a time; plain builds never queue behind each other.
 concurrency:
@@ -43,7 +44,7 @@ jobs:
   # opens the draft release every build job uploads into.
   # ───────────────────────────────────────────────────────────────────────────
   preflight:
-    if: ${{ !inputs.discord_preview }}
+    if: ${{ inputs.announce_only == 'no' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -341,18 +342,29 @@ jobs:
         run: .github/scripts/discord-announce.sh
 
   # ───────────────────────────────────────────────────────────────────────────
-  # Posts the current version's announcement to the private draft channel and
-  # builds nothing, to see how a changelog will look before releasing it.
+  # Builds nothing and posts the current version's announcement: to the private
+  # draft channel to see how a changelog will look, or to the release channel
+  # to announce (or re-announce) a version that is already published.
   # ───────────────────────────────────────────────────────────────────────────
-  discord-preview:
-    if: ${{ inputs.discord_preview }}
+  announce-only:
+    if: ${{ inputs.announce_only != 'no' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_CHANNEL: ${{ inputs.announce_only == 'release channel' }}
+      WEBHOOK: ${{ inputs.announce_only == 'release channel' && secrets.DISCORD_RELEASE_WEBHOOK || secrets.DISCORD_DRAFT_WEBHOOK }}
     steps:
       - uses: actions/checkout@v5
 
-      - name: Post to the draft channel
-        env:
-          WEBHOOK: ${{ secrets.DISCORD_DRAFT_WEBHOOK }}
+      - name: Post announcement
         run: |
-          VERSION=$(jq -r '.version' app/src-tauri/tauri.conf.json) .github/scripts/discord-announce.sh
+          set -euo pipefail
+          export VERSION=$(jq -r '.version' app/src-tauri/tauri.conf.json)
+          # The public channel only hears about versions people can download
+          if [[ "$RELEASE_CHANNEL" == true
+            && "$(gh release view "v$VERSION" --json isDraft --jq '.isDraft' 2> /dev/null)" != false ]]; then
+            echo "::error::v$VERSION has no published release to announce"
+            exit 1
+          fi
+          .github/scripts/discord-announce.sh
