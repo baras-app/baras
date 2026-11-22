@@ -252,7 +252,10 @@ impl LogLink {
         if let Some(from) = &self.resumed_from {
             tags.push((
                 "← D/C",
-                format!("Resumed after a crash or disconnect: continues the log from {}", log_time(from)),
+                format!(
+                    "Resumed after a crash or disconnect: continues the log from {}",
+                    log_time(from)
+                ),
             ));
         } else if self.mid_start {
             tags.push((
@@ -264,7 +267,10 @@ impl LogLink {
         if let Some(next) = &self.continued_in {
             tags.push((
                 "D/C →",
-                format!("Cut off by a crash or disconnect: continued in the log from {}", log_time(next)),
+                format!(
+                    "Cut off by a crash or disconnect: continued in the log from {}",
+                    log_time(next)
+                ),
             ));
         }
         tags

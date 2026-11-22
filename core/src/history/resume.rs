@@ -56,9 +56,10 @@ impl AreaResume {
         let history = LogHistory::load(&dir.join(previous)).ok()?.history;
         let unrecorded_between = std::fs::read_dir(log_path.parent()?).ok()?.any(|e| {
             e.is_ok_and(|e| {
-                e.file_name().to_str().is_some_and(|n| {
-                    n.starts_with("combat_") && n > history.filename.as_str() && n < log_name
-                }) && e.metadata().is_ok_and(|m| m.len() > 0)
+                e.file_name()
+                    .to_str()
+                    .is_some_and(|n| n.starts_with("combat_") && n > history.filename.as_str() && n < log_name)
+                    && e.metadata().is_ok_and(|m| m.len() > 0)
             })
         });
         if unrecorded_between {

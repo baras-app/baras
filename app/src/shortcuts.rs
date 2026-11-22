@@ -93,7 +93,9 @@ pub fn use_app_shortcuts(ui_state: Signal<UiSessionState>) {
                 }
                 key @ ("ArrowUp" | "ArrowDown") => {
                     let rows = visible_all(&doc, ENCOUNTERS);
-                    let selected = rows.iter().position(|el| el.class_name().split_whitespace().any(|c| c == "selected"));
+                    let selected = rows
+                        .iter()
+                        .position(|el| el.class_name().split_whitespace().any(|c| c == "selected"));
                     let next = match (selected, key) {
                         (Some(i), "ArrowUp") => i.checked_sub(1),
                         (Some(i), _) => Some(i + 1),

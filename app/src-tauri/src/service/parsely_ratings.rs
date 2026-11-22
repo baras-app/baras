@@ -62,7 +62,9 @@ struct Counts {
 impl Meta {
     /// Parses behind a discipline's percentiles: its own plus its mirror's
     fn count(&self, key: &str) -> u32 {
-        key.split(',').filter_map(|slug| self.counts.disciplines.get(slug)).sum()
+        key.split(',')
+            .filter_map(|slug| self.counts.disciplines.get(slug))
+            .sum()
     }
 }
 
@@ -196,7 +198,10 @@ async fn fetch(path: &str) -> Result<RatingTable, FetchError> {
         .map_err(unreachable)?;
 
     if bytes.len() > MAX_BODY_BYTES {
-        return Err(FetchError::Rejected(format!("response too large ({} bytes)", bytes.len())));
+        return Err(FetchError::Rejected(format!(
+            "response too large ({} bytes)",
+            bytes.len()
+        )));
     }
     if let Ok(e) = serde_json::from_slice::<ApiError>(&bytes)
         && e.status == "error"
@@ -406,18 +411,18 @@ impl ServiceHandle {
     ///
     /// With `local_only` the network is never touched and None means the
     /// table has to be downloaded first.
-    pub async fn parsely_percentiles(
-        &self,
-        encounter_idx: u32,
-        local_only: bool,
-    ) -> Option<EncounterRatings> {
+    pub async fn parsely_percentiles(&self, encounter_idx: u32, local_only: bool) -> Option<EncounterRatings> {
         // Copy what the lookup needs so the session lock isn't held over a fetch
         let (path, area_paths, players) = {
             let session_guard = self.shared.session.read().await;
             let session = session_guard.as_ref()?.read().await;
             let summaries = session.session_cache.as_ref()?.encounter_history.summaries();
             let summary = summaries.iter().find(|s| s.encounter_id == encounter_idx as u64)?;
-            let Some(path) = summary.parsely_rating.clone().filter(|_| summary.success && !summary.partial) else {
+            let Some(path) = summary
+                .parsely_rating
+                .clone()
+                .filter(|_| summary.success && !summary.partial)
+            else {
                 return Some(EncounterRatings::default());
             };
             // Every rated boss pulled in this area, so tabbing between them stays in memory

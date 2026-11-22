@@ -992,7 +992,9 @@ pub async fn delete_boss(boss_id: &str, file_path: &str) -> Result<(), String> {
 
 /// Delete a user-created area file
 pub async fn delete_area(file_path: &str) -> Result<(), String> {
-    try_invoke("delete_area", build_args("filePath", file_path)).await.map(|_| ())
+    try_invoke("delete_area", build_args("filePath", file_path))
+        .await
+        .map(|_| ())
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1299,7 +1301,9 @@ pub async fn pick_audio_file() -> Option<String> {
 
 /// Preview (play) a sound file so the user can hear it in the editor
 pub async fn preview_sound(filename: &str) -> Result<(), String> {
-    try_invoke("preview_sound", build_args("filename", filename)).await.map(|_| ())
+    try_invoke("preview_sound", build_args("filename", filename))
+        .await
+        .map(|_| ())
 }
 
 /// Show an unsaved timer/effect draft on its overlays; returns overlays that are not enabled
@@ -1340,8 +1344,8 @@ pub async fn install_update() -> Result<(), String> {
 pub use baras_types::{
     AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow,
     CombatLogSortColumn, DamageTakenSummary, DataTab, DeathRecap, DeathRecapEventKind, EffectChartData,
-    EffectUptimeCell, EffectWindow, EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries,
-    GroupedEntityNames, HpPoint, NpcHealthRow, NpcSpawn, PhaseSegment, EncounterRatings, PlayerDeath, PvpFaction, RaidOverviewRow,
+    EffectUptimeCell, EffectWindow, EncounterRatings, EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries,
+    GroupedEntityNames, HpPoint, NpcHealthRow, NpcSpawn, PhaseSegment, PlayerDeath, PvpFaction, RaidOverviewRow,
     RotationAnalysis, SortDirection, TimeRange, TimeSeriesPoint,
 };
 

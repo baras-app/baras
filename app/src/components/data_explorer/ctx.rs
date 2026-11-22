@@ -9,8 +9,8 @@ use std::collections::{HashMap, HashSet};
 use super::derived::{self, AreaSections};
 use super::grouping::{AbilityGroups, group_abilities};
 use crate::api::{
-    self, AbilityBreakdown, BreakdownMode, DamageTakenSummary, EncounterTimeline, EntityBreakdown, NpcHealthRow,
-    EncounterRatings, PlayerDeath, RaidOverviewRow, TimeRange,
+    self, AbilityBreakdown, BreakdownMode, DamageTakenSummary, EncounterRatings, EncounterTimeline, EntityBreakdown,
+    NpcHealthRow, PlayerDeath, RaidOverviewRow, TimeRange,
 };
 use crate::components::encounter_types::EncounterSummary;
 use crate::types::{CombatLogSessionState, SortColumn, SortDirection, UiSessionState, UsageSortColumn, ViewMode};

@@ -82,7 +82,20 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
     // Rated columns reserve a slot after the value for the percentile
     let has_pct = !props.percentiles.is_empty();
     let rated = |id: OverviewColumn| {
-        if has_pct && rating(id, &RatingPercentiles { dps: 1, boss_dps: 1, hps: 1, ehps: 1, dtps: 1, apm: 1, count: 0 }) > 0 {
+        if has_pct
+            && rating(
+                id,
+                &RatingPercentiles {
+                    dps: 1,
+                    boss_dps: 1,
+                    hps: 1,
+                    ehps: 1,
+                    dtps: 1,
+                    apm: 1,
+                    count: 0,
+                },
+            ) > 0
+        {
             "rated"
         } else {
             ""
