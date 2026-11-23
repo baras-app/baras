@@ -1,4 +1,5 @@
-//! Effect ID → raid debuff, generated from data/effect_data.csv.
+//! Effect ID → raid debuff (from data/effect_data.csv), and the disciplines
+//! that apply each debuff (from data/raid_debuff_disciplines.csv).
 
 use baras_types::RaidDebuff;
 

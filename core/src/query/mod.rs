@@ -38,13 +38,13 @@ use column_helpers::*;
 
 // Re-export query types from shared types crate
 pub use baras_types::{
-    AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch,
-    CombatLogRow, CombatLogSortColumn, DamageTakenSummary, DataTab, DeathRecap, DeathRecapDamageRow,
-    DeathRecapDamageSource, DeathRecapDefensive, DeathRecapEffect, DeathRecapEvent, DeathRecapEventKind,
-    DeathRecapHealRow, DeathRecapHealSource, DeathRecapHpPoint, DeathRecapKillingBlow, EffectChartData,
-    EffectUptimeCell, EffectWindow, EncounterTimeline, EntityBreakdown, GcdSlot, GroupMetric, GroupTimeSeries,
-    GroupedEntityNames, HpPoint, NpcHealthRow, PhaseSegment, PlayerDeath, RaidDebuffTarget, RaidOverviewRow,
-    RotationAnalysis, RotationCycle, RotationEvent, SortDirection, ThreatReport, TimeRange, TimeSeriesPoint,
+    AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow,
+    CombatLogSortColumn, DamageTakenSummary, DataTab, DeathRecap, DeathRecapDamageRow, DeathRecapDamageSource,
+    DeathRecapDefensive, DeathRecapEffect, DeathRecapEvent, DeathRecapEventKind, DeathRecapHealRow,
+    DeathRecapHealSource, DeathRecapHpPoint, DeathRecapKillingBlow, EffectChartData, EffectUptimeCell, EffectWindow,
+    EncounterTimeline, EntityBreakdown, GcdSlot, GroupMetric, GroupTimeSeries, GroupedEntityNames, HpPoint,
+    NpcHealthRow, PhaseSegment, PlayerDeath, RaidDebuffReport, RaidOverviewRow, RotationAnalysis, RotationCycle,
+    RotationEvent, SortDirection, ThreatReport, TimeRange, TimeSeriesPoint,
 };
 
 /// Escape single quotes for SQL string literals (O'Brien -> O''Brien)

@@ -3874,3 +3874,32 @@ button.aggro-key:hover {
 .analysis-note.emph {
   color: var(--text-primary);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Raid Debuffs: who brought each debuff, and damage landed without it
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.debuff-coverage th.debuff-col {
+  width: 12rem;
+}
+
+.debuff-coverage td {
+  vertical-align: top;
+}
+
+.debuff-coverage td.debuff-players {
+  white-space: normal;
+}
+
+.debuff-players > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-right: 14px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.debuff-coverage tr.debuff-absent .name-text {
+  color: var(--text-muted);
+}

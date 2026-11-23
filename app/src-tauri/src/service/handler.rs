@@ -15,8 +15,8 @@ use baras_core::history::{now_iso, start_ms_of};
 use baras_core::query::{
     AbilityBreakdown, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow, CombatLogSortColumn,
     DamageTakenSummary, DataTab, EffectChartData, EffectUptimeCell, EffectWindow, EncounterTimeline, EntityBreakdown,
-    GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath, RaidDebuffTarget, ThreatReport, RaidOverviewRow, SortDirection, TimeRange,
-    TimeSeriesPoint,
+    GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath, RaidDebuffReport, RaidOverviewRow, SortDirection,
+    ThreatReport, TimeRange, TimeSeriesPoint,
 };
 use baras_types::history::{
     CleanupPlan, CleanupReport, ContentTag, HistoryStatus, LibraryRow, LogStatus, ParselyUpload, PullFilter,
@@ -1083,8 +1083,11 @@ impl ServiceHandle {
         let session = session.read().await;
 
         // Build discipline map - source depends on live vs historical query
-        let mut player_discipline_map: std::collections::HashMap<String, (String, String, String, String)> =
-            std::collections::HashMap::new();
+        // name → (class, discipline name, class icon, role icon, discipline GUID)
+        let mut player_discipline_map: std::collections::HashMap<
+            String,
+            (String, String, String, String, Option<i64>),
+        > = std::collections::HashMap::new();
 
         // PvP encounters get friend/enemy faction classification
         let mut is_pvp = false;
@@ -1109,6 +1112,7 @@ impl ServiceHandle {
                                 pm.discipline_name.clone().unwrap_or_default(),
                                 class_icon.clone(),
                                 role_icon.clone(),
+                                pm.discipline.map(Discipline::guid),
                             ),
                         );
                     }
@@ -1135,7 +1139,8 @@ impl ServiceHandle {
                         let role_icon = disc.role().icon_name().to_string();
                         let discipline_name = disc.name().to_string();
                         let class_name = format!("{:?}", disc.class());
-                        player_discipline_map.insert(name, (class_name, discipline_name, class_icon, role_icon));
+                        let guid = Some(p.discipline_id);
+                        player_discipline_map.insert(name, (class_name, discipline_name, class_icon, role_icon, guid));
                     }
                 }
             }
@@ -1155,9 +1160,12 @@ impl ServiceHandle {
 
         // Enrich results with discipline info
         for row in &mut results {
-            if let Some((class_name, discipline_name, class_icon, role_icon)) = player_discipline_map.get(&row.name) {
+            if let Some((class_name, discipline_name, class_icon, role_icon, guid)) =
+                player_discipline_map.get(&row.name)
+            {
                 row.class_name = Some(class_name.clone());
                 row.discipline_name = Some(discipline_name.clone());
+                row.discipline_id = *guid;
                 row.class_icon = Some(class_icon.clone());
                 row.role_icon = Some(role_icon.clone());
             }
@@ -1226,7 +1234,7 @@ impl ServiceHandle {
         &self,
         encounter_idx: Option<u32>,
         time_range: Option<TimeRange>,
-    ) -> Result<Vec<RaidDebuffTarget>, String> {
+    ) -> Result<RaidDebuffReport, String> {
         self.register_encounter(encounter_idx).await?;
         self.shared
             .query_context

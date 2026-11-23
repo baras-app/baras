@@ -43,6 +43,7 @@ pub mod overview_columns;
 pub mod overview_table;
 pub mod parsely_upload_modal;
 pub mod phase_timeline;
+pub mod raid_debuff_coverage;
 pub mod raid_debuffs;
 pub mod rotation_view;
 pub mod session_settings;

@@ -176,6 +176,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                             encounter_idx: shown_encounter(),
                             time_range: time_range(),
                             duration_secs: ctx.timeline.read().as_ref().map_or(0.0, |t| t.duration_secs),
+                            overview: ctx.overview_data,
                             state: ctx.enemy_views,
                             european: eu,
                         }

@@ -6,13 +6,13 @@
 
 use std::collections::HashMap;
 
-use baras_types::{RaidDebuff, RaidDebuffCell, RaidDebuffSource, RaidDebuffTarget};
+use baras_types::{RaidDebuff, RaidDebuffCell, RaidDebuffReport, RaidDebuffSource, RaidDebuffTarget, RaidDebuffWorth};
 
 use super::effects::{APPLY_EFFECT, REMOVE_EFFECT};
 use super::enemies::FROM_GROUP;
 use super::uptime::merge;
 use super::*;
-use crate::game_data::RAID_DEBUFFS;
+use crate::game_data::{ATTACK_TYPES, RAID_DEBUFF_DISCIPLINES, RAID_DEBUFFS};
 
 #[derive(Default)]
 struct Row {
@@ -21,10 +21,12 @@ struct Row {
     windows: HashMap<RaidDebuff, Vec<(f32, f32)>>,
     /// (debuff, source, ability) → (ability name, applications)
     sources: HashMap<(RaidDebuff, String, i64), (String, u32)>,
+    /// debuff → (damage of the kind it raises, the part that landed without it)
+    worth: HashMap<RaidDebuff, (f64, f64)>,
 }
 
 impl EncounterQuery<'_> {
-    pub async fn raid_debuffs(&self, time_range: Option<&TimeRange>) -> Result<Vec<RaidDebuffTarget>, String> {
+    pub async fn raid_debuffs(&self, time_range: Option<&TimeRange>) -> Result<RaidDebuffReport, String> {
         let (start, end) = time_range.map_or((0.0, f32::MAX), |tr| (tr.start, tr.end));
         // enemy instance → (its row's label, the part of the range it was fought in)
         let mut present: HashMap<i64, (String, f32, f32)> = HashMap::new();
@@ -93,6 +95,48 @@ impl EncounterQuery<'_> {
             }
         }
 
+        for row in rows.values_mut() {
+            for windows in row.windows.values_mut() {
+                *windows = merge(windows, start, end);
+            }
+        }
+
+        // Each hit on an enemy counts toward the debuffs that raise its kind
+        let range = time_range
+            .map(|tr| format!("AND {}", tr.sql_filter()))
+            .unwrap_or_default();
+        let batches = self
+            .sql(&format!(
+                "SELECT target_id, CAST(combat_time_secs AS REAL), CAST(dmg_amount AS DOUBLE), dmg_type_id, ability_id
+                 FROM events
+                 WHERE {FROM_GROUP} AND dmg_amount > 0 AND combat_time_secs >= 0 {range}"
+            ))
+            .await?;
+        for batch in &batches {
+            let (targets, times, amounts) = (col_i64(batch, 0)?, col_f32(batch, 1)?, col_f64(batch, 2)?);
+            let (dmg_types, abilities) = (col_i64(batch, 3)?, col_i64(batch, 4)?);
+            for i in 0..batch.num_rows() {
+                let Some(row) = present.get(&targets[i]).and_then(|p| rows.get_mut(&p.0)) else {
+                    continue;
+                };
+                let attack_type = ATTACK_TYPES.get(&abilities[i]).copied().unwrap_or("");
+                for debuff in RaidDebuff::ALL {
+                    if !debuff.raises(attack_type, dmg_types[i]) {
+                        continue;
+                    }
+                    let up = row.windows.get(&debuff).is_some_and(|w| {
+                        let next = w.partition_point(|(a, _)| *a <= times[i]);
+                        next > 0 && times[i] < w[next - 1].1
+                    });
+                    let worth = row.worth.entry(debuff).or_default();
+                    worth.0 += amounts[i];
+                    if !up {
+                        worth.1 += amounts[i];
+                    }
+                }
+            }
+        }
+
         let mut out: Vec<RaidDebuffTarget> = rows
             .into_iter()
             .map(|(name, mut row)| {
@@ -100,7 +144,7 @@ impl EncounterQuery<'_> {
                 let cells = RaidDebuff::ALL
                     .into_iter()
                     .filter_map(|debuff| {
-                        let windows = merge(row.windows.get_mut(&debuff)?, start, end);
+                        let windows = row.windows.remove(&debuff)?;
                         let covered: f32 = windows.iter().map(|(a, b)| b - a).sum();
                         let mut sources: Vec<RaidDebuffSource> = row
                             .sources
@@ -122,11 +166,23 @@ impl EncounterQuery<'_> {
                         })
                     })
                     .collect();
+                let worth = RaidDebuff::ALL
+                    .into_iter()
+                    .filter_map(|debuff| {
+                        let (affected_dmg, unbuffed_dmg) = *row.worth.get(&debuff)?;
+                        Some(RaidDebuffWorth {
+                            debuff,
+                            affected_dmg,
+                            unbuffed_dmg,
+                        })
+                    })
+                    .collect();
                 RaidDebuffTarget {
                     name,
                     is_boss: row.is_boss,
                     present_secs,
                     cells,
+                    worth,
                 }
             })
             .collect();
@@ -135,6 +191,10 @@ impl EncounterQuery<'_> {
                 .cmp(&a.is_boss)
                 .then(b.present_secs.total_cmp(&a.present_secs))
         });
-        Ok(out)
+        let able = RAID_DEBUFF_DISCIPLINES
+            .iter()
+            .map(|(debuff, guids)| (*debuff, guids.to_vec()))
+            .collect();
+        Ok(RaidDebuffReport { targets: out, able })
     }
 }
