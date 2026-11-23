@@ -41,6 +41,8 @@ use challenges::ChallengesTab;
 use combat_time::CombatTimeTab;
 use cooldowns::{CooldownGroup, CooldownsTab};
 use dot_tracker::DotTrackerTab;
+use draft::ProfileSwitchGuard;
+pub use draft::use_profile_switch_guard;
 use draft::use_settings_draft;
 use effects::{EffectsGroup, EffectsTab};
 use enemy_frames::EnemyFramesTab;
@@ -138,11 +140,16 @@ pub fn SettingsPanel(
     /// Another tab is open: stay mounted but hidden
     #[props(default)]
     parked: bool,
+    /// "Keep editing" on the leave prompt: back to the Overlays page
+    on_return: EventHandler<()>,
+    profile_guard: ProfileSwitchGuard,
 ) -> Element {
     let draft = use_settings_draft(settings);
+    use_effect(move || profile_guard.set_dirty(draft.has_changes()));
     // The panel outlives the Overlays page (parked while another tab is open), so
     // unsaved edits keep previewing; dropping it puts the overlays back to the saved settings
     use_drop(move || {
+        profile_guard.set_dirty(false);
         if draft.abandon() {
             wasm_bindgen_futures::spawn_local(async {
                 api::refresh_overlay_settings().await;
@@ -208,6 +215,7 @@ pub fn SettingsPanel(
 
                 if let Err(err) = api::update_config(&config).await {
                     draft.set_status(format!("Failed to save: {}", err));
+                    false
                 } else {
                     api::refresh_overlay_settings().await;
                     // Use the merged config (draft appearance + backend positions/enabled/
@@ -216,9 +224,30 @@ pub fn SettingsPanel(
                     settings.set(config.overlay_settings.clone());
                     draft.set_status("Settings saved!".to_string());
                     on_settings_saved.call(());
+                    true
                 }
+            } else {
+                false
             }
         }
+    };
+
+    // Footer and leave prompt: drop the edits and put the overlays back as saved
+    let discard = move |_| {
+        draft.replace(settings());
+        spawn(async move {
+            api::refresh_overlay_settings().await;
+        });
+    };
+    // Says where the changes go
+    let save_label = match active_profile() {
+        Some(profile) if draft.has_changes() => format!("Save to '{profile}'"),
+        _ => "Save".to_string(),
+    };
+    // The prompts' buttons stay short, so their text names the profile
+    let save_hint = match active_profile() {
+        Some(profile) => format!("Saving writes them to '{profile}'."),
+        None => String::new(),
     };
 
     // Sits beside each overlay tab's style reset
@@ -250,6 +279,7 @@ pub fn SettingsPanel(
                 active_profile,
                 overlays_enabled,
                 overlays_visible,
+                profile_guard,
             }
         },
         SettingsSection::Global => rsx! { GlobalTab { draft } },
@@ -351,28 +381,71 @@ pub fn SettingsPanel(
                 button {
                     class: if draft.has_changes() { "btn btn-save btn-unsaved" } else { "btn btn-save" },
                     disabled: !draft.has_changes(),
-                    onclick: move |_| save_to_backend(),
-                    // Says where the changes go; the highlight is the unsaved marker
-                    {
-                        match active_profile() {
-                            Some(profile) if draft.has_changes() => format!("Save to '{profile}'"),
-                            _ => "Save".to_string(),
-                        }
-                    }
+                    onclick: move |_| async move { save_to_backend().await; },
+                    // The highlight is the unsaved marker
+                    "{save_label}"
                 }
                 if draft.has_changes() {
                     button {
                         class: "btn",
                         title: "Drop the unsaved style changes and put the overlays back as saved",
-                        onclick: move |_| {
-                            draft.replace(settings());
-                            spawn(async move { api::refresh_overlay_settings().await; });
-                        },
+                        onclick: discard,
                         "Discard"
                     }
                 }
                 if !draft.status().is_empty() {
                     span { class: "save-status", "{draft.status()}" }
+                }
+            }
+        }
+
+        // A profile switch would replace the draft: settle it first. The switch
+        // reloads the overlays itself, so Discard skips the refresh
+        if profile_guard.is_pending() {
+            div { class: "modal-overlay",
+                div { class: "modal-content discard-prompt",
+                    div { class: "modal-header", h3 { "Unsaved overlay changes" } }
+                    p { "Switching profiles replaces your unsaved overlay style edits. {save_hint}" }
+                    if !draft.status().is_empty() {
+                        p { class: "save-status", "{draft.status()}" }
+                    }
+                    div { class: "modal-footer",
+                        button { class: "btn btn-sm", onclick: move |_| { profile_guard.take(); }, "Cancel" }
+                        button {
+                            class: "btn btn-danger btn-sm",
+                            onclick: move |_| {
+                                draft.replace(settings());
+                                if let Some(switch) = profile_guard.take() { switch.call(()); }
+                            },
+                            "Discard"
+                        }
+                        button {
+                            class: "btn btn-save btn-sm",
+                            onclick: move |_| async move {
+                                if save_to_backend().await && let Some(switch) = profile_guard.take() {
+                                    switch.call(());
+                                }
+                            },
+                            "Save and switch"
+                        }
+                    }
+                }
+            }
+        } else if parked && draft.has_changes() {
+            // Left the page mid-edit: settle the draft instead of leaving it
+            // previewing out of sight. Outside the parked (hidden) section
+            div { class: "modal-overlay",
+                div { class: "modal-content discard-prompt",
+                    div { class: "modal-header", h3 { "Unsaved overlay changes" } }
+                    p { "Your overlay style edits are previewing but have not been saved. {save_hint}" }
+                    if !draft.status().is_empty() {
+                        p { class: "save-status", "{draft.status()}" }
+                    }
+                    div { class: "modal-footer",
+                        button { class: "btn btn-sm", onclick: move |_| on_return.call(()), "Keep editing" }
+                        button { class: "btn btn-danger btn-sm", onclick: discard, "Discard" }
+                        button { class: "btn btn-save btn-sm", onclick: move |_| async move { save_to_backend().await; }, "Save" }
+                    }
                 }
             }
         }
