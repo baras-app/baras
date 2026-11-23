@@ -110,7 +110,11 @@ pub fn EffectUptimeView(
         .map(|c| {
             let by_target = picked.is_none();
             UptimeLane {
-                label: if by_target { c.target_name.clone() } else { display_name(c.effect_id, &c.effect_name).to_string() },
+                label: if by_target {
+                    c.target_name.clone()
+                } else {
+                    display_name(c.effect_id, &c.effect_name).to_string()
+                },
                 muted: by_target && c.target_type == "Npc",
                 icon: (!by_target).then(|| (display_id(c.effect_id), (c.ability_id != 0).then_some(c.ability_id))),
                 uptime_pct: c.uptime_pct,

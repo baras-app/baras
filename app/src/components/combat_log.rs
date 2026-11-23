@@ -43,8 +43,10 @@ const EFFECT_REVIVED: i64 = 836045448945494;
 /// Rows whose effect is a real buff or debuff, not the event kind (damage and
 /// heal lines are ApplyEffect too)
 fn is_buff_effect(r: &CombatLogRow) -> bool {
-    matches!(r.effect_type_id, EFFECT_TYPE_APPLYEFFECT | EFFECT_TYPE_REMOVEEFFECT | EFFECT_TYPE_MODIFYCHARGES)
-        && !matches!(r.effect_id, EFFECT_DAMAGE | EFFECT_HEAL)
+    matches!(
+        r.effect_type_id,
+        EFFECT_TYPE_APPLYEFFECT | EFFECT_TYPE_REMOVEEFFECT | EFFECT_TYPE_MODIFYCHARGES
+    ) && !matches!(r.effect_id, EFFECT_DAMAGE | EFFECT_HEAL)
 }
 
 // Defense type IDs
