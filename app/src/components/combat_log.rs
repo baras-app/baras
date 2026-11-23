@@ -365,19 +365,21 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     // Track whether we need to restore DOM scroll position after first data load
     let mut needs_scroll_restore = use_signal(|| should_restore_position && state.peek().scroll_offset > 0.0);
 
-    // Column widths for resizable columns (in pixels)
-    let mut col_time = use_signal(|| 70.0f64);
-    let mut col_source = use_signal(|| 110.0f64);
-    let mut col_type = use_signal(|| 90.0f64);
-    let mut col_target = use_signal(|| 110.0f64);
-    let mut col_ability = use_signal(|| 200.0f64);
-    let mut col_effect = use_signal(|| 200.0f64);
-    let mut col_value = use_signal(|| 70.0f64);
-    let mut col_abs = use_signal(|| 70.0f64);
-    let mut col_over = use_signal(|| 70.0f64);
-    let mut col_mit = use_signal(|| 60.0f64);
-    let mut col_dmg_type = use_signal(|| 65.0f64);
-    let mut col_threat = use_signal(|| 70.0f64);
+    // Column widths for resizable columns (in pixels); defaults are sized for
+    // 16px text and scale with the root font size
+    let scale = use_hook(|| crate::utils::rem_px() / 16.0);
+    let mut col_time = use_signal(|| 70.0 * scale);
+    let mut col_source = use_signal(|| 110.0 * scale);
+    let mut col_type = use_signal(|| 90.0 * scale);
+    let mut col_target = use_signal(|| 110.0 * scale);
+    let mut col_ability = use_signal(|| 200.0 * scale);
+    let mut col_effect = use_signal(|| 200.0 * scale);
+    let mut col_value = use_signal(|| 70.0 * scale);
+    let mut col_abs = use_signal(|| 70.0 * scale);
+    let mut col_over = use_signal(|| 70.0 * scale);
+    let mut col_mit = use_signal(|| 60.0 * scale);
+    let mut col_dmg_type = use_signal(|| 65.0 * scale);
+    let mut col_threat = use_signal(|| 70.0 * scale);
 
     // Column resize dragging state
     let mut resizing_col = use_signal(|| None::<usize>);

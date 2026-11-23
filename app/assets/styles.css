@@ -6794,8 +6794,8 @@ a.contributor-name:hover {
 }
 
 .entity-section {
-  width: 200px;
-  min-width: 180px;
+  width: 12.5rem;
+  min-width: 11.25rem;
   display: flex;
   flex-direction: column;
 }
@@ -7075,7 +7075,7 @@ a.contributor-name:hover {
 
 /* The % column with bar visualization */
 .ability-table .col-pct-bar {
-  min-width: 110px;
+  min-width: 6.875rem;
 }
 
 .ability-table td.col-pct-bar {
