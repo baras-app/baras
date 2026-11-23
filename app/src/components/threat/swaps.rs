@@ -20,29 +20,58 @@ struct Stint {
     end: f32,
 }
 
+/// Append `run`, extending the last stint when it is the same holder
+fn push_run(out: &mut Vec<Stint>, run: Stint) {
+    match out.last_mut() {
+        Some(last) if last.holder == run.holder => last.end = run.end,
+        _ => out.push(run),
+    }
+}
+
 /// Consecutive time on one target, glances away folded in
 fn stints(segments: &[AggroSegment]) -> Vec<Stint> {
     let mut runs: Vec<Stint> = Vec::new();
     for s in segments {
-        match runs.last_mut() {
-            Some(last) if last.holder == s.target => last.end = s.end,
-            _ => runs.push(Stint {
+        push_run(
+            &mut runs,
+            Stint {
                 holder: s.target.clone(),
                 start: s.start,
                 end: s.end,
-            }),
-        }
+            },
+        );
     }
+    let short = |r: &Stint| r.end - r.start < GLANCE_SECS;
     let mut out: Vec<Stint> = Vec::new();
-    for (i, run) in runs.iter().enumerate() {
-        let glance = run.end - run.start < GLANCE_SECS
-            && i > 0
-            && runs.get(i + 1).is_some_and(|next| next.holder == runs[i - 1].holder);
-        match out.last_mut() {
-            _ if glance => {}
-            Some(last) if last.holder == run.holder => last.end = run.end,
-            _ => out.push(run.clone()),
+    let mut i = 0;
+    while i < runs.len() {
+        if !short(&runs[i]) {
+            push_run(&mut out, runs[i].clone());
+            i += 1;
+            continue;
         }
+        // A flurry: the enemy flicking between targets faster than anyone holds it.
+        // Back to the same holder after it is a glance; otherwise whoever it
+        // spent the most of the flurry on held it
+        let j = i + runs[i..].iter().take_while(|r| short(r)).count();
+        let flurry = &runs[i..j];
+        let holder = match (out.last(), runs.get(j)) {
+            (Some(prev), Some(next)) if prev.holder == next.holder => prev.holder.clone(),
+            _ => {
+                let mut time: Vec<(&str, f32)> = Vec::new();
+                for r in flurry {
+                    match time.iter_mut().find(|(h, _)| *h == r.holder) {
+                        Some((_, secs)) => *secs += r.end - r.start,
+                        None => time.push((&r.holder, r.end - r.start)),
+                    }
+                }
+                let most = time.iter().max_by(|a, b| a.1.total_cmp(&b.1));
+                most.map_or_else(String::new, |(h, _)| h.to_string())
+            }
+        };
+        let (start, end) = (flurry[0].start, flurry[flurry.len() - 1].end);
+        push_run(&mut out, Stint { holder, start, end });
+        i = j;
     }
     out
 }
