@@ -438,7 +438,9 @@ select optgroup {
   border: 1px solid var(--blue-alpha-20);
   border-radius: var(--radius-xl) 0 0 var(--radius-xl);
   box-shadow: none;
-  animation: none;
+  /* Fades in with the control panel beside it; leaving `display: none`
+     (parked) restarts it on every return to the page */
+  animation: fade-in var(--transition-normal);
 }
 
 /* App header */
@@ -8491,6 +8493,7 @@ a.contributor-name:hover {
   .explorer-content > *,
   .fade-in,
   .drawer,
+  .container:has(> .settings-panel) > .settings-panel,
   .death-recap-drawer,
   .toast,
   [_echarts_instance_] > div:first-child {
