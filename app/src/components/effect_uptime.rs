@@ -10,7 +10,9 @@ use baras_types::formatting;
 
 use crate::api::{self, EffectUptimeCell, TimeRange};
 use crate::components::ability_icon::AbilityIcon;
+use crate::components::ability_naming::AbilityNamingPills;
 use crate::components::class_icons::get_class_icon;
+use crate::components::mirror_names::{display_id, display_name};
 
 #[derive(Clone, Copy, PartialEq)]
 enum Targets {
@@ -118,9 +120,10 @@ pub fn EffectUptimeView(
     };
     let effect = |e: i64| {
         let (name, ability) = effects.iter().find(|x| x.0 == e).map_or(("", 0), |x| (x.1, x.2));
+        let name = display_name(e, name);
         rsx! {
             span { class: "uptime-who",
-                AbilityIcon { ability_id: e, fallback_id: (ability != 0).then_some(ability), size: 16 }
+                AbilityIcon { ability_id: display_id(e), fallback_id: (ability != 0).then_some(ability), size: 16 }
                 strong { "{name}" }
             }
         }
@@ -148,7 +151,8 @@ pub fn EffectUptimeView(
         div { class: "uptime-view",
             div { class: "uptime-toolbar",
                 span { class: "uptime-title", "Effects applied by " {who(&source)} }
-                div { class: "filter-pills ml-auto", title: "Targets",
+                AbilityNamingPills {}
+                div { class: "filter-pills", title: "Targets",
                     for (label, t) in [("All", Targets::All), ("Players", Targets::Players), ("NPCs", Targets::Npcs)] {
                         button { class: if shown == t { "seg active" } else { "seg" }, onclick: move |_| targets.set(t), "{label}" }
                     }
@@ -187,7 +191,7 @@ pub fn EffectUptimeView(
                             }
                         }
                         tbody {
-                            for (id, name, ability, _) in effects.iter().copied() {
+                            for (id, name, ability, _) in effects.iter().copied().map(|e| (e.0, display_name(e.0, e.1), e.2, e.3)) {
                                 tr {
                                     class: if picked_row == Some(id) { "uptime-row picked" } else { "uptime-row" },
                                     td {
@@ -199,7 +203,7 @@ pub fn EffectUptimeView(
                                             picked_effect.set((!same).then_some(id));
                                         },
                                         span { class: "name-with-icon",
-                                            AbilityIcon { ability_id: id, fallback_id: (ability != 0).then_some(ability), size: 18 }
+                                            AbilityIcon { ability_id: display_id(id), fallback_id: (ability != 0).then_some(ability), size: 18 }
                                             span { class: "name-text", "{name}" }
                                         }
                                     }
@@ -271,9 +275,9 @@ fn UptimeTimeline(
                             span { class: if c.target_type == "Npc" { "npc" }, "{c.target_name}" }
                         }
                     } else {
-                        div { class: "uptime-lane-label", title: "{c.effect_name}",
-                            AbilityIcon { ability_id: c.effect_id, fallback_id: (c.ability_id != 0).then_some(c.ability_id), size: 16 }
-                            span { "{c.effect_name}" }
+                        div { class: "uptime-lane-label", title: "{display_name(c.effect_id, &c.effect_name)}",
+                            AbilityIcon { ability_id: display_id(c.effect_id), fallback_id: (c.ability_id != 0).then_some(c.ability_id), size: 16 }
+                            span { "{display_name(c.effect_id, &c.effect_name)}" }
                         }
                     }
                     div { class: "uptime-lane-track",
