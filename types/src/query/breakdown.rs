@@ -327,6 +327,9 @@ pub struct RaidOverviewRow {
     /// Interrupt ability casts
     #[serde(default)]
     pub interrupts: f64,
+    /// Cleanse ability casts
+    #[serde(default)]
+    pub cleanses: f64,
 
     /// Share of damaging hits that crit (0-100)
     #[serde(default)]

@@ -4,8 +4,12 @@ use std::collections::HashMap;
 
 use super::*;
 use crate::encounter::{PvpFaction, PvpFactionTracker};
-use crate::game_data::{INTERRUPT_ABILITIES, defense_type, effect_id, effect_type_id};
+use crate::game_data::{CLEANSE_ABILITIES, INTERRUPT_ABILITIES, defense_type, effect_id, effect_type_id};
 use crate::is_boss;
+
+fn id_list(ids: &phf::Set<i64>) -> String {
+    ids.iter().map(i64::to_string).collect::<Vec<_>>().join(",")
+}
 
 impl EncounterQuery<'_> {
     /// Query shield attribution - maps shield source IDs to total shielding given.
@@ -232,7 +236,8 @@ impl EncounterQuery<'_> {
             ),
             actions AS (
                 SELECT source_name as name,
-                       COUNT(*) as action_count
+                       COUNT(*) as action_count,
+                       SUM(CASE WHEN ability_id IN ({cleanse_ids}) THEN 1 ELSE 0 END) as cleanse_count
                 FROM events
                 WHERE effect_id = {ability_activate} {time_filter}
                 GROUP BY source_name
@@ -265,7 +270,8 @@ impl EncounterQuery<'_> {
                 COALESCE(t.attacks, 0) as attacks,
                 COALESCE(t.hits_taken, 0) as hits_taken,
                 COALESCE(t.defended, 0) as defended,
-                COALESCE(t.shielded, 0) as shielded
+                COALESCE(t.shielded, 0) as shielded,
+                COALESCE(a.cleanse_count, 0) as cleanse_count
             FROM participants p
             LEFT JOIN damage_dealt d ON p.name = d.name
             LEFT JOIN damage_taken t ON p.name = t.name
@@ -278,11 +284,8 @@ impl EncounterQuery<'_> {
                 ability_activate = effect_id::ABILITYACTIVATE,
                 miss_ids = super::breakdown::miss_ids_csv(),
                 shield = defense_type::SHIELD,
-                interrupt_ids = INTERRUPT_ABILITIES
-                    .iter()
-                    .map(|id| id.to_string())
-                    .collect::<Vec<_>>()
-                    .join(","),
+                interrupt_ids = id_list(&INTERRUPT_ABILITIES),
+                cleanse_ids = id_list(&CLEANSE_ABILITIES),
             ))
             .await?;
 
@@ -320,6 +323,7 @@ impl EncounterQuery<'_> {
             let hits_taken = col_f64(batch, 17)?;
             let defended = col_f64(batch, 18)?;
             let shielded = col_f64(batch, 19)?;
+            let cleanse_counts = col_f64(batch, 20)?;
             let names = col_strings(batch, 0)?;
             let entity_types = col_strings(batch, 1)?;
             let damage_totals = col_f64(batch, 2)?;
@@ -364,6 +368,7 @@ impl EncounterQuery<'_> {
                     healing_pct,
                     apm: action_counts[i] * 60000.0 / duration_ms as f64,
                     interrupts: interrupt_counts[i],
+                    cleanses: cleanse_counts[i],
                     damage_crit_pct: pct(crits[i], hits[i]),
                     boss_damage_total,
                     boss_dps: boss_damage_total * 1000.0 / duration_ms as f64,

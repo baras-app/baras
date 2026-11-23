@@ -34,6 +34,7 @@ pub enum OverviewColumn {
     Sps,
     Apm,
     Interrupts,
+    Cleanses,
 }
 
 impl OverviewColumn {

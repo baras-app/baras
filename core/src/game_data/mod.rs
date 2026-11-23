@@ -35,7 +35,7 @@ pub use discipline::{Class, Discipline, DisciplineFilter, Role};
 pub use discipline_abilities::{narrow_disciplines, resolved_discipline};
 pub use effects::*;
 pub use flashpoints::{FLASHPOINT_AREAS, get_flashpoint_name, is_flashpoint};
-pub use interrupt_abilities::INTERRUPT_ABILITIES;
+pub use interrupt_abilities::{CLEANSE_ABILITIES, INTERRUPT_ABILITIES};
 pub use mirror_abilities::{MIRROR_ABILITIES, MirrorAbility};
 pub use off_gcd_abilities::is_off_gcd;
 pub use pvp_instance::{
