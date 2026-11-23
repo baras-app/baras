@@ -2085,6 +2085,11 @@
   flex-shrink: 0;
 }
 
+.effects-section h4 .filter-pills {
+  text-transform: none;
+  letter-spacing: normal;
+}
+
 .effects-empty {
   color: var(--text-muted);
   font-size: 11px;

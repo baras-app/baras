@@ -8,10 +8,12 @@ use wasm_bindgen::prelude::*;
 
 use crate::api::{self, EffectChartData, EffectWindow, HpPoint, TimeRange, TimeSeriesPoint};
 use crate::components::ability_icon::AbilityIcon;
+use crate::components::ability_naming::AbilityNamingPills;
 use crate::components::echarts::{
     TOOLTIP_ROWS_JS, activate_brush, apply_brush_config, dispose_chart, get_chart, init_chart, next_animation_frame,
     register_brush_handler, set_chart_option,
 };
+use crate::components::mirror_names::{display_id, display_name};
 use crate::utils::{css_var, css_var_or, js_set};
 use baras_types::formatting;
 
@@ -1139,6 +1141,10 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
         let active = active_effects.read();
         let passive = passive_effects.read();
         let mut all: Vec<EffectChartData> = active.iter().chain(passive.iter()).cloned().collect();
+        // Named per the naming preference before sorting, so the order follows what is shown
+        for e in &mut all {
+            e.effect_name = display_name(e.effect_id, &e.effect_name).into_owned();
+        }
         let col = *effect_sort_col.read();
         let asc = *effect_sort_asc.read();
         all.sort_by(|a, b| {
@@ -1258,7 +1264,7 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
 
                 // Combined effects table (active abilities + passive effects)
                 div { class: "effects-section",
-                    h4 { "Effects" }
+                    h4 { class: "flex items-center", "Effects" AbilityNamingPills {} }
                     if sorted_effects.is_empty() && effects_loading() {
                         div { class: "effects-loading", i { class: "fa-solid fa-spinner fa-spin" } }
                     } else if sorted_effects.is_empty() {
@@ -1317,7 +1323,7 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                                                     },
                                                     td { class: "effect-name-cell", title: "{effect.effect_name}",
                                                         div { class: "effect-name-inner",
-                                                            AbilityIcon { key: "{icon_id}", ability_id: icon_id, size: 16 }
+                                                            AbilityIcon { key: "{icon_id}", ability_id: display_id(icon_id), size: 16 }
                                                             if effect.effect_name.is_empty() {
                                                                 span { class: "effect-id-fallback", "{eid}" }
                                                             } else {
