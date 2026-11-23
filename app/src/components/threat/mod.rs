@@ -94,7 +94,9 @@ impl Palette {
 
     /// Legend label and chart series (0 for none) of a name
     pub fn key(&self, name: &str) -> (&str, u8) {
-        self.by_name.get(name).map_or(OTHER, |i| (self.keys[*i].0.as_str(), self.keys[*i].1))
+        self.by_name
+            .get(name)
+            .map_or(OTHER, |i| (self.keys[*i].0.as_str(), self.keys[*i].1))
     }
 
     /// Legend entries for the names given, each once
@@ -128,7 +130,12 @@ impl Roster {
     }
 
     pub fn discipline(&self, name: &str) -> Element {
-        let class = self.0.get(name).and_then(|i| i.1.as_deref()).and_then(get_class_icon).copied();
+        let class = self
+            .0
+            .get(name)
+            .and_then(|i| i.1.as_deref())
+            .and_then(get_class_icon)
+            .copied();
         rsx! {
             if let Some(src) = class {
                 img { class: "class-icon", src, alt: "" }
@@ -206,7 +213,10 @@ pub fn ThreatView(
     // Players any shown enemy was on are the table's columns
     let holders = by_time(enemies.iter().flat_map(|r| &r.shares).filter(|s| s.is_player));
     // A pick not in this encounter or range shows every enemy
-    let enemy = controls.aggro_enemy.as_deref().filter(|p| enemies.iter().any(|r| r.name == *p));
+    let enemy = controls
+        .aggro_enemy
+        .as_deref()
+        .filter(|p| enemies.iter().any(|r| r.name == *p));
     let picked = |r: &&&AggroRow| enemy.is_none_or(|e| e == r.name);
     let by_player = controls.aggro_by_player;
     let (range_start, range_end) = if time_range.end > 0.0 {
@@ -222,10 +232,20 @@ pub fn ThreatView(
             .map(|p| AggroLane {
                 label: p.name.clone(),
                 segments: p.segments.clone(),
-                marks: report.events.iter().filter(is_taunt).filter(|e| e.source == p.name).map(mark).collect(),
+                marks: report
+                    .events
+                    .iter()
+                    .filter(is_taunt)
+                    .filter(|e| e.source == p.name)
+                    .map(mark)
+                    .collect(),
             })
             .collect();
-        (Palette::by_target(&report.players), lanes, "Who each player was targeting".to_string())
+        (
+            Palette::by_target(&report.players),
+            lanes,
+            "Who each player was targeting".to_string(),
+        )
     } else {
         let lanes: Vec<AggroLane> = enemies
             .iter()

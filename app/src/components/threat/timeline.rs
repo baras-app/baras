@@ -37,7 +37,13 @@ pub fn AggroTimeline(
     // Legend entry clicked: its bars stay lit, the rest dim
     let mut focus = use_signal(|| None::<String>);
     let lit = focus().filter(|f| legend.iter().any(|k| k.0 == f));
-    let dim = |label: &str| if lit.as_deref().is_some_and(|f| f != label) { " dim" } else { "" };
+    let dim = |label: &str| {
+        if lit.as_deref().is_some_and(|f| f != label) {
+            " dim"
+        } else {
+            ""
+        }
+    };
 
     rsx! {
         div { class: "uptime-timeline aggro-timeline",
@@ -99,7 +105,11 @@ pub fn AggroTimeline(
 
 /// The chart series colour a bar or swatch takes; series 0 keeps the grey fallback
 fn series_color(series: u8) -> String {
-    if series == 0 { String::new() } else { format!("--c: var(--series-{series});") }
+    if series == 0 {
+        String::new()
+    } else {
+        format!("--c: var(--series-{series});")
+    }
 }
 
 /// The outline over `lane`'s hovered stretch. Its own component, so a hover

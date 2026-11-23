@@ -101,7 +101,9 @@ fn rows(lanes: Vec<(i64, Lane)>, players: &HashSet<String>, are_enemies: bool) -
         .filter(|(_, lane)| !lane.segments.is_empty())
         .map(|(id, lane)| {
             let instance_id = if are_enemies { id } else { 0 };
-            AggroRow::new(lane.name, instance_id, lane.is_boss, lane.segments, |n| players.contains(n))
+            AggroRow::new(lane.name, instance_id, lane.is_boss, lane.segments, |n| {
+                players.contains(n)
+            })
         })
         .collect();
     AggroRow::sort(&mut out);
