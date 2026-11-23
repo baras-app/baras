@@ -9,11 +9,10 @@ use std::collections::HashMap;
 use baras_types::{RaidDebuff, RaidDebuffCell, RaidDebuffSource, RaidDebuffTarget};
 
 use super::effects::{APPLY_EFFECT, REMOVE_EFFECT};
+use super::enemies::FROM_GROUP;
 use super::uptime::merge;
 use super::*;
-use crate::game_data::{RAID_DEBUFFS, effect_id, is_boss};
-
-const FROM_GROUP: &str = "source_entity_type IN ('Player', 'Companion') AND target_entity_type = 'Npc'";
+use crate::game_data::RAID_DEBUFFS;
 
 #[derive(Default)]
 struct Row {
@@ -26,36 +25,19 @@ struct Row {
 
 impl EncounterQuery<'_> {
     pub async fn raid_debuffs(&self, time_range: Option<&TimeRange>) -> Result<Vec<RaidDebuffTarget>, String> {
-        // Each enemy instance, from the group's first action on it to its last
-        let batches = self
-            .sql(&format!(
-                "SELECT target_id, target_name, target_class_id,
-                        CAST(MIN(combat_time_secs) AS REAL), CAST(MAX(combat_time_secs) AS REAL)
-                 FROM events
-                 WHERE {FROM_GROUP} AND combat_time_secs >= 0
-                   AND effect_id NOT IN ({}, {}) AND effect_type_id != {REMOVE_EFFECT}
-                 GROUP BY target_id, target_name, target_class_id
-                 HAVING SUM(dmg_amount) > 0",
-                effect_id::TARGETSET,
-                effect_id::TARGETCLEARED,
-            ))
-            .await?;
         let (start, end) = time_range.map_or((0.0, f32::MAX), |tr| (tr.start, tr.end));
+        // enemy instance → (its row's label, the part of the range it was fought in)
         let mut present: HashMap<i64, (String, f32, f32)> = HashMap::new();
         let mut rows: HashMap<String, Row> = HashMap::new();
-        for batch in &batches {
-            let (ids, names, classes) = (col_i64(batch, 0)?, col_strings(batch, 1)?, col_i64(batch, 2)?);
-            let (first, last) = (col_f32(batch, 3)?, col_f32(batch, 4)?);
-            for i in 0..batch.num_rows() {
-                let (from, to) = (first[i].max(start), last[i].min(end));
-                if to <= from {
-                    continue;
-                }
-                let row = rows.entry(names[i].clone()).or_default();
-                row.is_boss |= is_boss(classes[i]);
-                row.present.push((from, to));
-                present.insert(ids[i], (names[i].clone(), from, to));
+        for e in self.enemy_instances().await? {
+            let (from, to) = (e.first.max(start), e.last.min(end));
+            if to <= from {
+                continue;
             }
+            let row = rows.entry(e.label.clone()).or_default();
+            row.is_boss = e.is_boss;
+            row.present.push((from, to));
+            present.insert(e.id, (e.label, from, to));
         }
 
         let ids: Vec<String> = RAID_DEBUFFS.keys().map(i64::to_string).collect();
@@ -148,7 +130,11 @@ impl EncounterQuery<'_> {
                 }
             })
             .collect();
-        out.sort_by(|a, b| b.is_boss.cmp(&a.is_boss).then(b.present_secs.total_cmp(&a.present_secs)));
+        out.sort_by(|a, b| {
+            b.is_boss
+                .cmp(&a.is_boss)
+                .then(b.present_secs.total_cmp(&a.present_secs))
+        });
         Ok(out)
     }
 }

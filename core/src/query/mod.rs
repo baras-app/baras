@@ -9,6 +9,7 @@ mod column_helpers;
 mod combat_log;
 mod death_recap;
 mod effects;
+mod enemies;
 pub mod error;
 mod gcd;
 mod overview;
