@@ -230,7 +230,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 20px;
+  height: 1.25rem;
   padding: 0 8px 0 6px;
   font-size: 11px;
   font-weight: 500;
@@ -729,7 +729,7 @@
 
 .overview-column {
   flex: 1;
-  min-width: 300px;
+  min-width: 18.75rem;
   overflow-x: auto;
 }
 
@@ -762,7 +762,7 @@
 
 /* The table sits in its own card, like the timeline and challenge cards */
 .npc-health-box {
-  max-width: 650px;
+  max-width: 40.625rem;
   overflow: hidden;
   background: var(--well-bg);
   border: 1px solid var(--border-light);
@@ -779,11 +779,11 @@
 }
 
 .npc-health-table thead th.num {
-  width: 84px;
+  width: 5.25rem;
 }
 
 .npc-health-table thead th.num:last-child {
-  width: 72px;
+  width: 4.5rem;
 }
 
 .npc-health-table td:first-child {
@@ -1034,11 +1034,11 @@
 }
 
 .dummy-summary > .history-cards {
-  flex: 1 1 280px;
+  flex: 1 1 17.5rem;
 }
 
 .dummy-summary > .overview-chart-box {
-  flex: 2 1 360px;
+  flex: 2 1 22.5rem;
   min-width: 0;
   margin-top: 0;
 }
@@ -1079,7 +1079,7 @@
 
 /* Widest compact value ("123.45M") in the 14px mono font, plus cell padding */
 .overview-table col.num-col {
-  width: 76px;
+  width: 4.75rem;
 }
 
 .overview-table tbody tr:last-child td {
@@ -1123,9 +1123,9 @@
   font-weight: 500;
   color: var(--text-primary);
   /* Fixed, so long names truncate instead of widening the column or wrapping */
-  width: 190px;
-  min-width: 190px;
-  max-width: 190px;
+  width: 11.875rem;
+  min-width: 11.875rem;
+  max-width: 11.875rem;
 }
 
 .overview-table th.name-col {
@@ -1143,7 +1143,7 @@
   min-width: 0;
   /* Clamp the name's min-content so a long name can't widen the column
      (cells ignore max-width); 190px column minus 16px padding */
-  max-width: 174px;
+  max-width: 10.875rem;
 }
 
 .overview-table .name-text {
@@ -1181,7 +1181,7 @@
 }
 
 .overview-table col.num-col.rated {
-  width: 106px;
+  width: 6.625rem;
 }
 
 .overview-table th.rated,
@@ -1197,7 +1197,7 @@
 }
 
 .pct-badge {
-  width: 26px;
+  width: 1.625rem;
   padding: 1px 0;
   border-radius: 3px;
   text-align: center;
@@ -1279,11 +1279,11 @@
 /* The badge has a fixed width (fits "12:34") and the column is that plus the
    cell padding, so the column is the same width with or without a death */
 .overview-table {
-  --death-badge-w: 68px;
+  --death-badge-w: 4.25rem;
 }
 
 .overview-table .death-col {
-  width: calc(var(--death-badge-w) + 16px);
+  width: calc(var(--death-badge-w) + 1rem);
   white-space: nowrap;
   line-height: 0; /* no text strut: the badge alone sets the line box */
   padding-top: 0;
@@ -1305,7 +1305,7 @@
   gap: 5px;
   /* Fixed height; its cell drops the vertical padding instead, so the badge
      (22px) stays under the number cells' height (16px line + 12px padding) */
-  height: 22px;
+  height: 1.375rem;
   width: var(--death-badge-w);
   justify-content: center;
   overflow: hidden;
@@ -1353,7 +1353,7 @@
   right: 0;
   bottom: 0;
   z-index: 50;
-  width: min(760px, 92vw);
+  width: min(47.5rem, 92vw);
   max-width: 94%;
   box-sizing: border-box;
   padding: 1em;
@@ -1522,7 +1522,7 @@
 
 .recap-stat {
   flex: 1;
-  min-width: 90px;
+  min-width: 5.625rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1712,10 +1712,10 @@
   text-overflow: ellipsis;
 }
 
-.recap-table th.col-count { width: 48px; }
-.recap-table th.col-val { width: 60px; }
-.recap-table th.col-wide { width: 80px; }
-.recap-table th.col-type { width: 72px; }
+.recap-table th.col-count { width: 3rem; }
+.recap-table th.col-val { width: 3.75rem; }
+.recap-table th.col-wide { width: 5rem; }
+.recap-table th.col-type { width: 4.5rem; }
 
 .recap-ability {
   color: var(--text-primary);
@@ -1780,7 +1780,7 @@
 
 /* Effects on the player: ledger-style rows, each with a bar over the recap window */
 .recap-effects {
-  max-height: 190px;
+  max-height: 11.875rem;
   overflow-y: auto;
   background: var(--well-bg);
   border: 1px solid var(--border-light);
@@ -1827,7 +1827,7 @@
 .effect-row.enemy .effect-seg { background: var(--swtor-red); opacity: 0.85; }
 
 .effect-when {
-  width: 78px;
+  width: 4.875rem;
   flex-shrink: 0;
   text-align: right;
   color: var(--text-muted);
@@ -1849,7 +1849,7 @@
 .ledger-row:hover { background: rgba(var(--fg-rgb), 0.04); }
 
 .ledger-time {
-  width: 44px;
+  width: 2.75rem;
   flex-shrink: 0;
   color: var(--text-muted);
   font-family: var(--font-mono);
@@ -1888,7 +1888,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  width: 92px;
+  width: 5.75rem;
   flex-shrink: 0;
 }
 
@@ -1908,7 +1908,7 @@
 }
 
 .ledger-hp-label {
-  width: 32px;
+  width: 2rem;
   text-align: right;
   color: var(--text-muted);
   font-family: var(--font-mono);
@@ -2081,8 +2081,8 @@
 /* ── Right column: effects panel ────────────────────────────────────────── */
 
 .effects-panel {
-  width: 325px;
-  min-width: 280px;
+  width: 20.3125rem;
+  min-width: 17.5rem;
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
@@ -2153,15 +2153,15 @@
 /* Sized to fit the header with its sort arrow ("UPTIME ▼"), which never
    wraps: the header keeps one height whichever column is sorted */
 .effect-table .col-apps {
-  width: 56px;
+  width: 3.5rem;
 }
 
 .effect-table .col-uptime {
-  width: 70px;
+  width: 4.375rem;
 }
 
 .effect-table .col-pct {
-  width: 56px;
+  width: 3.5rem;
 }
 
 .effect-table th,
@@ -2281,7 +2281,7 @@
 }
 
 .log-filter-group {
-  flex: 1 1 560px;
+  flex: 1 1 35rem;
 }
 
 .log-tools-group {
@@ -2313,9 +2313,9 @@
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-size: 12px;
-  flex: 0 1 180px;
-  min-width: 110px;
-  max-width: 180px;
+  flex: 0 1 11.25rem;
+  min-width: 6.875rem;
+  max-width: 11.25rem;
   text-overflow: ellipsis;
 }
 
@@ -2331,9 +2331,9 @@
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-size: 12px;
-  flex: 1 1 160px;
-  min-width: 120px;
-  max-width: 280px;
+  flex: 1 1 10rem;
+  min-width: 7.5rem;
+  max-width: 17.5rem;
 }
 
 .log-search:focus {
@@ -2569,7 +2569,7 @@
    ───────────────────────────────────────────────────────────────────────────── */
 
 .log-mitigation {
-  width: 60px;
+  width: 3.75rem;
   flex-shrink: 0;
   text-align: center;
   color: var(--lt-violet, hsl(280, 60%, 70%));
@@ -2645,7 +2645,7 @@
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-size: 12px;
-  width: 140px;
+  width: 8.75rem;
 }
 
 .log-find-input:focus {
@@ -2682,7 +2682,7 @@
 .find-count {
   font-size: 11px;
   color: var(--text-muted);
-  min-width: 30px;
+  min-width: 1.875rem;
   text-align: center;
 }
 
@@ -2743,7 +2743,7 @@
 .rotation-anchor-select {
   /* Everything else from the base select, which themes it (and keeps its chevron).
      Fixed width: auto-sizing to the longest option grows it as the list loads */
-  width: 260px;
+  width: 16.25rem;
 }
 
 .rotation-placeholder {
@@ -2846,7 +2846,7 @@
   border-radius: var(--radius-sm, 4px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   padding: 2px 0;
-  min-width: 120px;
+  min-width: 7.5rem;
   font-size: 11px;
 }
 
@@ -2871,7 +2871,7 @@
    mitigation), same columns and colours as the stat tables below */
 .damage-taken-summary {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(16.25rem, 1fr));
   gap: var(--space-md) var(--space-lg);
   padding: var(--space-sm) var(--space-md);
   margin-bottom: var(--space-sm);
@@ -2970,7 +2970,7 @@
 .usage-table {
   width: 100%;
   /* The 7 number columns plus room for the ability name */
-  min-width: calc(7 * 95px + 220px);
+  min-width: calc(7 * 5.9375rem + 13.75rem);
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -2990,7 +2990,7 @@
 
 .usage-table thead th.num {
   text-align: right;
-  width: 95px;
+  width: 5.9375rem;
 }
 
 .usage-table thead th.sortable {
@@ -3193,13 +3193,13 @@
    span's 2px margin and the cell padding), so the header keeps one height
    whichever targets the source hit */
 .uptime-table thead th {
-  height: 44px;
+  height: 2.75rem;
 }
 
 /* Fixed layout (from .overview-table) takes these widths from the header */
 .uptime-table th.uptime-target {
   vertical-align: bottom;
-  width: 84px;
+  width: 5.25rem;
   font-weight: 500;
   text-transform: none;
   letter-spacing: 0;
@@ -3444,14 +3444,14 @@
   overflow: auto;
 }
 
-.ability-table th:first-child { width: 220px; }
-.ability-table th.num { width: 64px; }
-.ability-table th.col-val { width: 80px; }
-.ability-table th.col-pct { width: 72px; }
-.ability-table th.col-pct-bar { width: 110px; }
-.ability-table th.col-dmg-type { width: 90px; }
-.ability-table th.col-avg { width: 88px; }
-.ability-table th.col-wide { width: 112px; }
+.ability-table th:first-child { width: 13.75rem; }
+.ability-table th.num { width: 4rem; }
+.ability-table th.col-val { width: 5rem; }
+.ability-table th.col-pct { width: 4.5rem; }
+.ability-table th.col-pct-bar { width: 6.875rem; }
+.ability-table th.col-dmg-type { width: 5.625rem; }
+.ability-table th.col-avg { width: 5.5rem; }
+.ability-table th.col-wide { width: 7rem; }
 
 .ability-table td.num {
   font-variant-numeric: tabular-nums;
@@ -3473,7 +3473,7 @@
 .entity-header,
 .ability-header {
   box-sizing: border-box;
-  min-height: 30px;
+  min-height: 1.875rem;
   margin-bottom: var(--space-sm);
 }
 

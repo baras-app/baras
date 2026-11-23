@@ -24,6 +24,19 @@ pub fn css_var(name: &str) -> String {
         .unwrap_or_default()
 }
 
+/// Root font size in px (16 unless desktop text scaling or a user stylesheet
+/// changes it), for px sizes set from Rust that should grow with the text
+pub fn rem_px() -> f64 {
+    web_sys::window()
+        .and_then(|w| {
+            let root = w.document()?.document_element()?;
+            w.get_computed_style(&root).ok().flatten()
+        })
+        .and_then(|style| style.get_property_value("font-size").ok())
+        .and_then(|v| v.trim().trim_end_matches("px").parse().ok())
+        .unwrap_or(16.0)
+}
+
 /// `css_var`, or `fallback` when the property is unset (the `--lt-*` text
 /// colors exist only in the light theme; dark keeps the original hue).
 pub fn css_var_or(name: &str, fallback: &str) -> String {
