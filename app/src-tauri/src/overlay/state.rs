@@ -89,6 +89,9 @@ pub struct OverlayState {
     pub move_mode: bool,
     /// Raid rearrange mode state (click-to-swap frames)
     pub rearrange_mode: bool,
+    /// Unsaved settings the settings panel is previewing; overlays spawned
+    /// meanwhile use them (cleared by `refresh_settings`)
+    pub preview: Option<baras_core::context::OverlaySettings>,
 }
 
 impl std::fmt::Debug for OverlayState {

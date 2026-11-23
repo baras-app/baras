@@ -209,7 +209,8 @@ pub async fn preview_overlay_settings(
 ) -> Result<bool, String> {
     let european = service.config().await.european_number_format;
     let overlays: Vec<_> = {
-        let s = overlay_state.lock().map_err(|e| e.to_string())?;
+        let mut s = overlay_state.lock().map_err(|e| e.to_string())?;
+        s.preview = Some(settings.clone());
         s.all_overlays().into_iter().map(|(k, tx)| (k, tx.clone())).collect()
     };
 
