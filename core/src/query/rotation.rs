@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 
 use super::*;
-use crate::game_data::{OFF_GCD_ABILITIES, effect_id};
+use crate::game_data::{effect_id, is_off_gcd};
 
 /// A damage or heal event to attribute to a rotation cycle.
 struct ValueEvent {
@@ -182,7 +182,7 @@ fn group_into_gcd_slots(events: &[RotationEvent]) -> Vec<GcdSlot> {
     let mut prev_gcd_time: Option<f32> = None;
 
     for event in events {
-        if OFF_GCD_ABILITIES.contains(&event.ability_id) {
+        if is_off_gcd(event.ability_id) {
             pending_off_gcd.push(event.clone());
         } else {
             let gcd_gap = prev_gcd_time.map(|t| event.time_secs - t);

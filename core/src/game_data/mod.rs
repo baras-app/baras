@@ -31,7 +31,7 @@ pub use effects::*;
 pub use flashpoints::{FLASHPOINT_AREAS, get_flashpoint_name, is_flashpoint};
 pub use interrupt_abilities::INTERRUPT_ABILITIES;
 pub use mirror_abilities::{MIRROR_ABILITIES, MirrorAbility};
-pub use off_gcd_abilities::OFF_GCD_ABILITIES;
+pub use off_gcd_abilities::is_off_gcd;
 pub use pvp_instance::{
     ARENA_ROUND_END_ABILITY_IDS, DESERTER_DETECTION_EFFECT_IDS, PvpAreaKind, REBIRTH_ABILITY_ID, is_pvp_area,
     pvp_area_ids, pvp_area_kind, pvp_match_label,
