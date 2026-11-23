@@ -51,6 +51,7 @@ pub mod settings;
 pub mod sidebar_header;
 pub mod slider;
 pub mod sound_picker;
+pub mod threat;
 pub mod toast;
 pub mod toggle_switch;
 

@@ -8,7 +8,7 @@ use crate::types::{DataTab, ViewMode};
 use baras_types::formatting;
 
 /// View tabs in display order
-const VIEW_TABS: [(ViewMode, &str); 11] = [
+const VIEW_TABS: [(ViewMode, &str); 12] = [
     (ViewMode::Overview, "Overview"),
     (ViewMode::Charts, "Charts"),
     (ViewMode::Detailed(DataTab::Damage), "Damage"),
@@ -20,6 +20,7 @@ const VIEW_TABS: [(ViewMode, &str); 11] = [
     (ViewMode::Rotation, "Rotation"),
     (ViewMode::Uptime, "Effect Uptime"),
     (ViewMode::RaidDebuffs, "Raid Debuffs"),
+    (ViewMode::Aggro, "Aggro"),
 ];
 
 pub(super) fn encounter_strip(ctx: ExplorerCtx) -> Element {

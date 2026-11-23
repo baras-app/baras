@@ -1,4 +1,4 @@
-//! Pieces of the enemy tabs (Raid Debuffs).
+//! Pieces shared by the Raid Debuffs and Aggro tabs.
 
 use dioxus::prelude::*;
 

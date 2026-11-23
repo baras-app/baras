@@ -5,7 +5,7 @@
 use baras_core::query::{
     AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow,
     CombatLogSortColumn, DamageTakenSummary, DataTab, EffectChartData, EffectUptimeCell, EffectWindow,
-    EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath, RaidDebuffTarget,
+    EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath, RaidDebuffTarget, ThreatReport,
     RaidOverviewRow, RotationAnalysis, SortDirection, TimeRange, TimeSeriesPoint,
 };
 use tauri::State;
@@ -114,6 +114,17 @@ pub async fn query_raid_debuffs(
     time_range: Option<TimeRange>,
 ) -> Result<Vec<RaidDebuffTarget>, String> {
     handle.query_raid_debuffs(encounter_idx, time_range).await
+}
+
+/// Enemy and player targets over the whole fight, taunts and threat drops.
+/// The fight's report is clipped to a range on the frontend, so a range change
+/// never re-runs it.
+#[tauri::command]
+pub async fn query_threat_report(
+    handle: State<'_, ServiceHandle>,
+    encounter_idx: Option<u32>,
+) -> Result<ThreatReport, String> {
+    handle.query_threat_report(encounter_idx).await
 }
 
 /// Get encounter timeline with phase segments.

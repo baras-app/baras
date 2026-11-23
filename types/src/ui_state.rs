@@ -1,6 +1,6 @@
 //! UI session state
 
-use crate::{BreakdownMode, DataTab, LogEventCategory, RaidDebuff, TimeRange, history};
+use crate::{BreakdownMode, DataTab, LogEventCategory, RaidDebuff, ThreatEventKind, TimeRange, history};
 use serde::{Deserialize, Serialize};
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -114,6 +114,7 @@ pub enum ViewMode {
     Usage,
     Uptime,
     RaidDebuffs,
+    Aggro,
 }
 
 impl ViewMode {
@@ -268,19 +269,25 @@ pub struct DataExplorerState {
     pub auto_live: bool,
     /// Overview table column layouts (loaded from config)
     pub overview_columns: crate::OverviewLayouts,
-    /// Raid Debuffs tab controls
+    /// Raid Debuffs and Aggro tab controls
     pub enemy_views: EnemyViewsState,
 }
 
-/// Controls of the Raid Debuffs tab. Picks are enemy names: one
+/// Controls of the Raid Debuffs and Aggro tabs. Picks are enemy names: one
 /// missing from the encounter shown is ignored, and holds again where it exists.
 #[derive(Debug, Clone, PartialEq)]
 pub struct EnemyViewsState {
-    /// Hide adds
+    /// Hide adds in both tabs
     pub bosses_only: bool,
     /// Raid Debuffs timeline: a row (enemy), a column (debuff), or a cell (both)
     pub debuff_enemy: Option<String>,
     pub debuff: Option<RaidDebuff>,
+    /// Aggro: the enemy the tab is narrowed to
+    pub aggro_enemy: Option<String>,
+    /// Aggro timeline lanes are players instead of enemies
+    pub aggro_by_player: bool,
+    /// Aggro event list filter; None shows every kind
+    pub aggro_event_kind: Option<ThreatEventKind>,
 }
 
 impl Default for EnemyViewsState {
@@ -289,6 +296,9 @@ impl Default for EnemyViewsState {
             bosses_only: true,
             debuff_enemy: None,
             debuff: None,
+            aggro_enemy: None,
+            aggro_by_player: false,
+            aggro_event_kind: None,
         }
     }
 }
