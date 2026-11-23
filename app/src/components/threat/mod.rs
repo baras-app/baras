@@ -270,7 +270,7 @@ pub fn ThreatView(
     };
 
     rsx! {
-        div { class: "uptime-view threat-view",
+        div { class: "uptime-view threat-view fade-in",
             div { class: "uptime-toolbar",
                 span { class: "uptime-title", "Enemy aggro" }
                 BossesOnlyToggle { has_boss, state }

@@ -121,7 +121,7 @@ pub fn RaidDebuffsView(
     };
 
     rsx! {
-        div { class: "uptime-view raid-debuffs-view",
+        div { class: "uptime-view raid-debuffs-view fade-in",
             div { class: "uptime-toolbar",
                 span { class: "uptime-title", "Raid debuffs on enemies" }
                 BossesOnlyToggle { has_boss, state }
