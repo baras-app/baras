@@ -1443,17 +1443,18 @@ impl EffectTracker {
             .filter(|def| def.matches_discipline(local_discipline.as_ref()))
             .filter_map(|def| {
                 // Only refresh/create effects whose filters match the actual entities
-                let source_ok = def.source_filter().matches(
-                    entities,
-                    source_id,
-                    source_entity_type,
-                    source_name,
-                    0,
-                    local_player_id,
-                    current_target_id,
-                    &boss_ids,
-                    pvp_factions,
-                ) && self.matches_entity_disciplines(&def.source_disciplines, source_id, source_entity_type);
+                let source_ok =
+                    def.source_filter().matches(
+                        entities,
+                        source_id,
+                        source_entity_type,
+                        source_name,
+                        0,
+                        local_player_id,
+                        current_target_id,
+                        &boss_ids,
+                        pvp_factions,
+                    ) && self.matches_entity_disciplines(&def.source_disciplines, source_id, source_entity_type);
                 if !source_ok {
                     return None;
                 }
