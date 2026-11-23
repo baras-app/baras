@@ -60,7 +60,7 @@ pub fn FrameStyleSection(draft: SettingsDraft) -> Element {
             }
             ColorRow { label: "Background Color", value: style.background_color, on_change: move |v| draft.edit(|s| s.frame_style.background_color = v) }
             Slider {
-                label: "Corner Radius",
+                label: "Window Corner Radius",
                 value: style.corner_radius as f64,
                 min: 0.0,
                 max: MAX_CORNER_RADIUS as f64,
@@ -141,7 +141,7 @@ pub fn FrameOverrideRows(draft: SettingsDraft, tab_key: Signal<String>) -> Eleme
             custom: o.corner_radius.is_some(),
             on_toggle: move |on: bool| edit_override(draft, &tab_key(), |o| o.corner_radius = on.then_some(style.corner_radius)),
             Slider {
-                label: "Corner Radius",
+                label: "Window Corner Radius",
                 value: style.corner_radius as f64,
                 min: 0.0,
                 max: MAX_CORNER_RADIUS as f64,
