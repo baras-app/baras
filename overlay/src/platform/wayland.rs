@@ -20,6 +20,10 @@ use wayland_client::protocol::wl_shm::{Format, WlShm};
 use wayland_client::protocol::wl_shm_pool::WlShmPool;
 use wayland_client::protocol::wl_surface::{self, WlSurface};
 use wayland_client::{Connection, Dispatch, EventQueue, QueueHandle};
+use wayland_protocols::wp::cursor_shape::v1::client::{
+    wp_cursor_shape_device_v1::{Shape, WpCursorShapeDeviceV1},
+    wp_cursor_shape_manager_v1::WpCursorShapeManagerV1,
+};
 use wayland_protocols::wp::relative_pointer::zv1::client::{
     zwp_relative_pointer_manager_v1::ZwpRelativePointerManagerV1,
     zwp_relative_pointer_v1::{self, ZwpRelativePointerV1},
@@ -33,7 +37,7 @@ use wayland_protocols_wlr::layer_shell::v1::client::{
     zwlr_layer_surface_v1::{self, Anchor, KeyboardInteractivity, ZwlrLayerSurfaceV1},
 };
 
-use super::{MAX_OVERLAY_HEIGHT, MAX_OVERLAY_WIDTH, MIN_OVERLAY_SIZE, RESIZE_CORNER_SIZE};
+use super::{MAX_OVERLAY_HEIGHT, MAX_OVERLAY_WIDTH, MIN_OVERLAY_SIZE, ResizeCursor, ResizeEdges};
 use super::{MonitorInfo, OverlayConfig, OverlayPlatform, PlatformError};
 // ─────────────────────────────────────────────────────────────────────────────
 // Standalone Monitor Enumeration
@@ -399,6 +403,13 @@ struct WaylandState {
     pointer: Option<WlPointer>,
     relative_pointer_manager: Option<ZwpRelativePointerManagerV1>,
     relative_pointer: Option<ZwpRelativePointerV1>,
+    // Resize cursors (optional: without it the cursor just doesn't change)
+    cursor_shape_manager: Option<WpCursorShapeManagerV1>,
+    cursor_shape_device: Option<WpCursorShapeDeviceV1>,
+    /// Serial of the pointer's last enter, which set_shape must quote
+    enter_serial: u32,
+    /// Shape last set; None while the pointer is outside, so entering sets it
+    cursor: Option<ResizeCursor>,
 
     // xdg-output for accurate monitor positions
     xdg_output_manager: Option<ZxdgOutputManagerV1>,
@@ -419,7 +430,8 @@ struct WaylandState {
     pointer_y: f64,
     is_dragging: bool,
     is_resizing: bool,
-    in_resize_corner: bool, // true when pointer is in resize corner (for visual feedback)
+    in_resize_corner: bool, // true when pointer is on a resize edge (for visual feedback)
+    resize_edges: ResizeEdges,
     window_x: i32,
     window_y: i32,
     // Drag tracking - uses relative pointer motion for smooth movement
@@ -443,16 +455,6 @@ struct WaylandState {
     pending_output_rebind: Option<u32>, // Output name (global id) to rebind to
 }
 
-/// Resize corner detection
-struct ResizeCorner;
-
-impl ResizeCorner {
-    /// Check if position is in the bottom-right resize corner
-    fn is_in_corner(x: f64, y: f64, width: u32, height: u32) -> bool {
-        x > (width as f64 - RESIZE_CORNER_SIZE as f64) && y > (height as f64 - RESIZE_CORNER_SIZE as f64)
-    }
-}
-
 struct ShmBuffer {
     ptr: *mut u8,
     size: usize,
@@ -462,6 +464,44 @@ struct ShmBuffer {
 unsafe impl Send for ShmBuffer {}
 
 impl WaylandState {
+    /// Pointer input for move mode, with relative motion and cursor shapes
+    /// when the compositor offers them
+    fn acquire_pointer(&mut self, qh: &QueueHandle<Self>) {
+        if self.pointer.is_some() {
+            return;
+        }
+        let Some(seat) = &self.seat else { return };
+        let pointer = seat.get_pointer(qh, ());
+        if let Some(rpm) = &self.relative_pointer_manager {
+            self.relative_pointer = Some(rpm.get_relative_pointer(&pointer, qh, ()));
+        }
+        if let Some(csm) = &self.cursor_shape_manager {
+            self.cursor_shape_device = Some(csm.get_pointer(&pointer, qh, ()));
+        }
+        self.pointer = Some(pointer);
+    }
+
+    /// The pointer is over `edges`: light the grip and match the cursor
+    fn hover(&mut self, edges: ResizeEdges) {
+        // Mid-resize the grabbed edges hold, wherever the pointer is
+        let edges = if self.is_resizing { self.resize_edges } else { edges };
+        self.in_resize_corner = edges.any();
+        let cursor = edges.cursor(self.drag_enabled);
+        if self.cursor == Some(cursor) {
+            return;
+        }
+        self.cursor = Some(cursor);
+        if let Some(device) = &self.cursor_shape_device {
+            let shape = match cursor {
+                ResizeCursor::Default => Shape::Default,
+                ResizeCursor::Horizontal => Shape::EwResize,
+                ResizeCursor::Vertical => Shape::NsResize,
+                ResizeCursor::Diagonal => Shape::NwseResize,
+            };
+            device.set_shape(self.enter_serial, shape);
+        }
+    }
+
     fn new(width: u32, height: u32, x: i32, y: i32, click_through: bool, snap_to_grid: bool) -> Self {
         let pixel_count = (width * height) as usize;
         Self {
@@ -479,6 +519,10 @@ impl WaylandState {
             pointer: None,
             relative_pointer_manager: None,
             relative_pointer: None,
+            cursor_shape_manager: None,
+            cursor_shape_device: None,
+            enter_serial: 0,
+            cursor: None,
             xdg_output_manager: None,
             xdg_outputs: Vec::new(),
             outputs: Vec::new(),
@@ -490,6 +534,7 @@ impl WaylandState {
             is_dragging: false,
             is_resizing: false,
             in_resize_corner: false,
+            resize_edges: ResizeEdges::default(),
             window_x: x,
             window_y: y,
             drag_start_window_x: x,
@@ -835,6 +880,9 @@ impl OverlayPlatform for WaylandOverlay {
         if let Ok(rpm) = globals.bind::<ZwpRelativePointerManagerV1, _, _>(&qh, 1..=1, ()) {
             state.relative_pointer_manager = Some(rpm);
         }
+        if let Ok(csm) = globals.bind::<WpCursorShapeManagerV1, _, _>(&qh, 1..=1, ()) {
+            state.cursor_shape_manager = Some(csm);
+        }
 
         // Bind xdg-output manager for accurate monitor positions (optional - graceful fallback)
         if let Ok(xom) = globals.bind::<ZxdgOutputManagerV1, _, _>(&qh, 1..=3, ()) {
@@ -946,16 +994,8 @@ impl OverlayPlatform for WaylandOverlay {
 
         // Only create pointer if interactive (not click-through)
         // This saves memory/CPU when overlay is locked
-        if !config.click_through
-            && let Some(seat) = &state.seat
-        {
-            let pointer = seat.get_pointer(&qh, ());
-            // Create relative pointer if manager is available
-            if let Some(rpm) = &state.relative_pointer_manager {
-                let rel_pointer = rpm.get_relative_pointer(&pointer, &qh, ());
-                state.relative_pointer = Some(rel_pointer);
-            }
-            state.pointer = Some(pointer);
+        if !config.click_through {
+            state.acquire_pointer(&qh);
         }
 
         // Create surface on the target output (or let compositor choose if None)
@@ -1129,6 +1169,10 @@ impl OverlayPlatform for WaylandOverlay {
             if let Some(rel_pointer) = self.state.relative_pointer.take() {
                 rel_pointer.destroy();
             }
+            if let Some(device) = self.state.cursor_shape_device.take() {
+                device.destroy();
+            }
+            self.state.cursor = None;
             if let Some(pointer) = self.state.pointer.take() {
                 pointer.release();
             }
@@ -1138,17 +1182,7 @@ impl OverlayPlatform for WaylandOverlay {
             self.state.in_resize_corner = false;
         } else {
             // Interactive mode: acquire pointer if we don't have one
-            if self.state.pointer.is_none()
-                && let Some(seat) = &self.state.seat
-            {
-                let pointer = seat.get_pointer(&self.qh, ());
-                // Create relative pointer if manager is available
-                if let Some(rpm) = &self.state.relative_pointer_manager {
-                    let rel_pointer = rpm.get_relative_pointer(&pointer, &self.qh, ());
-                    self.state.relative_pointer = Some(rel_pointer);
-                }
-                self.state.pointer = Some(pointer);
-            }
+            self.state.acquire_pointer(&self.qh);
         }
     }
 
@@ -1157,6 +1191,12 @@ impl OverlayPlatform for WaylandOverlay {
         if !enabled {
             // Cancel any in-progress drag
             self.state.is_dragging = false;
+        }
+        // Pointer already inside: swap the cursor for the new mode now
+        if self.state.cursor.is_some() {
+            let s = &self.state;
+            let edges = ResizeEdges::at(s.pointer_x, s.pointer_y, s.width, s.height);
+            self.state.hover(edges);
         }
     }
 
@@ -1490,41 +1530,39 @@ impl Dispatch<WlPointer, ()> for WaylandState {
     ) {
         match event {
             wl_pointer::Event::Enter {
+                serial,
                 surface_x,
                 surface_y,
                 ..
             } => {
                 state.pointer_x = surface_x;
                 state.pointer_y = surface_y;
-                // Check if in resize corner for visual feedback
-                state.in_resize_corner =
-                    ResizeCorner::is_in_corner(surface_x, surface_y, state.width, state.height);
+                // A fresh enter has no cursor of ours yet: always set one
+                state.enter_serial = serial;
+                state.cursor = None;
+                state.hover(ResizeEdges::at(surface_x, surface_y, state.width, state.height));
             }
             wl_pointer::Event::Motion {
-                surface_x,
-                surface_y,
-                ..
+                surface_x, surface_y, ..
             } => {
                 // Only update resize corner state when not actively resizing
                 // (during resize, keep it true so grip stays visible)
                 if !state.is_resizing {
-                    state.in_resize_corner =
-                        ResizeCorner::is_in_corner(surface_x, surface_y, state.width, state.height);
+                    state.hover(ResizeEdges::at(surface_x, surface_y, state.width, state.height));
                 }
 
                 if state.is_resizing {
                     // Use incremental delta for resize (works fine since we're changing size, not position)
-                    let delta_x = surface_x - state.pointer_x;
-                    let delta_y = surface_y - state.pointer_y;
+                    let (delta_x, delta_y) = state
+                        .resize_edges
+                        .mask(surface_x - state.pointer_x, surface_y - state.pointer_y);
 
                     let new_width = state.pending_width as i32 + delta_x as i32;
                     let new_height = state.pending_height as i32 + delta_y as i32;
 
                     // Clamp to min/max size constraints
-                    let clamped_width =
-                        (new_width as u32).clamp(MIN_OVERLAY_SIZE, MAX_OVERLAY_WIDTH);
-                    let clamped_height =
-                        (new_height as u32).clamp(MIN_OVERLAY_SIZE, MAX_OVERLAY_HEIGHT);
+                    let clamped_width = (new_width as u32).clamp(MIN_OVERLAY_SIZE, MAX_OVERLAY_WIDTH);
+                    let clamped_height = (new_height as u32).clamp(MIN_OVERLAY_SIZE, MAX_OVERLAY_HEIGHT);
 
                     if new_width > 0 && new_height > 0 {
                         // Store unsnapped values for accurate delta accumulation
@@ -1560,13 +1598,11 @@ impl Dispatch<WlPointer, ()> for WaylandState {
                             // Resize and drag are only available when drag_enabled (move mode)
                             // When drag_enabled=false (rearrange mode), all clicks go to the overlay
                             if state.drag_enabled {
-                                if ResizeCorner::is_in_corner(
-                                    state.pointer_x,
-                                    state.pointer_y,
-                                    state.width,
-                                    state.height,
-                                ) {
+                                let edges =
+                                    ResizeEdges::at(state.pointer_x, state.pointer_y, state.width, state.height);
+                                if edges.any() {
                                     state.is_resizing = true;
+                                    state.resize_edges = edges;
                                     state.pending_width = state.width;
                                     state.pending_height = state.height;
                                 } else {
@@ -1579,8 +1615,7 @@ impl Dispatch<WlPointer, ()> for WaylandState {
                                 }
                             } else {
                                 // Drag disabled (rearrange mode) - report click to overlay
-                                state.pending_click =
-                                    Some((state.pointer_x as f32, state.pointer_y as f32));
+                                state.pending_click = Some((state.pointer_x as f32, state.pointer_y as f32));
                             }
                         }
                         WEnum::Value(wl_pointer::ButtonState::Released) => {
@@ -1588,30 +1623,35 @@ impl Dispatch<WlPointer, ()> for WaylandState {
                             state.is_resizing = false;
                             // Recalculate corner state based on current pointer position
                             // and the potentially new window dimensions
-                            state.in_resize_corner = ResizeCorner::is_in_corner(
+                            state.hover(ResizeEdges::at(
                                 state.pointer_x,
                                 state.pointer_y,
                                 state.pending_width,
                                 state.pending_height,
-                            );
+                            ));
                         }
                         _ => {}
                     }
                 }
             }
-            wl_pointer::Event::Leave { .. }
+            wl_pointer::Event::Leave { .. } => {
+                // The next enter sets the cursor again
+                state.cursor = None;
                 // Only reset corner state if not actively resizing
                 // (during resize, keep grip visible)
-                if !state.is_resizing => {
+                if !state.is_resizing {
                     state.in_resize_corner = false;
                 }
                 // Don't cancel drag/resize on leave - user might move fast
+            }
             _ => {}
         }
     }
 }
 
 impl_empty_dispatch!(ZwpRelativePointerManagerV1, (), WaylandState);
+impl_empty_dispatch!(WpCursorShapeManagerV1, (), WaylandState);
+impl_empty_dispatch!(WpCursorShapeDeviceV1, (), WaylandState);
 
 impl Dispatch<ZwpRelativePointerV1, ()> for WaylandState {
     fn event(

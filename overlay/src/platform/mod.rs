@@ -7,7 +7,69 @@ pub const MIN_OVERLAY_SIZE: u32 = 50;
 pub const MAX_OVERLAY_WIDTH: u32 = 2560;
 pub const MAX_OVERLAY_HEIGHT: u32 = 2048;
 pub const RESIZE_CORNER_SIZE: i32 = 20;
+/// Width of the band along the right and bottom edges that resizes one axis
+pub const RESIZE_EDGE_SIZE: i32 = 8;
 pub const SNAP_GRID_SIZE: i32 = 10;
+
+/// The edges a press grabs to resize. The bottom-right corner grabs both; the
+/// band along the right or bottom edge grabs that axis alone. Only these two
+/// edges resize, so the window's top-left never moves mid-resize.
+#[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
+pub struct ResizeEdges {
+    pub right: bool,
+    pub bottom: bool,
+}
+
+impl ResizeEdges {
+    /// Hit-test a window-local point (top-left origin)
+    pub fn at(x: f64, y: f64, width: u32, height: u32) -> Self {
+        let (w, h) = (width as f64, height as f64);
+        let corner = RESIZE_CORNER_SIZE as f64;
+        if x > w - corner && y > h - corner {
+            return Self {
+                right: true,
+                bottom: true,
+            };
+        }
+        let edge = RESIZE_EDGE_SIZE as f64;
+        Self {
+            right: x > w - edge,
+            bottom: y > h - edge,
+        }
+    }
+
+    pub fn any(self) -> bool {
+        self.right || self.bottom
+    }
+
+    /// The cursor shown over these edges; plain outside move mode
+    pub fn cursor(self, drag_enabled: bool) -> ResizeCursor {
+        match (drag_enabled, self.right, self.bottom) {
+            (false, ..) | (true, false, false) => ResizeCursor::Default,
+            (true, true, false) => ResizeCursor::Horizontal,
+            (true, false, true) => ResizeCursor::Vertical,
+            (true, true, true) => ResizeCursor::Diagonal,
+        }
+    }
+
+    /// A pointer delta with the ungrabbed axis zeroed
+    pub fn mask<T: Default>(self, dx: T, dy: T) -> (T, T) {
+        (
+            if self.right { dx } else { T::default() },
+            if self.bottom { dy } else { T::default() },
+        )
+    }
+}
+
+/// Pointer shape over an overlay; each backend maps it to its native cursor
+#[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
+pub enum ResizeCursor {
+    #[default]
+    Default,
+    Horizontal,
+    Vertical,
+    Diagonal,
+}
 
 /// Snap a value to the nearest grid point; identity when snapping is off.
 #[inline]

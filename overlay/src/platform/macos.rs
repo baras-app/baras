@@ -8,15 +8,15 @@ use std::ffi::c_void;
 
 // objc2 core
 use objc2::rc::Retained;
-use objc2::{DeclaredClass, MainThreadMarker, MainThreadOnly, define_class, msg_send};
+use objc2::{ClassType, DeclaredClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, sel};
 
 // objc2-foundation types
 use objc2_foundation::{NSPoint, NSRect, NSSize};
 
 // objc2-app-kit types
 use objc2_app_kit::{
-    NSBackingStoreType, NSColor, NSEvent, NSGraphicsContext, NSScreen, NSScreenSaverWindowLevel, NSWindow,
-    NSWindowCollectionBehavior, NSWindowStyleMask,
+    NSBackingStoreType, NSColor, NSCursor, NSCursorFrameResizeDirections, NSCursorFrameResizePosition, NSEvent,
+    NSGraphicsContext, NSScreen, NSScreenSaverWindowLevel, NSWindow, NSWindowCollectionBehavior, NSWindowStyleMask,
 };
 
 // Keep core-graphics for CGContext operations
@@ -24,7 +24,7 @@ use core_graphics::base::{kCGBitmapByteOrder32Little, kCGImageAlphaPremultiplied
 use core_graphics::color_space::CGColorSpace;
 use core_graphics::context::CGContext;
 
-use super::{MAX_OVERLAY_HEIGHT, MAX_OVERLAY_WIDTH, MIN_OVERLAY_SIZE, RESIZE_CORNER_SIZE};
+use super::{MAX_OVERLAY_HEIGHT, MAX_OVERLAY_WIDTH, MIN_OVERLAY_SIZE, ResizeCursor, ResizeEdges};
 use super::{MonitorInfo, OverlayConfig, OverlayPlatform, PlatformError};
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -320,6 +320,8 @@ pub struct MacOSOverlay {
     is_dragging: bool,
     is_resizing: bool,
     in_resize_corner: bool,
+    resize_edges: ResizeEdges,
+    cursor: ResizeCursor,
     position_dirty: bool,
     pending_click: Option<(f32, f32)>,
 
@@ -350,8 +352,22 @@ impl MacOSOverlay {
             .set_pixel_data(self.bgra_buffer.as_mut_ptr() as *mut c_void, self.width, self.height);
     }
 
-    fn is_in_resize_corner(&self, x: f64, y: f64) -> bool {
-        x > (self.width as f64 - RESIZE_CORNER_SIZE as f64) && y > (self.height as f64 - RESIZE_CORNER_SIZE as f64)
+    /// `y` from the top, like the other backends
+    fn resize_edges_at(&self, x: f64, y: f64) -> ResizeEdges {
+        ResizeEdges::at(x, y, self.width, self.height)
+    }
+
+    /// The pointer is over `edges`: light the grip and match the cursor
+    fn hover(&mut self, edges: ResizeEdges) {
+        // Mid-resize the grabbed edges hold, wherever the pointer is
+        let edges = if self.is_resizing { self.resize_edges } else { edges };
+        self.in_resize_corner = edges.any();
+        let cursor = edges.cursor(self.drag_enabled && !self.click_through);
+        if cursor == self.cursor {
+            return;
+        }
+        self.cursor = cursor;
+        ns_cursor(cursor).set();
     }
 }
 
@@ -442,6 +458,8 @@ impl OverlayPlatform for MacOSOverlay {
                 is_dragging: false,
                 is_resizing: false,
                 in_resize_corner: false,
+                resize_edges: ResizeEdges::default(),
+                cursor: ResizeCursor::Default,
                 position_dirty: false,
                 pending_click: None,
                 drag_start_x: 0.0,
@@ -547,7 +565,7 @@ impl OverlayPlatform for MacOSOverlay {
         if enabled {
             self.is_dragging = false;
             self.is_resizing = false;
-            self.in_resize_corner = false;
+            self.hover(ResizeEdges::default());
         }
     }
 
@@ -555,6 +573,8 @@ impl OverlayPlatform for MacOSOverlay {
         self.drag_enabled = enabled;
         if !enabled {
             self.is_dragging = false;
+            // Back to the arrow; move mode picks its cursor up on the next move
+            self.hover(ResizeEdges::default());
         }
     }
 
@@ -620,8 +640,10 @@ impl OverlayPlatform for MacOSOverlay {
                 let y = self.height as f64 - loc_y;
 
                 if self.drag_enabled {
-                    if self.is_in_resize_corner(x, y) {
+                    let edges = self.resize_edges_at(x, y);
+                    if edges.any() {
                         self.is_resizing = true;
+                        self.resize_edges = edges;
                         self.pending_width = self.width;
                         self.pending_height = self.height;
                         self.resize_start_x = loc_x;
@@ -654,7 +676,7 @@ impl OverlayPlatform for MacOSOverlay {
                 let y = self.height as f64 - loc_y;
 
                 if !self.is_resizing {
-                    self.in_resize_corner = self.is_in_resize_corner(x, y);
+                    self.hover(self.resize_edges_at(x, y));
                 }
 
                 if self.is_dragging {
@@ -665,8 +687,9 @@ impl OverlayPlatform for MacOSOverlay {
                         super::snap_to_grid(self.drag_start_win_y + dy as i32, self.snap_to_grid),
                     );
                 } else if self.is_resizing {
-                    let dx = loc_x - self.resize_start_x;
-                    let dy = self.resize_start_y - loc_y; // Flip Y
+                    let (dx, dy) = self
+                        .resize_edges
+                        .mask(loc_x - self.resize_start_x, self.resize_start_y - loc_y); // Flip Y
 
                     let raw_w = (self.pending_width as i32 + dx as i32)
                         .clamp(MIN_OVERLAY_SIZE as i32, MAX_OVERLAY_WIDTH as i32)
@@ -695,7 +718,7 @@ impl OverlayPlatform for MacOSOverlay {
                 && !self.is_resizing
             {
                 let y = self.height as f64 - mouse_y;
-                self.in_resize_corner = self.is_in_resize_corner(mouse_x, y);
+                self.hover(self.resize_edges_at(mouse_x, y));
             }
         }
 
@@ -704,6 +727,30 @@ impl OverlayPlatform for MacOSOverlay {
 
     fn get_monitors(&self) -> Vec<MonitorInfo> {
         get_all_monitors()
+    }
+}
+
+/// AppKit cursor for a resize hover: macOS 15's frame-resize cursors (which
+/// include a diagonal) when present, else the older edge cursors and a crosshair
+#[allow(deprecated)]
+fn ns_cursor(cursor: ResizeCursor) -> Retained<NSCursor> {
+    let position = match cursor {
+        ResizeCursor::Default => return NSCursor::arrowCursor(),
+        ResizeCursor::Horizontal => NSCursorFrameResizePosition::Right,
+        ResizeCursor::Vertical => NSCursorFrameResizePosition::Bottom,
+        ResizeCursor::Diagonal => NSCursorFrameResizePosition::BottomRight,
+    };
+    // A class method, so ask the metaclass
+    let frame_cursors = NSCursor::class()
+        .metaclass()
+        .responds_to(sel!(frameResizeCursorFromPosition:inDirections:));
+    if frame_cursors {
+        return NSCursor::frameResizeCursorFromPosition_inDirections(position, NSCursorFrameResizeDirections::All);
+    }
+    match cursor {
+        ResizeCursor::Horizontal => NSCursor::resizeLeftRightCursor(),
+        ResizeCursor::Vertical => NSCursor::resizeUpDownCursor(),
+        _ => NSCursor::crosshairCursor(),
     }
 }
 

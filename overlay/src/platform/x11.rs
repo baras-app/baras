@@ -17,7 +17,7 @@ use x11rb::protocol::xproto::*;
 use x11rb::rust_connection::RustConnection;
 use x11rb::wrapper::ConnectionExt as _;
 
-use super::{MAX_OVERLAY_HEIGHT, MAX_OVERLAY_WIDTH, MIN_OVERLAY_SIZE, RESIZE_CORNER_SIZE};
+use super::{MAX_OVERLAY_HEIGHT, MAX_OVERLAY_WIDTH, MIN_OVERLAY_SIZE, ResizeCursor, ResizeEdges};
 use super::{MonitorInfo, OverlayConfig, OverlayPlatform, PlatformError};
 
 // Atoms needed for EWMH hints
@@ -114,6 +114,10 @@ pub struct X11Overlay {
     is_dragging: bool,
     is_resizing: bool,
     in_resize_corner: bool,
+    resize_edges: ResizeEdges,
+    /// Resize cursors: horizontal, vertical, diagonal (NONE = not available)
+    resize_cursors: [Cursor; 3],
+    cursor: ResizeCursor,
     position_dirty: bool,
     pending_click: Option<(f32, f32)>,
 
@@ -268,8 +272,53 @@ impl X11Overlay {
         let _ = self.conn.flush();
     }
 
-    fn is_in_resize_corner(&self, x: i32, y: i32) -> bool {
-        x > (self.width as i32 - RESIZE_CORNER_SIZE) && y > (self.height as i32 - RESIZE_CORNER_SIZE)
+    fn resize_edges_at(&self, x: i32, y: i32) -> ResizeEdges {
+        ResizeEdges::at(x as f64, y as f64, self.width, self.height)
+    }
+
+    /// Resize cursors from the core "cursor" font (sb_h_double_arrow,
+    /// sb_v_double_arrow, bottom_right_corner); any that fail stay NONE
+    fn create_resize_cursors(conn: &RustConnection) -> [Cursor; 3] {
+        const GLYPHS: [u16; 3] = [108, 116, 14];
+        let mut ids = [x11rb::NONE; 3];
+        let Ok(font) = conn.generate_id() else { return ids };
+        if conn.open_font(font, b"cursor").is_err() {
+            return ids;
+        }
+        for (id, glyph) in ids.iter_mut().zip(GLYPHS) {
+            if let Ok(cid) = conn.generate_id()
+                && conn
+                    .create_glyph_cursor(cid, font, font, glyph, glyph + 1, 0, 0, 0, 0xffff, 0xffff, 0xffff)
+                    .is_ok()
+            {
+                *id = cid;
+            }
+        }
+        let _ = conn.close_font(font);
+        ids
+    }
+
+    /// The pointer is over `edges`: light the grip and match the cursor
+    fn hover(&mut self, edges: ResizeEdges) {
+        // Mid-resize the grabbed edges hold, wherever the pointer is
+        let edges = if self.is_resizing { self.resize_edges } else { edges };
+        self.in_resize_corner = edges.any();
+        let cursor = edges.cursor(self.drag_enabled && !self.click_through);
+        if cursor == self.cursor {
+            return;
+        }
+        self.cursor = cursor;
+        let [horizontal, vertical, diagonal] = self.resize_cursors;
+        let id = match cursor {
+            ResizeCursor::Default => x11rb::NONE,
+            ResizeCursor::Horizontal => horizontal,
+            ResizeCursor::Vertical => vertical,
+            ResizeCursor::Diagonal => diagonal,
+        };
+        let _ = self
+            .conn
+            .change_window_attributes(self.window, &ChangeWindowAttributesAux::new().cursor(id));
+        let _ = self.conn.flush();
     }
 }
 
@@ -354,6 +403,8 @@ impl OverlayPlatform for X11Overlay {
         // Create SHM buffer
         let shm_buffer = Self::create_shm_buffer(&conn, config.width, config.height)?;
 
+        let resize_cursors = Self::create_resize_cursors(&conn);
+
         let overlay = Self {
             conn,
             window,
@@ -372,6 +423,9 @@ impl OverlayPlatform for X11Overlay {
             is_dragging: false,
             is_resizing: false,
             in_resize_corner: false,
+            resize_edges: ResizeEdges::default(),
+            resize_cursors,
+            cursor: ResizeCursor::Default,
             position_dirty: false,
             pending_click: None,
             drag_start_root_x: 0,
@@ -467,7 +521,7 @@ impl OverlayPlatform for X11Overlay {
         if enabled {
             self.is_dragging = false;
             self.is_resizing = false;
-            self.in_resize_corner = false;
+            self.hover(ResizeEdges::default());
         }
     }
 
@@ -475,6 +529,8 @@ impl OverlayPlatform for X11Overlay {
         self.drag_enabled = enabled;
         if !enabled {
             self.is_dragging = false;
+            // Back to the plain cursor; move mode picks it up on the next motion
+            self.hover(ResizeEdges::default());
         }
     }
 
@@ -549,8 +605,10 @@ impl OverlayPlatform for X11Overlay {
 
                     if e.detail == 1 {
                         if self.drag_enabled {
-                            if self.is_in_resize_corner(x, y) {
+                            let edges = self.resize_edges_at(x, y);
+                            if edges.any() {
                                 self.is_resizing = true;
+                                self.resize_edges = edges;
                                 self.pending_width = self.width;
                                 self.pending_height = self.height;
                                 self.resize_start_x = x;
@@ -570,13 +628,14 @@ impl OverlayPlatform for X11Overlay {
                 x11rb::protocol::Event::ButtonRelease(e) if e.detail == 1 => {
                     self.is_dragging = false;
                     self.is_resizing = false;
+                    self.hover(self.resize_edges_at(e.event_x as i32, e.event_y as i32));
                 }
                 x11rb::protocol::Event::MotionNotify(e) if !self.click_through => {
                     let x = e.event_x as i32;
                     let y = e.event_y as i32;
 
                     if !self.is_resizing {
-                        self.in_resize_corner = self.is_in_resize_corner(x, y);
+                        self.hover(self.resize_edges_at(x, y));
                     }
 
                     if self.is_dragging {
@@ -587,8 +646,7 @@ impl OverlayPlatform for X11Overlay {
                             super::snap_to_grid(self.drag_start_win_y + dy, self.snap_to_grid),
                         );
                     } else if self.is_resizing {
-                        let dx = x - self.resize_start_x;
-                        let dy = y - self.resize_start_y;
+                        let (dx, dy) = self.resize_edges.mask(x - self.resize_start_x, y - self.resize_start_y);
 
                         let raw_w = (self.pending_width as i32 + dx)
                             .clamp(MIN_OVERLAY_SIZE as i32, MAX_OVERLAY_WIDTH as i32)
