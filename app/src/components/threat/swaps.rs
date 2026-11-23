@@ -26,7 +26,11 @@ fn stints(segments: &[AggroSegment]) -> Vec<Stint> {
     for s in segments {
         match runs.last_mut() {
             Some(last) if last.holder == s.target => last.end = s.end,
-            _ => runs.push(Stint { holder: s.target.clone(), start: s.start, end: s.end }),
+            _ => runs.push(Stint {
+                holder: s.target.clone(),
+                start: s.start,
+                end: s.end,
+            }),
         }
     }
     let mut out: Vec<Stint> = Vec::new();
@@ -63,7 +67,11 @@ pub fn TankSwaps(
     mut hovered: Signal<Option<(String, f32, f32)>>,
     roster: Roster,
 ) -> Element {
-    let died = |name: &str, at: f32| deaths.iter().any(|d| d.0 == name && d.1 >= at - DEATH_SECS && d.1 <= at + 1.0);
+    let died = |name: &str, at: f32| {
+        deaths
+            .iter()
+            .any(|d| d.0 == name && d.1 >= at - DEATH_SECS && d.1 <= at + 1.0)
+    };
     let who = |name: &str| {
         rsx! {
             span { class: "name-with-icon",
@@ -75,20 +83,20 @@ pub fn TankSwaps(
     };
 
     rsx! {
-        div { class: "threat-panel",
+        div { class: "analysis-panel",
             div { class: "uptime-toolbar",
                 span { class: "uptime-title", "Who held each enemy" }
             }
-            div { class: "threat-table-box",
-                table { class: "threat-table swap-table",
+            div { class: "analysis-table-box",
+                table { class: "analysis-table swap-table",
                     thead {
                         tr {
-                            th { class: "threat-name", "On" }
-                            th { class: "num threat-time", "From" }
-                            th { class: "num threat-time", "To" }
-                            th { class: "num threat-time", "Duration" }
-                            th { class: "threat-name", "Changed by" }
-                            th { class: "threat-name", "Taken from" }
+                            th { class: "analysis-name", "On" }
+                            th { class: "num analysis-time", "From" }
+                            th { class: "num analysis-time", "To" }
+                            th { class: "num analysis-time", "Duration" }
+                            th { class: "analysis-name", "Changed by" }
+                            th { class: "analysis-name", "Taken from" }
                             th { "Passed to" }
                         }
                     }
@@ -111,16 +119,16 @@ pub fn TankSwaps(
                                             },
                                             onmouseleave: move |_| hovered.set(None),
                                             td { title: "{stint.holder}", {who(&stint.holder)} }
-                                            td { class: "num threat-time", "{mmss(stint.start)}" }
-                                            td { class: "num threat-time", "{mmss(stint.end)}" }
-                                            td { class: "num threat-time", "{mmss(stint.end - stint.start)}" }
-                                            td { class: "threat-outcome",
+                                            td { class: "num analysis-time", "{mmss(stint.start)}" }
+                                            td { class: "num analysis-time", "{mmss(stint.end)}" }
+                                            td { class: "num analysis-time", "{mmss(stint.end - stint.start)}" }
+                                            td { class: "analysis-note",
                                                 if i == 0 {
                                                     "first target"
                                                 } else if died(&stints[i - 1].holder, stint.start) {
-                                                    span { class: "threat-outcome took", "{stints[i - 1].holder} died" }
+                                                    span { class: "analysis-note emph", "{stints[i - 1].holder} died" }
                                                 } else if let Some(ability) = taunt_for(&events, &enemy.name, stint) {
-                                                    span { class: "threat-outcome took", "{ability}" }
+                                                    span { class: "analysis-note emph", "{ability}" }
                                                 } else {
                                                     "no taunt"
                                                 }
@@ -136,9 +144,9 @@ pub fn TankSwaps(
                                                         {who(&next.holder)}
                                                     }
                                                     if died(&stint.holder, stint.end) {
-                                                        span { class: "threat-outcome", "{stint.holder} died" }
+                                                        span { class: "analysis-note", "{stint.holder} died" }
                                                     } else if i + 1 == stints.len() && died(&enemy.name, stint.end) {
-                                                        span { class: "threat-outcome", "enemy died" }
+                                                        span { class: "analysis-note", "enemy died" }
                                                     }
                                                 }
                                             }
