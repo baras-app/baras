@@ -4,6 +4,9 @@ use std::fs;
 use std::io::{BufWriter, Write};
 use std::path::Path;
 
+const IMPERIAL: [&str; 4] = ["agent", "bounty_hunter", "sith_warrior", "sith_inquisitor"];
+const REPUBLIC: [&str; 4] = ["trooper", "smuggler", "jedi_knight", "jedi_consular"];
+
 fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
 
@@ -12,13 +15,13 @@ fn main() {
     generate_alacrity_buffs_map(&out_dir);
     generate_discipline_abilities_map(&out_dir);
     generate_interrupt_abilities_set(&out_dir);
+    generate_battle_rez_set(&out_dir);
     generate_mirror_abilities_map(&out_dir);
 
     println!("cargo:rerun-if-changed=data/off_gcd.json");
     println!("cargo:rerun-if-changed=data/attack_types.csv");
     println!("cargo:rerun-if-changed=data/alacrity_abilities.csv");
     println!("cargo:rerun-if-changed=data/discipline_unique_abilities.csv");
-    println!("cargo:rerun-if-changed=data/interrupts.csv");
     println!("cargo:rerun-if-changed=data/ability_data.csv");
 }
 
@@ -50,31 +53,53 @@ fn generate_off_gcd_set(out_dir: &str) {
     .unwrap();
 }
 
-fn generate_interrupt_abilities_set(out_dir: &str) {
-    let csv = fs::read_to_string("data/interrupts.csv").expect("failed to read interrupts.csv");
-
-    let mut ids: Vec<i64> = csv
+/// Rows of data/ability_data.csv, header skipped.
+/// Columns: fqn(0), global_combat_id(1), name(2), ablGlobalCooldownTime(5), mirror_fqn(6),
+/// is_interrupt(8), its_revive(10).
+fn ability_rows() -> Vec<Vec<String>> {
+    let csv = fs::read_to_string("data/ability_data.csv").expect("failed to read ability_data.csv");
+    csv.trim_start_matches('\u{feff}')
         .lines()
         .skip(1)
-        .filter_map(|line| line.trim().parse::<i64>().ok())
-        .collect();
+        .map(split_csv_line)
+        .filter(|f| f.len() > 10)
+        .collect()
+}
+
+fn is_player_class(fqn: &str) -> bool {
+    matches!(fqn.split('.').nth(1), Some(c) if IMPERIAL.contains(&c) || REPUBLIC.contains(&c))
+}
+
+fn write_id_set(out_dir: &str, file_name: &str, static_name: &str, mut ids: Vec<i64>) {
     ids.sort_unstable();
     ids.dedup();
-
-    let path = Path::new(out_dir).join("interrupt_abilities.rs");
-    let mut file = BufWriter::new(fs::File::create(&path).unwrap());
-
+    let mut file = BufWriter::new(fs::File::create(Path::new(out_dir).join(file_name)).unwrap());
     let mut builder = phf_codegen::Set::new();
     for id in &ids {
         builder.entry(*id);
     }
+    writeln!(file, "pub static {static_name}: phf::Set<i64> = {};", builder.build()).unwrap();
+}
 
-    writeln!(
-        file,
-        "pub static INTERRUPT_ABILITIES: phf::Set<i64> = {};",
-        builder.build()
-    )
-    .unwrap();
+/// Dedicated interrupts: abilities that interrupt and are off the GCD. Abilities that
+/// interrupt as a side effect (Force Leap, Backstab) are on the GCD and stay out.
+fn generate_interrupt_abilities_set(out_dir: &str) {
+    let ids = ability_rows()
+        .iter()
+        .filter(|f| f[8] == "True" && f[5].is_empty())
+        .filter_map(|f| f[1].parse().ok())
+        .collect();
+    write_id_set(out_dir, "interrupt_abilities.rs", "INTERRUPT_ABILITIES", ids);
+}
+
+/// In-combat resurrection abilities of the player classes.
+fn generate_battle_rez_set(out_dir: &str) {
+    let ids = ability_rows()
+        .iter()
+        .filter(|f| f[10] == "True" && is_player_class(&f[0]))
+        .filter_map(|f| f[1].parse().ok())
+        .collect();
+    write_id_set(out_dir, "battle_rez_abilities.rs", "BATTLE_REZ_ABILITY_IDS", ids);
 }
 
 fn generate_attack_types_map(out_dir: &str) {
@@ -218,17 +243,11 @@ fn split_csv_line(line: &str) -> Vec<String> {
 /// Republic/Imperial mirror pairs from the full ability dump.
 /// Columns used: fqn(0), global_combat_id(1), name(2), mirror_fqn(6).
 fn generate_mirror_abilities_map(out_dir: &str) {
-    let csv = fs::read_to_string("data/ability_data.csv").expect("failed to read ability_data.csv");
-    let csv = csv.trim_start_matches('\u{feff}');
-
-    const IMPERIAL: [&str; 4] = ["agent", "bounty_hunter", "sith_warrior", "sith_inquisitor"];
-
     // Pass 1: fqn → (id, name, is_imperial) for every row that has a mirror.
     let mut by_fqn: BTreeMap<String, (i64, String, bool)> = BTreeMap::new();
     let mut pairs: Vec<(String, String)> = Vec::new();
-    for line in csv.lines().skip(1) {
-        let f = split_csv_line(line);
-        if f.len() < 7 || f[6].is_empty() {
+    for f in ability_rows() {
+        if f[6].is_empty() {
             continue;
         }
         let Ok(id) = f[1].trim().parse::<i64>() else { continue };
