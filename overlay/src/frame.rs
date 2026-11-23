@@ -80,6 +80,11 @@ impl OverlayFrame {
     // Scaling
     // ─────────────────────────────────────────────────────────────────────────
 
+    /// Corner radius of bars inside the overlay, at base size (unscaled)
+    pub fn element_radius(&self) -> f32 {
+        self.style.element_radius.clamp(0.0, MAX_CORNER_RADIUS)
+    }
+
     /// Unscaled gap between the window edge and list content, clear of the border
     pub fn edge_margin(&self) -> f32 {
         EDGE_MARGIN + self.style.border_width.clamp(0.0, MAX_BORDER_WIDTH)

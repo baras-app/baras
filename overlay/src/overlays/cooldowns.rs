@@ -612,7 +612,7 @@ impl CooldownOverlay {
         let font_size = self.frame.scaled(BASE_BAR_FONT_SIZE * font_scale);
         let entry_spacing = BASE_ROW_SPACING;
         let padding = self.frame.edge_margin();
-        let bar_radius = 3.0 * scale;
+        let bar_radius = self.frame.element_radius() * scale;
         let content_width = self.frame.width() as f32 - 2.0 * padding;
         let header_font_size = font_size * 1.4;
 
@@ -735,7 +735,7 @@ impl CooldownOverlay {
         let font_scale = self.config.font_scale.clamp(0.3, 3.0);
         let bar_height = self.frame.scaled(self.config.icon_size as f32).round() + 4.0 * self.frame.scale_factor();
         let font_size = self.frame.scaled(BASE_BAR_FONT_SIZE * font_scale);
-        let bar_radius = 3.0 * self.frame.scale_factor();
+        let bar_radius = self.frame.element_radius() * self.frame.scale_factor();
         let content_width = self.frame.width() as f32 - 2.0 * padding;
         let font_color = tiny_skia::Color::WHITE;
         let accent = colors::effect_icon_bg();

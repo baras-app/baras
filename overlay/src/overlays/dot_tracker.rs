@@ -502,7 +502,7 @@ impl DotTrackerOverlay {
         let name_font_size = font_size * 0.85;
         let entry_spacing = BASE_ROW_SPACING;
         let padding = self.frame.edge_margin();
-        let bar_radius = 3.0 * scale;
+        let bar_radius = self.frame.element_radius() * scale;
         let content_width = self.frame.width() as f32 - 2.0 * padding;
         let header_font_size = font_size * 1.4;
 
@@ -657,7 +657,7 @@ impl DotTrackerOverlay {
         let name_font_size = font_size * 0.85;
         let entry_spacing = BASE_ROW_SPACING;
         let padding = self.frame.edge_margin();
-        let bar_radius = 3.0 * scale;
+        let bar_radius = self.frame.element_radius() * scale;
         let content_width = self.frame.width() as f32 - 2.0 * padding;
         let header_font_size = font_size * 1.4;
 

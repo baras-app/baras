@@ -68,6 +68,14 @@ pub fn FrameStyleSection(draft: SettingsDraft) -> Element {
                 on_change: move |v: f64| draft.edit(|s| s.frame_style.corner_radius = v as f32),
             }
             Slider {
+                label: "Element Corner Radius",
+                value: style.element_radius as f64,
+                min: 0.0,
+                max: MAX_CORNER_RADIUS as f64,
+                suffix: "px",
+                on_change: move |v: f64| draft.edit(|s| s.frame_style.element_radius = v as f32),
+            }
+            Slider {
                 label: "Border Width",
                 value: style.border_width as f64,
                 min: 0.0,
@@ -140,6 +148,19 @@ pub fn FrameOverrideRows(draft: SettingsDraft, tab_key: Signal<String>) -> Eleme
                 suffix: "px",
                 disabled: o.corner_radius.is_none(),
                 on_change: move |v: f64| edit_override(draft, &tab_key(), |o| o.corner_radius = Some(v as f32)),
+            }
+        }
+        Override {
+            custom: o.element_radius.is_some(),
+            on_toggle: move |on: bool| edit_override(draft, &tab_key(), |o| o.element_radius = on.then_some(style.element_radius)),
+            Slider {
+                label: "Element Corner Radius",
+                value: style.element_radius as f64,
+                min: 0.0,
+                max: MAX_CORNER_RADIUS as f64,
+                suffix: "px",
+                disabled: o.element_radius.is_none(),
+                on_change: move |v: f64| edit_override(draft, &tab_key(), |o| o.element_radius = Some(v as f32)),
             }
         }
         Override {

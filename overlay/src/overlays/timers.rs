@@ -167,7 +167,8 @@ impl TimerOverlay {
         self.frame.begin_frame();
 
         let scale = self.frame.scale_factor();
-        let row = IconBarRow::new(padding, width - padding * 2.0, bar_height, 2.0 * scale, scale);
+        let radius = self.frame.element_radius() * scale;
+        let row = IconBarRow::new(padding, width - padding * 2.0, bar_height, radius, scale);
         let border = self
             .config
             .show_border
@@ -275,7 +276,8 @@ impl TimerOverlay {
         }
 
         let scale = self.frame.scale_factor();
-        let row = IconBarRow::new(padding, width - padding * 2.0, bar_height, 2.0 * scale, scale);
+        let radius = self.frame.element_radius() * scale;
+        let row = IconBarRow::new(padding, width - padding * 2.0, bar_height, radius, scale);
         let border = self
             .config
             .show_border
