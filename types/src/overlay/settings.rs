@@ -205,7 +205,7 @@ fn default_overlay_fps() -> u8 {
 
 /// Default metric bar gradient intensity. Must match
 /// `baras_overlay::widgets::progress_bar::GRADIENT_DARKEN`.
-fn default_gradient_intensity() -> f32 {
+pub(crate) fn default_gradient_intensity() -> f32 {
     0.32
 }
 

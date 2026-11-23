@@ -1,8 +1,8 @@
 //! Window style (background, opacity, border, corners, font): the global values and
 //! one overlay's overrides of them.
 
-use baras_types::FrameStyleOverride;
 use baras_types::frame_style::{MAX_BORDER_WIDTH, MAX_CORNER_RADIUS};
+use baras_types::{FrameStyleOverride, StylePreset};
 use dioxus::prelude::*;
 
 use crate::api;
@@ -25,6 +25,18 @@ pub fn FrameStyleSection(draft: SettingsDraft) -> Element {
     rsx! {
         div { class: "settings-section",
             h4 { "Window Style" }
+            div { class: "setting-row",
+                label { title: "Sets opacity, border, corner radii, and metric bar radius, spacing and gradient. Colors and per-overlay overrides are kept.", "Preset" }
+                div { class: "style-presets",
+                    for preset in StylePreset::ALL {
+                        button {
+                            class: "btn btn-small",
+                            onclick: move |_| draft.edit(|s| preset.apply(s)),
+                            "{preset.label()}"
+                        }
+                    }
+                }
+            }
             div { class: "setting-row",
                 label { "Overlay Font" }
                 select {
