@@ -13,6 +13,7 @@ fn main() {
     generate_off_gcd_set(&out_dir);
     generate_attack_types_map(&out_dir);
     generate_alacrity_buffs_map(&out_dir);
+    generate_channel_times_map(&out_dir);
     generate_discipline_abilities_map(&out_dir);
     generate_interrupt_abilities_set(&out_dir);
     generate_battle_rez_set(&out_dir);
@@ -40,7 +41,7 @@ fn generate_off_gcd_set(out_dir: &str) {
 
 /// Rows of data/ability_data.csv, header skipped.
 /// Columns: fqn(0), global_combat_id(1), name(2), ablGlobalCooldownTime(5), mirror_fqn(6),
-/// is_interrupt(8), its_revive(10), disciplines(20).
+/// is_interrupt(8), its_revive(10), channel_time(17), disciplines(20).
 fn ability_rows() -> Vec<Vec<String>> {
     let csv = fs::read_to_string("data/ability_data.csv").expect("failed to read ability_data.csv");
     csv.trim_start_matches('\u{feff}')
@@ -75,6 +76,25 @@ fn generate_interrupt_abilities_set(out_dir: &str) {
         .filter_map(|f| f[1].parse().ok())
         .collect();
     write_id_set(out_dir, "interrupt_abilities.rs", "INTERRUPT_ABILITIES", ids);
+}
+
+/// Ability ID → base channel time in seconds (`channel_time` column).
+fn generate_channel_times_map(out_dir: &str) {
+    // BTreeMap for deterministic output (sorted by key)
+    let mut entries = BTreeMap::new();
+    for f in ability_rows() {
+        let (Ok(id), Some(Ok(secs))) = (f[1].parse::<i64>(), f.get(17).map(|s| s.parse::<f32>())) else {
+            continue;
+        };
+        entries.insert(id, format!("{secs}f32"));
+    }
+
+    let mut file = BufWriter::new(fs::File::create(Path::new(out_dir).join("channel_abilities.rs")).unwrap());
+    let mut builder = phf_codegen::Map::new();
+    for (id, secs) in &entries {
+        builder.entry(*id, secs);
+    }
+    writeln!(file, "static CHANNEL_TIMES: phf::Map<i64, f32> = {};", builder.build()).unwrap();
 }
 
 /// In-combat resurrection abilities of the player classes.

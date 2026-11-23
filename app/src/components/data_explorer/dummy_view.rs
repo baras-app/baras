@@ -5,7 +5,10 @@ use dioxus::prelude::*;
 use wasm_bindgen::JsCast;
 
 use baras_types::formatting;
-use baras_types::{DummyParse, GcdPress, LONG_GCD_MARGIN_SECS, RatingSource, percentile_label};
+use baras_types::{
+    CombatLogSessionState, DummyParse, GcdPress, LONG_GCD_MARGIN_SECS, LogEventCategory, RatingSource, is_long_gap,
+    percentile_label,
+};
 
 use super::ctx::ExplorerCtx;
 use super::dummy_charts::{IntervalDensity, PressTimeline};
@@ -17,6 +20,9 @@ use crate::types::ViewMode;
 
 /// Height the press list scrolls within
 const PRESSES_MAX_HEIGHT: &str = "max-height: 330px;";
+/// The two tables sharing the column beside the press list fill the same height
+const ABILITIES_ABOVE_CLIPS_HEIGHT: &str = "max-height: 185px; margin-bottom: var(--space-md);";
+const CLIPS_MAX_HEIGHT: &str = "max-height: 110px;";
 /// Seconds of combat log shown either side of a delay jumped to
 const JUMP_WINDOW_SECS: f32 = 4.0;
 /// DOM id prefix of a press row, followed by its index in `gcd.presses`
@@ -95,6 +101,7 @@ pub(super) fn DummyParseView(
     european: bool,
     mut time_range: Signal<TimeRange>,
     mut view_mode: Signal<ViewMode>,
+    mut combat_log_state: Signal<CombatLogSessionState>,
     /// The encounter's damage chart, shown under the stat cards
     chart: Element,
 ) -> Element {
@@ -133,7 +140,7 @@ pub(super) fn DummyParseView(
     let source_info = pcts.map(|p| p.source.clone()).unwrap_or_default();
     let count = pcts.map_or(0, |p| p.count);
     let dec = |v: f32| formatting::format_decimal(v, 1, eu);
-    let secs = |v: f32| format!("{} s", formatting::format_decimal(v, 2, eu));
+    let secs = |v: f32| format!("{} s", formatting::format_decimal(v, 3, eu));
     let gcd = &parse.gcd;
 
     // Longest first, each with its index in the chronological list
@@ -142,9 +149,18 @@ pub(super) fn DummyParseView(
     let longest = presses.first().map_or(0.0, |(_, p)| p.interval_secs);
     let mean = gcd.intervals_secs.iter().sum::<f32>() / gcd.intervals_secs.len().max(1) as f32;
     let long_from = gcd.typical_gcd_secs + LONG_GCD_MARGIN_SECS;
-    let long_class = |v: f32| if gcd.is_long(v) { "num text-error" } else { "num" };
+    let long_class = |long: bool| if long { "num text-error" } else { "num" };
+    let press_class = |p: &GcdPress| match (p.is_clipped(), p.is_long()) {
+        (true, _) => "num text-warning",
+        (_, long) => long_class(long),
+    };
+    // Channels cut short by the next press, chronological
+    let clips: Vec<(usize, &GcdPress)> = gcd.presses.iter().enumerate().filter(|(_, p)| p.is_clipped()).collect();
+    let channels = gcd.presses.iter().filter(|p| p.channel.is_some()).count();
     let picked = selected();
+    // The combat log reads its filters from this state when it mounts
     let mut jump = move |t: f32| {
+        combat_log_state.write().event_categories = vec![LogEventCategory::Actions, LogEventCategory::Effects];
         time_range.set(TimeRange::new((t - JUMP_WINDOW_SECS).max(0.0), t + JUMP_WINDOW_SECS));
         view_mode.set(ViewMode::CombatLog);
     };
@@ -182,6 +198,7 @@ pub(super) fn DummyParseView(
                         i { class: "fa-solid fa-stopwatch" }
                         " Global Cooldown"
                     }
+                    div { class: "dummy-summary",
                     div { class: "history-cards",
                         div { class: "history-card", div { class: "k", "GCDs Used" } div { class: "v", "{gcd.gcd_count}" } }
                         div { class: "history-card", title: "Median time from one on-GCD press to the next",
@@ -191,6 +208,10 @@ pub(super) fn DummyParseView(
                             div { class: "k", "Mean" } div { class: "v", {secs(mean)} }
                         }
                         div { class: "history-card", div { class: "k", "Longest" } div { class: "v", {secs(longest)} } }
+                    }
+                    if !gcd.presses.is_empty() {
+                        IntervalDensity { parse: resource, european: eu }
+                    }
                     }
                     if !gcd.presses.is_empty() {
                         PressTimeline { parse: resource, selected, european: eu }
@@ -210,7 +231,7 @@ pub(super) fn DummyParseView(
                                 thead {
                                     tr {
                                         th { class: "num col-apps", "Time" }
-                                        th { class: "num col-uptime", title: "Time until the next press; red from {secs(long_from)}", "To Next" }
+                                        th { class: "num col-uptime", title: "Time until the next press; red from {secs(long_from)}, or for a full channel {secs(LONG_GCD_MARGIN_SECS)} past that channel's median; amber when a channel was clipped", "To Next" }
                                         th { "Ability" }
                                         th { "Next" }
                                     }
@@ -228,7 +249,7 @@ pub(super) fn DummyParseView(
                                                     onclick: move |_| selected.set((picked != Some(i)).then_some(i)),
                                                     ondoubleclick: move |_| jump(t),
                                                     td { class: "num", {formatting::format_duration(t as i64)} }
-                                                    td { class: long_class(p.interval_secs), {secs(p.interval_secs)} }
+                                                    td { class: press_class(p), {secs(p.interval_secs)} }
                                                     {ability_cell(p.ability_id, &p.ability)}
                                                     {ability_cell(p.next_id, &p.next)}
                                                 }
@@ -244,7 +265,7 @@ pub(super) fn DummyParseView(
                             i { class: "fa-solid fa-list" }
                             " Time To Next Press by Ability"
                         }
-                        div { class: "effect-table-wrapper", style: PRESSES_MAX_HEIGHT,
+                        div { class: "effect-table-wrapper", style: if clips.is_empty() { PRESSES_MAX_HEIGHT } else { ABILITIES_ABOVE_CLIPS_HEIGHT },
                             table { class: "effect-table",
                                 thead {
                                     tr {
@@ -260,17 +281,61 @@ pub(super) fn DummyParseView(
                                             {ability_cell(a.ability_id, &a.ability_name)}
                                             td { class: "num", "{a.uses}" }
                                             td { class: "num", {secs(a.median_secs)} }
-                                            td { class: long_class(a.longest_secs), {secs(a.longest_secs)} }
+                                            td { class: long_class(is_long_gap(a.longest_secs, a.expected_secs)), {secs(a.longest_secs)} }
                                         }
                                     }
                                 }
                             }
                         }
-                        div { class: "overview-column-header",
-                            i { class: "fa-solid fa-chart-area" }
-                            " Time Between Presses"
+                        if !clips.is_empty() {
+                            div { class: "overview-column-header",
+                                i { class: "fa-solid fa-scissors" }
+                                " Clipped Channels"
+                                span { class: "text-muted", " {clips.len()} of {channels} channels" }
+                            }
+                            div { class: "effect-table-wrapper", style: CLIPS_MAX_HEIGHT,
+                                table { class: "effect-table",
+                                    thead {
+                                        tr {
+                                            th { class: "num col-apps", "Time" }
+                                            th { "Channel" }
+                                            th { class: "num col-uptime", title: "Ticks landed before the next press, of a full channel's", "Ticks" }
+                                            th { class: "num col-uptime", title: "Time until the next press", "To Next" }
+                                            th { "Next" }
+                                        }
+                                    }
+                                    tbody {
+                                        for (i, p) in clips.iter().copied() {
+                                            {
+                                                let t = p.time_secs;
+                                                let ticks = p.channel.map_or(String::new(), |c| match c.full_ticks {
+                                                    0 => c.ticks.to_string(),
+                                                    full => format!("{}/{full}", c.ticks),
+                                                });
+                                                rsx! {
+                                                    tr {
+                                                        key: "{i}",
+                                                        class: if picked == Some(i) { "selected" },
+                                                        title: "Click to mark on the timeline, double-click to open in the combat log",
+                                                        onclick: move |_| selected.set((picked != Some(i)).then_some(i)),
+                                                        ondoubleclick: move |_| jump(t),
+                                                        td { class: "num", {formatting::format_duration(t as i64)} }
+                                                        {ability_cell(p.ability_id, &p.ability)}
+                                                        td { class: "num", "{ticks}" }
+                                                        td {
+                                                            class: "num text-warning",
+                                                            title: "{secs(p.expected_secs)} is the median after this ability's full channels",
+                                                            {secs(p.interval_secs)}
+                                                        }
+                                                        {ability_cell(p.next_id, &p.next)}
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
-                        IntervalDensity { parse: resource, european: eu }
                     }
                 }
             }

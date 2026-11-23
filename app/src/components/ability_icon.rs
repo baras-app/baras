@@ -80,6 +80,17 @@ pub fn AbilityIcon(
     }
 }
 
+/// Icon data URL for `ability_id` (None = no icon), cached for the session.
+/// For markup built outside the component tree, such as chart tooltips.
+pub async fn fetch_icon_url(ability_id: u64) -> Option<String> {
+    if let Some(cached) = get_cached(ability_id) {
+        return cached;
+    }
+    let result = api::get_icon_preview(ability_id).await;
+    set_cached(ability_id, result.clone());
+    result
+}
+
 /// Icon data URL for `ability_id` (None = no icon), and whether the lookup is done.
 /// Re-fetches when the id changes; results are cached for the session.
 pub fn use_icon_url(ability_id: Option<u64>) -> (Signal<Option<String>>, Signal<bool>) {
@@ -102,9 +113,7 @@ pub fn use_icon_url(ability_id: Option<u64>) -> (Signal<Option<String>>, Signal<
         icon_url.set(None);
         loaded.set(false);
         spawn(async move {
-            let result = api::get_icon_preview(id).await;
-            set_cached(id, result.clone());
-            icon_url.set(result);
+            icon_url.set(fetch_icon_url(id).await);
             loaded.set(true);
         });
     }));
