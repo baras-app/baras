@@ -18,39 +18,24 @@ fn main() {
     generate_battle_rez_set(&out_dir);
     generate_mirror_abilities_map(&out_dir);
 
-    println!("cargo:rerun-if-changed=data/off_gcd.json");
+    println!("cargo:rerun-if-changed=data/off_gcd_extra.txt");
     println!("cargo:rerun-if-changed=data/attack_types.csv");
     println!("cargo:rerun-if-changed=data/alacrity_abilities.csv");
     println!("cargo:rerun-if-changed=data/discipline_unique_abilities.csv");
     println!("cargo:rerun-if-changed=data/ability_data.csv");
 }
 
+/// Off-GCD abilities: no `ablGlobalCooldownTime` in the game data, plus the IDs in
+/// data/off_gcd_extra.txt for what the extractor does not reach (adrenals, medpacs, mounts).
 fn generate_off_gcd_set(out_dir: &str) {
-    let json = fs::read_to_string("data/off_gcd.json").expect("failed to read off_gcd.json");
-
-    // Simple JSON object parse: extract all numeric keys
-    let mut ids: Vec<i64> = json
-        .split('"')
-        .enumerate()
-        .filter_map(|(i, s)| if i % 2 == 1 { s.parse::<i64>().ok() } else { None })
+    let extra = fs::read_to_string("data/off_gcd_extra.txt").expect("failed to read off_gcd_extra.txt");
+    let ids = ability_rows()
+        .iter()
+        .filter(|f| f[5].is_empty())
+        .filter_map(|f| f[1].parse().ok())
+        .chain(extra.lines().filter_map(|l| l.trim().parse().ok()))
         .collect();
-    ids.sort_unstable();
-    ids.dedup();
-
-    let path = Path::new(out_dir).join("off_gcd_abilities.rs");
-    let mut file = BufWriter::new(fs::File::create(&path).unwrap());
-
-    let mut builder = phf_codegen::Set::new();
-    for id in &ids {
-        builder.entry(*id);
-    }
-
-    writeln!(
-        file,
-        "pub static OFF_GCD_ABILITIES: phf::Set<i64> = {};",
-        builder.build()
-    )
-    .unwrap();
+    write_id_set(out_dir, "off_gcd_abilities.rs", "OFF_GCD_ABILITIES", ids);
 }
 
 /// Rows of data/ability_data.csv, header skipped.

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use baras_types::{AbilityInterval, GcdAnalysis, GcdPress};
 
 use super::*;
-use crate::game_data::{OFF_GCD_ABILITIES, effect_id};
+use crate::game_data::{effect_id, is_off_gcd};
 
 /// Events logged before combat started carry no combat time (or a negative
 /// one); buffs and pre-casts there are not part of the parse
@@ -56,7 +56,7 @@ impl EncounterQuery<'_> {
                     .zip(ids)
                     .zip(names)
                     .map(|((t, id), name)| (t, id, name))
-                    .filter(|(_, id, _)| !OFF_GCD_ABILITIES.contains(id)),
+                    .filter(|(_, id, _)| !is_off_gcd(*id)),
             );
         }
         Ok(analyze(&presses))
