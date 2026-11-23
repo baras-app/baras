@@ -171,6 +171,9 @@ pub fn run() {
                     tracing::error!(error = %e, "Failed to clear data directory");
                 }
 
+                // Scan font coverage off the main thread so the settings font picker fills instantly
+                std::thread::spawn(baras_overlay::available_font_families);
+
                 // Create and spawn the combat service (includes audio service)
                 let (service, handle, icon_cache) =
                     CombatService::new(app.handle().clone(), overlay_tx, audio_tx, audio_rx);
