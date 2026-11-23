@@ -2851,6 +2851,8 @@
 }
 
 .context-menu-item {
+  display: flex;
+  text-align: left; /* the page centres text; menus read down a left edge */
   padding: 3px 10px;
   cursor: pointer;
   color: var(--text-primary);
@@ -2861,6 +2863,20 @@
 .context-menu-item:hover {
   background: var(--bg-hover, rgba(var(--fg-rgb), 0.1));
   color: var(--accent-gold, #ffc832);
+}
+
+/* The id a copy item puts on the clipboard, muted beside its label */
+.context-menu-id {
+  margin-left: auto;
+  padding-left: 1.5em;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.context-menu-divider {
+  height: 1px;
+  margin: 2px 0;
+  background: var(--border-subtle);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

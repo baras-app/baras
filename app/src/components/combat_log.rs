@@ -10,6 +10,7 @@ use crate::api::{
     SortDirection, TimeRange,
 };
 use crate::components::ability_icon::AbilityIcon;
+use crate::components::id_menu::CopyIdItem;
 use crate::components::mirror_names::{display_id, display_name};
 use crate::components::multi_select::{MultiSelect, plain_entries};
 use crate::types::CombatLogSessionState;
@@ -38,6 +39,13 @@ const EFFECT_ABILITYDEACTIVATE: i64 = 836045448945480;
 const EFFECT_ABILITYINTERRUPT: i64 = 836045448945482;
 const EFFECT_DEATH: i64 = 836045448945493;
 const EFFECT_REVIVED: i64 = 836045448945494;
+
+/// Rows whose effect is a real buff or debuff, not the event kind (damage and
+/// heal lines are ApplyEffect too)
+fn is_buff_effect(r: &CombatLogRow) -> bool {
+    matches!(r.effect_type_id, EFFECT_TYPE_APPLYEFFECT | EFFECT_TYPE_REMOVEEFFECT | EFFECT_TYPE_MODIFYCHARGES)
+        && !matches!(r.effect_id, EFFECT_DAMAGE | EFFECT_HEAL)
+}
 
 // Defense type IDs
 const DEFENSE_SHIELD: i64 = 836045448945509;
@@ -1283,15 +1291,13 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                 div {
                     class: "log-context-menu",
                     // Kept inside the window when opened near its right or bottom edge
-                    style: "position: fixed; left: min({x}px, calc(100vw - 17em)); top: min({y}px, calc(100vh - 13em)); z-index: 1000;",
+                    style: "position: fixed; left: min({x}px, calc(100vw - 17em)); top: min({y}px, calc(100vh - 20em)); z-index: 1000;",
                     div {
                         class: "context-menu-item",
                         onclick: move |_| {
                             let sel = context_menu_selection.read().clone();
                             if !sel.is_empty() {
-                                // Escape for JS string literal: backslash, backtick, ${
-                                let escaped = sel.replace('\\', "\\\\").replace('`', "\\`").replace("${", "\\${");
-                                let _ = js_sys::eval(&format!("navigator.clipboard.writeText(`{escaped}`)"));
+                                crate::utils::copy_to_clipboard(&sel);
                             }
                             context_menu_pos.set(None);
                         },
@@ -1303,6 +1309,15 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                             let tgt_val = entity_filter_value(&r.target_name, r.target_id, &targets_grouped.npc_spawns);
                             let src_label = if src_val.starts_with("id:") { "this instance".to_string() } else { r.source_name.clone() };
                             let tgt_label = if tgt_val.starts_with("id:") { "this instance".to_string() } else { r.target_name.clone() };
+                            // NPCs by their template id (what definitions match on), players by instance
+                            let entity_id = |class_id: i64, id: i64| if class_id != 0 { class_id } else { id };
+                            let copy_ids: Vec<(&str, i64)> = [
+                                ("Copy source ID", if r.source_name.is_empty() { 0 } else { entity_id(r.source_class_id, r.source_id) }),
+                                ("Copy target ID", if r.target_name.is_empty() { 0 } else { entity_id(r.target_class_id, r.target_id) }),
+                                ("Copy ability ID", r.ability_id),
+                                // Only buffs and debuffs: other rows carry the generic event's id (Damage, AbilityActivate, …)
+                                ("Copy effect ID", if is_buff_effect(r) { r.effect_id } else { 0 }),
+                            ].into_iter().filter(|(_, id)| *id != 0).collect();
                             rsx! {
                                 if !r.source_name.is_empty() {
                                     div {
@@ -1322,6 +1337,12 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                                             context_menu_pos.set(None);
                                         },
                                         "Filter target: {tgt_label}"
+                                    }
+                                }
+                                if !copy_ids.is_empty() {
+                                    div { class: "context-menu-divider" }
+                                    for (label, id) in copy_ids {
+                                        CopyIdItem { label, id, on_done: move |_| context_menu_pos.set(None) }
                                     }
                                 }
                             }
