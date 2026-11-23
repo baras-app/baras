@@ -10,7 +10,7 @@ use baras_types::formatting;
 
 use crate::api::{self, EffectUptimeCell, TimeRange};
 use crate::components::ability_icon::AbilityIcon;
-use crate::components::ability_naming::AbilityNamingPills;
+use crate::components::ability_naming::{AbilityNamingPills, DEFENSIVE_ONLY, DefensivePill};
 use crate::components::class_icons::get_class_icon;
 use crate::components::mirror_names::{display_id, display_name};
 
@@ -58,6 +58,7 @@ pub fn EffectUptimeView(
     let shown = targets();
     let visible: Vec<&EffectUptimeCell> = all
         .iter()
+        .filter(|c| !DEFENSIVE_ONLY() || c.is_defensive)
         .filter(|c| match shown {
             Targets::All => true,
             Targets::Players => matches!(c.target_type.as_str(), "Player" | "Companion" | "Self"),
@@ -152,6 +153,7 @@ pub fn EffectUptimeView(
             div { class: "uptime-toolbar",
                 span { class: "uptime-title", "Effects applied by " {who(&source)} }
                 AbilityNamingPills {}
+                DefensivePill {}
                 div { class: "filter-pills", title: "Targets",
                     for (label, t) in [("All", Targets::All), ("Players", Targets::Players), ("NPCs", Targets::Npcs)] {
                         button { class: if shown == t { "seg active" } else { "seg" }, onclick: move |_| targets.set(t), "{label}" }

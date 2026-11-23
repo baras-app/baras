@@ -1615,7 +1615,37 @@
   margin: var(--space-xs) 0 var(--space-sm);
 }
 
+.recap-defensives {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-sm);
+  flex-shrink: 0;
+}
+
+.recap-defensive {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 2px var(--space-sm) 2px var(--space-xs);
+  background: var(--well-bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+
+.recap-defensive-ago {
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.recap-defensives-none {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 .recap-tables h5,
+.recap-defensives h5,
 .recap-effects-wrap h5,
 .recap-ledger-wrap h5 {
   margin: 0;
@@ -2088,6 +2118,10 @@
 .effects-section h4 .filter-pills {
   text-transform: none;
   letter-spacing: normal;
+}
+
+.effects-section h4 .filter-pills + .filter-pills {
+  margin-left: var(--space-xs);
 }
 
 .effects-empty {
