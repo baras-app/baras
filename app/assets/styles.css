@@ -8524,3 +8524,9 @@ a.contributor-name:hover {
     animation: none;
   }
 }
+
+.style-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25em;
+}
