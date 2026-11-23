@@ -17,7 +17,8 @@ use baras_types::{DummyParse, GcdAnalysis};
 
 use crate::components::ability_icon::fetch_icon_url;
 use crate::components::echarts::{
-    TOOLTIP_ROWS_JS, dispose_chart, escape, init_chart, json_to_js, next_animation_frame, set_js_fn, set_option_replace,
+    TOOLTIP_ROWS_JS, dispose_chart, escape, get_chart, init_chart, json_to_js, next_animation_frame, set_chart_option,
+    set_js_fn, set_option_replace,
 };
 use crate::utils::{LightTheme, css_var};
 
@@ -81,7 +82,8 @@ fn timeline_option(parse: &DummyParse, selected: Option<usize>, eu: bool) -> Val
                 }
             });
             json!({
-                "value": [p.time_secs, p.interval_secs],
+                // The id rides along for `PRESS_BLOCK_JS`; it is not drawn
+                "value": [p.time_secs, p.interval_secs, p.ability_id],
                 "itemStyle": { "color": color },
                 "took": format!("{} s", formatting::format_decimal(p.interval_secs, 3, eu)),
                 "channel": channel,
@@ -117,11 +119,15 @@ fn timeline_option(parse: &DummyParse, selected: Option<usize>, eu: bool) -> Val
     })
 }
 
-/// Block from the press to the next one, a pixel short so neighbours read apart
-const PRESS_BLOCK_JS: &str = "var t = api.value(0), len = api.value(1);\
+/// Global holding the ability id hovered in the by-ability table, if any
+const HOVER_GLOBAL: &str = "__barasDummyHover";
+
+/// Block from the press to the next one, a pixel short so neighbours read
+/// apart; faded while another ability is hovered in the by-ability table
+const PRESS_BLOCK_JS: &str = "var t = api.value(0), len = api.value(1), hover = window.__barasDummyHover;\
     var a = api.coord([t, len]), b = api.coord([t + len, 0]);\
     return { type: 'rect', shape: { x: a[0], y: a[1], width: Math.max(b[0] - a[0] - 1, 1), height: b[1] - a[1] },\
-             style: { fill: api.visual('color') } };";
+             style: { fill: api.visual('color'), opacity: hover == null || hover === api.value(2) ? 1 : 0.12 } };";
 
 /// Global the tooltip reads icon data URLs from, by ability id: carrying them
 /// on every press would repeat each a hundred times over
@@ -152,11 +158,13 @@ const NEAREST_CLICK_JS: &str = "var zr = chart.getZr();\
 
 /// Time to the next press, for every press. `selected` is an index into
 /// `gcd.presses`, shared with the press table: a click here picks the row, a
-/// picked row is highlighted here.
+/// picked row is highlighted here. While `hovered` names an ability, the
+/// presses of every other ability fade.
 #[component]
 pub(super) fn PressTimeline(
     parse: Resource<Option<DummyParse>>,
     selected: Signal<Option<usize>>,
+    hovered: ReadSignal<Option<i64>>,
     european: bool,
 ) -> Element {
     let handler: Rc<RefCell<Option<Closure<dyn FnMut(JsValue)>>>> = use_hook(|| Rc::new(RefCell::new(None)));
@@ -221,6 +229,16 @@ pub(super) fn PressTimeline(
             let _ = install.call2(&JsValue::NULL, &chart, pick.as_ref().unchecked_ref());
             *handler.borrow_mut() = Some(pick);
         });
+    });
+    // An empty merge redraws the blocks without resetting the zoom
+    use_effect(move || {
+        let id = hovered().map_or(JsValue::NULL, |id| JsValue::from_f64(id as f64));
+        if let Some(window) = web_sys::window() {
+            let _ = js_sys::Reflect::set(&window, &JsValue::from_str(HOVER_GLOBAL), &id);
+        }
+        if let Some(chart) = get_chart(TIMELINE_ID) {
+            set_chart_option(&chart, &js_sys::Object::new());
+        }
     });
     use_drop(|| dispose_chart(TIMELINE_ID));
 
