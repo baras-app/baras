@@ -9,9 +9,8 @@ use baras_types::{RaidDebuff, formatting};
 use crate::api::{self, RaidDebuffCell, TimeRange};
 use crate::components::ability_icon::AbilityIcon;
 use crate::components::effect_uptime::{UptimeLane, UptimeTimeline};
-
-/// Session-wide, like the other analysis filters
-static BOSSES_ONLY: GlobalSignal<bool> = Signal::global(|| true);
+use crate::components::enemy_views::{BossesOnlyToggle, LoadFailed, loading};
+use crate::types::EnemyViewsState;
 
 /// "Name (Ability ×3)" per source, for a cell's tooltip
 fn sources_text(cell: &RaidDebuffCell) -> String {
@@ -24,24 +23,42 @@ fn sources_text(cell: &RaidDebuffCell) -> String {
 }
 
 #[component]
-pub fn RaidDebuffsView(encounter_idx: Option<u32>, time_range: TimeRange, duration_secs: f32, european: bool) -> Element {
-    // Timeline selection: a row (enemy), a column (debuff), or a cell (both)
-    let mut picked_target = use_signal(|| None::<String>);
-    let mut picked_debuff = use_signal(|| None::<RaidDebuff>);
-    let targets = use_resource(use_reactive!(|(encounter_idx, time_range)| async move {
+pub fn RaidDebuffsView(
+    encounter_idx: Option<u32>,
+    time_range: TimeRange,
+    duration_secs: f32,
+    state: Signal<EnemyViewsState>,
+    european: bool,
+) -> Element {
+    let mut targets = use_resource(use_reactive!(|(encounter_idx, time_range)| async move {
         let tr = (time_range.end > 0.0).then_some(time_range);
         api::query_raid_debuffs(encounter_idx, tr.as_ref()).await
     }));
-    let loaded = targets.read().clone().flatten();
-    let all = loaded.clone().unwrap_or_default();
+    let loaded = targets.read();
+    let all = match loaded.as_ref() {
+        Some(Some(all)) => all,
+        Some(None) => return rsx! { LoadFailed { on_retry: move |_| targets.restart() } },
+        None => return loading(),
+    };
+    let controls = state.read();
     let has_boss = all.iter().any(|t| t.is_boss);
-    let bosses_only = has_boss && BOSSES_ONLY();
+    let bosses_only = has_boss && controls.bosses_only;
     let rows: Vec<_> = all.iter().filter(|t| !bosses_only || t.is_boss).collect();
     // Applied to at least one enemy in the fight, shown or not
     let brought = |d: RaidDebuff| all.iter().any(|t| t.cells.iter().any(|c| c.debuff == d));
     let groups = ["Damage Taken", "Healing", "Offense"]
         .map(|g| (g, RaidDebuff::ALL.iter().filter(|d| d.group() == g).count()));
-    let (picked, debuff) = (picked_target(), picked_debuff());
+    // Timeline selection: a row (enemy), a column (debuff), or a cell (both).
+    // An enemy not shown here (another encounter, or an add under "Bosses only") is no pick.
+    let picked = controls.debuff_enemy.clone().filter(|p| rows.iter().any(|t| t.name == *p));
+    let debuff = controls.debuff;
+    // Sets the selection, or clears it when it is already the one set
+    let mut pick = move |enemy: Option<String>, d: Option<RaidDebuff>, toggle: bool| {
+        state.with_mut(|s| {
+            let same = toggle && s.debuff_enemy == enemy && s.debuff == d;
+            (s.debuff_enemy, s.debuff) = if same { (None, None) } else { (enemy, d) };
+        });
+    };
     // Lanes are enemies for a picked debuff, debuffs for a picked enemy
     let lanes: Vec<UptimeLane> = rows
         .iter()
@@ -72,21 +89,10 @@ pub fn RaidDebuffsView(encounter_idx: Option<u32>, time_range: TimeRange, durati
         div { class: "uptime-view raid-debuffs-view",
             div { class: "uptime-toolbar",
                 span { class: "uptime-title", "Raid debuffs on enemies" }
-                if has_boss {
-                    div { class: "filter-pills",
-                        button {
-                            class: if bosses_only { "seg active" } else { "seg" },
-                            title: "Hide adds",
-                            onclick: move |_| *BOSSES_ONLY.write() = !BOSSES_ONLY(),
-                            "Bosses only"
-                        }
-                    }
-                }
+                BossesOnlyToggle { has_boss, state }
             }
             if rows.is_empty() {
-                div { class: "uptime-empty",
-                    if loaded.is_none() { span { class: "loading-late", "Loading…" } } else { "No enemies attacked in this range" }
-                }
+                div { class: "uptime-empty", "No enemies attacked in this range" }
             } else {
                 div { class: "overview-table-box uptime-table-box raid-debuffs-box",
                     table { class: "overview-table uptime-table raid-debuffs-table",
@@ -102,15 +108,11 @@ pub fn RaidDebuffsView(encounter_idx: Option<u32>, time_range: TimeRange, durati
                                 for d in RaidDebuff::ALL {
                                     th {
                                         class: match (debuff == Some(d) && picked.is_none(), brought(d)) {
-                                            (true, _) => "uptime-target picked",
-                                            (false, true) => "uptime-target",
-                                            _ => "uptime-target absent",
+                                            (true, _) => "uptime-target with-icon picked",
+                                            (false, true) => "uptime-target with-icon",
+                                            _ => "uptime-target with-icon absent",
                                         },
-                                        onclick: move |_| {
-                                            let same = picked_target.peek().is_none() && *picked_debuff.peek() == Some(d);
-                                            picked_target.set(None);
-                                            picked_debuff.set((!same).then_some(d));
-                                        },
+                                        onclick: move |_| pick(None, Some(d), true),
                                         title: if brought(d) { "{d.name()}: {d.description()}" } else { "{d.name()}: {d.description()}\nNobody applied it in this fight" },
                                         AbilityIcon { ability_id: d.icon_effect_id(), size: 18 }
                                         span { "{d.name()}" }
@@ -128,12 +130,7 @@ pub fn RaidDebuffsView(encounter_idx: Option<u32>, time_range: TimeRange, durati
                                         title: "{t.name}\nAttacked for {formatting::format_duration(t.present_secs as i64)}",
                                         onclick: {
                                             let name = t.name.clone();
-                                            move |_| {
-                                                let same = picked_target.peek().as_deref() == Some(name.as_str())
-                                                    && picked_debuff.peek().is_none();
-                                                picked_target.set((!same).then(|| name.clone()));
-                                                picked_debuff.set(None);
-                                            }
+                                            move |_| pick(Some(name.clone()), None, true)
                                         },
                                         // The flex wrapper lets a long name truncate inside the fixed column
                                         span { class: "name-with-icon",
@@ -146,10 +143,7 @@ pub fn RaidDebuffsView(encounter_idx: Option<u32>, time_range: TimeRange, durati
                                                 class: if picked.as_deref() == Some(t.name.as_str()) && debuff == Some(d) { "num uptime-cell picked" } else { "num uptime-cell" },
                                                 onclick: {
                                                     let name = t.name.clone();
-                                                    move |_| {
-                                                        picked_target.set(Some(name.clone()));
-                                                        picked_debuff.set(Some(d));
-                                                    }
+                                                    move |_| pick(Some(name.clone()), Some(d), false)
                                                 },
                                                 style: "--pct: {c.uptime_pct}",
                                                 title: "{d.name()} on {t.name}: {formatting::format_pct(c.uptime_pct as f64, european)}\n{sources_text(c)}",

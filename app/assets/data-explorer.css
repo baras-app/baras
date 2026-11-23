@@ -3249,7 +3249,11 @@
   letter-spacing: 0;
 }
 
-.uptime-table th.uptime-target.npc {
+/* Adds, debuffs nobody brought, empty cells */
+.uptime-table th.uptime-target.npc,
+.uptime-table th.uptime-target.absent,
+.uptime-table .uptime-cell.none,
+.uptime-table .name-text.npc {
   color: var(--text-muted);
 }
 
@@ -3321,22 +3325,17 @@
   top: 1.75rem;
 }
 
-.raid-debuffs-table th.uptime-target.absent,
-.raid-debuffs-table .uptime-cell.none,
-.raid-debuffs-table .name-text.npc {
-  color: var(--text-muted);
-}
-
-/* Wide enough for the longest name ("Overwhelmed") on one line under its
-   icon; the header grows with the icon instead of the shared two-line height */
-.raid-debuffs-table th.uptime-target {
+/* An icon over a one-line name (raid debuffs, aggro holders): wide enough
+   for "Overwhelmed", and the header grows with the icon instead of the
+   shared two-line height */
+.uptime-table th.uptime-target.with-icon {
   width: 6.5rem;
   height: auto;
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-.raid-debuffs-table .uptime-target span {
+.uptime-table th.uptime-target.with-icon span {
   display: block;
   white-space: nowrap;
   text-overflow: ellipsis;

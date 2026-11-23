@@ -1,6 +1,6 @@
 //! UI session state
 
-use crate::{BreakdownMode, DataTab, LogEventCategory, TimeRange, history};
+use crate::{BreakdownMode, DataTab, LogEventCategory, RaidDebuff, TimeRange, history};
 use serde::{Deserialize, Serialize};
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -268,6 +268,29 @@ pub struct DataExplorerState {
     pub auto_live: bool,
     /// Overview table column layouts (loaded from config)
     pub overview_columns: crate::OverviewLayouts,
+    /// Raid Debuffs tab controls
+    pub enemy_views: EnemyViewsState,
+}
+
+/// Controls of the Raid Debuffs tab. Picks are enemy names: one
+/// missing from the encounter shown is ignored, and holds again where it exists.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EnemyViewsState {
+    /// Hide adds
+    pub bosses_only: bool,
+    /// Raid Debuffs timeline: a row (enemy), a column (debuff), or a cell (both)
+    pub debuff_enemy: Option<String>,
+    pub debuff: Option<RaidDebuff>,
+}
+
+impl Default for EnemyViewsState {
+    fn default() -> Self {
+        Self {
+            bosses_only: true,
+            debuff_enemy: None,
+            debuff: None,
+        }
+    }
 }
 
 impl Default for DataExplorerState {
@@ -290,6 +313,7 @@ impl Default for DataExplorerState {
             usage_sort_direction: SortDirection::default(),
             auto_live: false,
             overview_columns: Default::default(),
+            enemy_views: EnemyViewsState::default(),
         }
     }
 }

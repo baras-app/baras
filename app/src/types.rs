@@ -32,6 +32,7 @@ pub use baras_types::{
     EffectSelector,
     EffectStackConfig,
     EffectsAConfig,
+    EnemyViewsState,
     EntityFilter,
     EntitySelector,
     IconPosition,

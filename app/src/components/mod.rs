@@ -4,7 +4,6 @@
 //! to improve code organization and reduce file size.
 
 pub mod ability_icon;
-pub mod raid_debuffs;
 pub mod ability_naming;
 pub mod characters;
 pub mod charts_panel;
@@ -27,6 +26,7 @@ pub mod effect_trigger;
 pub mod effect_uptime;
 pub mod encounter_editor;
 pub mod encounter_types;
+pub mod enemy_views;
 pub mod entity_picker;
 pub mod file_open;
 pub mod form_fields;
@@ -43,6 +43,7 @@ pub mod overview_columns;
 pub mod overview_table;
 pub mod parsely_upload_modal;
 pub mod phase_timeline;
+pub mod raid_debuffs;
 pub mod rotation_view;
 pub mod session_settings;
 pub mod session_status;

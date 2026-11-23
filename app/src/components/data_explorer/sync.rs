@@ -22,6 +22,7 @@ pub(super) fn use_state_sync(ctx: ExplorerCtx) {
         selected_rotation_anchor,
         usage_sort_column,
         usage_sort_direction,
+        enemy_views,
         mut combat_log_state,
         time_range,
         ..
@@ -46,6 +47,7 @@ pub(super) fn use_state_sync(ctx: ExplorerCtx) {
         let u_col = *usage_sort_column.read();
         let u_dir = *usage_sort_direction.read();
         let combat = combat_log_state.read().clone();
+        let enemy = enemy_views.read().clone();
 
         if let Ok(mut state) = state.try_write() {
             state.data_explorer.selected_encounter = enc;
@@ -61,6 +63,7 @@ pub(super) fn use_state_sync(ctx: ExplorerCtx) {
             state.data_explorer.selected_rotation_anchor = anchor;
             state.data_explorer.usage_sort_column = u_col;
             state.data_explorer.usage_sort_direction = u_dir;
+            state.data_explorer.enemy_views = enemy;
             state.combat_log = combat;
         }
     });

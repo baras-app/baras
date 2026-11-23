@@ -13,7 +13,9 @@ use crate::api::{
     NpcHealthRow, PlayerDeath, RaidOverviewRow, TimeRange,
 };
 use crate::components::encounter_types::EncounterSummary;
-use crate::types::{CombatLogSessionState, SortColumn, SortDirection, UiSessionState, UsageSortColumn, ViewMode};
+use crate::types::{
+    CombatLogSessionState, EnemyViewsState, SortColumn, SortDirection, UiSessionState, UsageSortColumn, ViewMode,
+};
 use baras_types::{OverviewColumn, OverviewLayouts};
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -67,6 +69,8 @@ pub(super) struct ExplorerCtx {
     pub usage_sort_column: Signal<UsageSortColumn>,
     pub usage_sort_direction: Signal<SortDirection>,
     pub usage_selected_abilities: Signal<Vec<(i64, &'static str)>>,
+    /// Raid Debuffs tab controls
+    pub enemy_views: Signal<EnemyViewsState>,
     pub overview_sort_col: Signal<OverviewColumn>,
     pub overview_layouts: Memo<OverviewLayouts>,
     pub overview_sort_asc: Signal<bool>,
@@ -148,6 +152,7 @@ pub(super) fn use_explorer_ctx(state: Signal<UiSessionState>) -> ExplorerCtx {
     let usage_sort_column = use_signal(|| state.read().data_explorer.usage_sort_column);
     let usage_sort_direction = use_signal(|| state.read().data_explorer.usage_sort_direction);
     let usage_selected_abilities = use_signal(Vec::<(i64, &'static str)>::new);
+    let enemy_views = use_signal(|| state.read().data_explorer.enemy_views.clone());
 
     // Overview table sort (not persisted - default DPS descending)
     let overview_sort_col = use_signal(OverviewColumn::default);
@@ -307,6 +312,7 @@ pub(super) fn use_explorer_ctx(state: Signal<UiSessionState>) -> ExplorerCtx {
         usage_sort_column,
         usage_sort_direction,
         usage_selected_abilities,
+        enemy_views,
         overview_sort_col,
         overview_layouts,
         overview_sort_asc,
