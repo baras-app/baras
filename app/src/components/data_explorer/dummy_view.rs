@@ -11,7 +11,7 @@ use baras_types::{
 };
 
 use super::ctx::ExplorerCtx;
-use super::dummy_charts::{IntervalDensity, PressTimeline};
+use super::dummy_charts::{IntervalDensity, PressTimeline, ability_gaps, quantile};
 use crate::api::{self, TimeRange};
 use crate::components::ability_icon::AbilityIcon;
 use crate::components::ability_naming::AbilityNamingPills;
@@ -119,12 +119,17 @@ pub(super) fn DummyParseView(
     });
     // Index into `gcd.presses`, shared by the timeline and the press table
     let mut selected = use_signal(|| None::<usize>);
-    // Ability hovered in the by-ability table: its presses stand out on the timeline
+    // Ability hovered in the by-ability table: its presses stand out on the
+    // timeline, and the density chart shows its histogram
     let mut hovered = use_signal(|| None::<i64>);
+    // Clicked in the same table: stays shown until clicked again
+    let mut pinned = use_signal(|| None::<i64>);
+    let focused = use_memo(move || hovered().or(pinned()));
     use_effect(move || {
         key();
         selected.set(None);
         hovered.set(None);
+        pinned.set(None);
     });
     // Picked on the timeline: bring its row into view
     use_effect(move || {
@@ -163,7 +168,32 @@ pub(super) fn DummyParseView(
     // Channels cut short by the next press, chronological
     let clips: Vec<(usize, &GcdPress)> = gcd.presses.iter().enumerate().filter(|(_, p)| p.is_clipped()).collect();
     let channels = gcd.presses.iter().filter(|p| p.channel.is_some()).count();
+    // The hovered or pinned ability's presses, when it has any
+    let focus = focused()
+        .and_then(|id| gcd.abilities.iter().find(|a| a.ability_id == id))
+        .map(|a| (a, ability_gaps(gcd, a.ability_id)))
+        .filter(|(_, g)| !g.is_empty());
+    // Count label, count, median, mean, longest, and what a press is (for titles)
+    let stats = match &focus {
+        Some((a, g)) => (
+            "Presses",
+            g.len() as u32,
+            quantile(g, 0.5),
+            g.iter().sum::<f32>() / g.len() as f32,
+            g[g.len() - 1],
+            format!("a {} press", display_name(a.ability_id, &a.ability_name)),
+        ),
+        None => (
+            "GCDs Used",
+            gcd.gcd_count,
+            gcd.typical_gcd_secs,
+            mean,
+            longest,
+            "one on-GCD press".to_string(),
+        ),
+    };
     let picked = selected();
+    let pin = pinned();
     // The combat log reads its filters from this state when it mounts
     let mut jump = move |t: f32| {
         combat_log_state.write().event_categories = vec![LogEventCategory::Actions, LogEventCategory::Effects];
@@ -206,22 +236,22 @@ pub(super) fn DummyParseView(
                         AbilityNamingPills {}
                     }
                     div { class: "dummy-summary",
-                    div { class: "history-cards",
-                        div { class: "history-card", div { class: "k", "GCDs Used" } div { class: "v", "{gcd.gcd_count}" } }
-                        div { class: "history-card", title: "Median time from one on-GCD press to the next",
-                            div { class: "k", "Median" } div { class: "v", {secs(gcd.typical_gcd_secs)} }
+                    div { class: if focus.is_some() { "history-cards focused" } else { "history-cards" },
+                        div { class: "history-card", div { class: "k", "{stats.0}" } div { class: "v", "{stats.1}" } }
+                        div { class: "history-card", title: "Median time from {stats.5} to the next",
+                            div { class: "k", "Median" } div { class: "v", {secs(stats.2)} }
                         }
-                        div { class: "history-card", title: "Mean time from one on-GCD press to the next",
-                            div { class: "k", "Mean" } div { class: "v", {secs(mean)} }
+                        div { class: "history-card", title: "Mean time from {stats.5} to the next",
+                            div { class: "k", "Mean" } div { class: "v", {secs(stats.3)} }
                         }
-                        div { class: "history-card", div { class: "k", "Longest" } div { class: "v", {secs(longest)} } }
+                        div { class: "history-card", div { class: "k", "Longest" } div { class: "v", {secs(stats.4)} } }
                     }
                     if !gcd.presses.is_empty() {
-                        IntervalDensity { parse: resource, european: eu }
+                        IntervalDensity { parse: resource, hovered: focused, european: eu }
                     }
                     }
                     if !gcd.presses.is_empty() {
-                        PressTimeline { parse: resource, selected, hovered, european: eu }
+                        PressTimeline { parse: resource, selected, hovered: focused, european: eu }
                     }
                 }
             }
@@ -285,6 +315,12 @@ pub(super) fn DummyParseView(
                                 tbody {
                                     for a in gcd.abilities.iter() {
                                         tr { key: "{a.ability_id}",
+                                            class: if pin == Some(a.ability_id) { "selected" },
+                                            style: "cursor: pointer;",
+                                            onclick: {
+                                                let id = a.ability_id;
+                                                move |_| pinned.set(if pinned() == Some(id) { None } else { Some(id) })
+                                            },
                                             onmouseenter: {
                                                 let id = a.ability_id;
                                                 move |_| hovered.set(Some(id))

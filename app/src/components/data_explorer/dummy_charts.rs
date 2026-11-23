@@ -2,7 +2,7 @@
 //! took until the next (red when well past the typical GCD or a channel's
 //! end, amber for a clipped channel; hover for the
 //! abilities, click to pick it in the press table) and the density of those
-//! times.
+//! times, or a histogram of one ability's while it is hovered.
 
 use std::cell::RefCell;
 use std::collections::{BTreeSet, HashMap};
@@ -15,7 +15,7 @@ use wasm_bindgen::prelude::*;
 use baras_types::formatting;
 use baras_types::{DummyParse, GcdAnalysis};
 
-use crate::components::ability_icon::fetch_icon_url;
+use crate::components::ability_icon::{AbilityIcon, fetch_icon_url};
 use crate::components::echarts::{
     TOOLTIP_ROWS_JS, dispose_chart, escape, get_chart, init_chart, json_to_js, next_animation_frame, set_chart_option,
     set_js_fn, set_option_replace,
@@ -30,6 +30,8 @@ const DENSITY_STEPS: usize = 160;
 /// Kernel width bounds (s): narrow enough to keep the GCD and channel peaks
 /// apart, wide enough not to draw one spike per press
 const BANDWIDTH_RANGE: (f32, f32) = (0.03, 0.15);
+/// Bar width (s) of the per-ability histogram
+const HIST_BIN_SECS: f32 = 0.05;
 
 const MMSS_JS: &str = "var m = Math.floor(v / 60), s = Math.floor(v % 60); return m + ':' + (s < 10 ? '0' : '') + s;";
 
@@ -263,7 +265,7 @@ pub(super) fn PressTimeline(
 // ─────────────────────────────────────────────────────────────────────────
 
 /// Value at quantile `q` (0-1) of an ascending slice
-fn quantile(sorted: &[f32], q: f32) -> f32 {
+pub(super) fn quantile(sorted: &[f32], q: f32) -> f32 {
     sorted[((sorted.len() - 1) as f32 * q) as usize]
 }
 
@@ -271,10 +273,15 @@ fn mean(values: &[f32]) -> f32 {
     values.iter().sum::<f32>() / values.len().max(1) as f32
 }
 
-/// Gaussian kernel density of `sorted` as `[x, density]` points. The long
-/// tail (the odd multi-second pause) is cut at the 98th percentile so the
-/// peaks keep the width of the chart.
-fn density(sorted: &[f32]) -> Vec<[f32; 2]> {
+/// Share (0-100) of the ascending `sorted` at or under `x`
+fn percentile_of(sorted: &[f32], x: f32) -> u32 {
+    (sorted.partition_point(|v| *v <= x) * 100 / sorted.len().max(1)) as u32
+}
+
+/// Gaussian kernel density of `sorted` as `[x, density, percentile]` points.
+/// The long tail (the odd multi-second pause) is cut at the 98th percentile
+/// so the peaks keep the width of the chart.
+fn density(sorted: &[f32]) -> Vec<[f32; 3]> {
     let n = sorted.len() as f32;
     let m = mean(sorted);
     let sd = (sorted.iter().map(|v| (v - m).powi(2)).sum::<f32>() / n).sqrt();
@@ -290,9 +297,18 @@ fn density(sorted: &[f32]) -> Vec<[f32; 2]> {
         .map(|i| {
             let x = lo + (hi - lo) * i as f32 / DENSITY_STEPS as f32;
             let sum: f32 = sorted.iter().map(|v| (-0.5 * ((x - v) / h).powi(2)).exp()).sum();
-            [x, sum * norm]
+            [x, sum * norm, percentile_of(sorted, x) as f32]
         })
         .collect()
+}
+
+/// Median (solid) and mean (dashed) of `sorted`
+fn center_lines(sorted: &[f32]) -> Value {
+    let line = |x: f32, kind: &str| json!({ "xAxis": x, "lineStyle": { "color": css_var("--text-primary"), "type": kind, "width": 1 } });
+    json!({
+        "symbol": "none", "silent": true, "label": { "show": false },
+        "data": [line(quantile(sorted, 0.5), "solid"), line(mean(sorted), "dashed")],
+    })
 }
 
 fn density_option(gcd: &GcdAnalysis) -> Option<Value> {
@@ -302,7 +318,6 @@ fn density_option(gcd: &GcdAnalysis) -> Option<Value> {
     }
     let (label, _) = axis_style();
     let color = css_var("--text-accent");
-    let line = |x: f32, kind: &str| json!({ "xAxis": x, "lineStyle": { "color": css_var("--text-primary"), "type": kind, "width": 1 } });
     Some(json!({
         "animation": false,
         "grid": { "left": 12, "right": 16, "top": 12, "bottom": 22 },
@@ -313,42 +328,133 @@ fn density_option(gcd: &GcdAnalysis) -> Option<Value> {
             "type": "line", "name": "Presses", "data": density(gaps), "showSymbol": false, "smooth": true,
             "lineStyle": { "color": color, "width": 1.5 },
             "areaStyle": { "color": color, "opacity": 0.15 },
-            "markLine": {
-                "symbol": "none", "silent": true, "label": { "show": false },
-                "data": [line(quantile(gaps, 0.5), "solid"), line(mean(gaps), "dashed")],
-            },
+            "markLine": center_lines(gaps),
         }],
     }))
 }
 
+/// Ascending times to the next press after each press of `ability_id`
+pub(super) fn ability_gaps(gcd: &GcdAnalysis, ability_id: i64) -> Vec<f32> {
+    let mut gaps: Vec<f32> = gcd
+        .presses
+        .iter()
+        .filter(|p| p.ability_id == ability_id)
+        .map(|p| p.interval_secs)
+        .collect();
+    gaps.sort_by(f32::total_cmp);
+    gaps
+}
+
+/// Histogram of `gaps` (ascending, non-empty) in `HIST_BIN_SECS` bars, on
+/// the x range of the full density so the two read against each other
+fn histogram_option(gcd: &GcdAnalysis, gaps: &[f32], eu: bool) -> Value {
+    let (label, split) = axis_style();
+    let mut tip = tooltip();
+    tip["trigger"] = json!("item");
+    let mut x_label = label.clone();
+    x_label["showMinLabel"] = json!(false);
+    x_label["showMaxLabel"] = json!(false);
+    let bin = |v: f32| (v / HIST_BIN_SECS).floor() as i32;
+    let mut bars: Vec<(i32, u32)> = Vec::new();
+    for &g in gaps {
+        match bars.last_mut() {
+            Some((b, n)) if *b == bin(g) => *n += 1,
+            _ => bars.push((bin(g), 1)),
+        }
+    }
+    let secs = |v: f32| formatting::format_decimal(v, 2, eu);
+    let mut seen = 0;
+    let data: Vec<Value> = bars
+        .iter()
+        .map(|&(b, n)| {
+            seen += n;
+            let (start, end) = (b as f32 * HIST_BIN_SECS, (b + 1) as f32 * HIST_BIN_SECS);
+            json!({
+                "value": [start, n, end],
+                "range": format!("{}–{} s", secs(start), secs(end)),
+                "pct": seen * 100 / gaps.len() as u32,
+            })
+        })
+        .collect();
+    // The full density's span, stretched to this ability's longest gap
+    let all = &gcd.intervals_secs;
+    let (lo, hi) = match all.len() {
+        0 | 1 => (gaps[0], gaps[gaps.len() - 1]),
+        _ => (all[0].min(gaps[0]), quantile(all, 0.98).max(gaps[gaps.len() - 1])),
+    };
+    json!({
+        "animation": false,
+        "grid": { "left": 28, "right": 16, "top": 12, "bottom": 22 },
+        "tooltip": tip,
+        "xAxis": {
+            "type": "value", "min": (lo - HIST_BIN_SECS).max(0.0), "max": hi + HIST_BIN_SECS,
+            // The padded ends fall between ticks and would print raw floats
+            "axisLabel": x_label,
+            "splitLine": { "show": false },
+        },
+        "yAxis": { "type": "value", "minInterval": 1, "splitNumber": 2, "axisLabel": label, "splitLine": split },
+        "series": [{
+            "type": "custom", "name": "Presses", "encode": { "x": [0, 2], "y": 1 },
+            "itemStyle": { "color": css_var("--text-accent") },
+            "data": data, "markLine": center_lines(gaps),
+        }],
+    })
+}
+
+/// Bar from the bin's start to its end, a pixel short so neighbours read apart
+const HIST_BAR_JS: &str = "var a = api.coord([api.value(0), api.value(1)]), b = api.coord([api.value(2), 0]);\
+    return { type: 'rect', shape: { x: a[0], y: a[1], width: Math.max(b[0] - a[0] - 1, 1), height: b[1] - a[1] },\
+             style: { fill: api.visual('color'), opacity: 0.75 } };";
+
+/// English ordinal suffix of the integer `p`
+const ORDINAL_JS: &str = "var ord = function (p) { var t = p % 100, s = t >= 11 && t <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][p % 10] || 'th'); return p + s; };";
+
+const DENSITY_TOOLTIP: &str = "var v = params[0].value;\
+    return tipHead(v[0].toFixed(3) + ' s between presses') + tipRow('Percentile', ord(v[2]));";
+
+const HISTOGRAM_TOOLTIP: &str = "var d = params.data;\
+    return tipHead(d.range) + tipRow('Presses', d.value[1]) + tipRow('Percentile', ord(d.pct));";
+
 /// How the time between two on-GCD presses is distributed, with the median
-/// (solid) and mean (dashed) marked.
+/// (solid) and mean (dashed) marked. While `hovered` names an ability, a
+/// histogram of the time to the next press after each of its presses instead.
 #[component]
-pub(super) fn IntervalDensity(parse: Resource<Option<DummyParse>>, european: bool) -> Element {
+pub(super) fn IntervalDensity(
+    parse: Resource<Option<DummyParse>>,
+    hovered: ReadSignal<Option<i64>>,
+    european: bool,
+) -> Element {
     let light_theme = try_use_context::<LightTheme>();
     use_effect(move || {
         if let Some(LightTheme(t)) = light_theme {
             t.read();
         }
-        let option = parse
-            .read()
-            .as_ref()
-            .and_then(|p| p.as_ref())
-            .and_then(|p| density_option(&p.gcd));
+        let hover = hovered();
+        let option = parse.read().as_ref().and_then(|p| p.as_ref()).and_then(|p| {
+            let gaps = hover.map(|id| ability_gaps(&p.gcd, id)).filter(|g| !g.is_empty());
+            match gaps {
+                Some(gaps) => Some((histogram_option(&p.gcd, &gaps, european), true)),
+                None => density_option(&p.gcd).map(|o| (o, false)),
+            }
+        });
         spawn(async move {
             next_animation_frame().await;
             next_animation_frame().await;
-            let Some(option) = option else {
+            let Some((option, histogram)) = option else {
                 return dispose_chart(DENSITY_ID);
             };
             if let (Some(chart), Some(js)) = (init_chart(DENSITY_ID), json_to_js(&option)) {
                 set_js_fn(&js, &["xAxis", "axisLabel", "formatter"], "v", "return v + ' s';");
+                let body = if histogram { HISTOGRAM_TOOLTIP } else { DENSITY_TOOLTIP };
                 set_js_fn(
                     &js,
                     &["tooltip", "formatter"],
                     "params",
-                    "return params[0].value[0].toFixed(3) + ' s between presses';",
+                    &format!("{TOOLTIP_ROWS_JS}{ORDINAL_JS}{body}"),
                 );
+                if histogram {
+                    set_js_fn(&js, &["series", "0", "renderItem"], "params, api", HIST_BAR_JS);
+                }
                 set_option_replace(&chart, &js);
             }
         });
@@ -356,16 +462,25 @@ pub(super) fn IntervalDensity(parse: Resource<Option<DummyParse>>, european: boo
     use_drop(|| dispose_chart(DENSITY_ID));
 
     let read = parse.read();
-    let gaps = read
-        .as_ref()
-        .and_then(|p| p.as_ref())
-        .map(|p| p.gcd.intervals_secs.as_slice())
-        .unwrap_or_default();
+    let Some(gcd) = read.as_ref().and_then(|p| p.as_ref()).map(|p| &p.gcd) else {
+        return rsx! {};
+    };
     let secs = |v: f32| format!("{} s", formatting::format_decimal(v, 3, european));
+    // The hovered or pinned ability, when it has presses to draw
+    let ability = hovered()
+        .and_then(|id| gcd.abilities.iter().find(|a| a.ability_id == id))
+        .filter(|a| gcd.presses.iter().any(|p| p.ability_id == a.ability_id));
+    let gaps = &gcd.intervals_secs;
     rsx! {
         div { class: "overview-chart-box",
             div { class: "overview-chart-header",
-                if gaps.len() >= 2 {
+                if let Some(a) = ability {
+                    span { class: "overview-chart-ability",
+                        AbilityIcon { key: "{display_id(a.ability_id)}", ability_id: display_id(a.ability_id), size: 16 }
+                        "{display_name(a.ability_id, &a.ability_name)}"
+                    }
+                    span { class: "overview-chart-note", "Time to next press · median (solid) · mean (dashed)" }
+                } else if gaps.len() >= 2 {
                     span { class: "overview-chart-note",
                         "Time between presses · median {secs(quantile(gaps, 0.5))} (solid) · mean {secs(mean(gaps))} (dashed)"
                     }
