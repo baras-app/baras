@@ -39,7 +39,7 @@
 -                : 4502474345938944                    # Kolto Overload: Boiling Point (Pyrotech)
 -                : 4498488616288256                    # Kolto Overload: Advanced Shielding (Advanced Prototype)
 4085553280581632 : 4085553280581632                   # Responsive Safeguards
-814192655335424  : 814192655335424 814192655335739    # Chaff Flare, Decoy
+814192655335424  : 814192655335424                    # Chaff Flare
 880189122805760  : 880189122806402                    # Sonic Missile: Sonic Rebounder
 -                : 986266225082627                    # Explosive Fuel: Coolant (Shield Tech)
 4502478640906240 : 4502478640906508                   # Thermal Yield (Pyrotech)
