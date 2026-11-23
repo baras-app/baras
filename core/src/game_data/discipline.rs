@@ -476,76 +476,85 @@ impl Discipline {
 
     /// Look up discipline from its GUID (from combat log)
     pub fn from_guid(guid: i64) -> Option<Self> {
-        use Discipline::*;
-        match guid {
-            // Sorcerer
-            2031339142381586 => Some(Lightning),
-            2031339142381584 => Some(Madness),
-            2031339142381587 => Some(Corruption),
-            // Assassin
-            2031339142381580 => Some(Hatred),
-            2031339142381582 => Some(Darkness),
-            2031339142381583 => Some(Deception),
-            // Juggernaut
-            2031339142381576 => Some(Vengeance),
-            2031339142381577 => Some(Immortal),
-            2031339142381578 => Some(Rage),
-            // Marauder
-            2031339142381572 => Some(Annihilation),
-            2031339142381573 => Some(Carnage),
-            2031339142381574 => Some(Fury),
-            // Mercenary
-            2031339142381601 => Some(Arsenal),
-            2031339142381598 => Some(InnovativeOrdnance),
-            2031339142381600 => Some(Bodyguard),
-            // Powertech
-            2031339142381604 => Some(ShieldTech),
-            2031339142381602 => Some(Pyrotech),
-            2031339142381605 => Some(AdvancedPrototype),
-            // Operative
-            2031339142381595 => Some(Concealment),
-            2031339142381593 => Some(Lethality),
-            2031339142381596 => Some(Medicine),
-            // Sniper
-            2031339142381591 => Some(Marksmanship),
-            2031339142381592 => Some(Engineering),
-            2031339142381589 => Some(Virulence),
-            // Sage
-            2031339142381618 => Some(Telekinetics),
-            2031339142381619 => Some(Seer),
-            2031339142381616 => Some(Balance),
-            // Shadow
-            2031339142381620 => Some(Infiltration),
-            2031339142381622 => Some(KineticCombat),
-            2031339142381623 => Some(Serenity),
-            // Guardian
-            2031339142381607 => Some(Focus),
-            2031339142381610 => Some(Vigilance),
-            2031339142381609 => Some(Defense),
-            // Sentinel
-            2031339142381613 => Some(Combat),
-            2031339142381614 => Some(Watchman),
-            2031339142381611 => Some(Concentration),
-            // Commando
-            2031339142381636 => Some(Gunnery),
-            2031339142381634 => Some(AssaultSpecialist),
-            2031339142381637 => Some(CombatMedic),
-            // Vanguard
-            2031339142381638 => Some(Plasmatech),
-            2031339142381641 => Some(ShieldSpecialist),
-            2031339142381640 => Some(Tactics),
-            // Scoundrel
-            2031339142381632 => Some(Scrapper),
-            2031339142381629 => Some(Ruffian),
-            2031339142381631 => Some(Sawbones),
-            // Gunslinger
-            2031339142381627 => Some(Sharpshooter),
-            2031339142381628 => Some(Saboteur),
-            2031339142381625 => Some(DirtyFighting),
-            _ => None,
-        }
+        GUIDS.iter().find(|g| g.0 == guid).map(|g| g.1)
+    }
+
+    /// The discipline's GUID, as logged
+    pub fn guid(self) -> i64 {
+        GUIDS.iter().find(|g| g.1 == self).map_or(0, |g| g.0)
     }
 }
+
+/// Every discipline's GUID as logged
+const GUIDS: [(i64, Discipline); 48] = {
+    use Discipline::*;
+    [
+        // Sorcerer
+        (2031339142381586, Lightning),
+        (2031339142381584, Madness),
+        (2031339142381587, Corruption),
+        // Assassin
+        (2031339142381580, Hatred),
+        (2031339142381582, Darkness),
+        (2031339142381583, Deception),
+        // Juggernaut
+        (2031339142381576, Vengeance),
+        (2031339142381577, Immortal),
+        (2031339142381578, Rage),
+        // Marauder
+        (2031339142381572, Annihilation),
+        (2031339142381573, Carnage),
+        (2031339142381574, Fury),
+        // Mercenary
+        (2031339142381601, Arsenal),
+        (2031339142381598, InnovativeOrdnance),
+        (2031339142381600, Bodyguard),
+        // Powertech
+        (2031339142381604, ShieldTech),
+        (2031339142381602, Pyrotech),
+        (2031339142381605, AdvancedPrototype),
+        // Operative
+        (2031339142381595, Concealment),
+        (2031339142381593, Lethality),
+        (2031339142381596, Medicine),
+        // Sniper
+        (2031339142381591, Marksmanship),
+        (2031339142381592, Engineering),
+        (2031339142381589, Virulence),
+        // Sage
+        (2031339142381618, Telekinetics),
+        (2031339142381619, Seer),
+        (2031339142381616, Balance),
+        // Shadow
+        (2031339142381620, Infiltration),
+        (2031339142381622, KineticCombat),
+        (2031339142381623, Serenity),
+        // Guardian
+        (2031339142381607, Focus),
+        (2031339142381610, Vigilance),
+        (2031339142381609, Defense),
+        // Sentinel
+        (2031339142381613, Combat),
+        (2031339142381614, Watchman),
+        (2031339142381611, Concentration),
+        // Commando
+        (2031339142381636, Gunnery),
+        (2031339142381634, AssaultSpecialist),
+        (2031339142381637, CombatMedic),
+        // Vanguard
+        (2031339142381638, Plasmatech),
+        (2031339142381641, ShieldSpecialist),
+        (2031339142381640, Tactics),
+        // Scoundrel
+        (2031339142381632, Scrapper),
+        (2031339142381629, Ruffian),
+        (2031339142381631, Sawbones),
+        // Gunslinger
+        (2031339142381627, Sharpshooter),
+        (2031339142381628, Saboteur),
+        (2031339142381625, DirtyFighting),
+    ]
+};
 
 /// One entry in a source/target discipline filter: either a whole role
 /// (matches every discipline with that role) or a specific discipline.
