@@ -281,14 +281,16 @@ pub fn UptimeTimeline(title: Element, lanes: Vec<UptimeLane>, range_start: f32, 
     let pos = move |t: f32| (t - range_start) / span * 100.0;
     let mut lanes = lanes;
     lanes.sort_by(|a, b| b.uptime_pct.total_cmp(&a.uptime_pct));
-    let ticks: Vec<f32> = (0..=4).map(|i| range_start + span * i as f32 / 4.0).collect();
     let mmss = |t: f32| formatting::format_duration(t.round() as i64);
 
     rsx! {
         div { class: "uptime-timeline",
             div { class: "uptime-timeline-title", {title} }
-            for lane in lanes {
-                div { class: "uptime-lane",
+            for (i, lane) in lanes.into_iter().enumerate() {
+                div {
+                    class: if lane.muted { "uptime-lane muted" } else { "uptime-lane" },
+                    // Lanes cycle the 16 chart series, in uptime order
+                    style: "--c: var(--series-{i % 16 + 1})",
                     div { class: "uptime-lane-label", title: "{lane.label}",
                         if let Some((id, fallback_id)) = lane.icon {
                             AbilityIcon { ability_id: id, fallback_id, size: 16 }
@@ -296,6 +298,7 @@ pub fn UptimeTimeline(title: Element, lanes: Vec<UptimeLane>, range_start: f32, 
                         span { class: if lane.muted { "npc" }, "{lane.label}" }
                     }
                     div { class: "uptime-lane-track",
+                        UptimeGrid { range_start, range_end }
                         for (a, b) in lane.windows.iter().copied() {
                             div {
                                 class: "uptime-bar",
@@ -307,15 +310,51 @@ pub fn UptimeTimeline(title: Element, lanes: Vec<UptimeLane>, range_start: f32, 
                     span { class: "uptime-lane-pct", "{lane.uptime_pct.round()}%" }
                 }
             }
-            div { class: "uptime-lane uptime-axis",
-                div { class: "uptime-lane-label" }
-                div { class: "uptime-lane-track",
-                    for t in ticks.iter().copied() {
-                        span { class: "uptime-tick", style: "left: {pos(t)}%", "{mmss(t)}" }
+            UptimeAxis { range_start, range_end }
+        }
+    }
+}
+
+/// Round-numbered time marks across a range: (position %, combat second)
+fn axis_ticks(range_start: f32, range_end: f32) -> Vec<(f32, i64)> {
+    const STEPS: [i64; 12] = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800];
+    let span = (range_end - range_start).max(0.001);
+    let step = STEPS.into_iter().find(|s| span / *s as f32 <= 8.0).unwrap_or(3600);
+    let first = (range_start / step as f32).ceil() as i64 * step;
+    (0..)
+        .map(|i| first + i * step)
+        .take_while(|t| *t as f32 <= range_end)
+        .map(|t| ((t as f32 - range_start) / span * 100.0, t))
+        .collect()
+}
+
+/// Gridlines of a lane track, at the axis' time marks
+#[component]
+pub fn UptimeGrid(range_start: f32, range_end: f32) -> Element {
+    rsx! {
+        for (pos, _) in axis_ticks(range_start, range_end) {
+            i { class: "uptime-grid", style: "left: {pos}%" }
+        }
+    }
+}
+
+/// Time labels under a timeline's lanes
+#[component]
+pub fn UptimeAxis(range_start: f32, range_end: f32) -> Element {
+    rsx! {
+        div { class: "uptime-lane uptime-axis",
+            div { class: "uptime-lane-label" }
+            div { class: "uptime-lane-track",
+                for (pos, secs) in axis_ticks(range_start, range_end) {
+                    span {
+                        // Labels at the edges stay inside the track
+                        class: if pos < 2.0 { "uptime-tick start" } else if pos > 98.0 { "uptime-tick end" } else { "uptime-tick" },
+                        style: "left: {pos}%",
+                        "{formatting::format_duration(secs)}"
                     }
                 }
-                span { class: "uptime-lane-pct" }
             }
+            span { class: "uptime-lane-pct" }
         }
     }
 }
