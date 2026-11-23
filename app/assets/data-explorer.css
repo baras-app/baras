@@ -1175,7 +1175,7 @@
 }
 
 .overview-table .name-text,
-.threat-table .name-text {
+.analysis-table .name-text {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1192,7 +1192,7 @@
 
 /* Role icons */
 .overview-table .role-icon,
-.threat-table .role-icon {
+.analysis-table .role-icon {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
@@ -3014,7 +3014,7 @@
 }
 
 .usage-table,
-.threat-table {
+.analysis-table {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
@@ -3026,7 +3026,7 @@
 }
 
 .usage-table thead th,
-.threat-table th {
+.analysis-table th {
   position: sticky;
   top: 0;
   z-index: 1;
@@ -3053,14 +3053,14 @@
 }
 
 .usage-table tbody td,
-.threat-table td {
+.analysis-table td {
   padding: 6px 10px;
   border-bottom: 1px solid var(--border-subtle);
   white-space: nowrap;
 }
 
 .usage-table tbody td.num,
-.threat-table td.num {
+.analysis-table td.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -3263,7 +3263,7 @@
 .uptime-table th.uptime-target.absent,
 .uptime-table .uptime-cell.none,
 .uptime-table .name-text.npc,
-.threat-table .name-text.npc {
+.analysis-table .name-text.npc {
   color: var(--text-muted);
 }
 
@@ -3464,7 +3464,7 @@
 
 .effect-table-wrapper,
 .usage-table-container,
-.threat-table-box,
+.analysis-table-box,
 .log-table-container,
 .entity-list {
   background: var(--well-bg);
@@ -3489,7 +3489,7 @@
 
 .ability-table th,
 .usage-table thead th,
-.threat-table th,
+.analysis-table th,
 .effect-table th,
 .log-header {
   background: var(--bg-dark);
@@ -3510,14 +3510,14 @@
 
 .ability-table td,
 .usage-table tbody td,
-.threat-table td,
+.analysis-table td,
 .effect-table td {
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .ability-table tbody tr:hover,
 .usage-table tbody tr:hover,
-.threat-table tbody tr:hover,
+.analysis-table tbody tr:hover,
 .effect-table tbody tr:hover,
 .log-row:hover,
 .overview-table tbody tr:hover,
@@ -3527,7 +3527,7 @@
 
 .ability-table tbody tr:last-child td,
 .usage-table tbody tr:last-child td,
-.threat-table tbody tr:last-child td,
+.analysis-table tbody tr:last-child td,
 .effect-table tbody tr:last-child td {
   border-bottom: none;
 }
@@ -3817,56 +3817,60 @@ button.aggro-key:hover {
   border-bottom: none;
 }
 
-.threat-panel {
+.analysis-table td.threat-result {
+  white-space: normal;
+}
+
+.threat-drop .analysis-note {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Analysis panels: a titled table in the Ability Usage table's look (shared
+   rules above), used by the Aggro and Raid Debuffs tabs
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.analysis-panel {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
   min-width: 0;
 }
 
-.threat-table-box {
+.analysis-table-box {
   overflow: auto;
   max-height: 24em;
 }
 
-/* The Ability Usage table's look (shared rules above); the tab's content
-   area centres text, so text cells align left here */
-.threat-table td {
+/* The tab's content area centres text, so text cells align left here */
+.analysis-table td {
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.threat-table .name-with-icon {
+.analysis-table .name-with-icon {
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
 }
 
-
-.threat-table .threat-time { width: 5.5rem; }
-.threat-table th.threat-name { width: 18rem; }
-
-.threat-table td.threat-result {
-  white-space: normal;
-}
-
-.threat-outcome {
-  color: var(--text-muted);
-}
-
-.threat-outcome.took {
-  color: var(--text-primary);
-}
-
-.threat-drop .threat-outcome {
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.threat-table .class-icon {
+.analysis-table .class-icon {
   width: 20px;
   height: 20px;
   flex-shrink: 0;
+}
+
+.analysis-table .analysis-time { width: 5.5rem; }
+.analysis-table th.analysis-name { width: 18rem; }
+
+/* Secondary text in a cell; `emph` lifts the part that matters */
+.analysis-note {
+  color: var(--text-muted);
+}
+
+.analysis-note.emph {
+  color: var(--text-primary);
 }

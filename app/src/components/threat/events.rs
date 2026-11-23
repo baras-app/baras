@@ -44,7 +44,7 @@ pub fn ThreatEvents(
     ];
 
     rsx! {
-        div { class: "threat-panel",
+        div { class: "analysis-panel",
             div { class: "uptime-toolbar",
                 span { class: "uptime-title",
                     "Taunts and threat drops"
@@ -65,20 +65,20 @@ pub fn ThreatEvents(
             if rows.is_empty() {
                 div { class: "uptime-empty", "None in this range" }
             } else {
-                div { class: "threat-table-box",
-                    table { class: "threat-table",
+                div { class: "analysis-table-box",
+                    table { class: "analysis-table",
                         thead {
                             tr {
-                                th { class: "num threat-time", "Time" }
-                                th { class: "threat-name", "Player" }
-                                th { class: "threat-name", "Ability" }
+                                th { class: "num analysis-time", "Time" }
+                                th { class: "analysis-name", "Player" }
+                                th { class: "analysis-name", "Ability" }
                                 th { class: "threat-result", "Enemy and result" }
                             }
                         }
                         tbody {
                             for e in rows {
                                 tr { class: if e.kind == ThreatEventKind::Drop { "threat-drop" },
-                                    td { class: "num threat-time", "{mmss(e.time_secs)}" }
+                                    td { class: "num analysis-time", "{mmss(e.time_secs)}" }
                                     td { title: "{e.source}",
                                         span { class: "name-with-icon",
                                             {roster.role(&e.source)}
@@ -99,8 +99,8 @@ pub fn ThreatEvents(
                                             div {
                                                 strong { "{t.name}" }
                                                 span { class: match t.outcome {
-                                                        Some(TauntOutcome::TookAggro) => "threat-outcome took",
-                                                        _ => "threat-outcome",
+                                                        Some(TauntOutcome::TookAggro) => "analysis-note emph",
+                                                        _ => "analysis-note",
                                                     },
                                                     " {result(t, &e.source, european)}"
                                                 }
