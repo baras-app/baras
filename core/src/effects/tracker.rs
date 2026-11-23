@@ -1422,6 +1422,9 @@ impl EffectTracker {
             /// Resolved per-ability flag: defer the refresh to the first damage
             /// event from this ability instead of firing on cast.
             defer_to_first_damage: bool,
+            /// Target filter only matched the caster: refresh the caster's
+            /// instance, never touch or create one on the cast target.
+            self_only: bool,
         }
 
         let local_discipline = self.local_player_discipline;
@@ -1438,10 +1441,9 @@ impl EffectTracker {
         let refreshable_defs: Vec<_> = candidates
             .into_iter()
             .filter(|def| def.matches_discipline(local_discipline.as_ref()))
-            .filter(|def| {
-                // Check source/target filters — only refresh/create effects whose filters
-                // match the actual source and target entities
-                def.source_filter().matches(
+            .filter_map(|def| {
+                // Only refresh/create effects whose filters match the actual entities
+                let source_ok = def.source_filter().matches(
                     entities,
                     source_id,
                     source_entity_type,
@@ -1451,23 +1453,39 @@ impl EffectTracker {
                     current_target_id,
                     &boss_ids,
                     pvp_factions,
-                ) && def.target_filter().matches(
-                    entities,
-                    target_id,
-                    target_entity_type,
-                    target_name,
-                    0,
-                    local_player_id,
-                    current_target_id,
-                    &boss_ids,
-                    pvp_factions,
-                )
+                ) && self.matches_entity_disciplines(&def.source_disciplines, source_id, source_entity_type);
+                if !source_ok {
+                    return None;
+                }
+                let target_ok = |id: i64, etype: EntityType, name: IStr| {
+                    def.target_filter().matches(
+                        entities,
+                        id,
+                        etype,
+                        name,
+                        0,
+                        local_player_id,
+                        current_target_id,
+                        &boss_ids,
+                        pvp_factions,
+                    ) && self.matches_entity_disciplines(&def.target_disciplines, id, etype)
+                };
+                // Self-buffs refreshed by an offensive cast: the effect lives on the
+                // caster, so retry the target filter against the caster (same
+                // condition as the self fallback key below).
+                let self_only = if target_ok(target_id, target_entity_type, target_name) {
+                    false
+                } else if target_id != source_id
+                    && target_entity_type != EntityType::Player
+                    && target_ok(source_id, source_entity_type, source_name)
+                {
+                    true
+                } else {
+                    return None;
+                };
+                Some((def, self_only))
             })
-            .filter(|def| {
-                self.matches_entity_disciplines(&def.source_disciplines, source_id, source_entity_type)
-                    && self.matches_entity_disciplines(&def.target_disciplines, target_id, target_entity_type)
-            })
-            .filter_map(|def| {
+            .filter_map(|(def, self_only)| {
                 // Find the matching RefreshAbility entry to get conditions
                 let refresh_ability = def.find_refresh_ability(action_id as u64, Some(action_name_str))?;
 
@@ -1503,11 +1521,16 @@ impl EffectTracker {
                     single_instance_per_target: def.single_instance_per_target,
                     defer_to_first_damage: refresh_ability
                         .refresh_on_first_damage(def.display_targets.contains(&DisplayTarget::DotTracker)),
+                    self_only,
                 })
             })
             .collect();
 
         for def in refreshable_defs {
+            // A self-only match keys on the caster; the fallback key below then
+            // collapses to the primary key and late creation is skipped.
+            let target_id = if def.self_only { source_id } else { target_id };
+
             // First-damage refreshes (non-AoE) defer to the next DamageTaken event.
             // Instead of refreshing immediately on AbilityActivated, set pending state
             // that will be consumed when damage from this ability lands on a target.
@@ -1515,7 +1538,7 @@ impl EffectTracker {
             // defaulting to true for DotTracker effects and false otherwise.
             // AoE refresh abilities are handled separately by the existing AoE damage
             // correlation path (setup_pending_aoe_refresh / handle_damage_for_aoe_refresh).
-            if trigger_type == RefreshTrigger::Activation && def.defer_to_first_damage {
+            if trigger_type == RefreshTrigger::Activation && def.defer_to_first_damage && !def.self_only {
                 self.pending_dot_refresh = Some(PendingDotRefresh {
                     ability_id: action_id,
                     source_id,
@@ -1599,7 +1622,7 @@ impl EffectTracker {
                         name: target_name,
                     });
                 }
-            } else if def.display_targets.contains(&DisplayTarget::RaidFrames) {
+            } else if def.display_targets.contains(&DisplayTarget::RaidFrames) && !def.self_only {
                 // Don't late-register if min_stacks is required — no existing effect
                 // means 0 stacks, which can't satisfy the minimum. Only unconditional
                 // refresh abilities (Simple variant, no min_stacks) should late-register.
