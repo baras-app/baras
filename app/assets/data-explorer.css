@@ -3263,11 +3263,16 @@
   line-height: 1.2;
 }
 
-/* Single-hue tint deepening with uptime; empty cells stay blank */
+/* A slim bar along the cell's foot, as long as the uptime, over a faint
+   tint: high uptimes read at a glance without flooding the table blue.
+   Empty cells stay blank */
 .uptime-cell {
   min-width: 4.5em;
   color: var(--text-primary);
-  background: color-mix(in srgb, var(--swtor-blue) calc(var(--pct) * 0.35%), transparent);
+  --bar: color-mix(in srgb, var(--swtor-blue) 65%, transparent);
+  background:
+    linear-gradient(var(--bar), var(--bar)) no-repeat left bottom / calc(var(--pct) * 1%) 3px,
+    color-mix(in srgb, var(--swtor-blue) calc(var(--pct) * 0.08%), transparent);
 }
 
 .uptime-cell.none {
@@ -3387,28 +3392,38 @@
 
 .uptime-lane-track {
   position: relative;
-  height: 14px;
-  background: rgba(var(--fg-rgb), 0.05);
-  border-radius: 3px;
+  height: 16px;
+  background: rgba(var(--fg-rgb), 0.04);
 }
 
+/* Each lane takes a chart series colour (`--c`, set per lane) so neighbouring
+   lanes tell apart at a glance; adds stay grey */
 .uptime-bar {
   position: absolute;
   top: 0;
   bottom: 0;
   min-width: 1px;
-  background: var(--lane-color, var(--swtor-blue));
-  opacity: 0.7;
-  border-radius: 2px;
+  background: color-mix(in srgb, var(--c, var(--swtor-blue)) 80%, transparent);
 }
 
-/* Lanes cycle the chart series colours (child 1 is the title) */
-.uptime-lane:nth-child(6n + 2) { --lane-color: var(--series-1); }
-.uptime-lane:nth-child(6n + 3) { --lane-color: var(--series-2); }
-.uptime-lane:nth-child(6n + 4) { --lane-color: var(--series-3); }
-.uptime-lane:nth-child(6n + 5) { --lane-color: var(--series-4); }
-.uptime-lane:nth-child(6n + 6) { --lane-color: var(--series-5); }
-.uptime-lane:nth-child(6n + 7) { --lane-color: var(--series-7); }
+.uptime-lane.muted .uptime-bar {
+  background: rgba(var(--fg-rgb), 0.35);
+}
+
+.uptime-bar:hover {
+  filter: brightness(1.2);
+}
+
+/* Time marks run through every lane, over the bars */
+.uptime-grid {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 1px;
+  background: rgba(var(--fg-rgb), 0.14);
+  pointer-events: none;
+}
 
 .uptime-lane-pct {
   color: var(--text-muted);
@@ -3429,8 +3444,8 @@
   font-size: 11px;
 }
 
-.uptime-tick:first-child { transform: none; }
-.uptime-tick:last-child { transform: translateX(-100%); }
+.uptime-tick.start { transform: none; }
+.uptime-tick.end { transform: translateX(-100%); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Shared table look, matching the Overview table: a dark framed card,
