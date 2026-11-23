@@ -416,6 +416,10 @@ fn generate_raid_debuffs_map(out_dir: &str) {
             entries.insert(id, variant);
         }
     }
+    // A debuff with no ids would read as "nobody brought it" in every fight
+    for (tag, variant) in TAGS {
+        assert!(entries.values().any(|v| *v == variant), "no effects tagged {tag} in effect_data.csv");
+    }
     let mut file = BufWriter::new(fs::File::create(Path::new(out_dir).join("raid_debuffs.rs")).unwrap());
     let mut builder = phf_codegen::Map::new();
     for (id, variant) in &entries {
