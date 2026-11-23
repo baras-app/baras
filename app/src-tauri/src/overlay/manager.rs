@@ -7,6 +7,7 @@ use baras_core::context::{OverlayPositionConfig, OverlaySettings};
 use baras_overlay::{
     DotTrackerConfig, NotesConfig, OverlayConfigUpdate, OverlayData, RaidGridLayout, RaidOverlayConfig, platform,
 };
+use std::borrow::Cow;
 use std::time::Duration;
 
 use super::metrics::create_entries_for_type;
@@ -504,6 +505,19 @@ impl OverlayManager {
         }
     }
 
+    /// Settings a newly spawned overlay renders with: the settings panel's
+    /// unsaved preview when one is up (placed and enabled as saved), so showing
+    /// an overlay mid-edit doesn't snap it back to the saved style
+    fn spawn_settings<'a>(state: &SharedOverlayState, saved: &'a OverlaySettings) -> Cow<'a, OverlaySettings> {
+        let Some(mut preview) = state.lock().ok().and_then(|s| s.preview.clone()) else {
+            return Cow::Borrowed(saved);
+        };
+        preview.positions = saved.positions.clone();
+        preview.enabled = saved.enabled.clone();
+        preview.overlays_visible = saved.overlays_visible;
+        Cow::Owned(preview)
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // High-Level Operations
     // ─────────────────────────────────────────────────────────────────────────
@@ -541,6 +555,7 @@ impl OverlayManager {
         service: &ServiceHandle,
         config: &baras_core::context::AppConfig,
     ) -> Result<(), String> {
+        let settings = Self::spawn_settings(state, &config.overlay_settings);
         // Check if already running, spawn, and insert - all under lock to prevent race conditions
         // from rapid toggle clicks spawning duplicate overlays
         let (tx, needs_monitor_save, current_move_mode) = {
@@ -549,7 +564,7 @@ impl OverlayManager {
                 return Ok(());
             }
             // Spawn while holding lock (spawn is synchronous, so this is safe)
-            let result = Self::spawn(kind, &config.overlay_settings)?;
+            let result = Self::spawn(kind, &settings)?;
             let tx = result.handle.tx.clone();
             let needs_monitor_save = result.needs_monitor_save;
             let mode = s.move_mode;
@@ -558,7 +573,7 @@ impl OverlayManager {
         };
 
         // Send config update so overlay gets current settings (e.g., european_number_format)
-        let config_update = Self::create_config_update(kind, &config.overlay_settings, config.european_number_format);
+        let config_update = Self::create_config_update(kind, &settings, config.european_number_format);
         let _ = tx.send(OverlayCommand::UpdateConfig(config_update)).await;
 
         // Sync move mode
@@ -661,6 +676,7 @@ impl OverlayManager {
         }
 
         let enabled_keys = config.overlay_settings.enabled_types();
+        let settings = Self::spawn_settings(state, &config.overlay_settings);
 
         // Get combat data once for all overlays (always try, regardless of tailing state)
         let combat_data = service.current_combat_data().await;
@@ -683,7 +699,7 @@ impl OverlayManager {
                     continue;
                 }
                 // Spawn while holding lock (spawn is synchronous, so this is safe)
-                let Ok(result) = Self::spawn(kind, &config.overlay_settings) else {
+                let Ok(result) = Self::spawn(kind, &settings) else {
                     continue;
                 };
                 let tx = result.handle.tx.clone();
@@ -693,8 +709,7 @@ impl OverlayManager {
             };
 
             // Send config update so overlay gets current settings (e.g., european_number_format)
-            let config_update =
-                Self::create_config_update(kind, &config.overlay_settings, config.european_number_format);
+            let config_update = Self::create_config_update(kind, &settings, config.european_number_format);
             let _ = spawn_result.0.send(OverlayCommand::UpdateConfig(config_update)).await;
 
             // Send initial data
@@ -794,6 +809,7 @@ impl OverlayManager {
         }
 
         let enabled_keys = config.overlay_settings.enabled_types();
+        let settings = Self::spawn_settings(state, &config.overlay_settings);
 
         // Get combat data once for all overlays (always try, regardless of tailing state)
         let combat_data = service.current_combat_data().await;
@@ -809,7 +825,7 @@ impl OverlayManager {
                 if s.is_running(kind) {
                     continue;
                 }
-                let Ok(result) = Self::spawn(kind, &config.overlay_settings) else {
+                let Ok(result) = Self::spawn(kind, &settings) else {
                     continue;
                 };
                 let tx = result.handle.tx.clone();
@@ -818,8 +834,7 @@ impl OverlayManager {
             };
 
             // Send config update so overlay gets current settings (e.g., european_number_format)
-            let config_update =
-                Self::create_config_update(kind, &config.overlay_settings, config.european_number_format);
+            let config_update = Self::create_config_update(kind, &settings, config.european_number_format);
             let _ = spawn_result.send(OverlayCommand::UpdateConfig(config_update)).await;
 
             // Send initial data
@@ -972,6 +987,8 @@ impl OverlayManager {
         service: &ServiceHandle,
         flush: bool,
     ) -> Result<bool, String> {
+        // Back to the saved settings: a save, discard or profile load ends the preview
+        state.lock().map_err(|e| e.to_string())?.preview = None;
         // Flush current overlay positions into config before reading it back.
         // Without this, refresh sends stale saved positions back to overlays,
         // resetting any moves the user made since the last position-save event.
