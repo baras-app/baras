@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use super::*;
+use crate::game_data::is_defensive_effect;
 
 // Effect type IDs (the type of log event)
 pub(super) const APPLY_EFFECT: i64 = 836045448945477;
@@ -302,6 +303,7 @@ impl EncounterQuery<'_> {
                     count,
                     total_duration_secs: total as f32,
                     uptime_pct: (total * 100.0 / range_duration).min(100.0) as f32,
+                    is_defensive: is_defensive_effect(effect_id),
                 });
             }
         }

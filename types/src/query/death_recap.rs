@@ -153,6 +153,20 @@ pub struct DeathRecapEffect {
     #[serde(default)]
     pub stack_changes: Vec<(f32, i32)>,
     pub active_at_death: bool,
+    /// A defensive cooldown's effect
+    #[serde(default)]
+    pub is_defensive: bool,
+}
+
+/// A defensive cooldown the player pressed before the death.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DeathRecapDefensive {
+    pub ability_id: i64,
+    pub ability_name: String,
+    /// Combat seconds of the last press before the death
+    pub last_used_secs: f32,
+    /// Presses in the fight up to the death
+    pub uses: u32,
 }
 
 /// Full recap of a single player death.
@@ -182,4 +196,8 @@ pub struct DeathRecap {
     /// still up at the death, then by start
     #[serde(default)]
     pub effects: Vec<DeathRecapEffect>,
+    /// Defensive cooldowns the player pressed in the fight up to the death,
+    /// latest press first
+    #[serde(default)]
+    pub defensives: Vec<DeathRecapDefensive>,
 }

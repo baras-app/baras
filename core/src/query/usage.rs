@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 
 use super::*;
-use crate::game_data::effect_id;
+use crate::game_data::{effect_id, is_defensive_ability};
 
 impl EncounterQuery<'_> {
     /// Query ability usage statistics for a single player.
@@ -78,6 +78,7 @@ impl EncounterQuery<'_> {
                 min_time_between,
                 max_time_between,
                 timestamps,
+                is_defensive: is_defensive_ability(ability_id),
             });
         }
 

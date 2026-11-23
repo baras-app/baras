@@ -1,0 +1,63 @@
+# Defensive cooldowns, Imperial side only; the build adds each ID's Republic
+# mirror. One per line:
+#
+#   <ability ID or -> : <effect IDs>   # name
+#
+# The ability ID is what is pressed (usage); the effect IDs are what the press
+# puts on a player or, for Diversion, on its targets (uptime). `-` leaves the
+# ability out of usage: it is only defensive for the discipline that gets the
+# effect. Hand-curated: the game's own DCD tag misses some and includes
+# talent riders.
+
+# Sith Warrior
+807793154064384  : 807793154064384                    # Saber Ward
+3602532668538880 : 3602532668538880                   # Mad Dash
+2211074933784576 : 2211074933784576                   # Endure Pain
+2793644297814016 : 2793644297814016                   # Enraged Defense
+3126177845739520 : 3126177845739520                   # Saber Reflect
+1000001530494976 : 1000001530494976                   # Invincible
+2473484550668288 : 2473484550668288                   # Cloak of Pain
+3454145843429376 : 3454145843429376                   # Force Camouflage
+2517052698918912 : 2517052698918912                   # Undying Rage
+2516812180750336 : 2516812180750336                   # Predation
+
+# Sith Inquisitor
+3421834804461568 : 3421834804461568                   # Deflection
+954616611078144  : 954616611078144                    # Force Shroud
+2271329029980160 : 2271329029980160 2271329029980472  # Force Cloak, its Force Shroud
+2522790775226368 : 2522790775226902                   # Mass Mind Control: Nefarious Methods
+3120899330932736 : 3120899330932736 3120899330933026 3120899330933056 3120899330933058 3120899330933060  # Force Barrier, Enduring Bastion (1-4)
+3031100154707968 :                                    # Unnatural Preservation (a heal, no effect)
+808209765892096  : 3413360833986560                   # Cloud Mind: Suppression
+3200459305123840 : 3200459305124173                   # Phase Walk: Shifting Silhouette
+-                : 976061382787072                    # Recklessness: Shroud of Darkness (Darkness)
+975430022594560  : 975430022594560                    # Overcharge Saber
+
+# Bounty Hunter
+814218425139200  : 814218425139459                    # Energy Shield
+2264285283614720 : 2264285283614720 2264285283615002  # Kolto Overload, Health Monitor (armed until it triggers)
+-                : 4502474345938944                    # Kolto Overload: Boiling Point (Pyrotech)
+-                : 4498488616288256                    # Kolto Overload: Advanced Shielding (Advanced Prototype)
+4085553280581632 : 4085553280581632                   # Responsive Safeguards
+814192655335424  : 814192655335424 814192655335739    # Chaff Flare, Decoy
+880189122805760  : 880189122806402                    # Sonic Missile: Sonic Rebounder
+-                : 986266225082627                    # Explosive Fuel: Coolant (Shield Tech)
+4502478640906240 : 4502478640906508                   # Thermal Yield (Pyrotech)
+4504089253642240 : 4504089253642508 4504089253642520  # Energy Yield, Energy Heal (Shield Tech)
+2264298168516608 : 2264298168516924                   # Oil Slick: Accuracy Reduced (Tech) (Shield Tech)
+
+# Imperial Agent
+814811130626048  : 814811130626048 814811130626362    # Evasion, Blow for Blow
+784716294782976  : 784716294782976                    # Shield Probe
+2278037768896512 : 2278037768896512 2278037768896816  # Cloaking Screen, its Evasion
+3202400630341632 : 3202400630341632                   # Exfiltrate
+4309969616764928 : 4309969616764928                   # Tactical Overdrive
+2043584094142464 : 2043584094142464                   # Entrench
+2305791847563264 : 2305791847563264 2305791847563526  # Ballistic Shield, on those inside
+3200519434665984 : 3200519434665984                   # Covered Escape
+3650206805524480 : 3650206805524738                   # Meticulous Preparation: Over-prepared
+785128611643392  : 785128611643654 785128611643688    # Diversion: Diversion (Tech)
+
+# Items
+4258855210975232 : 4258855210975232                   # Advanced Kyrprax Shield Adrenal
+-                : 4511704230658308                    # Emergency Power (Supercommando implant)

@@ -12,6 +12,7 @@ mod effects;
 pub mod error;
 mod gcd;
 mod overview;
+mod recap_defensives;
 mod rotation;
 mod search_parser;
 mod time_series;
@@ -36,10 +37,11 @@ use column_helpers::*;
 pub use baras_types::{
     AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow,
     CombatLogSortColumn, DamageTakenSummary, DataTab, DeathRecap, DeathRecapDamageRow, DeathRecapDamageSource,
-    DeathRecapEffect, DeathRecapEvent, DeathRecapEventKind, DeathRecapHealRow, DeathRecapHealSource, DeathRecapHpPoint,
-    DeathRecapKillingBlow, EffectChartData, EffectUptimeCell, EffectWindow, EncounterTimeline, EntityBreakdown,
-    GcdSlot, GroupMetric, GroupTimeSeries, GroupedEntityNames, HpPoint, NpcHealthRow, PhaseSegment, PlayerDeath,
-    RaidOverviewRow, RotationAnalysis, RotationCycle, RotationEvent, SortDirection, TimeRange, TimeSeriesPoint,
+    DeathRecapDefensive, DeathRecapEffect, DeathRecapEvent, DeathRecapEventKind, DeathRecapHealRow,
+    DeathRecapHealSource, DeathRecapHpPoint, DeathRecapKillingBlow, EffectChartData, EffectUptimeCell, EffectWindow,
+    EncounterTimeline, EntityBreakdown, GcdSlot, GroupMetric, GroupTimeSeries, GroupedEntityNames, HpPoint,
+    NpcHealthRow, PhaseSegment, PlayerDeath, RaidOverviewRow, RotationAnalysis, RotationCycle, RotationEvent,
+    SortDirection, TimeRange, TimeSeriesPoint,
 };
 
 /// Escape single quotes for SQL string literals (O'Brien -> O''Brien)

@@ -17,9 +17,12 @@ fn main() {
     generate_discipline_abilities_map(&out_dir);
     generate_interrupt_abilities_set(&out_dir);
     generate_battle_rez_set(&out_dir);
-    generate_mirror_abilities_map(&out_dir);
+    let mirrors = mirror_entries();
+    generate_mirror_abilities_map(&out_dir, &mirrors);
+    generate_defensive_cooldown_sets(&out_dir, &mirrors);
 
     println!("cargo:rerun-if-changed=data/off_gcd_extra.txt");
+    println!("cargo:rerun-if-changed=data/defensive_cooldowns.txt");
     println!("cargo:rerun-if-changed=data/attack_types.csv");
     println!("cargo:rerun-if-changed=data/alacrity_abilities.csv");
     println!("cargo:rerun-if-changed=data/discipline_ids.csv");
@@ -265,7 +268,8 @@ fn split_csv_line(line: &str) -> Vec<String> {
 /// Columns used: fqn(0), global_combat_id(1), name(2), mirror_fqn(6); in
 /// effect_data.csv effect_id(0), ability_fqn(2), effect_number(3), name(4),
 /// has_own_name(5).
-fn generate_mirror_abilities_map(out_dir: &str) {
+/// Returns id → (mirror id, mirror name, the keyed side is Imperial).
+fn mirror_entries() -> BTreeMap<i64, (i64, String, bool)> {
     // Pass 1: fqn → (id, name, is_imperial) for every row that has a mirror.
     let mut by_fqn: BTreeMap<String, (i64, String, bool)> = BTreeMap::new();
     let mut pairs: Vec<(String, String)> = Vec::new();
@@ -285,10 +289,7 @@ fn generate_mirror_abilities_map(out_dir: &str) {
         let (Some((id, _, is_imperial)), Some((mid, mname, _))) = (by_fqn.get(fqn), by_fqn.get(mirror_fqn)) else {
             continue;
         };
-        entries.insert(
-            *id,
-            format!("MirrorAbility {{ mirror_id: {mid}i64, mirror_name: {mname:?}, is_imperial: {is_imperial} }}"),
-        );
+        entries.insert(*id, (*mid, mname.clone(), *is_imperial));
     }
 
     // Named effects log under their own ID. One the mirror ability has no
@@ -323,17 +324,23 @@ fn generate_mirror_abilities_map(out_dir: &str) {
             .get(&(*mirror_fqn, f[3].as_str()))
             .copied()
             .unwrap_or((id, &f[4]));
-        entries.entry(id).or_insert_with(|| {
-            format!("MirrorAbility {{ mirror_id: {mid}i64, mirror_name: {mname:?}, is_imperial: {is_imperial} }}")
-        });
+        entries
+            .entry(id)
+            .or_insert_with(|| (mid, mname.to_string(), *is_imperial));
     }
+    entries
+}
 
+fn generate_mirror_abilities_map(out_dir: &str, entries: &BTreeMap<i64, (i64, String, bool)>) {
     let path = Path::new(out_dir).join("mirror_abilities.rs");
     let mut file = BufWriter::new(fs::File::create(&path).unwrap());
 
     let mut builder = phf_codegen::Map::new();
-    for (id, entry) in &entries {
-        builder.entry(*id, entry);
+    for (id, (mid, mname, is_imperial)) in entries {
+        builder.entry(
+            *id,
+            format!("MirrorAbility {{ mirror_id: {mid}i64, mirror_name: {mname:?}, is_imperial: {is_imperial} }}"),
+        );
     }
 
     writeln!(
@@ -342,4 +349,35 @@ fn generate_mirror_abilities_map(out_dir: &str) {
         builder.build()
     )
     .unwrap();
+}
+
+/// Abilities and effects of data/defensive_cooldowns.txt (lines of
+/// `<ability or -> : <effects>`, `#` comments) and their Republic mirrors.
+fn generate_defensive_cooldown_sets(out_dir: &str, mirrors: &BTreeMap<i64, (i64, String, bool)>) {
+    let list = fs::read_to_string("data/defensive_cooldowns.txt").expect("failed to read defensive_cooldowns.txt");
+    let with_mirrors = |ids: &str| -> Vec<i64> {
+        ids.split_whitespace()
+            .filter_map(|id| id.parse::<i64>().ok())
+            .flat_map(|id| [Some(id), mirrors.get(&id).map(|m| m.0)])
+            .flatten()
+            .collect()
+    };
+    let (mut abilities, mut effects) = (Vec::new(), Vec::new());
+    for line in list.lines() {
+        if let Some((ability, line_effects)) = line.split('#').next().unwrap_or("").split_once(':') {
+            abilities.extend(with_mirrors(ability));
+            effects.extend(with_mirrors(line_effects));
+        }
+    }
+    let path = Path::new(out_dir).join("defensive_cooldowns.rs");
+    let mut file = BufWriter::new(fs::File::create(path).unwrap());
+    for (name, mut ids) in [("DEFENSIVE_ABILITIES", abilities), ("DEFENSIVE_EFFECTS", effects)] {
+        ids.sort_unstable();
+        ids.dedup();
+        let mut builder = phf_codegen::Set::new();
+        for id in &ids {
+            builder.entry(*id);
+        }
+        writeln!(file, "pub static {name}: phf::Set<i64> = {};", builder.build()).unwrap();
+    }
 }
