@@ -5579,6 +5579,12 @@ a.contributor-name:hover {
   color: var(--text-secondary);
 }
 
+/* One row of single-line buttons, whatever the labels */
+.discard-prompt .modal-footer .btn {
+  min-width: 0;
+  white-space: nowrap;
+}
+
 /* Encounter editor: the boss's lists, as underline tabs (one accent, not
    the Data Explorer's per-tab colours) */
 .boss-views {

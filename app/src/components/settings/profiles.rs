@@ -14,6 +14,7 @@ pub fn ProfilesSection(
     mut active_profile: Signal<Option<String>>,
     mut overlays_enabled: Signal<std::collections::HashSet<String>>,
     mut overlays_visible: Signal<bool>,
+    profile_guard: super::draft::ProfileSwitchGuard,
 ) -> Element {
     let mut new_profile_name = use_signal(String::new);
     let mut profile_status = use_signal(String::new);
@@ -91,7 +92,7 @@ pub fn ProfilesSection(
                                                     let pname = profile_name.clone();
                                                     move |_| {
                                                         let pname = pname.clone();
-                                                        spawn(async move {
+                                                        profile_guard.confirm(move |_| { let pname = pname.clone(); spawn(async move {
                                                             if let Err(err) = api::load_profile(&pname).await {
                                                                 toast.show(format!("Failed to load profile: {}", err), ToastSeverity::Normal);
                                                             } else {
@@ -105,7 +106,7 @@ pub fn ProfilesSection(
                                                                     overlays_enabled.set(status.enabled);
                                                                 }
                                                             }
-                                                        });
+                                                        }); });
                                                     }
                                                 },
                                                 if is_active { "Active" } else { "Load" }

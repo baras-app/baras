@@ -113,3 +113,49 @@ pub fn edit_appearance(draft: SettingsDraft, key: &str, f: impl FnOnce(&mut Over
         f(s.appearances.entry(key.to_string()).or_insert(default));
     });
 }
+
+/// Holds a profile switch while the draft has unsaved edits. Owned by the app,
+/// since the header switches profiles too; the panel keeps `dirty` in step and
+/// answers the prompt
+#[derive(Clone, Copy, PartialEq)]
+pub struct ProfileSwitchGuard {
+    dirty: Signal<bool>,
+    pending: Signal<Option<Callback<()>>>,
+}
+
+pub fn use_profile_switch_guard() -> ProfileSwitchGuard {
+    ProfileSwitchGuard {
+        dirty: use_signal(|| false),
+        pending: use_signal(|| None),
+    }
+}
+
+impl ProfileSwitchGuard {
+    /// Run `switch` now, or once the prompt saves or discards the draft
+    pub fn confirm(&self, switch: impl FnMut(()) + 'static) {
+        let switch = Callback::new(switch);
+        if *self.dirty.peek() {
+            let mut pending = self.pending;
+            pending.set(Some(switch));
+        } else {
+            switch.call(());
+        }
+    }
+
+    pub fn is_pending(&self) -> bool {
+        self.pending.read().is_some()
+    }
+
+    /// The prompt's answer: the held switch, to run unless cancelled
+    pub fn take(&self) -> Option<Callback<()>> {
+        let mut pending = self.pending;
+        pending.take()
+    }
+
+    pub fn set_dirty(&self, dirty: bool) {
+        let mut flag = self.dirty;
+        if let Ok(mut w) = flag.try_write() {
+            *w = dirty;
+        }
+    }
+}

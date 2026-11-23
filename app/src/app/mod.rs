@@ -13,7 +13,7 @@ use crate::components::{
     AlacrityPill, BossNotesMenu, CharactersPanel, ContributorsModal, DataExplorerPanel, EffectEditorPanel,
     EncounterEditorPanel, FileOpenBanner, HistoryPanel, NavMenu, OpTimerControl, OverlayToggle, ParselyUploadModal,
     SessionStatusChip, SettingsPanel, SettingsSection, ToastFrame, ToastSeverity, use_file_opener_provider,
-    use_parsely_upload, use_parsely_upload_provider, use_toast, use_toast_provider,
+    use_parsely_upload, use_parsely_upload_provider, use_profile_switch_guard, use_toast, use_toast_provider,
 };
 use crate::types::{
     AreaVisitInfo, LogFileInfo, MainTab, MetricType, OverlaySettings, OverlayType, SessionInfo, UiSessionState,
@@ -59,6 +59,8 @@ pub fn App() -> Element {
     let mut move_mode = use_signal(|| false);
     let mut rearrange_mode = use_signal(|| false);
     let mut auto_hidden = use_signal(|| false);
+    // Holds a profile switch while the settings panel has unsaved edits
+    let profile_guard = use_profile_switch_guard();
 
     // Directory and file state
     let mut log_directory = use_signal(String::new);
@@ -792,13 +794,19 @@ pub fn App() -> Element {
                                     }
                                 }
                                 // Profile selector
+                                // Re-keyed when a switch is held or settled, so the
+                                // select shows the active profile, not the pick
+                                for held in [profile_guard.is_pending()] {
                                 select {
+                                    key: "{held}",
                                     class: "header-profile-dropdown",
                                     title: "Switch overlay profile",
                                     value: active_profile().unwrap_or_default(),
                                     onchange: move |e| {
                                         let selected = e.value();
                                         if selected.is_empty() { return; }
+                                        profile_guard.confirm(move |_| {
+                                        let selected = selected.clone();
                                         let previous = active_profile();
                                         active_profile.set(Some(selected.clone()));
                                         let mut toast = use_toast();
@@ -815,6 +823,7 @@ pub fn App() -> Element {
                                                 }
                                             }
                                         });
+                                        });
                                     },
                                     for name in profile_names().iter() {
                                         option {
@@ -823,6 +832,7 @@ pub fn App() -> Element {
                                             "{name}"
                                         }
                                     }
+                                }
                                 }
                             }
                         }
@@ -1304,6 +1314,8 @@ pub fn App() -> Element {
                     overlays_visible: overlays_visible,
                     section: settings_section,
                     on_settings_saved: move |_| {},
+                    on_return: move |_| ui_state.write().active_tab = MainTab::Overlays,
+                    profile_guard,
                 }
             }
 

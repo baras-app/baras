@@ -64,7 +64,7 @@ pub use overlay_toggle::OverlayToggle;
 pub use parsely_upload_modal::{ParselyUploadModal, use_parsely_upload, use_parsely_upload_provider};
 pub use session_settings::{AlacrityPill, BossNotesMenu, OpTimerControl};
 pub use session_status::SessionStatusChip;
-pub use settings::{SettingsPanel, SettingsSection};
+pub use settings::{SettingsPanel, SettingsSection, use_profile_switch_guard};
 pub use slider::{NumberInput, Slider};
 pub use sound_picker::SoundPicker;
 pub use toast::{ToastFrame, ToastSeverity, use_toast, use_toast_provider};
