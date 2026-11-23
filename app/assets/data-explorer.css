@@ -1033,8 +1033,29 @@
   gap: var(--space-sm);
 }
 
+/* Always 2×2 (no 3+1 orphan), cards share the chart's height with the value centered */
 .dummy-summary > .history-cards {
   flex: 1 1 17.5rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  container-type: inline-size;
+}
+
+.dummy-summary > .history-cards > .history-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Showing one ability's numbers (hovered or pinned in the by-ability table) */
+.dummy-summary > .history-cards.focused > .history-card {
+  border-color: var(--text-accent);
+}
+
+/* The value grows with the card so wide cards don't look empty */
+.dummy-summary > .history-cards .v {
+  font-size: clamp(1.6em, 7cqi, 2.4em);
 }
 
 .dummy-summary > .overview-chart-box {
@@ -1054,6 +1075,13 @@
 .overview-chart-note {
   color: var(--text-muted);
   font-size: 11px;
+}
+
+.overview-chart-ability {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-weight: 600;
 }
 
 .overview-chart {
