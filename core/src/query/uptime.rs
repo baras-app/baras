@@ -11,6 +11,7 @@ use std::collections::HashMap;
 
 use super::effects::{APPLY_EFFECT, DAMAGE_EFFECT, HEAL_EFFECT, REMOVE_EFFECT};
 use super::*;
+use crate::game_data::is_defensive_effect;
 
 /// Per (target name, effect) row being built
 struct Acc {
@@ -110,6 +111,7 @@ impl EncounterQuery<'_> {
                     count: acc.count,
                     uptime_pct: (covered * 100.0 / span).min(100.0),
                     windows,
+                    is_defensive: is_defensive_effect(effect_id),
                 })
             })
             .collect();

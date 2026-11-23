@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use super::*;
-use crate::game_data::{defense_type, effect_id, effect_type_id};
+use crate::game_data::{defense_type, effect_id, effect_type_id, is_defensive_effect};
 
 /// Lookback from the death event.
 const WINDOW_SECS: f32 = 15.0;
@@ -160,6 +160,7 @@ impl EncounterQuery<'_> {
         recap.effects = self
             .recap_effects(player_name, recap.window_start_secs, recap.death_time_secs)
             .await?;
+        recap.defensives = self.recap_defensives(player_name, recap.death_time_secs).await?;
         Ok(recap)
     }
 
@@ -290,6 +291,7 @@ impl EncounterQuery<'_> {
                     windows,
                     stack_changes,
                     active_at_death,
+                    is_defensive: is_defensive_effect(effect_id),
                 })
             })
             .collect();
@@ -504,6 +506,7 @@ fn build_recap(player_name: &str, requested_death_time: f32, rows: Vec<RecapRow>
         healing_rows,
         events,
         effects: Vec::new(),
+        defensives: Vec::new(),
     }
 }
 

@@ -65,6 +65,9 @@ pub struct AbilityUsageRow {
     pub max_time_between: f32,
     /// Raw cast timestamps (combat_time_secs) for timeline visualization.
     pub timestamps: Vec<f32>,
+    /// A defensive cooldown
+    #[serde(default)]
+    pub is_defensive: bool,
 }
 
 /// A phase segment - one occurrence of a phase (phases can repeat).

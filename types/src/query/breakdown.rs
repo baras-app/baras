@@ -416,6 +416,9 @@ pub struct EffectChartData {
     pub total_duration_secs: f32,
     /// Uptime percentage (0-100)
     pub uptime_pct: f32,
+    /// A defensive cooldown's effect
+    #[serde(default)]
+    pub is_defensive: bool,
 }
 
 /// One cell of the Effect Uptime tab: one source's effect on one target
@@ -433,4 +436,7 @@ pub struct EffectUptimeCell {
     pub uptime_pct: f32,
     /// When it was up: merged (start, end) combat seconds, clipped to the range
     pub windows: Vec<(f32, f32)>,
+    /// A defensive cooldown's effect
+    #[serde(default)]
+    pub is_defensive: bool,
 }

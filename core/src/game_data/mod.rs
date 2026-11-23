@@ -3,6 +3,7 @@ mod attack_types;
 mod boss_registry;
 mod bosses;
 mod channel_abilities;
+mod defensive_cooldowns;
 mod discipline;
 mod discipline_abilities;
 mod effects;
@@ -27,6 +28,7 @@ pub use bosses::{
     BossInfo, ContentType, Difficulty, difficulty_id, get_boss_ids, is_boss, lookup_area_content_type, lookup_boss,
 };
 pub use channel_abilities::channel_secs;
+pub use defensive_cooldowns::{is_defensive_ability, is_defensive_effect};
 pub use discipline::{Class, Discipline, DisciplineFilter, Role};
 pub use discipline_abilities::{narrow_disciplines, resolved_discipline};
 pub use effects::*;
