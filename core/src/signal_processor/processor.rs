@@ -4,8 +4,8 @@ use crate::dsl::triggers::EntitySelectorExt;
 use crate::encounter::EncounterState;
 use crate::encounter::combat::ActiveBoss;
 use crate::game_data::{
-    BATTLE_REZ_ABILITY_IDS, DISCIPLINE_ABILITIES, Difficulty, Discipline, SCRIPTED_REVIVE_EFFECT_IDS,
-    correct_apply_charges, effect_id, effect_type_id,
+    BATTLE_REZ_ABILITY_IDS, Difficulty, Discipline, SCRIPTED_REVIVE_EFFECT_IDS, correct_apply_charges, effect_id,
+    effect_type_id, narrow_disciplines, resolved_discipline,
 };
 use crate::signal_processor::signal::GameSignal;
 use crate::state::cache::SessionCache;
@@ -268,8 +268,8 @@ impl EventProcessor {
         }
     }
 
-    /// Infer discipline from signature abilities for players whose discipline
-    /// is unknown. Enemy players in PvP never emit DisciplineChanged events,
+    /// Infer discipline from the abilities used by players whose discipline
+    /// is unknown, narrowing the candidates until one is left. Enemy players in PvP never emit DisciplineChanged events,
     /// so this is the only way they get a discipline (and thus a role).
     /// Matches ability activations and damage/heal events, where the log's
     /// source entity is the ability's caster. Effect apply/remove lines are
@@ -293,13 +293,22 @@ impl EventProcessor {
         {
             return;
         }
-        let Some(&discipline_id) = DISCIPLINE_ABILITIES.get(&event.action.action_id) else {
+        let candidates = cache
+            .player_disciplines
+            .get(&event.source_entity.log_id)
+            .map_or(0, |p| p.discipline_candidates);
+        let narrowed = narrow_disciplines(candidates, event.action.action_id, is_activation);
+        if narrowed == candidates {
             return;
-        };
+        }
 
         let player = cache.player_disciplines.entry(event.source_entity.log_id).or_default();
         player.id = event.source_entity.log_id;
         player.name = event.source_entity.name;
+        player.discipline_candidates = narrowed;
+        let Some(discipline_id) = resolved_discipline(narrowed) else {
+            return;
+        };
         player.discipline_id = discipline_id;
         player.discipline_name = Discipline::from_guid(discipline_id)
             .map(|d| d.name().to_string())

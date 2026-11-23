@@ -14,6 +14,9 @@ pub struct PlayerInfo {
     /// DisciplineChanged event. Inferred assignments are evicted on area
     /// change (players can respec between PvP matches).
     pub discipline_inferred: bool,
+    /// Disciplines still consistent with the abilities seen while the
+    /// discipline is unknown (see `narrow_disciplines`); 0 = nothing seen yet.
+    pub discipline_candidates: u64,
     pub is_dead: bool,
     pub death_time: Option<NaiveDateTime>,
     pub received_revive_immunity: bool,
@@ -41,6 +44,7 @@ impl Default for PlayerInfo {
             discipline_id: 0,
             discipline_name: String::new(),
             discipline_inferred: false,
+            discipline_candidates: 0,
             is_dead: false,
             death_time: None,
             received_revive_immunity: false,

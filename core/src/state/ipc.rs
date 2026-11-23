@@ -87,6 +87,7 @@ impl WorkerPlayerDiscipline {
             discipline_id: self.discipline_id,
             discipline_name: self.discipline_name.clone(),
             discipline_inferred: self.discipline_inferred,
+            discipline_candidates: 0,
             is_dead: false,
             death_time: None,
             received_revive_immunity: false,
