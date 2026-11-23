@@ -1026,6 +1026,23 @@
   border-radius: var(--radius-md);
 }
 
+/* Dummy parse: GCD stat cards (2x2) beside the interval density */
+.dummy-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.dummy-summary > .history-cards {
+  flex: 1 1 280px;
+}
+
+.dummy-summary > .overview-chart-box {
+  flex: 2 1 360px;
+  min-width: 0;
+  margin-top: 0;
+}
+
 .overview-chart-header {
   display: flex;
   flex-wrap: wrap;

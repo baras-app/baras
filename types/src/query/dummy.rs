@@ -5,8 +5,20 @@ use serde::{Deserialize, Serialize};
 use super::RatingSource;
 
 /// A press is drawn as long when the next one follows this far past the
-/// parse's typical GCD
+/// time its ability takes
 pub const LONG_GCD_MARGIN_SECS: f32 = 0.2;
+
+/// How far a channelled press ran before the next press.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct ChannelPress {
+    /// Ticks that landed before the next press
+    pub ticks: u8,
+    /// Ticks of a full channel of this ability, as seen in this parse
+    pub full_ticks: u8,
+    /// Fewer ticks landed than a full channel's: the next press cut it short.
+    /// Not a mistake in itself, some rotations clip a channel on purpose.
+    pub clipped: bool,
+}
 
 /// One on-GCD press and how long until the next one.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -19,6 +31,27 @@ pub struct GcdPress {
     pub ability_id: i64,
     pub next: String,
     pub next_id: i64,
+    /// Time `ability` takes: the typical GCD, or for a channel the median
+    /// time to the next press after its full channels in this parse
+    pub expected_secs: f32,
+    /// Set when `ability` is a channel
+    pub channel: Option<ChannelPress>,
+}
+
+impl GcdPress {
+    /// The next press came well after `ability` was done
+    pub fn is_long(&self) -> bool {
+        is_long_gap(self.interval_secs, self.expected_secs)
+    }
+
+    pub fn is_clipped(&self) -> bool {
+        self.channel.is_some_and(|c| c.clipped)
+    }
+}
+
+/// `interval_secs` runs well past the `expected_secs` an ability takes
+pub fn is_long_gap(interval_secs: f32, expected_secs: f32) -> bool {
+    interval_secs >= expected_secs + LONG_GCD_MARGIN_SECS
 }
 
 /// Time until the next press, across every press of one ability.
@@ -29,10 +62,12 @@ pub struct AbilityInterval {
     pub uses: u32,
     pub median_secs: f32,
     pub longest_secs: f32,
+    /// As `GcdPress::expected_secs`
+    pub expected_secs: f32,
 }
 
-/// A player's on-GCD presses and the time between them, as logged: nothing
-/// is assumed about how long an ability should take.
+/// A player's on-GCD presses and the time between them, as logged: what a
+/// press should take is the parse's own median, per channel for channels.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct GcdAnalysis {
     /// On-GCD abilities activated
@@ -45,13 +80,6 @@ pub struct GcdAnalysis {
     pub presses: Vec<GcdPress>,
     /// Most used first
     pub abilities: Vec<AbilityInterval>,
-}
-
-impl GcdAnalysis {
-    /// `interval_secs` runs well past the typical GCD
-    pub fn is_long(&self, interval_secs: f32) -> bool {
-        interval_secs >= self.typical_gcd_secs + LONG_GCD_MARGIN_SECS
-    }
 }
 
 /// Percentiles of a full dummy kill among Parsely's rated parses.

@@ -1,9 +1,11 @@
 //! Charts of the dummy parse's global cooldown use: how long each press
-//! took until the next (red when well past the typical GCD; hover for the
+//! took until the next (red when well past the typical GCD or a channel's
+//! end, amber for a clipped channel; hover for the
 //! abilities, click to pick it in the press table) and the density of those
 //! times.
 
 use std::cell::RefCell;
+use std::collections::{BTreeSet, HashMap};
 use std::rc::Rc;
 
 use dioxus::prelude::*;
@@ -13,6 +15,7 @@ use wasm_bindgen::prelude::*;
 use baras_types::formatting;
 use baras_types::{DummyParse, GcdAnalysis};
 
+use crate::components::ability_icon::fetch_icon_url;
 use crate::components::echarts::{
     TOOLTIP_ROWS_JS, dispose_chart, escape, init_chart, json_to_js, next_animation_frame, set_js_fn, set_option_replace,
 };
@@ -50,7 +53,8 @@ fn tooltip() -> Value {
 
 /// One block per press, spanning the time until the next one and as tall
 /// as that time, so the blocks tile the parse; red when it runs well past
-/// the typical GCD, which is drawn as a line.
+/// the typical GCD (drawn as a line) or a channel's end, amber when a
+/// channel was clipped.
 fn timeline_option(parse: &DummyParse, selected: Option<usize>, eu: bool) -> Value {
     let (label, split) = axis_style();
     let gcd = &parse.gcd;
@@ -59,18 +63,33 @@ fn timeline_option(parse: &DummyParse, selected: Option<usize>, eu: bool) -> Val
         .iter()
         .enumerate()
         .map(|(i, p)| {
-            let color = match (selected == Some(i), gcd.is_long(p.interval_secs)) {
-                (true, _) => css_var("--text-primary"),
-                (_, true) => css_var("--color-error"),
-                _ => css_var("--text-muted"),
+            let color = match (selected == Some(i), p.is_clipped(), p.is_long()) {
+                (true, ..) => css_var("--text-accent"),
+                (_, true, _) => css_var("--color-warning"),
+                (_, _, true) => css_var("--color-error"),
+                _ => css_var("--text-tertiary"),
             };
+            let channel = p.channel.map_or(String::new(), |c| {
+                let ticks = match c.full_ticks {
+                    0 => format!("{} ticks", c.ticks),
+                    full => format!("{}/{full} ticks", c.ticks),
+                };
+                if c.clipped {
+                    format!("{ticks} · clipped")
+                } else {
+                    ticks
+                }
+            });
             json!({
                 "value": [p.time_secs, p.interval_secs],
                 "itemStyle": { "color": color },
-                "took": format!("{} s", formatting::format_decimal(p.interval_secs, 2, eu)),
+                "took": format!("{} s", formatting::format_decimal(p.interval_secs, 3, eu)),
+                "channel": channel,
                 "at": formatting::format_duration_f32(p.time_secs),
                 "ability": escape(&p.ability),
                 "next": escape(&p.next),
+                "abilityId": p.ability_id.to_string(),
+                "nextId": p.next_id.to_string(),
             })
         })
         .collect();
@@ -83,6 +102,8 @@ fn timeline_option(parse: &DummyParse, selected: Option<usize>, eu: bool) -> Val
         "animation": false,
         "grid": { "left": 44, "right": 16, "top": 12, "bottom": 22 },
         "tooltip": tooltip(),
+        // Wheel zooms and drag pans, to pick single presses out of a long parse
+        "dataZoom": [{ "type": "inside", "xAxisIndex": 0, "filterMode": "none" }],
         "xAxis": {
             "type": "value", "min": 0, "max": parse.duration_secs.max(1),
             "axisLabel": label, "splitLine": { "show": false },
@@ -102,8 +123,16 @@ const PRESS_BLOCK_JS: &str = "var t = api.value(0), len = api.value(1);\
     return { type: 'rect', shape: { x: a[0], y: a[1], width: Math.max(b[0] - a[0] - 1, 1), height: b[1] - a[1] },\
              style: { fill: api.visual('color') } };";
 
-const TIMELINE_TOOLTIP: &str = "var d = (params[0] || {}).data || {};\
-    return tipHead(d.at) + tipRow('Pressed', d.ability) + tipRow('Next press', d.next) + tipRow('Time between', d.took);";
+/// Global the tooltip reads icon data URLs from, by ability id: carrying them
+/// on every press would repeat each a hundred times over
+const ICONS_GLOBAL: &str = "__barasDummyIcons";
+
+const TIMELINE_TOOLTIP: &str = "var d = (params[0] || {}).data || {}, icons = window.__barasDummyIcons || {};\
+    var named = function (id, name) {\
+      return (icons[id] ? '<img src=\"' + icons[id] + '\" width=\"16\" height=\"16\" style=\"vertical-align:-3px;margin-right:4px\">' : '') + name;\
+    };\
+    return tipHead(d.at) + tipRow('Pressed', named(d.abilityId, d.ability)) + tipRow('Next press', named(d.nextId, d.next))\
+      + tipRow('Time between', d.took) + (d.channel ? tipRow('Channel', d.channel) : '');";
 
 /// A click anywhere in the plot hands `cb` the index of the nearest press,
 /// i.e. the one the tooltip is showing. Replaces the previous handler.
@@ -132,6 +161,26 @@ pub(super) fn PressTimeline(
 ) -> Element {
     let handler: Rc<RefCell<Option<Closure<dyn FnMut(JsValue)>>>> = use_hook(|| Rc::new(RefCell::new(None)));
     let light_theme = try_use_context::<LightTheme>();
+    // Icons for the tooltip, looked up once per parse
+    use_effect(move || {
+        let ids: BTreeSet<i64> = parse
+            .read()
+            .as_ref()
+            .and_then(|p| p.as_ref())
+            .map(|p| p.gcd.presses.iter().flat_map(|p| [p.ability_id, p.next_id]).collect())
+            .unwrap_or_default();
+        spawn(async move {
+            let mut icons = HashMap::new();
+            for id in ids {
+                if let Some(url) = fetch_icon_url(id as u64).await {
+                    icons.insert(id.to_string(), url);
+                }
+            }
+            if let (Some(window), Some(js)) = (web_sys::window(), json_to_js(&json!(icons))) {
+                let _ = js_sys::Reflect::set(&window, &JsValue::from_str(ICONS_GLOBAL), &js);
+            }
+        });
+    });
     use_effect(move || {
         if let Some(LightTheme(t)) = light_theme {
             t.read();
@@ -179,10 +228,10 @@ pub(super) fn PressTimeline(
         div { class: "overview-chart-box",
             div { class: "overview-chart-header",
                 span { class: "overview-chart-note",
-                    "Time from each press to the next · red when well past the median (dashed) · click one to find it in Presses"
+                    "Time to the next press · red: late · amber: clipped channel · scroll to zoom, drag to pan · click one to find it in Presses"
                 }
             }
-            div { id: TIMELINE_ID, class: "overview-chart", style: "height: 120px;" }
+            div { id: TIMELINE_ID, class: "overview-chart", style: "height: 170px;" }
         }
     }
 }
@@ -276,7 +325,7 @@ pub(super) fn IntervalDensity(parse: Resource<Option<DummyParse>>, european: boo
                     &js,
                     &["tooltip", "formatter"],
                     "params",
-                    "return params[0].value[0].toFixed(2) + ' s between presses';",
+                    "return params[0].value[0].toFixed(3) + ' s between presses';",
                 );
                 set_option_replace(&chart, &js);
             }
@@ -290,17 +339,17 @@ pub(super) fn IntervalDensity(parse: Resource<Option<DummyParse>>, european: boo
         .and_then(|p| p.as_ref())
         .map(|p| p.gcd.intervals_secs.as_slice())
         .unwrap_or_default();
-    let secs = |v: f32| format!("{} s", formatting::format_decimal(v, 2, european));
+    let secs = |v: f32| format!("{} s", formatting::format_decimal(v, 3, european));
     rsx! {
         div { class: "overview-chart-box",
             div { class: "overview-chart-header",
                 if gaps.len() >= 2 {
                     span { class: "overview-chart-note",
-                        "Median {secs(quantile(gaps, 0.5))} (solid) · Mean {secs(mean(gaps))} (dashed)"
+                        "Time between presses · median {secs(quantile(gaps, 0.5))} (solid) · mean {secs(mean(gaps))} (dashed)"
                     }
                 }
             }
-            div { id: DENSITY_ID, class: "overview-chart", style: "height: 180px;" }
+            div { id: DENSITY_ID, class: "overview-chart", style: "height: 150px;" }
         }
     }
 }
