@@ -23,6 +23,9 @@ pub struct FrameStyle {
     pub border_width: f32,
     /// Corner radius at the overlay's base size (scales with the window)
     pub corner_radius: f32,
+    /// Corner radius of the bars inside element overlays (boss HP, timers,
+    /// effects/cooldowns/DoTs bar mode) at base size
+    pub element_radius: f32,
 }
 
 impl Default for FrameStyle {
@@ -33,6 +36,7 @@ impl Default for FrameStyle {
             border_color: [128, 128, 128, 255],
             border_width: 0.0,
             corner_radius: 6.0,
+            element_radius: 3.0,
         }
     }
 }
@@ -52,6 +56,8 @@ pub struct FrameStyleOverride {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub corner_radius: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub element_radius: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub font_family: Option<String>,
 }
 
@@ -69,6 +75,7 @@ impl FrameStyle {
             border_color: o.border_color.unwrap_or(self.border_color),
             border_width: o.border_width.unwrap_or(self.border_width),
             corner_radius: o.corner_radius.unwrap_or(self.corner_radius),
+            element_radius: o.element_radius.unwrap_or(self.element_radius),
         }
     }
 }

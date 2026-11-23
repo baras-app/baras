@@ -527,7 +527,7 @@ impl BossHealthOverlay {
         let padding = self.scaled(BASE_PADDING);
         let bar_height = self.scaled(BASE_BAR_HEIGHT) * factor;
         let entry_spacing = self.scaled(BASE_ENTRY_SPACING) * factor;
-        let bar_radius = 4.0 * self.scale() * factor;
+        let bar_radius = self.frame.element_radius() * self.scale() * factor;
 
         let bar_color = color_from_rgba(self.config.bar_color);
         let font_color = color_from_rgba(self.config.font_color);
@@ -727,7 +727,7 @@ impl BossHealthOverlay {
         let font_color = color_from_rgba(self.config.font_color);
 
         let content_width = width - padding * 2.0;
-        let bar_radius = 4.0 * self.scale() * compression;
+        let bar_radius = self.frame.element_radius() * self.scale() * compression;
         let icon_size = self.icon_size(bar_height);
         let strip_w = self.side_strip_width(icon_size);
         let bar_x = padding
