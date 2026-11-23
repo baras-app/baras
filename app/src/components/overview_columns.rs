@@ -117,7 +117,7 @@ use Format::{Compact, Decimal, Pct};
 use OverviewColumn as C;
 
 /// Every column, in the order the picker lists the hidden ones
-pub static COLUMNS: [ColumnDef; 27] = [
+pub static COLUMNS: [ColumnDef; 28] = [
     col(
         C::DamageTotal,
         Group::Damage,
@@ -358,6 +358,15 @@ pub static COLUMNS: [ColumnDef; 27] = [
         "Int",
         "Interrupt casts",
         |r| r.interrupts,
+        Decimal(0),
+        true,
+    ),
+    col(
+        C::Cleanses,
+        Group::Activity,
+        "Cln",
+        "Cleanse casts",
+        |r| r.cleanses,
         Decimal(0),
         true,
     ),

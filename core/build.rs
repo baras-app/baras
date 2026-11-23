@@ -17,6 +17,7 @@ fn main() {
     generate_discipline_abilities_map(&out_dir);
     generate_interrupt_abilities_set(&out_dir);
     generate_battle_rez_set(&out_dir);
+    generate_cleanse_abilities_set(&out_dir);
     let mirrors = mirror_entries();
     generate_mirror_abilities_map(&out_dir, &mirrors);
     generate_defensive_cooldown_sets(&out_dir, &mirrors);
@@ -102,6 +103,24 @@ fn generate_channel_times_map(out_dir: &str) {
         builder.entry(*id, secs);
     }
     writeln!(file, "static CHANNEL_TIMES: phf::Map<i64, f32> = {};", builder.build()).unwrap();
+}
+
+/// The player classes' cleanses. The game data has no flag for them.
+fn generate_cleanse_abilities_set(out_dir: &str) {
+    const CLEANSES: [&str; 6] = [
+        "abl.agent.toxin_scan",
+        "abl.smuggler.triage",
+        "abl.bounty_hunter.cure",
+        "abl.trooper.field_aid",
+        "abl.sith_inquisitor.expunge",
+        "abl.jedi_consular.restoration",
+    ];
+    let ids = ability_rows()
+        .iter()
+        .filter(|f| CLEANSES.contains(&f[0].as_str()))
+        .filter_map(|f| f[1].parse().ok())
+        .collect();
+    write_id_set(out_dir, "cleanse_abilities.rs", "CLEANSE_ABILITIES", ids);
 }
 
 /// In-combat resurrection abilities of the player classes.
