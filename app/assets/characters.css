@@ -17,7 +17,7 @@
 .characters-stats {
   flex-direction: column;
   flex-wrap: nowrap;
-  width: 170px;
+  width: 10.625rem;
   flex-shrink: 0;
   margin: 0;
 }
@@ -341,7 +341,7 @@
    Editor
    ───────────────────────────────────────────────────────────────────────── */
 .character-editor {
-  width: 540px;
+  width: 33.75rem;
   /* The page root centers text; forms read left to right */
   text-align: left;
   font-family: var(--font-family);

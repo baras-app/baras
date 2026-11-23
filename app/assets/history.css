@@ -21,7 +21,7 @@
 }
 
 .history-toolbar select {
-  min-width: 160px;
+  min-width: 10rem;
 }
 
 .history-toggle {
@@ -391,7 +391,7 @@
 
 /* Value boxes sit a shade below the page panels (between --bg-mid and --bg-dark) */
 .history-card {
-  flex: 1 1 130px;
+  flex: 1 1 8.125rem;
   min-width: 0;
   padding: 0.6em 0.9em;
   background: var(--bg-input);
@@ -479,8 +479,8 @@
 }
 
 .library-actions .search-input {
-  flex: 1 1 220px;
-  max-width: 360px;
+  flex: 1 1 13.75rem;
+  max-width: 22.5rem;
 }
 
 /* Bulk bar: appears at the end of the filter row once a row is ticked */
@@ -624,7 +624,7 @@
    ───────────────────────────────────────────────────────────────────────── */
 
 .modal-content.library-cleanup {
-  width: 680px;
+  width: 42.5rem;
   max-width: 95vw;
 }
 
@@ -671,7 +671,7 @@
 }
 
 .library-preview-list {
-  max-height: 220px;
+  max-height: 13.75rem;
   overflow: auto;
   border: 1px solid var(--border-subtle);
   border-radius: 4px;
@@ -813,7 +813,7 @@
 /* Overview charts: three across, stacking on narrow panels */
 .history-charts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(18.75rem, 1fr));
   gap: var(--space-sm);
   margin-bottom: var(--space-sm);
 }
@@ -1205,7 +1205,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-auto-rows: 1fr;
-  width: 300px;
+  width: 18.75rem;
   flex-shrink: 0;
 }
 
@@ -1482,7 +1482,7 @@
 .pvp-stats {
   flex-direction: column;
   flex-wrap: nowrap;
-  width: 190px;
+  width: 11.875rem;
   flex-shrink: 0;
 }
 
@@ -1512,7 +1512,7 @@
 /* Maps, disciplines, teammates, opponents: four boards in a row */
 .pvp-boards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
   gap: var(--space-sm);
   align-items: start;
 }

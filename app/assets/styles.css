@@ -398,14 +398,14 @@ select optgroup {
   width: 100%;
   overflow: hidden;
   gap: 0.75vh;
-  --side-drawer-w: min(560px, 92vw);
+  --side-drawer-w: min(35rem, 92vw);
 }
 
 /* Overlays page: the settings panel docks under the header as a second
    column, always open beside the overlay controls */
 .container:has(> .settings-panel) {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(340px, 38vw, 560px);
+  grid-template-columns: minmax(0, 1fr) clamp(21.25rem, 38vw, 35rem);
   grid-template-rows: auto minmax(0, 1fr);
   column-gap: 0.5em;
   align-items: stretch;
@@ -568,7 +568,7 @@ select optgroup {
   gap: 0 1.25em;
 }
 .settings-page .settings-col {
-  flex: 1 1 460px;
+  flex: 1 1 28.75rem;
   min-width: 0;
 }
 .settings-page .settings-section {
@@ -1202,7 +1202,7 @@ button:active:not(:disabled),
 .overlay-category:nth-child(3) { grid-column: 2; grid-row: 1; }
 .overlay-category:nth-child(4) { grid-column: 3; grid-row: 1 / span 2; }
 .overlay-category:nth-child(5) { grid-column: 2; grid-row: 2; }
-@media (max-width: 1000px) {
+@media (max-width: 62.5rem) {
   .overlay-categories { grid-template-columns: minmax(0, 1fr); }
   .overlay-category:nth-child(n) { grid-column: auto; grid-row: auto; }
 }
@@ -2251,7 +2251,7 @@ details[open] .collapsible-summary::before {
 }
 
 .setting-row input[type="number"] {
-  width: 60px;
+  width: 3.75rem;
   text-align: center;
   padding: 0.3em;
   flex-shrink: 0;
@@ -2269,7 +2269,7 @@ details[open] .collapsible-summary::before {
 }
 
 .setting-row input.slider-value-input {
-  width: 42px;
+  width: 2.625rem;
   text-align: center;
   padding: 0.3em 0.3em;
   border: 1px solid var(--border-medium);
@@ -3123,7 +3123,7 @@ details[open] .collapsible-summary::before {
    ───────────────────────────────────────────────────────────────────────────── */
 
 .file-browser-drawer {
-  width: min(620px, 92vw);
+  width: min(38.75rem, 92vw);
   padding: 0;
 }
 
@@ -4355,7 +4355,7 @@ a.contributor-name:hover {
 }
 
 /* Small: compress the overlay controls too */
-@media (max-width: 850px) {
+@media (max-width: 53.125rem) {
   .tab-btn {
     padding: 0.35em 0.6em;
   }
