@@ -29,17 +29,18 @@ use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::Input::KeyboardAndMouse::{ReleaseCapture, SetCapture};
 use windows::Win32::UI::WindowsAndMessaging::{
     CS_HREDRAW, CS_VREDRAW, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GWL_EXSTYLE,
-    GetCursorPos, HTCLIENT, HWND_TOPMOST, IDC_ARROW, LoadCursorW, MA_NOACTIVATE, MSG, PM_REMOVE, PeekMessageW,
-    RegisterClassExW, SW_SHOWNOACTIVATE, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SetWindowLongPtrW, SetWindowPos,
-    ShowWindow, TranslateMessage, ULW_ALPHA, UpdateLayeredWindow, WM_DESTROY, WM_ERASEBKGND, WM_LBUTTONDOWN,
-    WM_LBUTTONUP, WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_NCHITTEST, WM_QUIT, WNDCLASSEXW, WS_EX_LAYERED, WS_EX_NOACTIVATE,
+    GWLP_USERDATA, GetCursorPos, GetWindowLongPtrW, HCURSOR, HTCLIENT, HWND_TOPMOST, IDC_ARROW, IDC_SIZENS,
+    IDC_SIZENWSE, IDC_SIZEWE, LoadCursorW, MA_NOACTIVATE, MSG, PM_REMOVE, PeekMessageW, RegisterClassExW,
+    SW_SHOWNOACTIVATE, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SetCursor, SetWindowLongPtrW, SetWindowPos, ShowWindow,
+    TranslateMessage, ULW_ALPHA, UpdateLayeredWindow, WM_DESTROY, WM_ERASEBKGND, WM_LBUTTONDOWN, WM_LBUTTONUP,
+    WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_NCHITTEST, WM_QUIT, WM_SETCURSOR, WNDCLASSEXW, WS_EX_LAYERED, WS_EX_NOACTIVATE,
     WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_EX_TRANSPARENT, WS_POPUP,
 };
 use windows::core::PCWSTR;
 
 use windows::Win32::Foundation::RECT;
 
-use super::{MAX_OVERLAY_HEIGHT, MAX_OVERLAY_WIDTH, MIN_OVERLAY_SIZE, RESIZE_CORNER_SIZE};
+use super::{MAX_OVERLAY_HEIGHT, MAX_OVERLAY_WIDTH, MIN_OVERLAY_SIZE, ResizeCursor, ResizeEdges};
 use super::{MonitorInfo, OverlayConfig, OverlayPlatform, PlatformError};
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -298,6 +299,8 @@ pub struct WindowsOverlay {
     is_dragging: bool,
     is_resizing: bool,
     in_resize_corner: bool,
+    resize_edges: ResizeEdges,
+    cursor: ResizeCursor,
     drag_enabled: bool,
     pending_click: Option<(f32, f32)>,
     /// Sub-rectangle that stays clickable while click-through is on.
@@ -475,8 +478,33 @@ impl WindowsOverlay {
         }
     }
 
-    fn is_in_resize_corner(&self, x: i32, y: i32) -> bool {
-        x > (self.width as i32 - RESIZE_CORNER_SIZE) && y > (self.height as i32 - RESIZE_CORNER_SIZE)
+    fn resize_edges_at(&self, x: i32, y: i32) -> ResizeEdges {
+        ResizeEdges::at(x as f64, y as f64, self.width, self.height)
+    }
+
+    /// The pointer is over `edges`: light the grip and match the cursor
+    fn hover(&mut self, edges: ResizeEdges) {
+        // Mid-resize the grabbed edges hold, wherever the pointer is
+        let edges = if self.is_resizing { self.resize_edges } else { edges };
+        self.in_resize_corner = edges.any();
+        let cursor = edges.cursor(self.drag_enabled && !self.click_through);
+        if cursor == self.cursor {
+            return;
+        }
+        self.cursor = cursor;
+        let id = match cursor {
+            ResizeCursor::Default => IDC_ARROW,
+            ResizeCursor::Horizontal => IDC_SIZEWE,
+            ResizeCursor::Vertical => IDC_SIZENS,
+            ResizeCursor::Diagonal => IDC_SIZENWSE,
+        };
+        unsafe {
+            let handle = LoadCursorW(None, id).unwrap_or_default();
+            // window_proc re-applies it on WM_SETCURSOR, which would otherwise
+            // reset the class arrow on every move
+            SetWindowLongPtrW(self.hwnd, GWLP_USERDATA, handle.0 as isize);
+            SetCursor(Some(handle));
+        }
     }
 
     fn is_in_interactive_region(&self, x: i32, y: i32) -> bool {
@@ -623,6 +651,8 @@ impl OverlayPlatform for WindowsOverlay {
             is_dragging: false,
             is_resizing: false,
             in_resize_corner: false,
+            resize_edges: ResizeEdges::default(),
+            cursor: ResizeCursor::Default,
             drag_enabled: true,
             pending_click: None,
             interactive_region: None,
@@ -736,7 +766,7 @@ impl OverlayPlatform for WindowsOverlay {
         if enabled {
             self.is_dragging = false;
             self.is_resizing = false;
-            self.in_resize_corner = false;
+            self.hover(ResizeEdges::default());
         }
         overlay_log!(
             "HWND={:?}: click_through mode now {}",
@@ -762,6 +792,8 @@ impl OverlayPlatform for WindowsOverlay {
         if !enabled {
             // Cancel any in-progress drag
             self.is_dragging = false;
+            // Back to the arrow; move mode picks its cursor up on the next move
+            self.hover(ResizeEdges::default());
         }
     }
 
@@ -844,9 +876,10 @@ impl OverlayPlatform for WindowsOverlay {
                             if self.is_in_interactive_region(x, y) {
                                 overlay_log!("  Click is inside the interactive region");
                                 self.pending_click = Some((x as f32, y as f32));
-                            } else if self.is_in_resize_corner(x, y) {
+                            } else if self.resize_edges_at(x, y).any() {
                                 overlay_log!("  Starting resize");
                                 self.is_resizing = true;
+                                self.resize_edges = self.resize_edges_at(x, y);
                                 self.pending_width = self.width;
                                 self.pending_height = self.height;
                                 self.resize_start_x = x;
@@ -878,6 +911,7 @@ impl OverlayPlatform for WindowsOverlay {
                         self.is_dragging = false;
                         self.is_resizing = false;
                         let _ = ReleaseCapture();
+                        self.hover(self.resize_edges_at(self.pointer_x, self.pointer_y));
                     }
                     WM_MOUSEMOVE if !self.click_through => {
                         let x = (msg.lParam.0 & 0xFFFF) as i16 as i32;
@@ -886,7 +920,7 @@ impl OverlayPlatform for WindowsOverlay {
                         self.pointer_y = y;
 
                         if !self.is_resizing {
-                            self.in_resize_corner = self.is_in_resize_corner(x, y);
+                            self.hover(self.resize_edges_at(x, y));
                         }
 
                         if self.is_dragging {
@@ -901,8 +935,7 @@ impl OverlayPlatform for WindowsOverlay {
                             );
                         } else if self.is_resizing {
                             // Resize uses client coordinates (size changes, position doesn't)
-                            let dx = x - self.resize_start_x;
-                            let dy = y - self.resize_start_y;
+                            let (dx, dy) = self.resize_edges.mask(x - self.resize_start_x, y - self.resize_start_y);
                             let raw_w = (self.pending_width as i32 + dx)
                                 .max(MIN_OVERLAY_SIZE as i32)
                                 .min(MAX_OVERLAY_WIDTH as i32) as u32;
@@ -979,6 +1012,16 @@ unsafe extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lpar
             LRESULT(HTCLIENT as isize)
         }
         WM_ERASEBKGND => LRESULT(1), // Don't erase background
+        // Keep the cursor `hover` picked (stored in GWLP_USERDATA) instead of
+        // the class arrow; unset until the first hover
+        WM_SETCURSOR if (lparam.0 & 0xFFFF) as u32 == HTCLIENT => {
+            let handle = unsafe { GetWindowLongPtrW(hwnd, GWLP_USERDATA) };
+            if handle == 0 {
+                return unsafe { DefWindowProcW(hwnd, msg, wparam, lparam) };
+            }
+            unsafe { SetCursor(Some(HCURSOR(handle as *mut _))) };
+            LRESULT(1)
+        }
         _ => unsafe { DefWindowProcW(hwnd, msg, wparam, lparam) },
     }
 }
