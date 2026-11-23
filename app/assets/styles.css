@@ -481,6 +481,9 @@ select optgroup {
      the nav growing to its full width and sliding over the brand */
   grid-template-columns: minmax(min-content, 1fr) minmax(0, auto) minmax(min-content, 1fr);
   align-items: center;
+  /* The nav collapses by its own width in em (see Header tabs responsive),
+     so desktop text scaling and page zoom move the breakpoints with the text */
+  container: header-bar / inline-size;
   gap: 0.75em;
   padding: 0.2em 2vw 0.25em;
   border-bottom: 1px solid var(--border-subtle);
@@ -493,6 +496,7 @@ select optgroup {
   gap: 1em;
   padding: 0 2vw;
   border-top: 1px solid var(--border-subtle);
+  container: status-row / inline-size;
 }
 .header-actions {
   display: flex;
@@ -4114,21 +4118,17 @@ a.contributor-name:hover {
   font-size: 0.95em;
 }
 
-/* Header tabs only (the editors' tab strips share the class): roomier */
-/* Room left for the pills once the brand, version block and row padding are
-   taken out of the window width. Full-size pills need about 700px of it; below
-   that they scale down smoothly so a long active name never wraps the row. */
-.header-nav {
-  --nav-room: calc(96vw - 490px);
-}
+/* Header tabs only (the editors' tab strips share the class): roomier.
+   Text never shrinks to fit; the container queries below trade padding,
+   then labels, for room instead */
 .header-tabs .tab-btn {
-  padding: 0.4em clamp(0.7em, calc(var(--nav-room) / 25), 1.75em);
-  font-size: clamp(0.8em, calc(var(--nav-room) / 44), 1em);
+  padding: 0.4em 1.75em;
+  font-size: 1em;
 }
 /* Log files: a pill like the others, a little narrower */
 .header-nav .header-files-btn {
-  padding: 0.4em clamp(0.6em, calc(var(--nav-room) / 48), 0.9em);
-  font-size: clamp(0.8em, calc(var(--nav-room) / 44), 1em);
+  padding: 0.4em 0.9em;
+  font-size: 1em;
 }
 .header-tabs {
   gap: 3px;
@@ -4288,29 +4288,30 @@ a.contributor-name:hover {
 
 /* ── Header tabs responsive ────────────────────────────────── */
 
-/* Compress overlay controls at narrower widths */
-@media (max-width: 1100px) {
-  .header-overlay-controls {
-    gap: 0.25em;
-  }
-  /* Chip keeps its dot and action; the word goes */
-  .session-status-chip .session-status-label {
+/* Breakpoints are the header row's own content width in em, so they scale with
+   the text (desktop "Large Text", WebKitGTK text zoom or page zoom alike).
+   Measured nav widths at 1em: roomy pills ~81.5em, compact ~62em, inactive
+   labels hidden ~34.5em; the brand takes up to ~10.6em, the meta block up to
+   ~6em with the short update button, plus 1.5em of grid gaps. */
+
+@container header-bar (max-width: 108em) {
+  .app-header .header-version .update-long {
     display: none;
-  }
-  /* Brand keeps logo and version; the link icons go, and the pills get that room back */
-  .app-header .header-links {
-    display: none;
-  }
-  .header-nav {
-    --nav-room: calc(96vw - 405px);
   }
 }
 
-/* Below ~1300px the labels would start to ellipsize. Before that happens,
-   pills that are not the open view drop to icon + caret (their tooltip and
-   the menu still name them) and the update button shortens, so the open
-   view's name is always whole. */
-@media (max-width: 1300px) {
+@container header-bar (max-width: 100em) {
+  .header-tabs .tab-btn {
+    padding: 0.4em 0.7em;
+  }
+  .header-nav .header-files-btn {
+    padding: 0.4em 0.6em;
+  }
+}
+
+/* Pills that are not the open view drop to icon + caret (their tooltip and
+   the menu still name them), so the open view's name stays whole */
+@container header-bar (max-width: 80em) {
   .header-tabs .tab-btn:not(.active) .tab-label {
     display: none;
   }
@@ -4320,24 +4321,34 @@ a.contributor-name:hover {
   .header-tabs .tab-btn:not(.active) .nav-menu-caret {
     margin-left: 0.1em;
   }
-  .app-header .header-version .update-long {
+}
+
+/* Brand keeps logo; the link icons go, and the pills get that room back */
+@container header-bar (max-width: 66em) {
+  .app-header .header-links {
     display: none;
   }
-  /* Status row: the alacrity pill keeps its value, the unit goes */
+}
+
+@container header-bar (max-width: 60em) {
+  .header-tabs .tab-label {
+    display: none;
+  }
+}
+
+/* Status row: compress overlay controls, then shorten the chip and alacrity pill */
+@container status-row (max-width: 78em) {
   .alac-menu .btn-session-settings .unit {
     display: none;
   }
 }
 
-/* Seven labelled tabs beside the overlay controls need ~1500px: step the
-   size down first, then drop the labels (every tab keeps its icon and a title) */
-
-@media (max-width: 1050px) {
-  .tab-btn .tab-label {
-    display: none;
+@container status-row (max-width: 66em) {
+  .header-overlay-controls {
+    gap: 0.25em;
   }
-  .header-tabs .tab-btn {
-    padding: 0.4em 0.7em;
+  .session-status-chip .session-status-label {
+    display: none;
   }
 }
 
@@ -6279,9 +6290,10 @@ a.contributor-name:hover {
 
 /* Sidebar: a shade darker than the panel, matching the history rails */
 .explorer-sidebar {
-  width: 280px;
-  min-width: 240px;
-  max-width: 320px;
+  /* rem, not px: the width grows with the text it holds */
+  width: 17.5rem;
+  min-width: 15rem;
+  max-width: 20rem;
   background: linear-gradient(180deg, var(--bg-input) 0%, var(--bg-deep) 100%);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-accent);
