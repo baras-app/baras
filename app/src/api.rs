@@ -1355,7 +1355,8 @@ pub use baras_types::{
     AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow,
     CombatLogSortColumn, DamageTakenSummary, DataTab, DeathRecap, DeathRecapEventKind, EffectChartData,
     EffectUptimeCell, EffectWindow, EncounterRatings, EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries,
-    GroupedEntityNames, HpPoint, NpcHealthRow, NpcSpawn, PhaseSegment, PlayerDeath, PvpFaction, RaidOverviewRow,
+    GroupedEntityNames, HpPoint, NpcHealthRow, NpcSpawn, PhaseSegment, PlayerDeath, PvpFaction, RaidDebuffCell, RaidDebuffTarget,
+    RaidOverviewRow,
     RotationAnalysis, SortDirection, TimeRange, TimeSeriesPoint,
 };
 
@@ -1487,6 +1488,19 @@ pub async fn query_effect_uptime_by_target(
     js_set(&obj, "timeRange", &tr.unwrap_or(JsValue::NULL));
     js_set(&obj, "durationSecs", &JsValue::from_f64(duration_secs as f64));
     from_js(invoke_query("query_effect_uptime_by_target", obj.into()).await)
+}
+
+/// Uptime of each standard raid debuff on every enemy.
+pub async fn query_raid_debuffs(encounter_idx: Option<u32>, time_range: Option<&TimeRange>) -> Option<Vec<RaidDebuffTarget>> {
+    let obj = js_sys::Object::new();
+    js_set(
+        &obj,
+        "encounterIdx",
+        &encounter_idx.map_or(JsValue::NULL, |i| JsValue::from_f64(i as f64)),
+    );
+    let tr = time_range.and_then(|tr| serde_wasm_bindgen::to_value(tr).ok());
+    js_set(&obj, "timeRange", &tr.unwrap_or(JsValue::NULL));
+    from_js(invoke_query("query_raid_debuffs", obj.into()).await)
 }
 
 /// Every player's metric over time, for the Overview's group chart.

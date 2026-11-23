@@ -121,7 +121,7 @@ impl EncounterQuery<'_> {
 }
 
 /// The windows' union, clipped to [start, end], in order
-fn merge(windows: &mut [(f32, f32)], start: f32, end: f32) -> Vec<(f32, f32)> {
+pub(super) fn merge(windows: &mut [(f32, f32)], start: f32, end: f32) -> Vec<(f32, f32)> {
     windows.sort_by(|a, b| a.0.total_cmp(&b.0));
     let mut out: Vec<(f32, f32)> = Vec::new();
     for &(a, b) in windows.iter() {

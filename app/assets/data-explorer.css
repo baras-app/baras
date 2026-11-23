@@ -3302,6 +3302,41 @@
   outline-offset: -2px;
 }
 
+/* Raid Debuffs tab: the uptime table with a fixed set of debuff columns */
+.raid-debuffs-table .raid-debuff-groups th {
+  height: 1.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-align: center;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Second header row sticks under the group row */
+.raid-debuffs-table thead tr:nth-child(2) th {
+  top: 1.75rem;
+}
+
+.raid-debuffs-table th.uptime-target.absent,
+.raid-debuffs-table .uptime-cell.none,
+.raid-debuffs-table .name-text.npc {
+  color: var(--text-muted);
+}
+
+/* Wide enough for the longest name ("Overwhelmed") on one line under its
+   icon; the header grows with the icon instead of the shared two-line height */
+.raid-debuffs-table th.uptime-target {
+  width: 6.5rem;
+  height: auto;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.raid-debuffs-table .uptime-target span {
+  display: block;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 /* Swimlane timeline for the picked target */
 .uptime-timeline {
   display: flex;

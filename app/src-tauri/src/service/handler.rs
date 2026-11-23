@@ -15,7 +15,7 @@ use baras_core::history::{now_iso, start_ms_of};
 use baras_core::query::{
     AbilityBreakdown, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow, CombatLogSortColumn,
     DamageTakenSummary, DataTab, EffectChartData, EffectUptimeCell, EffectWindow, EncounterTimeline, EntityBreakdown,
-    GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath, RaidOverviewRow, SortDirection, TimeRange,
+    GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath, RaidDebuffTarget, RaidOverviewRow, SortDirection, TimeRange,
     TimeSeriesPoint,
 };
 use baras_types::history::{
@@ -1218,6 +1218,22 @@ impl ServiceHandle {
             .await
             .query()
             .effect_uptime_by_target(&source, time_range.as_ref(), duration_secs)
+            .await
+    }
+
+    /// Uptime of each standard raid debuff on every enemy (Raid Debuffs tab).
+    pub async fn query_raid_debuffs(
+        &self,
+        encounter_idx: Option<u32>,
+        time_range: Option<TimeRange>,
+    ) -> Result<Vec<RaidDebuffTarget>, String> {
+        self.register_encounter(encounter_idx).await?;
+        self.shared
+            .query_context
+            .query()
+            .await
+            .query()
+            .raid_debuffs(time_range.as_ref())
             .await
     }
 

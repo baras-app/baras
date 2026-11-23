@@ -487,6 +487,16 @@ fn use_overview_loader(ctx: ExplorerCtx) {
         last_overview_fetch,
         ..
     } = ctx;
+    // Raid Debuffs loads its own rows: painted as soon as the timeline is in
+    use_effect(move || {
+        let mode = *view_mode.read();
+        if mode == ViewMode::RaidDebuffs
+            && !*live_query_active.read()
+            && ctx.timeline_ready(*selected_encounter.read())
+        {
+            shown_mode.set(Some(mode));
+        }
+    });
     // Load overview data when timeline is loaded and view_mode/time_range changes
     // Overview data provides class icons for all views + full data for Overview tab
     use_effect(move || {

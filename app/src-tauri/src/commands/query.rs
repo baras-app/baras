@@ -5,7 +5,7 @@
 use baras_core::query::{
     AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow,
     CombatLogSortColumn, DamageTakenSummary, DataTab, EffectChartData, EffectUptimeCell, EffectWindow,
-    EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath,
+    EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath, RaidDebuffTarget,
     RaidOverviewRow, RotationAnalysis, SortDirection, TimeRange, TimeSeriesPoint,
 };
 use tauri::State;
@@ -104,6 +104,16 @@ pub async fn query_effect_uptime_by_target(
     handle
         .query_effect_uptime_by_target(encounter_idx, source, time_range, duration_secs)
         .await
+}
+
+/// Uptime of each standard raid debuff on every enemy.
+#[tauri::command]
+pub async fn query_raid_debuffs(
+    handle: State<'_, ServiceHandle>,
+    encounter_idx: Option<u32>,
+    time_range: Option<TimeRange>,
+) -> Result<Vec<RaidDebuffTarget>, String> {
+    handle.query_raid_debuffs(encounter_idx, time_range).await
 }
 
 /// Get encounter timeline with phase segments.

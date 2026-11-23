@@ -12,6 +12,7 @@ mod effects;
 pub mod error;
 mod gcd;
 mod overview;
+mod raid_debuffs;
 mod recap_defensives;
 mod rotation;
 mod search_parser;
@@ -40,7 +41,7 @@ pub use baras_types::{
     DeathRecapDefensive, DeathRecapEffect, DeathRecapEvent, DeathRecapEventKind, DeathRecapHealRow,
     DeathRecapHealSource, DeathRecapHpPoint, DeathRecapKillingBlow, EffectChartData, EffectUptimeCell, EffectWindow,
     EncounterTimeline, EntityBreakdown, GcdSlot, GroupMetric, GroupTimeSeries, GroupedEntityNames, HpPoint,
-    NpcHealthRow, PhaseSegment, PlayerDeath, RaidOverviewRow, RotationAnalysis, RotationCycle, RotationEvent,
+    NpcHealthRow, PhaseSegment, PlayerDeath, RaidDebuffTarget, RaidOverviewRow, RotationAnalysis, RotationCycle, RotationEvent,
     SortDirection, TimeRange, TimeSeriesPoint,
 };
 

@@ -98,7 +98,8 @@ pub fn EffectUptimeView(
     let picked = picked_target();
     let picked_row = picked_effect().filter(|_| picked.is_none());
     let picked_col = picked.as_deref().filter(|_| picked_effect().is_none());
-    let timeline: Vec<EffectUptimeCell> = visible
+    // Lanes are targets for a picked effect, effects otherwise
+    let timeline: Vec<UptimeLane> = visible
         .iter()
         .filter(|c| match (&picked, picked_effect()) {
             (Some(t), Some(e)) => c.target_name == *t && c.effect_id == e,
@@ -106,7 +107,16 @@ pub fn EffectUptimeView(
             (None, Some(e)) => c.effect_id == e,
             _ => false,
         })
-        .map(|c| (*c).clone())
+        .map(|c| {
+            let by_target = picked.is_none();
+            UptimeLane {
+                label: if by_target { c.target_name.clone() } else { display_name(c.effect_id, &c.effect_name).to_string() },
+                muted: by_target && c.target_type == "Npc",
+                icon: (!by_target).then(|| (display_id(c.effect_id), (c.ability_id != 0).then_some(c.ability_id))),
+                uptime_pct: c.uptime_pct,
+                windows: c.windows.clone(),
+            }
+        })
         .collect();
     let icons = icons.read();
     // Name with its discipline icon (players; NPCs have none)
@@ -238,7 +248,7 @@ pub fn EffectUptimeView(
                     }
                 }
                 if let Some(title) = title {
-                    UptimeTimeline { title, by_target: picked.is_none(), cells: timeline, range_start, range_end }
+                    UptimeTimeline { title, lanes: timeline, range_start, range_end }
                 } else {
                     div { class: "usage-timeline-container",
                         div { class: "usage-timeline-hint",
@@ -252,21 +262,24 @@ pub fn EffectUptimeView(
     }
 }
 
-/// Bars where effects were up, on the fight's (or range's) time axis, one lane
-/// per cell, by uptime: a row's effects, a column's targets (`by_target`), or
-/// the one clicked cell.
+/// One row of an `UptimeTimeline`
+#[derive(Clone, PartialEq)]
+pub struct UptimeLane {
+    pub label: String,
+    pub muted: bool,
+    /// Effect ID and the ability to fall back to for the icon
+    pub icon: Option<(i64, Option<i64>)>,
+    pub uptime_pct: f32,
+    pub windows: Vec<(f32, f32)>,
+}
+
+/// Bars where effects were up, on the fight's (or range's) time axis, one
+/// lane each, by uptime.
 #[component]
-fn UptimeTimeline(
-    /// The picked effect and/or source → target(s)
-    title: Element,
-    by_target: bool,
-    cells: Vec<EffectUptimeCell>,
-    range_start: f32,
-    range_end: f32,
-) -> Element {
+pub fn UptimeTimeline(title: Element, lanes: Vec<UptimeLane>, range_start: f32, range_end: f32) -> Element {
     let span = (range_end - range_start).max(0.001);
     let pos = move |t: f32| (t - range_start) / span * 100.0;
-    let mut lanes: Vec<&EffectUptimeCell> = cells.iter().collect();
+    let mut lanes = lanes;
     lanes.sort_by(|a, b| b.uptime_pct.total_cmp(&a.uptime_pct));
     let ticks: Vec<f32> = (0..=4).map(|i| range_start + span * i as f32 / 4.0).collect();
     let mmss = |t: f32| formatting::format_duration(t.round() as i64);
@@ -274,20 +287,16 @@ fn UptimeTimeline(
     rsx! {
         div { class: "uptime-timeline",
             div { class: "uptime-timeline-title", {title} }
-            for c in lanes {
+            for lane in lanes {
                 div { class: "uptime-lane",
-                    if by_target {
-                        div { class: "uptime-lane-label", title: "{c.target_name}",
-                            span { class: if c.target_type == "Npc" { "npc" }, "{c.target_name}" }
+                    div { class: "uptime-lane-label", title: "{lane.label}",
+                        if let Some((id, fallback_id)) = lane.icon {
+                            AbilityIcon { ability_id: id, fallback_id, size: 16 }
                         }
-                    } else {
-                        div { class: "uptime-lane-label", title: "{display_name(c.effect_id, &c.effect_name)}",
-                            AbilityIcon { ability_id: display_id(c.effect_id), fallback_id: (c.ability_id != 0).then_some(c.ability_id), size: 16 }
-                            span { "{display_name(c.effect_id, &c.effect_name)}" }
-                        }
+                        span { class: if lane.muted { "npc" }, "{lane.label}" }
                     }
                     div { class: "uptime-lane-track",
-                        for (a, b) in c.windows.iter().copied() {
+                        for (a, b) in lane.windows.iter().copied() {
                             div {
                                 class: "uptime-bar",
                                 style: "left: {pos(a)}%; width: {pos(b) - pos(a)}%",
@@ -295,7 +304,7 @@ fn UptimeTimeline(
                             }
                         }
                     }
-                    span { class: "uptime-lane-pct", "{c.uptime_pct.round()}%" }
+                    span { class: "uptime-lane-pct", "{lane.uptime_pct.round()}%" }
                 }
             }
             div { class: "uptime-lane uptime-axis",
