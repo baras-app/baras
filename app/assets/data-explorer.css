@@ -1048,14 +1048,11 @@
   align-items: center;
 }
 
-/* Showing one ability's numbers (hovered or pinned in the by-ability table) */
-.dummy-summary > .history-cards.focused > .history-card {
-  border-color: var(--text-accent);
-}
-
 /* The value grows with the card so wide cards don't look empty */
 .dummy-summary > .history-cards .v {
   font-size: clamp(1.6em, 7cqi, 2.4em);
+  /* Unitless, so the line box scales with the grown font and overflow: hidden doesn't clip the glyph tops */
+  line-height: 1.2;
 }
 
 .dummy-summary > .overview-chart-box {

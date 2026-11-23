@@ -6,27 +6,23 @@ use wasm_bindgen::JsCast;
 
 use baras_types::formatting;
 use baras_types::{
-    CombatLogSessionState, DummyParse, GcdPress, LONG_GCD_MARGIN_SECS, LogEventCategory, RatingSource, is_long_gap,
-    percentile_label,
+    DummyParse, GcdPress, LONG_GCD_MARGIN_SECS, RatingSource, is_long_gap, percentile_label,
 };
 
 use super::ctx::ExplorerCtx;
 use super::dummy_charts::{IntervalDensity, PressTimeline, ability_gaps, quantile};
-use crate::api::{self, TimeRange};
+use crate::api;
 use crate::components::ability_icon::AbilityIcon;
 use crate::components::ability_naming::AbilityNamingPills;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::components::mirror_names::{display_id, display_name};
 use crate::components::overview_table::pct_tier;
-use crate::types::ViewMode;
 
 /// Height the press list scrolls within
 const PRESSES_MAX_HEIGHT: &str = "max-height: 330px;";
 /// The two tables sharing the column beside the press list fill the same height
 const ABILITIES_ABOVE_CLIPS_HEIGHT: &str = "max-height: 185px; margin-bottom: var(--space-md);";
 const CLIPS_MAX_HEIGHT: &str = "max-height: 110px;";
-/// Seconds of combat log shown either side of a delay jumped to
-const JUMP_WINDOW_SECS: f32 = 4.0;
 /// DOM id prefix of a press row, followed by its index in `gcd.presses`
 const PRESS_ROW_ID: &str = "gcd-press-";
 
@@ -102,9 +98,6 @@ pub(super) fn DummyParseView(
     encounter_idx: u32,
     player: DummyPlayer,
     european: bool,
-    mut time_range: Signal<TimeRange>,
-    mut view_mode: Signal<ViewMode>,
-    mut combat_log_state: Signal<CombatLogSessionState>,
     /// The encounter's damage chart, shown under the stat cards
     chart: Element,
 ) -> Element {
@@ -194,12 +187,6 @@ pub(super) fn DummyParseView(
     };
     let picked = selected();
     let pin = pinned();
-    // The combat log reads its filters from this state when it mounts
-    let mut jump = move |t: f32| {
-        combat_log_state.write().event_categories = vec![LogEventCategory::Actions, LogEventCategory::Effects];
-        time_range.set(TimeRange::new((t - JUMP_WINDOW_SECS).max(0.0), t + JUMP_WINDOW_SECS));
-        view_mode.set(ViewMode::CombatLog);
-    };
 
     rsx! {
         div { class: "overview-section",
@@ -236,7 +223,7 @@ pub(super) fn DummyParseView(
                         AbilityNamingPills {}
                     }
                     div { class: "dummy-summary",
-                    div { class: if focus.is_some() { "history-cards focused" } else { "history-cards" },
+                    div { class: "history-cards",
                         div { class: "history-card", div { class: "k", "{stats.0}" } div { class: "v", "{stats.1}" } }
                         div { class: "history-card", title: "Median time from {stats.5} to the next",
                             div { class: "k", "Median" } div { class: "v", {secs(stats.2)} }
@@ -262,6 +249,9 @@ pub(super) fn DummyParseView(
                         div { class: "overview-column-header",
                             i { class: "fa-solid fa-hourglass-half" }
                             " Presses"
+                            if let Some(a) = pin.and_then(|id| gcd.abilities.iter().find(|a| a.ability_id == id)) {
+                                span { class: "text-muted", " {display_name(a.ability_id, &a.ability_name)}" }
+                            }
                         }
                         div { class: "effect-table-wrapper", style: PRESSES_MAX_HEIGHT,
                             table { class: "effect-table",
@@ -274,7 +264,8 @@ pub(super) fn DummyParseView(
                                     }
                                 }
                                 tbody {
-                                    for (i, p) in presses.into_iter() {
+                                    // Only the pinned ability's presses, plus one picked on the timeline
+                                    for (i, p) in presses.into_iter().filter(|(i, p)| pin.is_none_or(|id| p.ability_id == id) || picked == Some(*i)) {
                                         {
                                             let t = p.time_secs;
                                             rsx! {
@@ -282,9 +273,8 @@ pub(super) fn DummyParseView(
                                                     key: "{i}",
                                                     id: "{PRESS_ROW_ID}{i}",
                                                     class: if picked == Some(i) { "selected" },
-                                                    title: "Click to mark on the timeline, double-click to open in the combat log",
+                                                    title: "Click to mark on the timeline",
                                                     onclick: move |_| selected.set((picked != Some(i)).then_some(i)),
-                                                    ondoubleclick: move |_| jump(t),
                                                     td { class: "num", {formatting::format_duration(t as i64)} }
                                                     td { class: press_class(p), {secs(p.interval_secs)} }
                                                     {ability_cell(p.ability_id, &p.ability)}
@@ -364,9 +354,8 @@ pub(super) fn DummyParseView(
                                                     tr {
                                                         key: "{i}",
                                                         class: if picked == Some(i) { "selected" },
-                                                        title: "Click to mark on the timeline, double-click to open in the combat log",
+                                                        title: "Click to mark on the timeline",
                                                         onclick: move |_| selected.set((picked != Some(i)).then_some(i)),
-                                                        ondoubleclick: move |_| jump(t),
                                                         td { class: "num", {formatting::format_duration(t as i64)} }
                                                         {ability_cell(p.ability_id, &p.ability)}
                                                         td { class: "num", "{ticks}" }
