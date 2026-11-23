@@ -338,7 +338,14 @@ const LIST_OVERLAY_KEYS: [&str; 13] = [
 
 impl OverlaySettings {
     pub fn get_position(&self, overlay_type: &str) -> OverlayPositionConfig {
-        self.positions.get(overlay_type).cloned().unwrap_or_default()
+        self.positions.get(overlay_type).cloned().unwrap_or_else(|| {
+            let default = OverlayPositionConfig::default();
+            match overlay_type {
+                // Tall enough for the default stat rows at the default width
+                "personal" => OverlayPositionConfig { height: 240, ..default },
+                _ => default,
+            }
+        })
     }
 
     pub fn set_position(&mut self, overlay_type: &str, config: OverlayPositionConfig) {
