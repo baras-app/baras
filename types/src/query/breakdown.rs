@@ -190,11 +190,17 @@ pub enum AbilityNaming {
     Imperial,
 }
 
+/// The ability an ID belongs to: renamed variants of an ability and its named
+/// effects share its upper 32 bits (Recklessness 975399957823824 → 975399957823488).
+pub const fn base_ability_id(id: i64) -> i64 {
+    id & !0xFFFF_FFFF
+}
+
 /// Mirror-class counterpart of a class ability (from the ability data dump).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MirrorAbility {
-    /// The ability this entry describes.
+    /// The ability or named effect this entry describes.
     pub id: i64,
     pub mirror_id: i64,
     pub mirror_name: String,
