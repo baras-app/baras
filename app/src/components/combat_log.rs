@@ -1235,13 +1235,13 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                                 }
                                 div { class: "log-cell log-effect", style: "width: {col_effect}px; min-width: {col_effect}px;",
                                     if row.effect_id != 0 {
-                                        AbilityIcon { key: "{row.effect_id}", ability_id: row.effect_id, size: 16 }
+                                        AbilityIcon { key: "{row.effect_id}", ability_id: display_id(row.effect_id), size: 16 }
                                     }
                                     if show_ids_val && row.effect_id != 0 {
                                         span { class: "log-id-prefix", "[{row.effect_id}] " }
                                     }
                                     if !row.effect_name.is_empty() {
-                                        "{row.effect_name}"
+                                        "{display_name(row.effect_id, &row.effect_name)}"
                                     }
                                 }
                                 div { class: "log-cell log-value", style: "width: {col_value}px; min-width: {col_value}px;",

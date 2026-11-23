@@ -1,7 +1,10 @@
-//! Republic ⇄ Imperial mirror-class ability pairs, keyed by ability ID.
+//! Republic ⇄ Imperial mirror-class ability pairs, keyed by ability ID, and
+//! the pairs of their named effects, keyed by effect ID.
 //!
-//! Generated at build time from data/ability_data.csv (`mirror_fqn` column).
-//! The map is symmetric: both halves of a pair are present as keys.
+//! Generated at build time from data/ability_data.csv (`mirror_fqn` column)
+//! and data/effect_data.csv. The map is symmetric: both halves of a pair are
+//! present as keys. An ID missing here may still be a variant of a mirrored
+//! ability: look up its `base_ability_id` next.
 
 /// The mirror counterpart of a class ability.
 #[derive(Debug)]

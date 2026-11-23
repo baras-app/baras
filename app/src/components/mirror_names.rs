@@ -11,6 +11,7 @@ use dioxus::prelude::*;
 
 use crate::api;
 use crate::types::{AbilityNaming, MirrorAbility};
+use baras_types::base_ability_id;
 
 pub static ABILITY_NAMING: GlobalSignal<AbilityNaming> = Signal::global(AbilityNaming::default);
 static MIRROR_MAP: GlobalSignal<HashMap<i64, MirrorAbility>> = Signal::global(HashMap::new);
@@ -32,26 +33,28 @@ pub fn ensure_loaded() {
     });
 }
 
-/// Mirror entry for `id` if the current naming preference requires a swap.
+/// Mirror entry for `id` (an ability or effect ID) if the current naming
+/// preference requires a swap. An unlisted ID is taken as a variant of the
+/// ability it belongs to.
 fn swap_for(id: i64) -> Option<MirrorAbility> {
     let want_imperial = match *ABILITY_NAMING.read() {
         AbilityNaming::AsLogged => return None,
         AbilityNaming::Republic => false,
         AbilityNaming::Imperial => true,
     };
-    MIRROR_MAP
-        .read()
-        .get(&id)
+    let map = MIRROR_MAP.read();
+    map.get(&id)
+        .or_else(|| map.get(&base_ability_id(id)))
         .filter(|m| m.is_imperial != want_imperial)
         .cloned()
 }
 
-/// Ability id to use for icons under the current naming preference.
+/// Ability or effect id to use for icons under the current naming preference.
 pub fn display_id(id: i64) -> i64 {
     swap_for(id).map_or(id, |m| m.mirror_id)
 }
 
-/// Ability name to show under the current naming preference.
+/// Ability or effect name to show under the current naming preference.
 pub fn display_name(id: i64, name: &str) -> Cow<'_, str> {
     swap_for(id).map_or(Cow::Borrowed(name), |m| Cow::Owned(m.mirror_name))
 }

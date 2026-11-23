@@ -20,6 +20,7 @@ use crate::components::echarts::{
     TOOLTIP_ROWS_JS, dispose_chart, escape, get_chart, init_chart, json_to_js, next_animation_frame, set_chart_option,
     set_js_fn, set_option_replace,
 };
+use crate::components::mirror_names::{display_id, display_name};
 use crate::utils::{LightTheme, css_var};
 
 const TIMELINE_ID: &str = "dummy-gcd-timeline";
@@ -88,10 +89,10 @@ fn timeline_option(parse: &DummyParse, selected: Option<usize>, eu: bool) -> Val
                 "took": format!("{} s", formatting::format_decimal(p.interval_secs, 3, eu)),
                 "channel": channel,
                 "at": formatting::format_duration_f32(p.time_secs),
-                "ability": escape(&p.ability),
-                "next": escape(&p.next),
-                "abilityId": p.ability_id.to_string(),
-                "nextId": p.next_id.to_string(),
+                "ability": escape(&display_name(p.ability_id, &p.ability)),
+                "next": escape(&display_name(p.next_id, &p.next)),
+                "abilityId": display_id(p.ability_id).to_string(),
+                "nextId": display_id(p.next_id).to_string(),
             })
         })
         .collect();
@@ -169,13 +170,16 @@ pub(super) fn PressTimeline(
 ) -> Element {
     let handler: Rc<RefCell<Option<Closure<dyn FnMut(JsValue)>>>> = use_hook(|| Rc::new(RefCell::new(None)));
     let light_theme = try_use_context::<LightTheme>();
-    // Icons for the tooltip, looked up once per parse
+    // Icons for the tooltip, looked up once per parse and naming preference
     use_effect(move || {
         let ids: BTreeSet<i64> = parse
             .read()
             .as_ref()
             .and_then(|p| p.as_ref())
-            .map(|p| p.gcd.presses.iter().flat_map(|p| [p.ability_id, p.next_id]).collect())
+            .map(|p| {
+                let ids = p.gcd.presses.iter().flat_map(|p| [p.ability_id, p.next_id]);
+                ids.map(display_id).collect()
+            })
             .unwrap_or_default();
         spawn(async move {
             let mut icons = HashMap::new();

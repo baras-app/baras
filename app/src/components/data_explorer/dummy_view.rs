@@ -14,7 +14,9 @@ use super::ctx::ExplorerCtx;
 use super::dummy_charts::{IntervalDensity, PressTimeline};
 use crate::api::{self, TimeRange};
 use crate::components::ability_icon::AbilityIcon;
+use crate::components::ability_naming::AbilityNamingPills;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
+use crate::components::mirror_names::{display_id, display_name};
 use crate::components::overview_table::pct_tier;
 use crate::types::ViewMode;
 
@@ -82,8 +84,9 @@ fn StatCard(label: &'static str, value: String, pct: Option<u8>, source: RatingS
     }
 }
 
-/// `[icon] name` cell, as in the effect tables
+/// `[icon] name` cell, as in the effect tables, under the naming preference
 fn ability_cell(id: i64, name: &str) -> Element {
+    let (id, name) = (display_id(id), display_name(id, name));
     rsx! {
         td { class: "effect-name-cell", title: "{name}",
             div { class: "effect-name-inner",
@@ -200,6 +203,7 @@ pub(super) fn DummyParseView(
                     div { class: "overview-column-header",
                         i { class: "fa-solid fa-stopwatch" }
                         " Global Cooldown"
+                        AbilityNamingPills {}
                     }
                     div { class: "dummy-summary",
                     div { class: "history-cards",

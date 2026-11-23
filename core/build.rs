@@ -24,6 +24,7 @@ fn main() {
     println!("cargo:rerun-if-changed=data/alacrity_abilities.csv");
     println!("cargo:rerun-if-changed=data/discipline_ids.csv");
     println!("cargo:rerun-if-changed=data/ability_data.csv");
+    println!("cargo:rerun-if-changed=data/effect_data.csv");
 }
 
 /// Off-GCD abilities: no `ablGlobalCooldownTime` in the game data, plus the IDs in
@@ -258,8 +259,12 @@ fn split_csv_line(line: &str) -> Vec<String> {
     fields
 }
 
-/// Republic/Imperial mirror pairs from the full ability dump.
-/// Columns used: fqn(0), global_combat_id(1), name(2), mirror_fqn(6).
+/// Republic/Imperial mirror pairs from the full ability dump, plus the named
+/// effects of those abilities: an effect's mirror is the effect with the same
+/// number on the mirror ability.
+/// Columns used: fqn(0), global_combat_id(1), name(2), mirror_fqn(6); in
+/// effect_data.csv effect_id(0), ability_fqn(2), effect_number(3), name(4),
+/// has_own_name(5).
 fn generate_mirror_abilities_map(out_dir: &str) {
     // Pass 1: fqn → (id, name, is_imperial) for every row that has a mirror.
     let mut by_fqn: BTreeMap<String, (i64, String, bool)> = BTreeMap::new();
@@ -284,6 +289,43 @@ fn generate_mirror_abilities_map(out_dir: &str) {
             *id,
             format!("MirrorAbility {{ mirror_id: {mid}i64, mirror_name: {mname:?}, is_imperial: {is_imperial} }}"),
         );
+    }
+
+    // Named effects log under their own ID. One the mirror ability has no
+    // counterpart for maps to itself, so it is not renamed after the ability.
+    let csv = fs::read_to_string("data/effect_data.csv").expect("failed to read effect_data.csv");
+    let effects: Vec<Vec<String>> = csv
+        .trim_start_matches('\u{feff}')
+        .lines()
+        .skip(1)
+        .map(split_csv_line)
+        .filter(|f| f.len() > 5)
+        .collect();
+    // (ability fqn, effect number) → (effect id, name), first row wins
+    let mut by_number: BTreeMap<(&str, &str), (i64, &str)> = BTreeMap::new();
+    for f in &effects {
+        if let Ok(id) = f[0].parse::<i64>() {
+            by_number.entry((&f[2], &f[3])).or_insert((id, &f[4]));
+        }
+    }
+    let mirror_of: BTreeMap<&str, &str> = pairs.iter().map(|(a, b)| (a.as_str(), b.as_str())).collect();
+    for f in effects.iter().filter(|f| f[5] == "True") {
+        let (Ok(id), Some(mirror_fqn)) = (f[0].parse::<i64>(), mirror_of.get(f[2].as_str())) else {
+            continue;
+        };
+        if !by_fqn.contains_key(*mirror_fqn) {
+            continue;
+        }
+        let Some((_, _, is_imperial)) = by_fqn.get(&f[2]) else {
+            continue;
+        };
+        let (mid, mname) = by_number
+            .get(&(*mirror_fqn, f[3].as_str()))
+            .copied()
+            .unwrap_or((id, &f[4]));
+        entries.entry(id).or_insert_with(|| {
+            format!("MirrorAbility {{ mirror_id: {mid}i64, mirror_name: {mname:?}, is_imperial: {is_imperial} }}")
+        });
     }
 
     let path = Path::new(out_dir).join("mirror_abilities.rs");

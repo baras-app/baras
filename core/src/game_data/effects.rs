@@ -31,11 +31,7 @@ pub mod effect_id {
     pub const TAUNT: i64 = 836045448945488;
 }
 
-/// The ability an ID belongs to: renamed variants of an ability and its named
-/// effects share its upper 32 bits (Recklessness 975399957823824 → 975399957823488).
-pub const fn base_ability_id(id: i64) -> i64 {
-    id & !0xFFFF_FFFF
-}
+pub use baras_types::base_ability_id;
 
 // SWTOR bug: These abilities report 6 charges on ApplyEffect instead of 7
 const CHARGE_BUG_ABILITIES: [i64; 2] = [
