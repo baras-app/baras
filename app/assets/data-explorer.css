@@ -3006,6 +3006,14 @@
   background: hsl(320, 60%, 55%);
 } /* Effect Uptime - magenta */
 
+.data-tab:nth-child(11).active::after {
+  background: hsl(85, 55%, 45%);
+} /* Raid Debuffs - chartreuse */
+
+.data-tab:nth-child(12).active::after {
+  background: hsl(245, 60%, 65%);
+} /* Aggro - indigo */
+
 .usage-table-container {
   overflow-x: auto;
 }
