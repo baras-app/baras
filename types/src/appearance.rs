@@ -262,7 +262,7 @@ fn default_metric_template() -> String {
 pub const MAX_BAR_GAP: f32 = 40.0;
 
 pub(crate) fn default_bar_gap() -> f32 {
-    4.0
+    2.0
 }
 
 /// Marks a config written before `metric_bar_gap` existed
