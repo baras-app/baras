@@ -36,6 +36,9 @@ pub struct DeathRecapDrawerProps {
     /// The player's overview row, for the role/class icons in the header
     #[props(default)]
     pub player: Option<RaidOverviewRow>,
+    /// The encounter's players, for class icons on the source rows
+    #[props(default)]
+    pub roster: Vec<RaidOverviewRow>,
     /// Every death in the encounter, chronological (for prev/next navigation)
     pub deaths: Vec<PlayerDeath>,
     /// Navigated to another death
@@ -144,6 +147,7 @@ pub fn DeathRecapDrawer(props: DeathRecapDrawerProps) -> Element {
                                 key: "{r.death_time_secs}",
                                 recap: r,
                                 european: eu,
+                                roster: props.roster.clone(),
                             }
                         },
                     }
@@ -154,12 +158,14 @@ pub fn DeathRecapDrawer(props: DeathRecapDrawerProps) -> Element {
 }
 
 #[component]
-fn RecapBody(recap: DeathRecap, european: bool) -> Element {
+fn RecapBody(recap: DeathRecap, european: bool, roster: Vec<RaidOverviewRow>) -> Element {
     let r = &recap;
     let eu = european;
     let fmt = move |n: i64| formatting::format_compact(n, eu);
     // Final events filter: None = all, Some(kind) = that kind (the death row always shows)
     let mut ledger_kind = use_signal(|| None::<DeathRecapEventKind>);
+    // Per-source tables: one at a time at full width (side by side they squeezed)
+    let mut show_healing = use_signal(|| false);
 
     rsx! {
         div { class: "recap-content",
@@ -214,10 +220,25 @@ fn RecapBody(recap: DeathRecap, european: bool) -> Element {
             // HP sparkline over the recap window
             {hp_sparkline(r)}
 
-            // Damage taken / healing received tables
+            // Damage taken / healing received by source, behind a toggle
             div { class: "recap-tables",
-                DamageTakenTable { rows: r.damage_rows.clone(), european: eu }
-                HealingReceivedTable { rows: r.healing_rows.clone(), european: eu }
+                div { class: "recap-tables-head",
+                    h5 { "By Source" }
+                    div { class: "filter-pills",
+                        for (label, healing) in [("Damage Taken", false), ("Healing Received", true)] {
+                            button {
+                                class: if show_healing() == healing { "seg active" } else { "seg" },
+                                onclick: move |_| show_healing.set(healing),
+                                "{label}"
+                            }
+                        }
+                    }
+                }
+                if show_healing() {
+                    HealingReceivedTable { rows: r.healing_rows.clone(), european: eu, roster }
+                } else {
+                    DamageTakenTable { rows: r.damage_rows.clone(), european: eu, roster }
+                }
             }
 
             // Effects on the player, on the sparkline's time axis
@@ -254,13 +275,12 @@ fn RecapBody(recap: DeathRecap, european: bool) -> Element {
 
 /// Per-source damage taken; click a source row to expand its ability breakdown.
 #[component]
-fn DamageTakenTable(rows: Vec<DeathRecapDamageSource>, european: bool) -> Element {
+fn DamageTakenTable(rows: Vec<DeathRecapDamageSource>, european: bool, roster: Vec<RaidOverviewRow>) -> Element {
     let mut expanded = use_signal(|| None::<i64>);
     let fmt = move |n: i64| formatting::format_compact(n, european);
 
     rsx! {
         div { class: "recap-table-wrap",
-            h5 { "Damage Taken" }
             if rows.is_empty() {
                 div { class: "recap-empty", "No damage taken in window" }
             } else {
@@ -287,6 +307,7 @@ fn DamageTakenTable(rows: Vec<DeathRecapDamageSource>, european: bool) -> Elemen
                                         onclick: move |_| expanded.set((!is_open).then_some(id)),
                                         td { class: "col-left", title: "{src.source_name}",
                                             i { class: "recap-caret fa-solid {caret}" }
+                                            {source_icon(&roster, &src.source_name, "fa-skull stat-damage")}
                                             span { class: "recap-ability", "{src.source_name}" }
                                         }
                                         td { "{src.hits}" }
@@ -298,7 +319,10 @@ fn DamageTakenTable(rows: Vec<DeathRecapDamageSource>, european: bool) -> Elemen
                                     if is_open {
                                         for ab in src.abilities.iter().cloned() {
                                             tr { class: "recap-row-ability",
-                                                td { class: "col-left", title: "{ab.ability_name}", "{ab.ability_name}" }
+                                                td { class: "col-left", title: "{ab.ability_name}",
+                                                    LedgerIcon { ability_id: ab.ability_id, icon: "fa-solid fa-circle", icon_class: "ledger-icon stat-damage" }
+                                                    "{ab.ability_name}"
+                                                }
                                                 td { "{ab.hits}" }
                                                 td { class: "stat-damage", "{fmt(ab.total)}" }
                                                 td { "{fmt(ab.max_hit as i64)}" }
@@ -321,13 +345,12 @@ fn DamageTakenTable(rows: Vec<DeathRecapDamageSource>, european: bool) -> Elemen
 
 /// Per-healer healing received; click a source row to expand its ability breakdown.
 #[component]
-fn HealingReceivedTable(rows: Vec<DeathRecapHealSource>, european: bool) -> Element {
+fn HealingReceivedTable(rows: Vec<DeathRecapHealSource>, european: bool, roster: Vec<RaidOverviewRow>) -> Element {
     let mut expanded = use_signal(|| None::<i64>);
     let fmt = move |n: i64| formatting::format_compact(n, european);
 
     rsx! {
         div { class: "recap-table-wrap",
-            h5 { "Healing Received" }
             if rows.is_empty() {
                 div { class: "recap-empty", "No healing received in window" }
             } else {
@@ -351,6 +374,7 @@ fn HealingReceivedTable(rows: Vec<DeathRecapHealSource>, european: bool) -> Elem
                                         onclick: move |_| expanded.set((!is_open).then_some(id)),
                                         td { class: "col-left", title: "{src.source_name}",
                                             i { class: "recap-caret fa-solid {caret}" }
+                                            {source_icon(&roster, &src.source_name, "fa-circle stat-heal")}
                                             span { class: "recap-ability", "{src.source_name}" }
                                         }
                                         td { "{src.casts}" }
@@ -359,7 +383,10 @@ fn HealingReceivedTable(rows: Vec<DeathRecapHealSource>, european: bool) -> Elem
                                     if is_open {
                                         for ab in src.abilities.iter().cloned() {
                                             tr { class: "recap-row-ability",
-                                                td { class: "col-left", title: "{ab.ability_name}", "{ab.ability_name}" }
+                                                td { class: "col-left", title: "{ab.ability_name}",
+                                                    LedgerIcon { ability_id: ab.ability_id, icon: "fa-solid fa-circle", icon_class: "ledger-icon stat-heal" }
+                                                    "{ab.ability_name}"
+                                                }
                                                 td { "{ab.casts}" }
                                                 td { class: "stat-heal", "{fmt(ab.effective)}" }
                                             }
@@ -372,6 +399,20 @@ fn HealingReceivedTable(rows: Vec<DeathRecapHealSource>, european: bool) -> Elem
                 }
             }
         }
+    }
+}
+
+/// A source row's icon: the player's class, else `fallback` (a Font Awesome
+/// glyph and colour) for NPCs, companions and players with no discipline
+fn source_icon(roster: &[RaidOverviewRow], name: &str, fallback: &str) -> Element {
+    let icon = roster
+        .iter()
+        .find(|p| p.name == name)
+        .and_then(|p| p.class_icon.as_deref())
+        .and_then(get_class_icon);
+    match icon {
+        Some(icon) => rsx! { img { class: "class-icon recap-source-icon", src: *icon, alt: "" } },
+        None => rsx! { i { class: "ledger-icon fa-solid {fallback}" } },
     }
 }
 

@@ -1589,14 +1589,7 @@
   stroke-width: 1;
 }
 
-.recap-tables {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-sm);
-  align-items: start;
-}
-
-.recap-table-wrap h5,
+.recap-tables-head,
 .recap-ledger-head {
   display: flex;
   align-items: center;
@@ -1605,6 +1598,7 @@
   margin: var(--space-xs) 0 var(--space-sm);
 }
 
+.recap-tables h5,
 .recap-effects-wrap h5,
 .recap-ledger-wrap h5 {
   margin: 0;
@@ -1709,6 +1703,18 @@
 
 .recap-row-ability .col-left {
   padding-left: 20px;
+}
+
+/* Icons sit inline with the (truncating) name text */
+.recap-table td :is(.ledger-ability-icon, .recap-source-icon, .ledger-icon) {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 5px;
+}
+
+.recap-table .recap-source-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .recap-empty {
