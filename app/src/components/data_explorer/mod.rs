@@ -173,6 +173,8 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                         {live_notice()}
                     } else if matches!(shown, ViewMode::RaidDebuffs) {
                         RaidDebuffsView {
+                            // Remounts per encounter, so it fades in like the other views
+                            key: "{shown_encounter():?}",
                             encounter_idx: shown_encounter(),
                             time_range: time_range(),
                             duration_secs: ctx.timeline.read().as_ref().map_or(0.0, |t| t.duration_secs),
@@ -182,6 +184,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                         }
                     } else if matches!(shown, ViewMode::Aggro) {
                         ThreatView {
+                            key: "{shown_encounter():?}",
                             encounter_idx: shown_encounter(),
                             time_range: time_range(),
                             duration_secs: ctx.timeline.read().as_ref().map_or(0.0, |t| t.duration_secs),
