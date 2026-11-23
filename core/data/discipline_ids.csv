@@ -1,0 +1,49 @@
+discipline,guid,name
+assassin.darkness,2031339142381582,Darkness
+assassin.deception,2031339142381583,Deception
+assassin.hatred,2031339142381580,Hatred
+commando.assault_specialist,2031339142381634,Assault Specialist
+commando.combat_medic,2031339142381637,Combat Medic
+commando.gunnery,2031339142381636,Gunnery
+guardian.defense,2031339142381609,Defense
+guardian.focus,2031339142381607,Focus
+guardian.vigilance,2031339142381610,Vigilance
+gunslinger.dirty_fighting,2031339142381625,Dirty Fighting
+gunslinger.saboteur,2031339142381628,Saboteur
+gunslinger.sharpshooter,2031339142381627,Sharpshooter
+juggernaut.immortal,2031339142381577,Immortal
+juggernaut.rage,2031339142381578,Rage
+juggernaut.vengeance,2031339142381576,Vengeance
+marauder.annihilation,2031339142381572,Annihilation
+marauder.carnage,2031339142381573,Carnage
+marauder.fury,2031339142381574,Fury
+mercenary.arsenal,2031339142381601,Arsenal
+mercenary.bodyguard,2031339142381600,Bodyguard
+mercenary.innovative_ordnance,2031339142381598,Innovative Ordnance
+operative.concealment,2031339142381595,Concealment
+operative.lethality,2031339142381593,Lethality
+operative.medic,2031339142381596,Medicine
+powertech.advanced_prototype,2031339142381605,Advanced Prototype
+powertech.firebug,2031339142381602,Pyrotech
+powertech.shield_tech,2031339142381604,Shield Tech
+sage.balance,2031339142381616,Balance
+sage.seer,2031339142381619,Seer
+sage.telekinetics,2031339142381618,Telekinetics
+scoundrel.ruffian,2031339142381629,Ruffian
+scoundrel.sawbones,2031339142381631,Sawbones
+scoundrel.scrapper,2031339142381632,Scrapper
+sentinel.combat,2031339142381613,Combat
+sentinel.concentration,2031339142381611,Concentration
+sentinel.watchman,2031339142381614,Watchman
+shadow.combat,2031339142381622,Kinetic Combat
+shadow.infiltration,2031339142381620,Infiltration
+shadow.serenity,2031339142381623,Serenity
+sniper.engineering,2031339142381592,Engineering
+sniper.marksmanship,2031339142381591,Marksmanship
+sniper.virulence,2031339142381589,Virulence
+sorcerer.corruption,2031339142381587,Corruption
+sorcerer.lightning,2031339142381586,Lightning
+sorcerer.madness,2031339142381584,Madness
+specialist.plasmatech,2031339142381638,Plasmatech
+specialist.shield_specialist,2031339142381641,Shield Specialist
+specialist.tactics,2031339142381640,Tactics

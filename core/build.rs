@@ -21,7 +21,7 @@ fn main() {
     println!("cargo:rerun-if-changed=data/off_gcd_extra.txt");
     println!("cargo:rerun-if-changed=data/attack_types.csv");
     println!("cargo:rerun-if-changed=data/alacrity_abilities.csv");
-    println!("cargo:rerun-if-changed=data/discipline_unique_abilities.csv");
+    println!("cargo:rerun-if-changed=data/discipline_ids.csv");
     println!("cargo:rerun-if-changed=data/ability_data.csv");
 }
 
@@ -40,7 +40,7 @@ fn generate_off_gcd_set(out_dir: &str) {
 
 /// Rows of data/ability_data.csv, header skipped.
 /// Columns: fqn(0), global_combat_id(1), name(2), ablGlobalCooldownTime(5), mirror_fqn(6),
-/// is_interrupt(8), its_revive(10).
+/// is_interrupt(8), its_revive(10), disciplines(20).
 fn ability_rows() -> Vec<Vec<String>> {
     let csv = fs::read_to_string("data/ability_data.csv").expect("failed to read ability_data.csv");
     csv.trim_start_matches('\u{feff}')
@@ -170,40 +170,53 @@ fn generate_alacrity_buffs_map(out_dir: &str) {
     .unwrap();
 }
 
+/// Ability ID → bitmask of the disciplines that have it (`disciplines` column), with
+/// bit i standing for row i of data/discipline_ids.csv.
 fn generate_discipline_abilities_map(out_dir: &str) {
-    let csv = fs::read_to_string("data/discipline_unique_abilities.csv")
-        .expect("failed to read discipline_unique_abilities.csv");
+    let ids = fs::read_to_string("data/discipline_ids.csv").expect("failed to read discipline_ids.csv");
+    let disciplines: Vec<(&str, i64)> = ids
+        .lines()
+        .skip(1)
+        .filter_map(|l| {
+            let mut f = l.split(',');
+            Some((f.next()?, f.next()?.trim().parse().ok()?))
+        })
+        .collect();
+    assert!(disciplines.len() <= 64, "discipline mask is a u64");
 
-    // Ability ID → discipline GUID. BTreeMap for deterministic output (sorted by key)
+    // BTreeMap for deterministic output (sorted by key)
     let mut entries = BTreeMap::new();
-    for line in csv.lines().skip(1) {
-        let fields: Vec<&str> = line.split(',').collect();
-        if fields.len() < 4 {
+    for f in ability_rows() {
+        let (Ok(id), Some(keys)) = (f[1].parse::<i64>(), f.get(20)) else {
             continue;
+        };
+        let mask = keys
+            .split(';')
+            .filter_map(|k| disciplines.iter().position(|(d, _)| *d == k))
+            .fold(0u64, |m, bit| m | 1 << bit);
+        if mask != 0 {
+            entries.insert(id, format!("{mask}u64"));
         }
-        let discipline_id: i64 = match fields[1].trim().parse() {
-            Ok(v) => v,
-            Err(_) => continue,
-        };
-        let ability_id: i64 = match fields[3].trim().parse() {
-            Ok(v) => v,
-            Err(_) => continue,
-        };
-        entries.insert(ability_id, discipline_id);
     }
 
     let path = Path::new(out_dir).join("discipline_abilities.rs");
     let mut file = BufWriter::new(fs::File::create(&path).unwrap());
-
-    let mut builder = phf_codegen::Map::new();
-    let values: Vec<_> = entries.iter().map(|(id, disc)| (*id, format!("{disc}i64"))).collect();
-    for (id, disc) in &values {
-        builder.entry(*id, disc);
-    }
-
+    let guids: Vec<String> = disciplines.iter().map(|(_, guid)| guid.to_string()).collect();
     writeln!(
         file,
-        "pub static DISCIPLINE_ABILITIES: phf::Map<i64, i64> = {};",
+        "static DISCIPLINE_GUIDS: [i64; {}] = [{}];",
+        guids.len(),
+        guids.join(", ")
+    )
+    .unwrap();
+
+    let mut builder = phf_codegen::Map::new();
+    for (id, mask) in &entries {
+        builder.entry(*id, mask);
+    }
+    writeln!(
+        file,
+        "static ABILITY_DISCIPLINES: phf::Map<i64, u64> = {};",
         builder.build()
     )
     .unwrap();

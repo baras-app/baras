@@ -325,6 +325,7 @@ impl SessionCache {
                 player.discipline_id = 0;
                 player.discipline_name.clear();
                 player.discipline_inferred = false;
+                player.discipline_candidates = 0;
             }
         }
     }
