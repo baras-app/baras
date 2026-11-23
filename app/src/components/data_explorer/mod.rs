@@ -181,6 +181,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                     european: eu,
                     on_close: move |_| recap_death.set(None),
                     player: overview_table_data.read().rows.iter().find(|r| r.name == d.name && r.faction == d.faction).cloned(),
+                    roster: overview_table_data.read().rows.clone(),
                     deaths: player_deaths.read().clone(),
                     on_select: move |d: PlayerDeath| recap_death.set(Some(d)),
                     on_open_combat_log: move |window_start: f32| {

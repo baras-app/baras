@@ -359,6 +359,7 @@ fn build_recap(player_name: &str, requested_death_time: f32, rows: Vec<RecapRow>
                 |a| a.ability_name == r.ability_name,
                 || DeathRecapDamageRow {
                     ability_name: r.ability_name.clone(),
+                    ability_id: r.ability_id,
                     hits: 0,
                     crits: 0,
                     total: 0,
@@ -417,6 +418,7 @@ fn build_recap(player_name: &str, requested_death_time: f32, rows: Vec<RecapRow>
                 |a| a.ability_name == r.ability_name,
                 || DeathRecapHealRow {
                     ability_name: r.ability_name.clone(),
+                    ability_id: r.ability_id,
                     casts: 0,
                     effective: 0,
                 },

@@ -41,6 +41,9 @@ pub struct DeathRecapKillingBlow {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DeathRecapDamageRow {
     pub ability_name: String,
+    /// For the row icon
+    #[serde(default)]
+    pub ability_id: i64,
     pub hits: u32,
     pub crits: u32,
     /// Total effective damage
@@ -74,6 +77,9 @@ pub struct DeathRecapDamageSource {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DeathRecapHealRow {
     pub ability_name: String,
+    /// For the row icon
+    #[serde(default)]
+    pub ability_id: i64,
     pub casts: u32,
     pub effective: i64,
 }
