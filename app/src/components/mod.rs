@@ -4,6 +4,7 @@
 //! to improve code organization and reduce file size.
 
 pub mod ability_icon;
+pub mod raid_debuffs;
 pub mod ability_naming;
 pub mod characters;
 pub mod charts_panel;

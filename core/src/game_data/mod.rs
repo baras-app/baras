@@ -15,6 +15,7 @@ mod mirror_abilities;
 mod off_gcd_abilities;
 mod patches;
 mod pvp_instance;
+mod raid_debuffs;
 mod raid_bosses;
 mod raids;
 mod shield_absorbs;
@@ -40,6 +41,7 @@ pub use pvp_instance::{
     ARENA_ROUND_END_ABILITY_IDS, DESERTER_DETECTION_EFFECT_IDS, PvpAreaKind, REBIRTH_ABILITY_ID, is_pvp_area,
     pvp_area_ids, pvp_area_kind, pvp_match_label,
 };
+pub use raid_debuffs::RAID_DEBUFFS;
 pub use raids::{OPERATION_AREAS, get_operation_name, is_operation, is_world_boss};
 pub use shield_absorbs::{SHIELD_INFO, ShieldInfo, get_shield_info, is_known_shield};
 pub use shield_effects::SHIELD_EFFECT_IDS;

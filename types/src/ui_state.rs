@@ -113,6 +113,7 @@ pub enum ViewMode {
     Rotation,
     Usage,
     Uptime,
+    RaidDebuffs,
 }
 
 impl ViewMode {

@@ -20,6 +20,7 @@ fn main() {
     let mirrors = mirror_entries();
     generate_mirror_abilities_map(&out_dir, &mirrors);
     generate_defensive_cooldown_sets(&out_dir, &mirrors);
+    generate_raid_debuffs_map(&out_dir);
 
     println!("cargo:rerun-if-changed=data/off_gcd_extra.txt");
     println!("cargo:rerun-if-changed=data/defensive_cooldowns.txt");
@@ -380,4 +381,45 @@ fn generate_defensive_cooldown_sets(out_dir: &str, mirrors: &BTreeMap<i64, (i64,
         }
         writeln!(file, "pub static {name}: phf::Set<i64> = {};", builder.build()).unwrap();
     }
+}
+
+/// Raid debuffs: effect ID → `RaidDebuff`, for every named effect in
+/// effect_data.csv carrying the debuff's game tag. Sundered and Unsteady use
+/// their `_stacks_by_tag` tag: the plain one is shared with unrelated effects
+/// (Diversion is also `accuracy_reduced`).
+/// Columns used: effect_id(0), has_own_name(5), tags(9).
+fn generate_raid_debuffs_map(out_dir: &str) {
+    const TAGS: [(&str, &str); 11] = [
+        ("debuff.armor_reduced_stacks_by_tag", "Sundered"),
+        ("debuff.ranged_vulnerability", "Marked"),
+        ("debuff.melee_vulnerability", "BeatDown"),
+        ("debuff.tech_vulnerability", "Susceptible"),
+        ("debuff.force_vulnerability", "Vulnerable"),
+        ("debuff.elemental_and_internal_vulnerability", "Assailable"),
+        ("debuff.aoe_vulnerability", "Overwhelmed"),
+        ("debuff.trauma", "Trauma"),
+        ("debuff.tech_and_force_damage_reduced", "Impaired"),
+        ("debuff.ranged_and_melee_damage_reduced", "Weakened"),
+        ("debuff.accuracy_reduced_stacks_by_tag", "Unsteady"),
+    ];
+    let csv = fs::read_to_string("data/effect_data.csv").expect("failed to read effect_data.csv");
+    let mut entries: BTreeMap<i64, &str> = BTreeMap::new();
+    for line in csv.trim_start_matches('\u{feff}').lines().skip(1) {
+        let f = split_csv_line(line);
+        if f.len() < 10 || f[5] != "True" {
+            continue;
+        }
+        let Some((_, variant)) = TAGS.iter().find(|(tag, _)| f[9].split(';').any(|t| t == *tag)) else {
+            continue;
+        };
+        if let Ok(id) = f[0].trim().parse::<i64>() {
+            entries.insert(id, variant);
+        }
+    }
+    let mut file = BufWriter::new(fs::File::create(Path::new(out_dir).join("raid_debuffs.rs")).unwrap());
+    let mut builder = phf_codegen::Map::new();
+    for (id, variant) in &entries {
+        builder.entry(*id, format!("RaidDebuff::{variant}"));
+    }
+    writeln!(file, "pub static RAID_DEBUFFS: phf::Map<i64, RaidDebuff> = {};", builder.build()).unwrap();
 }
