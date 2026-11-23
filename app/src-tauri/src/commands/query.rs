@@ -5,8 +5,8 @@
 use baras_core::query::{
     AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow,
     CombatLogSortColumn, DamageTakenSummary, DataTab, EffectChartData, EffectUptimeCell, EffectWindow,
-    EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath, RaidDebuffTarget, ThreatReport,
-    RaidOverviewRow, RotationAnalysis, SortDirection, TimeRange, TimeSeriesPoint,
+    EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath,
+    RaidDebuffReport, RaidOverviewRow, RotationAnalysis, SortDirection, ThreatReport, TimeRange, TimeSeriesPoint,
 };
 use tauri::State;
 
@@ -112,7 +112,7 @@ pub async fn query_raid_debuffs(
     handle: State<'_, ServiceHandle>,
     encounter_idx: Option<u32>,
     time_range: Option<TimeRange>,
-) -> Result<Vec<RaidDebuffTarget>, String> {
+) -> Result<RaidDebuffReport, String> {
     handle.query_raid_debuffs(encounter_idx, time_range).await
 }
 

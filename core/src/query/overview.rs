@@ -345,6 +345,7 @@ impl EncounterQuery<'_> {
                     entity_type: entity_types[i].clone(),
                     class_name: None,
                     discipline_name: None,
+                    discipline_id: None,
                     class_icon: None,
                     role_icon: None,
                     damage_total: damage_totals[i],

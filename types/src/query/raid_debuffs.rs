@@ -2,6 +2,16 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Damage type ids as logged
+const KINETIC: i64 = 836045448940873;
+const ENERGY: i64 = 836045448940874;
+const ELEMENTAL: i64 = 836045448940875;
+const INTERNAL: i64 = 836045448940876;
+
+/// A hit's attack type (as in `attack_types.csv`) and damage type id → whether
+/// a debuff raises it
+type RaisesHit = fn(&str, i64) -> bool;
+
 /// The standardized enemy debuffs; several abilities apply each one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -85,6 +95,32 @@ impl RaidDebuff {
         }
     }
 
+    /// The damage it raises on its target, where the log tells that kind of
+    /// hit apart: its label and the test on a hit. None for the rest (area
+    /// damage, healing and the offense debuffs).
+    fn boost(self) -> Option<(&'static str, RaisesHit)> {
+        let boost: (&'static str, RaisesHit) = match self {
+            Self::Sundered => ("kinetic and energy", |_, d| matches!(d, KINETIC | ENERGY)),
+            Self::Marked => ("ranged", |a, _| a == "Ranged"),
+            Self::BeatDown => ("melee", |a, _| a == "Melee"),
+            Self::Susceptible => ("tech", |a, _| a == "Tech"),
+            Self::Vulnerable => ("force", |a, _| a == "Force"),
+            Self::Assailable => ("internal and elemental", |_, d| matches!(d, INTERNAL | ELEMENTAL)),
+            _ => return None,
+        };
+        Some(boost)
+    }
+
+    /// The kind of damage it raises, as a label; None where the log cannot tell
+    pub fn boosts(self) -> Option<&'static str> {
+        self.boost().map(|b| b.0)
+    }
+
+    /// Whether it raises a hit of this attack type and damage type id
+    pub fn raises(self, attack_type: &str, dmg_type: i64) -> bool {
+        self.boost().is_some_and(|b| (b.1)(attack_type, dmg_type))
+    }
+
     pub fn group(self) -> &'static str {
         match self {
             Self::Trauma => "Healing",
@@ -125,4 +161,24 @@ pub struct RaidDebuffTarget {
     pub present_secs: f32,
     /// Only the debuffs that were applied
     pub cells: Vec<RaidDebuffCell>,
+    /// Only the debuffs with a `boosts` kind the group dealt to this enemy
+    pub worth: Vec<RaidDebuffWorth>,
+}
+
+/// The group's damage on one enemy of the kind a debuff raises.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RaidDebuffWorth {
+    pub debuff: RaidDebuff,
+    /// All of it, within the queried range
+    pub affected_dmg: f64,
+    /// The part that landed while the debuff was not on the enemy
+    pub unbuffed_dmg: f64,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct RaidDebuffReport {
+    pub targets: Vec<RaidDebuffTarget>,
+    /// Per debuff, the discipline GUIDs that apply it: allowed by the game
+    /// data and seen doing so in real logs
+    pub able: Vec<(RaidDebuff, Vec<i64>)>,
 }

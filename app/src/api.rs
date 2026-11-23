@@ -1355,9 +1355,8 @@ pub use baras_types::{
     AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow,
     CombatLogSortColumn, DamageTakenSummary, DataTab, DeathRecap, DeathRecapEventKind, EffectChartData,
     EffectUptimeCell, EffectWindow, EncounterRatings, EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries,
-    GroupedEntityNames, HpPoint, NpcHealthRow, NpcSpawn, PhaseSegment, PlayerDeath, PvpFaction, RaidDebuffCell, RaidDebuffTarget, ThreatReport,
-    RaidOverviewRow,
-    RotationAnalysis, SortDirection, TimeRange, TimeSeriesPoint,
+    GroupedEntityNames, HpPoint, NpcHealthRow, NpcSpawn, PhaseSegment, PlayerDeath, PvpFaction, RaidDebuffCell,
+    RaidDebuffReport, RaidOverviewRow, RotationAnalysis, SortDirection, ThreatReport, TimeRange, TimeSeriesPoint,
 };
 
 /// Query ability breakdown for an encounter and data tab.
@@ -1491,7 +1490,10 @@ pub async fn query_effect_uptime_by_target(
 }
 
 /// Uptime of each standard raid debuff on every enemy.
-pub async fn query_raid_debuffs(encounter_idx: Option<u32>, time_range: Option<&TimeRange>) -> Option<Vec<RaidDebuffTarget>> {
+pub async fn query_raid_debuffs(
+    encounter_idx: Option<u32>,
+    time_range: Option<&TimeRange>,
+) -> Option<RaidDebuffReport> {
     let obj = js_sys::Object::new();
     js_set(
         &obj,

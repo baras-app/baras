@@ -28,6 +28,7 @@ fn main() {
     println!("cargo:rerun-if-changed=data/attack_types.csv");
     println!("cargo:rerun-if-changed=data/alacrity_abilities.csv");
     println!("cargo:rerun-if-changed=data/discipline_ids.csv");
+    println!("cargo:rerun-if-changed=data/raid_debuff_disciplines.csv");
     println!("cargo:rerun-if-changed=data/ability_data.csv");
     println!("cargo:rerun-if-changed=data/effect_data.csv");
 }
@@ -419,7 +420,10 @@ fn generate_raid_debuffs_map(out_dir: &str) {
     }
     // A debuff with no ids would read as "nobody brought it" in every fight
     for (tag, variant) in TAGS {
-        assert!(entries.values().any(|v| *v == variant), "no effects tagged {tag} in effect_data.csv");
+        assert!(
+            entries.values().any(|v| *v == variant),
+            "no effects tagged {tag} in effect_data.csv"
+        );
     }
     let mut file = BufWriter::new(fs::File::create(Path::new(out_dir).join("raid_debuffs.rs")).unwrap());
     let mut builder = phf_codegen::Map::new();
@@ -432,6 +436,46 @@ fn generate_raid_debuffs_map(out_dir: &str) {
         builder.build()
     )
     .unwrap();
+
+    // Disciplines that apply each debuff, as log GUIDs. Not derived here:
+    // which discipline's version of an ability applies a debuff depends on
+    // talents, so scripts/raid_debuff_disciplines.py keeps the pairs the game
+    // data allows and real logs confirm.
+    let ids = fs::read_to_string("data/discipline_ids.csv").expect("failed to read discipline_ids.csv");
+    let guids: BTreeMap<&str, &str> = ids
+        .lines()
+        .skip(1)
+        .filter_map(|l| {
+            let mut f = l.split(',');
+            Some((f.next()?, f.next()?.trim()))
+        })
+        .collect();
+    let pairs =
+        fs::read_to_string("data/raid_debuff_disciplines.csv").expect("failed to read raid_debuff_disciplines.csv");
+    // A misspelled debuff would match nothing below and drop its rows silently
+    for (debuff, _) in pairs.lines().skip(1).filter_map(|l| l.trim().split_once(',')) {
+        assert!(
+            TAGS.iter().any(|(_, v)| *v == debuff),
+            "unknown debuff {debuff} in raid_debuff_disciplines.csv"
+        );
+    }
+    writeln!(
+        file,
+        "pub static RAID_DEBUFF_DISCIPLINES: [(RaidDebuff, &[i64]); {}] = [",
+        TAGS.len()
+    )
+    .unwrap();
+    for (_, variant) in TAGS {
+        let able: Vec<&str> = pairs
+            .lines()
+            .skip(1)
+            .filter_map(|l| l.trim().split_once(','))
+            .filter(|(debuff, _)| *debuff == variant)
+            .map(|(_, key)| *guids.get(key).unwrap_or_else(|| panic!("unknown discipline {key}")))
+            .collect();
+        writeln!(file, "    (RaidDebuff::{variant}, &[{}]),", able.join(", ")).unwrap();
+    }
+    writeln!(file, "];").unwrap();
 }
 
 /// Taunt effects (`debuff.taunt` tag) → whether the ability taunts an area.

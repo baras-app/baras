@@ -4,13 +4,31 @@
 
 use dioxus::prelude::*;
 
-use baras_types::{RaidDebuff, formatting};
+use baras_types::{RaidDebuff, RaidDebuffTarget, RaidOverviewRow, formatting};
 
 use crate::api::{self, RaidDebuffCell, TimeRange};
 use crate::components::ability_icon::AbilityIcon;
 use crate::components::effect_uptime::{UptimeLane, UptimeTimeline};
 use crate::components::enemy_views::{BossesOnlyToggle, LoadFailed, loading};
+use crate::components::raid_debuff_coverage::{RaidDebuffCoverage, coverage_rows};
 use crate::types::EnemyViewsState;
+
+/// A cell's tooltip line on the damage of the kind `debuff` raises that
+/// landed on `target` without it; empty when there was none
+fn missed_text(target: &RaidDebuffTarget, debuff: RaidDebuff, european: bool) -> String {
+    let compact = |n: f64| formatting::format_compact_f64(n, european);
+    let (Some(w), Some(kind)) = (target.worth.iter().find(|w| w.debuff == debuff), debuff.boosts()) else {
+        return String::new();
+    };
+    if w.unbuffed_dmg <= 0.0 {
+        return String::new();
+    }
+    format!(
+        "\n{} of {} {kind} damage landed without it",
+        compact(w.unbuffed_dmg),
+        compact(w.affected_dmg)
+    )
+}
 
 /// "Name (Ability ×3)" per source, for a cell's tooltip
 fn sources_text(cell: &RaidDebuffCell) -> String {
@@ -27,6 +45,8 @@ pub fn RaidDebuffsView(
     encounter_idx: Option<u32>,
     time_range: TimeRange,
     duration_secs: f32,
+    /// Player disciplines, to tell who could have applied a debuff
+    overview: Signal<Vec<RaidOverviewRow>>,
     state: Signal<EnemyViewsState>,
     european: bool,
 ) -> Element {
@@ -35,22 +55,26 @@ pub fn RaidDebuffsView(
         api::query_raid_debuffs(encounter_idx, tr.as_ref()).await
     }));
     let loaded = targets.read();
-    let all = match loaded.as_ref() {
-        Some(Some(all)) => all,
+    let report = match loaded.as_ref() {
+        Some(Some(report)) => report,
         Some(None) => return rsx! { LoadFailed { on_retry: move |_| targets.restart() } },
         None => return loading(),
     };
+    let all = &report.targets;
     let controls = state.read();
     let has_boss = all.iter().any(|t| t.is_boss);
     let bosses_only = has_boss && controls.bosses_only;
     let rows: Vec<_> = all.iter().filter(|t| !bosses_only || t.is_boss).collect();
     // Applied to at least one enemy in the fight, shown or not
     let brought = |d: RaidDebuff| all.iter().any(|t| t.cells.iter().any(|c| c.debuff == d));
-    let groups = ["Damage Taken", "Healing", "Offense"]
-        .map(|g| (g, RaidDebuff::ALL.iter().filter(|d| d.group() == g).count()));
+    let groups =
+        ["Damage Taken", "Healing", "Offense"].map(|g| (g, RaidDebuff::ALL.iter().filter(|d| d.group() == g).count()));
     // Timeline selection: a row (enemy), a column (debuff), or a cell (both).
     // An enemy not shown here (another encounter, or an add under "Bosses only") is no pick.
-    let picked = controls.debuff_enemy.clone().filter(|p| rows.iter().any(|t| t.name == *p));
+    let picked = controls
+        .debuff_enemy
+        .clone()
+        .filter(|p| rows.iter().any(|t| t.name == *p));
     let debuff = controls.debuff;
     // Sets the selection, or clears it when it is already the one set
     let mut pick = move |enemy: Option<String>, d: Option<RaidDebuff>, toggle: bool| {
@@ -66,7 +90,11 @@ pub fn RaidDebuffsView(
         .flat_map(|t| t.cells.iter().map(move |c| (*t, c)))
         .filter(|(_, c)| debuff.is_none_or(|d| d == c.debuff) && (picked.is_some() || debuff.is_some()))
         .map(|(t, c)| UptimeLane {
-            label: if picked.is_none() { t.name.clone() } else { c.debuff.name().to_string() },
+            label: if picked.is_none() {
+                t.name.clone()
+            } else {
+                c.debuff.name().to_string()
+            },
             muted: picked.is_none() && !t.is_boss,
             icon: picked.is_some().then(|| (c.debuff.icon_effect_id(), None)),
             uptime_pct: c.uptime_pct,
@@ -79,6 +107,13 @@ pub fn RaidDebuffsView(
         (None, Some(d)) => Some((Some(d), format!("{} on every enemy", d.name()))),
         _ => None,
     };
+    // A picked enemy (alone or with a debuff) narrows the coverage to it
+    let covered: Vec<&RaidDebuffTarget> = rows
+        .iter()
+        .copied()
+        .filter(|t| picked.as_ref().is_none_or(|p| *p == t.name))
+        .collect();
+    let coverage = coverage_rows(&covered, &report.able);
     let (range_start, range_end) = if time_range.end > 0.0 {
         (time_range.start, time_range.end)
     } else {
@@ -146,13 +181,13 @@ pub fn RaidDebuffsView(
                                                     move |_| pick(Some(name.clone()), Some(d), false)
                                                 },
                                                 style: "--pct: {c.uptime_pct}",
-                                                title: "{d.name()} on {t.name}: {formatting::format_pct(c.uptime_pct as f64, european)}\n{sources_text(c)}",
+                                                title: "{d.name()} on {t.name}: {formatting::format_pct(c.uptime_pct as f64, european)}\n{sources_text(c)}{missed_text(t, d, european)}",
                                                 "{c.uptime_pct.round()}%"
                                             }
                                         } else {
                                             td {
                                                 class: "num uptime-cell none",
-                                                title: "{d.name()} was never on {t.name}",
+                                                title: "{d.name()} was never on {t.name}{missed_text(t, d, european)}",
                                                 "–"
                                             }
                                         }
@@ -184,6 +219,7 @@ pub fn RaidDebuffsView(
                         }
                     }
                 }
+                RaidDebuffCoverage { rows: coverage, on: picked.clone(), overview, european }
             }
         }
     }

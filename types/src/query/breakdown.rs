@@ -284,7 +284,11 @@ pub struct RaidOverviewRow {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub faction: Option<PvpFaction>,
     pub class_name: Option<String>,
+    /// For display only: may be the name as logged, in the client's language
     pub discipline_name: Option<String>,
+    /// The discipline's GUID: compare by this, not by the (localized) name
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub discipline_id: Option<i64>,
     /// Icon filename (e.g., "assassin.png") - derived from discipline
     pub class_icon: Option<String>,
     /// Role icon filename (e.g., "icon_tank.png") - derived from discipline role
