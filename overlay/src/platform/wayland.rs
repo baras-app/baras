@@ -447,7 +447,7 @@ struct WaylandState {
 
     // Mode tracking for optimization
     click_through: bool,
-    snap_to_grid: bool,
+    snap: super::snap::Snap,
     drag_enabled: bool,
     pending_click: Option<(f32, f32)>,
 
@@ -481,6 +481,11 @@ impl WaylandState {
         self.pointer = Some(pointer);
     }
 
+    /// Global top-left of the bound output; window_x/y are relative to it
+    fn output_origin(&self) -> (i32, i32) {
+        self.bound_output_bounds.map_or((0, 0), |(x, y, _, _)| (x, y))
+    }
+
     /// The pointer is over `edges`: light the grip and match the cursor
     fn hover(&mut self, edges: ResizeEdges) {
         // Mid-resize the grabbed edges hold, wherever the pointer is
@@ -502,7 +507,7 @@ impl WaylandState {
         }
     }
 
-    fn new(width: u32, height: u32, x: i32, y: i32, click_through: bool, snap_to_grid: bool) -> Self {
+    fn new(width: u32, height: u32, x: i32, y: i32, click_through: bool, snap: super::snap::Snap) -> Self {
         let pixel_count = (width * height) as usize;
         Self {
             running: true,
@@ -546,7 +551,7 @@ impl WaylandState {
             position_dirty: false,
             pending_resize: None,
             click_through,
-            snap_to_grid,
+            snap,
             drag_enabled: true,
             pending_click: None,
             pending_output_rebind: None,
@@ -850,7 +855,7 @@ impl OverlayPlatform for WaylandOverlay {
             config.x,
             config.y,
             config.click_through,
-            config.snap_to_grid,
+            super::snap::Snap::new(&config.namespace, config.snap_to_grid),
         );
 
         // Bind globals
@@ -1569,9 +1574,13 @@ impl Dispatch<WlPointer, ()> for WaylandState {
                         state.pending_width = clamped_width;
                         state.pending_height = clamped_height;
                         // Snap only the value applied to the window
-                        state.pending_resize = Some((
-                            super::snap_size_to_grid(clamped_width, state.snap_to_grid),
-                            super::snap_size_to_grid(clamped_height, state.snap_to_grid),
+                        state.pending_resize = Some(state.snap.size(
+                            state.window_x,
+                            state.window_y,
+                            clamped_width,
+                            clamped_height,
+                            state.resize_edges,
+                            state.output_origin(),
                         ));
                     }
 
@@ -1671,13 +1680,12 @@ impl Dispatch<ZwpRelativePointerV1, ()> for WaylandState {
                 state.drag_accum_y += dy;
 
                 // Calculate new window position (relative to current output)
-                let new_x = super::snap_to_grid(
+                let (new_x, new_y) = state.snap.position(
                     state.drag_start_window_x + state.drag_accum_x as i32,
-                    state.snap_to_grid,
-                );
-                let new_y = super::snap_to_grid(
                     state.drag_start_window_y + state.drag_accum_y as i32,
-                    state.snap_to_grid,
+                    state.width,
+                    state.height,
+                    state.output_origin(),
                 );
 
                 // Check if this position would cross into a different monitor

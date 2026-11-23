@@ -315,7 +315,7 @@ pub struct MacOSOverlay {
 
     // Interaction state
     click_through: bool,
-    snap_to_grid: bool,
+    snap: super::snap::Snap,
     drag_enabled: bool,
     is_dragging: bool,
     is_resizing: bool,
@@ -453,7 +453,7 @@ impl OverlayPlatform for MacOSOverlay {
                 pixel_data: vec![0u8; size],
                 bgra_buffer: vec![0u8; size],
                 click_through: config.click_through,
-                snap_to_grid: config.snap_to_grid,
+                snap: super::snap::Snap::new(&config.namespace, config.snap_to_grid),
                 drag_enabled: true,
                 is_dragging: false,
                 is_resizing: false,
@@ -682,10 +682,14 @@ impl OverlayPlatform for MacOSOverlay {
                 if self.is_dragging {
                     let dx = global_x - self.drag_start_x;
                     let dy = self.drag_start_y - global_y; // Flip Y
-                    self.set_position(
-                        super::snap_to_grid(self.drag_start_win_x + dx as i32, self.snap_to_grid),
-                        super::snap_to_grid(self.drag_start_win_y + dy as i32, self.snap_to_grid),
+                    let (x, y) = self.snap.position(
+                        self.drag_start_win_x + dx as i32,
+                        self.drag_start_win_y + dy as i32,
+                        self.width,
+                        self.height,
+                        (0, 0),
                     );
+                    self.set_position(x, y);
                 } else if self.is_resizing {
                     let (dx, dy) = self
                         .resize_edges
@@ -697,8 +701,8 @@ impl OverlayPlatform for MacOSOverlay {
                     let raw_h = (self.pending_height as i32 + dy as i32)
                         .clamp(MIN_OVERLAY_SIZE as i32, MAX_OVERLAY_HEIGHT as i32)
                         as u32;
-                    let snapped_w = super::snap_size_to_grid(raw_w, self.snap_to_grid);
-                    let snapped_h = super::snap_size_to_grid(raw_h, self.snap_to_grid);
+                    let (snapped_w, snapped_h) =
+                        self.snap.size(self.x, self.y, raw_w, raw_h, self.resize_edges, (0, 0));
 
                     if snapped_w != self.width || snapped_h != self.height {
                         self.set_size(snapped_w, snapped_h);

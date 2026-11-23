@@ -71,26 +71,7 @@ pub enum ResizeCursor {
     Diagonal,
 }
 
-/// Snap a value to the nearest grid point; identity when snapping is off.
-#[inline]
-pub fn snap_to_grid(value: i32, snap: bool) -> i32 {
-    if snap {
-        ((value + SNAP_GRID_SIZE / 2) / SNAP_GRID_SIZE) * SNAP_GRID_SIZE
-    } else {
-        value
-    }
-}
-
-/// Snap a size (u32) to the nearest grid point; identity when snapping is off.
-#[inline]
-pub fn snap_size_to_grid(value: u32, snap: bool) -> u32 {
-    if snap {
-        let v = value as i32;
-        ((v + SNAP_GRID_SIZE / 2) / SNAP_GRID_SIZE * SNAP_GRID_SIZE) as u32
-    } else {
-        value
-    }
-}
+pub mod snap;
 
 #[cfg(all(unix, not(target_os = "macos")))]
 pub mod wayland;

@@ -4,7 +4,7 @@
 //! with a high-level rendering API.
 #![allow(clippy::too_many_arguments)]
 
-use crate::platform::{MonitorInfo, NativeOverlay, OverlayConfig, OverlayPlatform, PlatformError};
+use crate::platform::{MonitorInfo, NativeOverlay, OverlayConfig, OverlayPlatform, PlatformError, snap};
 use crate::renderer::Renderer;
 use tiny_skia::Color;
 
@@ -12,15 +12,25 @@ use tiny_skia::Color;
 pub struct OverlayWindow {
     platform: NativeOverlay,
     renderer: Renderer,
+    /// Namespace this window's rect is published under for edge snapping
+    snap_id: String,
+    /// Last rect published, to skip unchanged updates
+    published: Option<(i32, i32, u32, u32)>,
 }
 
 impl OverlayWindow {
     /// Create a new overlay window
     pub fn new(config: OverlayConfig) -> Result<Self, PlatformError> {
+        let snap_id = config.namespace.clone();
         let platform = NativeOverlay::new(config)?;
         let renderer = Renderer::new();
 
-        Ok(Self { platform, renderer })
+        Ok(Self {
+            platform,
+            renderer,
+            snap_id,
+            published: None,
+        })
     }
 
     /// Get the window width
@@ -321,7 +331,13 @@ impl OverlayWindow {
     /// Poll for events (non-blocking)
     /// Returns false if the window should close
     pub fn poll_events(&mut self) -> bool {
-        self.platform.poll_events()
+        let running = self.platform.poll_events();
+        let rect = (self.x(), self.y(), self.width(), self.height());
+        if self.published != Some(rect) {
+            snap::publish(&self.snap_id, rect.0, rect.1, rect.2, rect.3);
+            self.published = Some(rect);
+        }
+        running
     }
 
     /// Check if pointer is in the resize corner
@@ -357,5 +373,11 @@ impl OverlayWindow {
         while self.poll_events() {
             render_callback(self);
         }
+    }
+}
+
+impl Drop for OverlayWindow {
+    fn drop(&mut self) {
+        snap::remove(&self.snap_id);
     }
 }

@@ -290,7 +290,7 @@ pub struct WindowsOverlay {
     bgra_buffer: Vec<u8>, // Pre-allocated buffer for RGBA->BGRA conversion
     content_dirty: bool,  // Track if pixel content changed
     click_through: bool,
-    snap_to_grid: bool,
+    snap: super::snap::Snap,
     position_dirty: bool,
 
     // Interaction state
@@ -644,7 +644,7 @@ impl OverlayPlatform for WindowsOverlay {
             bgra_buffer: vec![0u8; (config.width * config.height * 4) as usize],
             content_dirty: true, // Initial render needed
             click_through: config.click_through,
-            snap_to_grid: config.snap_to_grid,
+            snap: super::snap::Snap::new(&config.namespace, config.snap_to_grid),
             position_dirty: false,
             pointer_x: 0,
             pointer_y: 0,
@@ -929,10 +929,14 @@ impl OverlayPlatform for WindowsOverlay {
                             let _ = GetCursorPos(&mut pt);
                             let dx = pt.x - self.drag_start_screen_x;
                             let dy = pt.y - self.drag_start_screen_y;
-                            self.set_position(
-                                super::snap_to_grid(self.drag_start_win_x + dx, self.snap_to_grid),
-                                super::snap_to_grid(self.drag_start_win_y + dy, self.snap_to_grid),
+                            let (x, y) = self.snap.position(
+                                self.drag_start_win_x + dx,
+                                self.drag_start_win_y + dy,
+                                self.width,
+                                self.height,
+                                (0, 0),
                             );
+                            self.set_position(x, y);
                         } else if self.is_resizing {
                             // Resize uses client coordinates (size changes, position doesn't)
                             let (dx, dy) = self.resize_edges.mask(x - self.resize_start_x, y - self.resize_start_y);
@@ -942,8 +946,8 @@ impl OverlayPlatform for WindowsOverlay {
                             let raw_h = (self.pending_height as i32 + dy)
                                 .max(MIN_OVERLAY_SIZE as i32)
                                 .min(MAX_OVERLAY_HEIGHT as i32) as u32;
-                            let snapped_w = super::snap_size_to_grid(raw_w, self.snap_to_grid);
-                            let snapped_h = super::snap_size_to_grid(raw_h, self.snap_to_grid);
+                            let (snapped_w, snapped_h) =
+                                self.snap.size(self.x, self.y, raw_w, raw_h, self.resize_edges, (0, 0));
 
                             // Live resize - update immediately for visual feedback
                             if snapped_w != self.width || snapped_h != self.height {
