@@ -37,6 +37,13 @@ pub fn rem_px() -> f64 {
         .unwrap_or(16.0)
 }
 
+/// Copy text through the page's navigator (escaped for a JS template literal;
+/// paths can hold backslashes on Windows)
+pub fn copy_to_clipboard(text: &str) {
+    let escaped = text.replace('\\', "\\\\").replace('`', "\\`").replace("${", "\\${");
+    let _ = js_sys::eval(&format!("navigator.clipboard.writeText(`{escaped}`)"));
+}
+
 /// `css_var`, or `fallback` when the property is unset (the `--lt-*` text
 /// colors exist only in the light theme; dark keeps the original hue).
 pub fn css_var_or(name: &str, fallback: &str) -> String {

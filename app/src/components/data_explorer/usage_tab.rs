@@ -6,6 +6,7 @@ use wasm_bindgen::prelude::*;
 use crate::api::{self, AbilityUsageRow, EncounterTimeline, TimeRange};
 use crate::components::ability_icon::AbilityIcon;
 use crate::components::ability_naming::{AbilityNamingPills, DEFENSIVE_ONLY, DefensivePill};
+use crate::components::id_menu::{IdContextMenu, IdMenu};
 use crate::components::mirror_names::{display_id, display_name};
 use crate::types::{SortDirection, UsageSortColumn};
 use crate::utils::{LightTheme, css_var, js_set};
@@ -362,8 +363,10 @@ pub(super) fn UsageTab(
     });
 
     let eu = european;
+    let mut id_menu = use_signal(|| None::<IdMenu>);
 
     rsx! {
+        IdContextMenu { menu: id_menu }
         div { class: "ability-header",
             AbilityNamingPills {}
             DefensivePill {}
@@ -451,6 +454,7 @@ pub(super) fn UsageTab(
                                         }
                                         selected_abilities.set(sel);
                                     },
+                                    oncontextmenu: move |e| id_menu.set(IdMenu::at(&e, [("Copy ability ID", aid)])),
                                     td { class: "ability-name-cell",
                                         span { class: "ability-name-inner",
                                             AbilityIcon { ability_id: display_id(row.ability_id) }

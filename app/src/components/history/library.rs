@@ -61,12 +61,6 @@ fn matches(row: &LibraryRow, tags: &[ContentTag], favorites_only: bool, search: 
     content_ok && (!favorites_only || row.favorite) && search_ok
 }
 
-/// Clipboard via the page's navigator; paths can hold backslashes on Windows
-fn copy_to_clipboard(text: &str) {
-    let escaped = text.replace('\\', "\\\\").replace('`', "\\`").replace("${", "\\${");
-    let _ = js_sys::eval(&format!("navigator.clipboard.writeText(`{escaped}`)"));
-}
-
 /// History missing or out of date: the next scan rewrites it
 /// Totals for the stat cards over the listed rows
 #[derive(Default)]
@@ -560,7 +554,7 @@ pub fn LibraryTab(
                                                 class: "btn btn-xs btn-ghost",
                                                 title: "Copy file path",
                                                 onclick: move |_| {
-                                                    copy_to_clipboard(&copy_path);
+                                                    crate::utils::copy_to_clipboard(&copy_path);
                                                     toast.show("Path copied", ToastSeverity::Success);
                                                 },
                                                 i { class: "fa-solid fa-copy" }

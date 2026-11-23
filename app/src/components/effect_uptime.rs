@@ -12,6 +12,7 @@ use crate::api::{self, EffectUptimeCell, TimeRange};
 use crate::components::ability_icon::AbilityIcon;
 use crate::components::ability_naming::{AbilityNamingPills, DEFENSIVE_ONLY, DefensivePill};
 use crate::components::class_icons::get_class_icon;
+use crate::components::id_menu::{IdContextMenu, IdMenu};
 use crate::components::mirror_names::{display_id, display_name};
 
 #[derive(Clone, Copy, PartialEq)]
@@ -38,6 +39,7 @@ pub fn EffectUptimeView(
     // shown as the target's timeline with that effect emphasised)
     let mut picked_target = use_signal(|| None::<String>);
     let mut picked_effect = use_signal(|| None::<i64>);
+    let mut id_menu = use_signal(|| None::<IdMenu>);
     let selector = selected_source
         .clone()
         .map(|n| selected_source_id.map_or(n, |id| format!("id:{id}")));
@@ -150,6 +152,7 @@ pub fn EffectUptimeView(
 
     rsx! {
         div { class: "uptime-view",
+            IdContextMenu { menu: id_menu }
             div { class: "uptime-toolbar",
                 span { class: "uptime-title", "Effects applied by " {who(&source)} }
                 AbilityNamingPills {}
@@ -196,6 +199,7 @@ pub fn EffectUptimeView(
                             for (id, name, ability, _) in effects.iter().copied().map(|e| (e.0, display_name(e.0, e.1), e.2, e.3)) {
                                 tr {
                                     class: if picked_row == Some(id) { "uptime-row picked" } else { "uptime-row" },
+                                    oncontextmenu: move |e| id_menu.set(IdMenu::at(&e, [("Copy effect ID", id), ("Copy ability ID", ability)])),
                                     td {
                                         class: "name-col",
                                         title: "{name}: show it on every target",

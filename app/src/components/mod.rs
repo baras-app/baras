@@ -31,6 +31,7 @@ pub mod file_open;
 pub mod form_fields;
 pub mod history;
 pub mod hotkey_input;
+pub mod id_menu;
 pub mod mirror_names;
 pub mod modifier_editor;
 pub mod multi_select;
