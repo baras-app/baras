@@ -56,7 +56,8 @@
   --bg-card-header: #23232c;
   --bg-card-input: #17171d;
   --bg-deep: #18181d;
-  --bg-raised: #3a3a3a;
+  /* Same blue-violet hue as the surfaces: a neutral grey reads olive beside them */
+  --bg-raised: #3b3b47;
   --btn-top: rgba(50, 50, 55, 0.9);
   --btn-bottom: rgba(35, 35, 40, 0.95);
   --btn-hover-top: rgba(60, 60, 65, 0.95);
@@ -637,13 +638,16 @@ select optgroup {
   display: inline-flex;
   align-items: center;
   gap: 0.35em;
-  padding: 0.15em 0.7em;
+  padding: 0.3em 0.75em;
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
+  box-shadow: none; /* not the base button shadow: only the picked one lifts */
   color: var(--text-tertiary);
   font: inherit;
   font-size: 0.9em;
+  /* `font: inherit` brings the root's 24px line box, far taller than this text */
+  line-height: 1.25;
   font-weight: 500;
   cursor: pointer;
   transition: background-color var(--transition-fast), color var(--transition-fast),
