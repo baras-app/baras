@@ -4382,7 +4382,7 @@ a.contributor-name:hover {
 }
 
 .effect-editor-panel .form-row label {
-  width: 100px;
+  width: 6.25rem;
   flex-shrink: 0;
 }
 
@@ -4401,7 +4401,7 @@ a.contributor-name:hover {
 
 /* Form field number inputs */
 .effect-editor-panel .form-field input[type="number"] {
-  width: 70px;
+  width: 4.375rem;
   flex: none;
 }
 
@@ -4645,7 +4645,7 @@ a.contributor-name:hover {
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  width: 55px;
+  width: 3.4375rem;
   flex-shrink: 0;
 }
 
@@ -5153,13 +5153,13 @@ a.contributor-name:hover {
 
 /* Fixed control widths. !important so they beat the scoped editor input
    rules (e.g. `.effect-editor-panel .form-field input[type="number"]`) */
-.w-xs { width: 60px !important; }
-.w-sm { width: 80px !important; }
-.w-md { width: 150px !important; }
-.w-lg { width: 200px !important; }
+.w-xs { width: 3.75rem !important; }
+.w-sm { width: 5rem !important; }
+.w-md { width: 9.375rem !important; }
+.w-lg { width: 12.5rem !important; }
 .w-fit { width: fit-content; }
-.min-w-sm { min-width: 80px; }
-.min-w-md { min-width: 150px; }
+.min-w-sm { min-width: 5rem; }
+.min-w-md { min-width: 9.375rem; }
 .shrink-0 { flex-shrink: 0; }
 .flex-fill { flex: 1; min-width: 0; }
 
@@ -5195,7 +5195,7 @@ a.contributor-name:hover {
    The open item's form docks at the right of .editor-layout (its containing
    block) and pushes the list over; narrow windows let it overlay instead. */
 .editor-layout {
-  --editor-drawer-w: clamp(440px, 46vw, 860px);
+  --editor-drawer-w: clamp(27.5rem, 46vw, 53.75rem);
   position: relative;
   /* clip, not hidden: a hidden box can still be scrolled by scrollIntoView,
      which would drag the drawer (positioned against it) up with it */
@@ -5311,13 +5311,13 @@ a.contributor-name:hover {
   padding-left: 0;
 }
 
-@container (min-width: 980px) {
+@container (min-width: 61.25rem) {
   .editor-drawer .edit-grid {
     grid-template-columns: minmax(0, 11fr) minmax(0, 9fr);
   }
 }
 
-@container (max-width: 640px) {
+@container (max-width: 40rem) {
   .trigger-two-col {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -5325,7 +5325,7 @@ a.contributor-name:hover {
 
 /* Below ~1300px the list beside sidebar and drawer gets too thin to read:
    the drawer overlays it instead of pushing */
-@media (max-width: 1300px) {
+@media (max-width: 81.25rem) {
   .editor-layout:has(.editor-drawer) {
     padding-right: 0.75em;
   }
@@ -5613,7 +5613,7 @@ a.contributor-name:hover {
 }
 
 /* Too narrow for six labelled tabs: icon + count, the label in the tooltip */
-@container (max-width: 640px) {
+@container (max-width: 40rem) {
   .boss-views .data-tab {
     flex: 1 1 0;
     min-width: 0;
@@ -5687,7 +5687,7 @@ a.contributor-name:hover {
 }
 
 /* Narrow: the boss name keeps the room, the area name goes */
-@container (max-width: 420px) {
+@container (max-width: 26.25rem) {
   .editor-header-area,
   .editor-header-sep {
     display: none;
@@ -7707,7 +7707,7 @@ a.contributor-name:hover {
 }
 
 /* Narrow drawer: label above, control full width */
-@container (max-width: 520px) {
+@container (max-width: 32.5rem) {
   .field {
     grid-template-columns: minmax(0, 1fr);
     row-gap: 4px;
