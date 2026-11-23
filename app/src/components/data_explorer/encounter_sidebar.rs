@@ -210,18 +210,22 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
                                             collapsed_sections.set(set);
                                         },
                                         i { class: "fa-solid {chevron_class} collapse-icon" }
-                                        span { class: "section-area", title: "{area_name}", "{area_name}" }
-                                        if let Some(diff) = difficulty {
-                                            span { class: "section-difficulty", title: "{diff}", " • {baras_types::history::short_difficulty(&diff)}" }
-                                        }
-                                        if let Some(secs) = crate::components::encounter_types::time_in_instance(area_encounters) {
-                                            span { class: "section-difficulty", title: "Time in this instance",
-                                                " • "
-                                                i { class: "fa-regular fa-clock" }
-                                                " {formatting::format_duration(secs)}"
+                                        // Name on its own line so the meta and button never squeeze it
+                                        div { class: "section-lines",
+                                            span { class: "section-area", title: "{area_name}", "{area_name}" }
+                                            div { class: "section-meta",
+                                                if let Some(diff) = difficulty {
+                                                    span { class: "section-difficulty", title: "{diff}", "{baras_types::history::short_difficulty(&diff)} • " }
+                                                }
+                                                if let Some(secs) = crate::components::encounter_types::time_in_instance(area_encounters) {
+                                                    span { class: "section-difficulty", title: "Time in this instance",
+                                                        i { class: "fa-regular fa-clock" }
+                                                        " {formatting::format_duration(secs)}"
+                                                    }
+                                                }
+                                                span { class: "section-count", " ({area_encounters.len()})" }
                                             }
                                         }
-                                        span { class: "section-count", " ({area_encounters.len()})" }
                                         if let Some(link) = run_link {
                                             button {
                                                 class: "section-run-link",
