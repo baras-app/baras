@@ -1,6 +1,6 @@
 //! Challenge overlay
 
-use crate::appearance::{default_bar_gap, default_font_color, unmigrated_bar_gap};
+use crate::appearance::{default_font_color, unmigrated_bar_gap};
 use crate::serde_defaults::{default_scaling_factor, default_true};
 use crate::{Color, overlay_colors};
 use serde::{Deserialize, Serialize};
@@ -111,7 +111,7 @@ impl Default for ChallengeOverlayConfig {
             font_scale: 1.0,
             dynamic_background: false,
             bar_gradient: true,
-            bar_gap: default_bar_gap(),
+            bar_gap: 4.0,
             legacy_bar_spacing_ratio: None,
             visible_challenges: 0,
             stack_from_end: false,
