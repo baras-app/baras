@@ -1174,7 +1174,8 @@
   max-width: 10.875rem;
 }
 
-.overview-table .name-text {
+.overview-table .name-text,
+.threat-table .name-text {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1190,7 +1191,8 @@
 /* Class icon colors defined in styles.css */
 
 /* Role icons */
-.overview-table .role-icon {
+.overview-table .role-icon,
+.threat-table .role-icon {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
@@ -3011,15 +3013,20 @@
   overflow-x: auto;
 }
 
-.usage-table {
+.usage-table,
+.threat-table {
   width: 100%;
-  /* The 7 number columns plus room for the ability name */
-  min-width: calc(7 * 5.9375rem + 13.75rem);
   border-collapse: collapse;
   table-layout: fixed;
 }
 
-.usage-table thead th {
+/* The 7 number columns plus room for the ability name */
+.usage-table {
+  min-width: calc(7 * 5.9375rem + 13.75rem);
+}
+
+.usage-table thead th,
+.threat-table th {
   position: sticky;
   top: 0;
   z-index: 1;
@@ -3045,13 +3052,15 @@
   color: var(--text-primary);
 }
 
-.usage-table tbody td {
+.usage-table tbody td,
+.threat-table td {
   padding: 6px 10px;
   border-bottom: 1px solid var(--border-subtle);
   white-space: nowrap;
 }
 
-.usage-table tbody td.num {
+.usage-table tbody td.num,
+.threat-table td.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -3253,7 +3262,8 @@
 .uptime-table th.uptime-target.npc,
 .uptime-table th.uptime-target.absent,
 .uptime-table .uptime-cell.none,
-.uptime-table .name-text.npc {
+.uptime-table .name-text.npc,
+.threat-table .name-text.npc {
   color: var(--text-muted);
 }
 
@@ -3454,6 +3464,7 @@
 
 .effect-table-wrapper,
 .usage-table-container,
+.threat-table-box,
 .log-table-container,
 .entity-list {
   background: var(--well-bg);
@@ -3478,6 +3489,7 @@
 
 .ability-table th,
 .usage-table thead th,
+.threat-table th,
 .effect-table th,
 .log-header {
   background: var(--bg-dark);
@@ -3498,12 +3510,14 @@
 
 .ability-table td,
 .usage-table tbody td,
+.threat-table td,
 .effect-table td {
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .ability-table tbody tr:hover,
 .usage-table tbody tr:hover,
+.threat-table tbody tr:hover,
 .effect-table tbody tr:hover,
 .log-row:hover,
 .overview-table tbody tr:hover,
@@ -3513,6 +3527,7 @@
 
 .ability-table tbody tr:last-child td,
 .usage-table tbody tr:last-child td,
+.threat-table tbody tr:last-child td,
 .effect-table tbody tr:last-child td {
   border-bottom: none;
 }
@@ -3650,4 +3665,208 @@
   inset: 0;
   visibility: hidden;
   pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Aggro tab
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.threat-view {
+  overflow-y: auto;
+}
+
+.aggro-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  background: var(--c, rgba(var(--fg-rgb), 0.4));
+}
+
+/* Holder columns are not clickable; the rows are */
+.aggro-table th.uptime-target {
+  cursor: default;
+}
+
+.aggro-table th.uptime-target:hover {
+  color: inherit;
+}
+
+.aggro-table .uptime-row {
+  cursor: pointer;
+}
+
+.aggro-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 14px;
+  margin-bottom: 2px;
+  color: var(--text-secondary);
+}
+
+.aggro-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+}
+
+button.aggro-key {
+  cursor: pointer;
+}
+
+button.aggro-key:hover {
+  color: var(--text-primary);
+}
+
+.aggro-key.dim,
+.aggro-timeline .uptime-bar.dim {
+  opacity: 0.15;
+}
+
+/* Lanes have a strip above the bar for the taunt pins */
+.aggro-timeline .uptime-lane {
+  grid-template-columns: minmax(8em, 14em) minmax(0, 1fr);
+}
+
+.aggro-timeline .uptime-lane-label .role-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.aggro-timeline .uptime-lane-label .class-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.aggro-timeline .uptime-lane:not(.uptime-axis) .uptime-lane-track {
+  height: 24px;
+  background: linear-gradient(transparent 9px, rgba(var(--fg-rgb), 0.04) 9px);
+}
+
+.aggro-timeline .uptime-bar {
+  top: 9px;
+  background: var(--c, rgba(var(--fg-rgb), 0.4));
+}
+
+.aggro-timeline .uptime-grid {
+  top: 9px;
+}
+
+/* The stint hovered in the swap table, outlined over its lane's bar */
+.aggro-highlight {
+  position: absolute;
+  top: 7px;
+  bottom: -2px;
+  z-index: 2;
+  min-width: 3px;
+  box-sizing: border-box;
+  border: 2px solid var(--text-primary);
+  background: rgba(var(--fg-rgb), 0.18);
+  pointer-events: none;
+}
+
+/* A taunt: a filled pin pointing at the bar */
+.aggro-mark {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 9px;
+  height: 7px;
+  background: var(--text-primary);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+.uptime-lane-track .aggro-mark {
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  transform: translateX(-50%);
+}
+
+.uptime-lane-track .aggro-mark:hover {
+  background: var(--swtor-blue);
+}
+
+.aggro-key-marks {
+  margin-left: 10px;
+}
+
+.threat-lower {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* The enemy's name row sticks under the header (its height) while that
+   enemy's rows scroll */
+.swap-table tr.swap-enemy td {
+  position: sticky;
+  top: 2rem;
+  z-index: 1;
+  background: var(--bg-dark);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.swap-table tbody:last-child tr:last-child td {
+  border-bottom: none;
+}
+
+.threat-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.threat-table-box {
+  overflow: auto;
+  max-height: 24em;
+}
+
+/* The Ability Usage table's look (shared rules above); the tab's content
+   area centres text, so text cells align left here */
+.threat-table td {
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.threat-table .name-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+
+.threat-table .threat-time { width: 5.5rem; }
+.threat-table th.threat-name { width: 18rem; }
+
+.threat-table td.threat-result {
+  white-space: normal;
+}
+
+.threat-outcome {
+  color: var(--text-muted);
+}
+
+.threat-outcome.took {
+  color: var(--text-primary);
+}
+
+.threat-drop .threat-outcome {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.threat-table .class-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }

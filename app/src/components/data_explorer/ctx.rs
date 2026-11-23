@@ -69,7 +69,7 @@ pub(super) struct ExplorerCtx {
     pub usage_sort_column: Signal<UsageSortColumn>,
     pub usage_sort_direction: Signal<SortDirection>,
     pub usage_selected_abilities: Signal<Vec<(i64, &'static str)>>,
-    /// Raid Debuffs tab controls
+    /// Raid Debuffs and Aggro tab controls
     pub enemy_views: Signal<EnemyViewsState>,
     pub overview_sort_col: Signal<OverviewColumn>,
     pub overview_layouts: Memo<OverviewLayouts>,

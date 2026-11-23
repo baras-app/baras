@@ -15,7 +15,7 @@ use baras_core::history::{now_iso, start_ms_of};
 use baras_core::query::{
     AbilityBreakdown, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow, CombatLogSortColumn,
     DamageTakenSummary, DataTab, EffectChartData, EffectUptimeCell, EffectWindow, EncounterTimeline, EntityBreakdown,
-    GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath, RaidDebuffTarget, RaidOverviewRow, SortDirection, TimeRange,
+    GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath, RaidDebuffTarget, ThreatReport, RaidOverviewRow, SortDirection, TimeRange,
     TimeSeriesPoint,
 };
 use baras_types::history::{
@@ -1235,6 +1235,12 @@ impl ServiceHandle {
             .query()
             .raid_debuffs(time_range.as_ref())
             .await
+    }
+
+    /// Enemy and player targets over the whole fight, taunts and threat drops (Aggro tab).
+    pub async fn query_threat_report(&self, encounter_idx: Option<u32>) -> Result<ThreatReport, String> {
+        self.register_encounter(encounter_idx).await?;
+        self.shared.query_context.query().await.query().threat_report().await
     }
 
     /// Point the query context at an encounter's parquet file, or at the live

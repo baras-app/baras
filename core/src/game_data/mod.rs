@@ -15,11 +15,12 @@ mod mirror_abilities;
 mod off_gcd_abilities;
 mod patches;
 mod pvp_instance;
-mod raid_debuffs;
 mod raid_bosses;
+mod raid_debuffs;
 mod raids;
 mod shield_absorbs;
 mod shield_effects;
+mod taunt_effects;
 mod world_bosses;
 
 pub use alacrity_buffs::{ALACRITY_BUFFS, AlacrityBuff};
@@ -45,5 +46,6 @@ pub use raid_debuffs::RAID_DEBUFFS;
 pub use raids::{OPERATION_AREAS, get_operation_name, is_operation, is_world_boss};
 pub use shield_absorbs::{SHIELD_INFO, ShieldInfo, get_shield_info, is_known_shield};
 pub use shield_effects::SHIELD_EFFECT_IDS;
+pub use taunt_effects::TAUNT_EFFECTS;
 
 pub use patches::{game_version_at, server_name};

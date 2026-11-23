@@ -21,6 +21,7 @@ fn main() {
     generate_mirror_abilities_map(&out_dir, &mirrors);
     generate_defensive_cooldown_sets(&out_dir, &mirrors);
     generate_raid_debuffs_map(&out_dir);
+    generate_taunt_effects_map(&out_dir);
 
     println!("cargo:rerun-if-changed=data/off_gcd_extra.txt");
     println!("cargo:rerun-if-changed=data/defensive_cooldowns.txt");
@@ -425,5 +426,47 @@ fn generate_raid_debuffs_map(out_dir: &str) {
     for (id, variant) in &entries {
         builder.entry(*id, format!("RaidDebuff::{variant}"));
     }
-    writeln!(file, "pub static RAID_DEBUFFS: phf::Map<i64, RaidDebuff> = {};", builder.build()).unwrap();
+    writeln!(
+        file,
+        "pub static RAID_DEBUFFS: phf::Map<i64, RaidDebuff> = {};",
+        builder.build()
+    )
+    .unwrap();
+}
+
+/// Taunt effects (`debuff.taunt` tag) → whether the ability taunts an area.
+/// The exported data has no area flag, so the area taunts are listed by game key.
+fn generate_taunt_effects_map(out_dir: &str) {
+    const AREA_TAUNTS: [&str; 5] = [
+        "mass_mind_control",
+        "threatening_scream",
+        "challenging_call",
+        "sonic_missile",
+        "sonic_round",
+    ];
+    let csv = fs::read_to_string("data/effect_data.csv").expect("failed to read effect_data.csv");
+    let mut entries: BTreeMap<i64, bool> = BTreeMap::new();
+    for line in csv.trim_start_matches('\u{feff}').lines().skip(1) {
+        let f = split_csv_line(line);
+        if f.len() < 10 || !f[9].split(';').any(|t| t == "debuff.taunt") {
+            continue;
+        }
+        if let Ok(id) = f[0].trim().parse::<i64>() {
+            let area = f[2].rsplit('.').next().is_some_and(|key| AREA_TAUNTS.contains(&key));
+            *entries.entry(id).or_default() |= area;
+        }
+    }
+    // Queries match these ids with `IN (...)`, which is a syntax error empty
+    assert!(!entries.is_empty(), "no debuff.taunt effects in effect_data.csv");
+    let mut file = BufWriter::new(fs::File::create(Path::new(out_dir).join("taunt_effects.rs")).unwrap());
+    let mut builder = phf_codegen::Map::new();
+    for (id, area) in &entries {
+        builder.entry(*id, area.to_string());
+    }
+    writeln!(
+        file,
+        "pub static TAUNT_EFFECTS: phf::Map<i64, bool> = {};",
+        builder.build()
+    )
+    .unwrap();
 }

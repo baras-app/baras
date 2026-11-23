@@ -1355,7 +1355,7 @@ pub use baras_types::{
     AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow,
     CombatLogSortColumn, DamageTakenSummary, DataTab, DeathRecap, DeathRecapEventKind, EffectChartData,
     EffectUptimeCell, EffectWindow, EncounterRatings, EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries,
-    GroupedEntityNames, HpPoint, NpcHealthRow, NpcSpawn, PhaseSegment, PlayerDeath, PvpFaction, RaidDebuffCell, RaidDebuffTarget,
+    GroupedEntityNames, HpPoint, NpcHealthRow, NpcSpawn, PhaseSegment, PlayerDeath, PvpFaction, RaidDebuffCell, RaidDebuffTarget, ThreatReport,
     RaidOverviewRow,
     RotationAnalysis, SortDirection, TimeRange, TimeSeriesPoint,
 };
@@ -1501,6 +1501,18 @@ pub async fn query_raid_debuffs(encounter_idx: Option<u32>, time_range: Option<&
     let tr = time_range.and_then(|tr| serde_wasm_bindgen::to_value(tr).ok());
     js_set(&obj, "timeRange", &tr.unwrap_or(JsValue::NULL));
     from_js(invoke_query("query_raid_debuffs", obj.into()).await)
+}
+
+/// Enemy and player targets over the whole fight, taunts and threat drops;
+/// `ThreatReport::clipped` narrows it to a range.
+pub async fn query_threat_report(encounter_idx: Option<u32>) -> Option<ThreatReport> {
+    let obj = js_sys::Object::new();
+    js_set(
+        &obj,
+        "encounterIdx",
+        &encounter_idx.map_or(JsValue::NULL, |i| JsValue::from_f64(i as f64)),
+    );
+    from_js(invoke_query("query_threat_report", obj.into()).await)
 }
 
 /// Every player's metric over time, for the Overview's group chart.
