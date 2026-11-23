@@ -157,9 +157,6 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                 encounter_idx,
                                 player,
                                 european: eu,
-                                time_range: ctx.time_range,
-                                view_mode: ctx.view_mode,
-                                combat_log_state: ctx.combat_log_state,
                                 chart: overview_view::overview_chart(ctx, eu),
                             }
                         } else {
