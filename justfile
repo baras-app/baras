@@ -120,7 +120,7 @@ sync-defs:
 build-validate-windows:
   cross build --release -p baras-validate --target x86_64-pc-windows-gnu
 
-# Run the SWTOR ability extractor and copy ability_data.csv into core/data (env: SWTOR_EXTRACTOR, SWTOR_ASSETS; args pass to main.py, e.g. --no-npc)
+# Run the SWTOR ability extractor and copy ability_data.csv + effect_data.csv into core/data (env: SWTOR_EXTRACTOR, SWTOR_ASSETS; args pass to main.py, e.g. --no-npc)
 extract-abilities *args:
   #!/usr/bin/env bash
   set -euo pipefail
@@ -130,5 +130,7 @@ extract-abilities *args:
   [[ -x "$PY" ]] || { echo "No venv at $EXTRACTOR/.venv (python -m venv .venv && .venv/bin/pip install zstandard)"; exit 1; }
   [[ -d "$ASSETS" ]] || { echo "Assets folder not found: $ASSETS"; exit 1; }
   (cd "$EXTRACTOR" && "$PY" main.py --assets "$ASSETS" {{args}})
-  cp "$EXTRACTOR/data/extracted/ability_data.csv" "{{justfile_directory()}}/core/data/ability_data.csv"
-  echo "✓ core/data/ability_data.csv updated ($(($(wc -l < core/data/ability_data.csv) - 1)) rows)"
+  for f in ability_data effect_data; do
+    cp "$EXTRACTOR/data/extracted/$f.csv" "{{justfile_directory()}}/core/data/$f.csv"
+    echo "✓ core/data/$f.csv updated ($(($(wc -l < "{{justfile_directory()}}/core/data/$f.csv") - 1)) rows)"
+  done
