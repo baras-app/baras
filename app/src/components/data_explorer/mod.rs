@@ -8,6 +8,7 @@ use dioxus::prelude::*;
 use crate::api::{PlayerDeath, TimeRange};
 use crate::components::combat_log::CombatLog;
 use crate::components::death_recap_drawer::DeathRecapDrawer;
+use crate::components::enemy_views::live_notice;
 use crate::components::mirror_names;
 use crate::components::phase_timeline::PhaseTimelineFilter;
 use crate::components::raid_debuffs::RaidDebuffsView;
@@ -166,11 +167,15 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                     } else if matches!(shown, ViewMode::Detailed(_) | ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts | ViewMode::Uptime) {
                         // Two-column layout (Detailed breakdown, Rotation, Usage, or Charts)
                         {detailed_view(ctx, shown, eu, on_source_click)}
+                    } else if matches!(shown, ViewMode::RaidDebuffs) && (ctx.live_query_active)() {
+                        // It reads the whole fight: a live one has no end yet
+                        {live_notice()}
                     } else if matches!(shown, ViewMode::RaidDebuffs) {
                         RaidDebuffsView {
                             encounter_idx: shown_encounter(),
                             time_range: time_range(),
                             duration_secs: ctx.timeline.read().as_ref().map_or(0.0, |t| t.duration_secs),
+                            state: ctx.enemy_views,
                             european: eu,
                         }
                     }
