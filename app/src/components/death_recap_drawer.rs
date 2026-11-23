@@ -241,6 +241,12 @@ fn RecapBody(recap: DeathRecap, european: bool, roster: Vec<RaidOverviewRow>) ->
                 }
             }
 
+            super::death_recap_effects::RecapDefensives {
+                defensives: r.defensives.clone(),
+                death_time: r.death_time_secs,
+                european: eu,
+            }
+
             // Effects on the player, on the sparkline's time axis
             super::death_recap_effects::RecapEffects {
                 effects: r.effects.clone(),

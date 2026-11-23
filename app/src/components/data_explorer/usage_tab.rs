@@ -5,7 +5,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::api::{self, AbilityUsageRow, EncounterTimeline, TimeRange};
 use crate::components::ability_icon::AbilityIcon;
-use crate::components::ability_naming::AbilityNamingPills;
+use crate::components::ability_naming::{AbilityNamingPills, DEFENSIVE_ONLY, DefensivePill};
 use crate::components::mirror_names::{display_id, display_name};
 use crate::types::{SortDirection, UsageSortColumn};
 use crate::utils::{LightTheme, css_var, js_set};
@@ -294,7 +294,9 @@ pub(super) fn UsageTab(
     let usage_loading = usage_read.is_none(); // None = resource still loading
     let rows: Vec<AbilityUsageRow> = match &*usage_read {
         Some(Some(data)) => {
-            let mut sorted = data.clone();
+            let defensive = DEFENSIVE_ONLY();
+            let mut sorted: Vec<AbilityUsageRow> =
+                data.iter().filter(|r| !defensive || r.is_defensive).cloned().collect();
             for r in &mut sorted {
                 r.ability_name = display_name(r.ability_id, &r.ability_name).into_owned();
             }
@@ -362,7 +364,10 @@ pub(super) fn UsageTab(
     let eu = european;
 
     rsx! {
-        div { class: "ability-header", AbilityNamingPills {} }
+        div { class: "ability-header",
+            AbilityNamingPills {}
+            DefensivePill {}
+        }
         // Ability Usage Table
         div { class: "usage-table-container",
             table { class: "usage-table effect-table",

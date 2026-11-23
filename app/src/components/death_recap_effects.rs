@@ -1,10 +1,12 @@
 //! Death recap: the effects on the player over the recap window, one row per
 //! (effect, source) with a bar on the same time axis as the HP sparkline.
 
-use baras_types::{DeathRecapEffect, formatting};
+use baras_types::{DeathRecapDefensive, DeathRecapEffect, formatting};
 use dioxus::prelude::*;
 
+use super::ability_naming::{DEFENSIVE_ONLY, DefensivePill};
 use super::death_recap_drawer::LedgerIcon;
+use super::mirror_names::display_name;
 
 /// The effect's windows cut at each stack change: (start, end, stacks), the
 /// count only for effects that stack
@@ -37,12 +39,17 @@ pub fn RecapEffects(effects: Vec<DeathRecapEffect>, window_start: f32, death_tim
     let secs = move |s: f32| formatting::format_decimal(s, 1, european);
     let both_sides = effects.iter().any(|e| e.from_npc) && effects.iter().any(|e| !e.from_npc);
     let shown = if both_sides { side() } else { None };
+    let any_defensive = effects.iter().any(|e| e.is_defensive);
+    let defensive = any_defensive && DEFENSIVE_ONLY();
 
     rsx! {
         // A short list keeps its natural height: the minimum would pad it
         div { class: if effects.len() < 4 { "recap-effects-wrap few" } else { "recap-effects-wrap" },
             div { class: "recap-ledger-head",
                 h5 { "Effects on Player" }
+                if any_defensive {
+                    DefensivePill { class: "ml-auto" }
+                }
                 if both_sides {
                     div { class: "filter-pills",
                         for (label, pick) in [("All", None), ("Enemy", Some(true)), ("Friendly", Some(false))] {
@@ -56,7 +63,7 @@ pub fn RecapEffects(effects: Vec<DeathRecapEffect>, window_start: f32, death_tim
                 }
             }
             div { class: "recap-effects",
-                for e in effects.iter().filter(|e| shown.is_none_or(|npc| e.from_npc == npc)) {
+                for e in effects.iter().filter(|e| shown.is_none_or(|npc| e.from_npc == npc) && (!defensive || e.is_defensive)) {
                     {
                         let (first, last) = (e.windows[0], e.windows[e.windows.len() - 1]);
                         let applied = format!("Applied {}s before the death", secs(death_time - first.0));
@@ -97,6 +104,41 @@ pub fn RecapEffects(effects: Vec<DeathRecapEffect>, window_start: f32, death_tim
                                 }
                                 span { class: "effect-when", "{when}" }
                             }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// The defensive cooldowns pressed before the death, latest first, each with
+/// how long before it. Says so when none was pressed.
+#[component]
+pub fn RecapDefensives(defensives: Vec<DeathRecapDefensive>, death_time: f32, european: bool) -> Element {
+    rsx! {
+        div { class: "recap-defensives",
+            h5 { "Defensives Used" }
+            if defensives.is_empty() {
+                span { class: "recap-defensives-none", "None pressed before this death" }
+            }
+            for d in defensives.iter() {
+                {
+                    let before = (death_time - d.last_used_secs).max(0.0);
+                    let ago = if before < 60.0 {
+                        format!("{}s", formatting::format_decimal(before, 1, european))
+                    } else {
+                        formatting::format_duration_f32(before)
+                    };
+                    let name = display_name(d.ability_id, &d.ability_name);
+                    rsx! {
+                        span {
+                            key: "{d.ability_id}",
+                            class: "recap-defensive",
+                            title: "{name}: last pressed {ago} before the death · {d.uses} in the fight",
+                            LedgerIcon { ability_id: d.ability_id, icon: "fa-solid fa-shield-halved", icon_class: "ledger-icon" }
+                            span { class: "recap-defensive-name", "{name}" }
+                            span { class: "recap-defensive-ago", "-{ago}" }
                         }
                     }
                 }

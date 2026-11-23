@@ -8,7 +8,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::api::{self, EffectChartData, EffectWindow, HpPoint, TimeRange, TimeSeriesPoint};
 use crate::components::ability_icon::AbilityIcon;
-use crate::components::ability_naming::AbilityNamingPills;
+use crate::components::ability_naming::{AbilityNamingPills, DEFENSIVE_ONLY, DefensivePill};
 use crate::components::echarts::{
     TOOLTIP_ROWS_JS, activate_brush, apply_brush_config, dispose_chart, get_chart, init_chart, next_animation_frame,
     register_brush_handler, set_chart_option,
@@ -1140,7 +1140,13 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
     let sorted_effects = {
         let active = active_effects.read();
         let passive = passive_effects.read();
-        let mut all: Vec<EffectChartData> = active.iter().chain(passive.iter()).cloned().collect();
+        let defensive = DEFENSIVE_ONLY();
+        let mut all: Vec<EffectChartData> = active
+            .iter()
+            .chain(passive.iter())
+            .filter(|e| !defensive || e.is_defensive)
+            .cloned()
+            .collect();
         // Named per the naming preference before sorting, so the order follows what is shown
         for e in &mut all {
             e.effect_name = display_name(e.effect_id, &e.effect_name).into_owned();
@@ -1264,7 +1270,11 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
 
                 // Combined effects table (active abilities + passive effects)
                 div { class: "effects-section",
-                    h4 { class: "flex items-center", "Effects" AbilityNamingPills {} }
+                    h4 { class: "flex items-center",
+                        "Effects"
+                        AbilityNamingPills {}
+                        DefensivePill { compact: true }
+                    }
                     if sorted_effects.is_empty() && effects_loading() {
                         div { class: "effects-loading", i { class: "fa-solid fa-spinner fa-spin" } }
                     } else if sorted_effects.is_empty() {
