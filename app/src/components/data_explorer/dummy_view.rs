@@ -116,9 +116,12 @@ pub(super) fn DummyParseView(
     });
     // Index into `gcd.presses`, shared by the timeline and the press table
     let mut selected = use_signal(|| None::<usize>);
+    // Ability hovered in the by-ability table: its presses stand out on the timeline
+    let mut hovered = use_signal(|| None::<i64>);
     use_effect(move || {
         key();
         selected.set(None);
+        hovered.set(None);
     });
     // Picked on the timeline: bring its row into view
     use_effect(move || {
@@ -214,7 +217,7 @@ pub(super) fn DummyParseView(
                     }
                     }
                     if !gcd.presses.is_empty() {
-                        PressTimeline { parse: resource, selected, european: eu }
+                        PressTimeline { parse: resource, selected, hovered, european: eu }
                     }
                 }
             }
@@ -278,6 +281,11 @@ pub(super) fn DummyParseView(
                                 tbody {
                                     for a in gcd.abilities.iter() {
                                         tr { key: "{a.ability_id}",
+                                            onmouseenter: {
+                                                let id = a.ability_id;
+                                                move |_| hovered.set(Some(id))
+                                            },
+                                            onmouseleave: move |_| hovered.set(None),
                                             {ability_cell(a.ability_id, &a.ability_name)}
                                             td { class: "num", "{a.uses}" }
                                             td { class: "num", {secs(a.median_secs)} }
