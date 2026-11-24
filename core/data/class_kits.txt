@@ -50,19 +50,16 @@
 -                : 3599964278095872                : stacks                # Fulminating Current (Madness)
 # Force Surge (Corruption) is an override
 
-# ─── Assassin / Shadow (draft: seeded from DCD + proc lists) ─────────────────────────────
-3421834804461568 : 3421834804461568                : buff cd               # Deflection
-954616611078144  : 954616611078144                 : buff cd               # Force Shroud
-2271329029980160 : 2271329029980160 2271329029980472: buff cd               # Force Cloak, its Force Shroud
+# ─── Assassin / Shadow (reviewed) ─────────────────────────────────────────
+# Deflection, Force Shroud (cooldown -1 s per shield/parry/deflect) and Overcharge Saber are
+# legacy overrides; Dark Ward (Darkness) and the Bloodletting proc ICD (Hatred) are overrides
+# Deception: not reviewed yet
+2271329029980160 : -                               : cd                    # Force Cloak
 2522790775226368 : 2522790775226902                : buff cd               # Mass Mind Control: Nefarious Methods
-975430022594560  : 975430022594560                 : buff cd               # Overcharge Saber
--                : 3420361630679040                : buff                  # Raze (Hatred)
--                : 3430828465979392                : buff                  # Bloodletting (Hatred)
--                : 1776084941012992                : buff                  # Induction (Deception)
--                : 949110463004672                 : buff                  # Duplicity (Deception)
--                : 948659491438915                 : buff                  # Static Charge (Deception)
--                : 2312741104648192                : buff                  # Harnessed Darkness (Darkness)
--                : 3428663802462208                : buff                  # Energize (Darkness)
+-                : 2522790775226910                : buff @Hatred          # Mass Mind Control: Formless Phantom (15 s 60% AoE DR)
+3584300532367360 : -                               : cd                    # Phantom Stride
+-                : 4490409782804480                : buff                  # Obfuscating Speed
+-                : 976061382787072                 : buff @Darkness        # Shroud of Darkness
 
 # ─── Juggernaut / Guardian (draft: seeded from DCD + proc lists) ─────────────────────────
 807793154064384  : 807793154064384                 : buff cd               # Saber Ward

@@ -94,3 +94,15 @@ duration_secs = 6.0
 is_affected_by_alacrity = false
 color = [160, 160, 160, 255]
 display_targets = ["personal_buffs"]
+
+# Guard is up (the tank's own Guard effect), one entry for every tank
+[[effect]]
+id = "guard_buff"
+name = "Guard"
+enabled = false
+trigger = { type = "effect_applied", effects = [1780023426023424, 1780006246154240, 1780032015958016, 1780044900859904, 1776136480620544, 1775934617157632], source = "local_player", target = "local_player" }
+is_affected_by_alacrity = false
+color = [160, 160, 160, 255]
+display_targets = ["personal_buffs"]
+track_uptime = true
+disciplines = ["Darkness", "Defense", "Immortal", "KineticCombat", "ShieldSpecialist", "ShieldTech"]

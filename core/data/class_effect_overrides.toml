@@ -131,6 +131,7 @@ duration_secs = 3.0
 is_affected_by_alacrity = false
 color = [140, 71, 11, 255]
 
+# Every shield, parry or deflect takes 1 s off the cooldown, at most once per second
 [[effect]]
 id = "force_shroud_cd"
 name = "Force Shroud / Resilience Cooldown"
@@ -141,6 +142,9 @@ is_affected_by_alacrity = false
 cooldown_ready_secs = 10
 color = [140, 71, 11, 255]
 display_targets = ["cooldowns"]
+modifiers = [
+  { adjust_duration_secs = -1.0, icd_secs = 1.0, trigger = { type = "damage_taken", mitigation = ["shield", "parry", "deflect"] } },
+]
 
 [[effect]]
 id = "overcharge_saber_buff"
@@ -156,10 +160,45 @@ name = "Overcharge Saber / Battle Readiness Cooldown"
 display_text = "Overcharge Saber"
 trigger = { type = "effect_applied", effects = [975430022594560, 979849543942144], source = "local_player", target = "any" }
 duration_secs = 120.0
-is_affected_by_alacrity = false
+is_affected_by_alacrity = true
 cooldown_ready_secs = 10
 color = [123, 31, 194, 255]
 display_targets = ["cooldowns"]
+
+# Dark Ward charges: every charge change (spent or gained) adds 1 s
+[[effect]]
+id = "dark_ward_buff"
+name = "Dark Ward / Kinetic Ward"
+enabled = false
+trigger = { type = "effect_applied", effects = [975760735076352, 980828796485632], source = "local_player", target = "any" }
+refresh_abilities = [975760735076352, 980828796485632]
+duration_secs = 20.0
+is_affected_by_alacrity = false
+color = [80, 200, 80, 255]
+display_targets = ["personal_buffs"]
+track_uptime = true
+stack_priority = true
+show_single_stack = true
+disciplines = ["Darkness", "KineticCombat"]
+modifiers = [
+  { adjust_duration_secs = 1.0, trigger = { type = "self_charges_changed", direction = "neutral" } },
+  { adjust_duration_secs = 1.0, trigger = { type = "self_charges_changed", direction = "increased" } },
+]
+
+# Bloodletting procs at random but at most once per 15 s ICD (alacrity shortens it: most
+# gaps under 15 s in logs are 13-14 s); the timer is the earliest the next proc can land
+[[effect]]
+id = "bloodletting_icd"
+name = "Bloodletting / Crush Spirit ICD"
+display_text = "Bloodletting"
+enabled = false
+trigger = { type = "effect_applied", effects = [3430828465979392, 3600552688615424], source = "local_player", target = "any" }
+duration_secs = 15.0
+ignore_effect_removed = true
+is_affected_by_alacrity = true
+color = [140, 30, 30, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Hatred", "Serenity"]
 
 # ═══ bounty_hunter_trooper ═══════════════════════════════════════════════════════════
 
@@ -290,6 +329,18 @@ duration_secs = 6.0
 is_affected_by_alacrity = false
 color = [160, 160, 160, 255]
 display_targets = ["personal_buffs"]
+
+# Guard is up (the tank's own Guard effect), one entry for every tank
+[[effect]]
+id = "guard_buff"
+name = "Guard"
+enabled = false
+trigger = { type = "effect_applied", effects = [1780023426023424, 1780006246154240, 1780032015958016, 1780044900859904, 1776136480620544, 1775934617157632], source = "local_player", target = "local_player" }
+is_affected_by_alacrity = false
+color = [160, 160, 160, 255]
+display_targets = ["personal_buffs"]
+track_uptime = true
+disciplines = ["Darkness", "Defense", "Immortal", "KineticCombat", "ShieldSpecialist", "ShieldTech"]
 
 # ═══ inquisitor_consular ═══════════════════════════════════════════════════════════
 
