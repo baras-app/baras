@@ -69,19 +69,11 @@
 3602532668538880 : -                               : cd                    # Mad Dash
 3436141340524544 : -                               : cd                    # Threatening Scream
 
-# ─── Marauder / Sentinel (draft: seeded from DCD + proc lists) ───────────────────────────
-2473484550668288 : 2473484550668288                : buff cd               # Cloak of Pain
+# ─── Marauder / Sentinel (reviewed) ───────────────────────────────────────
+# Cloak of Pain (refills on damage taken, 30 s cap) and Saber Ward (180 s) are overrides
 3454145843429376 : 3454145843429376                : buff cd               # Force Camouflage
 2517052698918912 : 2517052698918912                : buff cd               # Undying Rage
 2516812180750336 : 2516812180750336                : buff cd               # Predation
--                : 2515454971084800                : buff                  # Fury
--                : 4056205769048064                : buff                  # Berserk (Annihilation)
--                : 1259666663276544                : buff                  # Deadly Saber (Annihilation)
--                : 4056201474080768                : buff                  # Berserk (Carnage)
--                : 3915257827295232                : buff                  # Ferocity (Carnage)
--                : 1259670958243840                : buff                  # Massacre (Carnage)
--                : 807724434587648                 : buff                  # Berserk (Fury)
--                : 3461189589794816                : buff                  # Destruction (Fury)
 
 # ─── Mercenary / Commando (reviewed) ──────────────────────────────────────
 814218425139200  : 814218425139459                 : buff cd @Arsenal @Bodyguard @InnovativeOrdnance  # Energy Shield (12 s; cooldown -3 s per hit taken, 1.5 s ICD): overrides

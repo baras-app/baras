@@ -24,13 +24,13 @@ duration_secs = 12.0
 is_affected_by_alacrity = false
 color = [52, 107, 201, 255]
 
-# Marauder/Sentinel value not reviewed yet; Juggernaut has saber_ward_jugg_cd
+# 180 s on Marauder/Sentinel (Carnage never recasts it within 220 s); Juggernaut has its own
 [[effect]]
 id = "saber_ward_cd"
 name = "Saber Ward Cooldown (Marauder)"
 display_text = "Saber Ward"
 trigger = { type = "effect_applied", effects = [807793154064384, 812169725739008], source = "local_player", target = "any" }
-duration_secs = 90.0
+duration_secs = 180.0
 is_affected_by_alacrity = false
 cooldown_ready_secs = 10
 color = [52, 107, 201, 255]

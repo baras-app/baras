@@ -4,6 +4,78 @@
 version = 1
 
 [[effect]]
+id = "force_camouflage_buff"
+name = "Force Camouflage"
+enabled = false
+trigger = { type = "effect_applied", effects = [3454145843429376, 3488183459250176], source = "local_player", target = "any" }
+duration_secs = 6.0
+is_affected_by_alacrity = false
+color = [230, 110, 40, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Annihilation", "Carnage", "Combat", "Concentration", "Fury", "Watchman"]
+
+[[effect]]
+id = "force_camouflage_cd"
+name = "Force Camouflage Cooldown"
+enabled = false
+trigger = { type = "ability_cast", abilities = [3454145843429376, 3488183459250176], source = "local_player", target = "any" }
+duration_secs = 45.0
+is_affected_by_alacrity = false
+color = [230, 110, 40, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Annihilation", "Carnage", "Combat", "Concentration", "Fury", "Watchman"]
+display_text = "Force Camouflage"
+cooldown_ready_secs = 10.0
+
+[[effect]]
+id = "undying_rage_buff"
+name = "Undying Rage / Guarded by the Force"
+enabled = false
+trigger = { type = "effect_applied", effects = [2517052698918912, 2528571801206784], source = "local_player", target = "any" }
+duration_secs = 6.0
+is_affected_by_alacrity = false
+color = [230, 110, 40, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Annihilation", "Carnage", "Combat", "Concentration", "Fury", "Watchman"]
+
+[[effect]]
+id = "undying_rage_cd"
+name = "Undying Rage / Guarded by the Force Cooldown"
+enabled = false
+trigger = { type = "ability_cast", abilities = [2517052698918912, 2528571801206784], source = "local_player", target = "any" }
+duration_secs = 150.0
+is_affected_by_alacrity = false
+color = [230, 110, 40, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Annihilation", "Carnage", "Combat", "Concentration", "Fury", "Watchman"]
+display_text = "Undying Rage"
+cooldown_ready_secs = 10.0
+
+[[effect]]
+id = "predation_buff"
+name = "Predation / Transcendence"
+enabled = false
+trigger = { type = "effect_applied", effects = [2516812180750336, 2528567506239488], source = "local_player", target = "any" }
+duration_secs = 10.0
+is_affected_by_alacrity = false
+color = [230, 110, 40, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Annihilation", "Carnage", "Combat", "Concentration", "Fury", "Watchman"]
+
+[[effect]]
+id = "predation_cd"
+name = "Predation / Transcendence Cooldown"
+enabled = false
+trigger = { type = "ability_cast", abilities = [2516812180750336, 2528567506239488], source = "local_player", target = "any" }
+duration_secs = 30.0
+is_affected_by_alacrity = false
+color = [230, 110, 40, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Annihilation", "Carnage", "Combat", "Concentration", "Fury", "Watchman"]
+display_text = "Predation"
+cooldown_ready_secs = 10.0
+
+[[effect]]
 id = "force_rend"
 name = "Force Rend"
 duration_secs = 9.0
@@ -45,3 +117,37 @@ color = [75, 175, 251, 255]
 display_targets = ["boss_health", "dot_tracker"]
 disciplines = ["Annihilation", "Watchman"]
 trigger = { type = "effect_applied", effects = [1259666663276824, 1261719657644297], source = "local_player", target = "boss" }
+
+# Every hit taken refills it to 10 s (1 s ICD), capped at 30 s from application (measured:
+# it drops 10 s after the last hit, or ~9 s when that hit fell inside the ICD)
+[[effect]]
+id = "cloak_of_pain_buff"
+name = "Cloak of Pain / Rebuke"
+enabled = false
+trigger = { type = "effect_applied", effects = [2473484550668288, 2480816059842560], source = "local_player", target = "any" }
+duration_secs = 10.0
+is_affected_by_alacrity = false
+color = [230, 110, 40, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Annihilation", "Carnage", "Combat", "Concentration", "Fury", "Watchman"]
+modifiers = [
+  { refill_duration = true, max_duration_secs = 30.0, icd_secs = 1.0, trigger = { type = "damage_taken" } },
+]
+
+# Cloak of Annihilation: each Assault, Battering Assault or Crippling Slash (and Republic mirrors)
+# takes 3 s off the 60 s cooldown; per-player recasts bottom out at 45 s (Carnage) / 40 s (Annihilation)
+[[effect]]
+id = "cloak_of_pain_cd"
+name = "Cloak of Pain / Rebuke Cooldown"
+display_text = "Cloak of Pain"
+enabled = false
+trigger = { type = "ability_cast", abilities = [2473484550668288, 2480816059842560], source = "local_player", target = "any" }
+duration_secs = 60.0
+is_affected_by_alacrity = false
+cooldown_ready_secs = 10.0
+color = [230, 110, 40, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Annihilation", "Carnage", "Combat", "Concentration", "Fury", "Watchman"]
+modifiers = [
+  { adjust_duration_secs = -3.0, trigger = { type = "ability_cast", abilities = [898601647603712, 947362411315200, 807720139620352, 996200484438016, 1501739610013696, 1501804034523136] } },
+]
