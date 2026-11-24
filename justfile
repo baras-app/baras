@@ -134,3 +134,7 @@ extract-abilities *args:
     cp "$EXTRACTOR/data/extracted/$f.csv" "{{justfile_directory()}}/core/data/$f.csv"
     echo "✓ core/data/$f.csv updated ($(($(wc -l < "{{justfile_directory()}}/core/data/$f.csv") - 1)) rows)"
   done
+
+# Regenerate the per-class effect files in core/definitions/effects from the curated lists + datamined CSVs
+gen-class-effects:
+  python3 scripts/gen_class_effects.py

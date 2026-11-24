@@ -1,0 +1,130 @@
+# Per-class effect kits for scripts/gen_class_effects.py, Imperial IDs only; the generator
+# adds Republic mirrors. One entry per line:
+#
+#   <ability ID or -> : <effect IDs or -> : <parts>   # name
+#
+# parts:
+#   buff         duration buff for each listed effect (no effect: times the ability cast)
+#   cd           cooldown of the ability (datamined base value)
+#   stacks       like buff, refreshed on every stack change
+#   @Discipline  restrict to these Imperial disciplines (mirror added); default is every
+#                discipline that has the ability
+#
+# Anything measured differently in logs (durations, modifiers, cooldown start) is an entry
+# in class_effect_overrides.toml; a kit entry an override already tracks is skipped.
+# Only sections marked (reviewed) are generated; the others are drafts awaiting review.
+
+# ─── Powertech / Vanguard (reviewed) ───────────────────────────────────────
+986266225082368  : 986266225082368                 : buff cd               # Explosive Fuel
+-                : 986266225082627                 : buff @ShieldTech      # Explosive Fuel: Coolant
+4504089253642240 : 4504089253642508                : buff cd               # Energy Yield (Shield Tech)
+814218425139200  : 814218425139459                 : buff cd               # Energy Shield
+2264298168516608 : -                               : buff cd               # Oil Slick (Shield Tech)
+2264285283614720 : 2264285283614720                : buff                  # Kolto Overload heal; Health Monitor + cooldown are overrides
+2027628290637824 : -                               : cd                    # Carbonize
+880189122805760  : -                               : cd                    # Sonic Missile
+814317209387008  : -                               : cd                    # Vent Heat
+3066482095292416 : 3066482095292416                : stacks                # Shoulder Cannon (up to 7 charges in logs)
+4516080802332672 : 4516080802332672                : buff cd               # Hydraulic Overrides
+-                : 4499532293341445                : stacks                # Heatstroke (Pyrotech); override refreshes on Flaming Fist damage
+4502478640906240 : 4502478640906508                : buff cd               # Thermal Yield (Pyrotech); buff is an override
+4498514386092032 : 4498514386092300                : buff cd               # Power Yield (Advanced Prototype); overrides
+
+
+# ─── Sith Inquisitor / Jedi Consular, shared (reviewed) ────────────────────
+808244125630464  : -                               : cd                    # Electrocute
+-                : 975399957823488                 : stacks                # Recklessness (no cooldown: too many things change it)
+
+# ─── Sorcerer / Sage (reviewed) ────────────────────────────────────────────
+# Polarity Shift buff (10/15/20 s by discipline) and cooldown (Madness implant) are overrides
+# Force Barrier: Enduring Bastion (1-4) is a single override
+3120899330932736 : 3120899330932736                : buff cd               # Force Barrier
+808209765892096  : 3413360833986560                : buff cd               # Cloud Mind: Suppression (DCD)
+3200459305123840 : 3200459305124173                : buff                  # Phase Walk: Shifting Silhouette (datamined cooldown is wrong)
+3031100154707968 : -                               : cd                    # Unnatural Preservation
+881868455018496  : -                               : cd                    # Extrication
+3415495432732672 : 3415495432732672                : buff cd               # Unlimited Power
+-                : 1005649412489216                : stacks                # Lightning Effusion (Lightning)
+-                : 808497528700928                 : stacks                # Convection (Lightning)
+-                : 3417337973702656                : stacks                # Charged Reaction (Lightning)
+-                : 3599964278095872                : stacks                # Fulminating Current (Madness)
+# Force Surge (Corruption) is an override
+
+# ─── Assassin / Shadow (draft: seeded from DCD + proc lists) ─────────────────────────────
+3421834804461568 : 3421834804461568                : buff cd               # Deflection
+954616611078144  : 954616611078144                 : buff cd               # Force Shroud
+2271329029980160 : 2271329029980160 2271329029980472: buff cd               # Force Cloak, its Force Shroud
+2522790775226368 : 2522790775226902                : buff cd               # Mass Mind Control: Nefarious Methods
+975430022594560  : 975430022594560                 : buff cd               # Overcharge Saber
+-                : 3420361630679040                : buff                  # Raze (Hatred)
+-                : 3430828465979392                : buff                  # Bloodletting (Hatred)
+-                : 1776084941012992                : buff                  # Induction (Deception)
+-                : 949110463004672                 : buff                  # Duplicity (Deception)
+-                : 948659491438915                 : buff                  # Static Charge (Deception)
+-                : 2312741104648192                : buff                  # Harnessed Darkness (Darkness)
+-                : 3428663802462208                : buff                  # Energize (Darkness)
+
+# ─── Juggernaut / Guardian (draft: seeded from DCD + proc lists) ─────────────────────────
+807793154064384  : 807793154064384                 : buff cd               # Saber Ward
+3602532668538880 : 3602532668538880                : buff cd               # Mad Dash
+2211074933784576 : 2211074933784576                : buff cd               # Endure Pain
+2793644297814016 : 2793644297814016                : buff cd               # Enraged Defense
+3126177845739520 : 3126177845739520                : buff cd               # Saber Reflect
+1000001530494976 : 1000001530494976                : buff cd               # Invincible
+-                : 1177770226876416                : buff                  # Savagery (Vengeance)
+-                : 3192328932032512                : buff                  # Destroyer (Vengeance)
+-                : 1261642348232704                : buff                  # Revenge (Immortal)
+-                : 2308471907155968                : buff                  # Sonic Barrier (Immortal)
+-                : 1383701023817728                : buff                  # Shockwave (Rage)
+-                : 1261775492218880                : buff                  # Dominate (Rage)
+
+# ─── Marauder / Sentinel (draft: seeded from DCD + proc lists) ───────────────────────────
+2473484550668288 : 2473484550668288                : buff cd               # Cloak of Pain
+3454145843429376 : 3454145843429376                : buff cd               # Force Camouflage
+2517052698918912 : 2517052698918912                : buff cd               # Undying Rage
+2516812180750336 : 2516812180750336                : buff cd               # Predation
+-                : 2515454971084800                : buff                  # Fury
+-                : 4056205769048064                : buff                  # Berserk (Annihilation)
+-                : 1259666663276544                : buff                  # Deadly Saber (Annihilation)
+-                : 4056201474080768                : buff                  # Berserk (Carnage)
+-                : 3915257827295232                : buff                  # Ferocity (Carnage)
+-                : 1259670958243840                : buff                  # Massacre (Carnage)
+-                : 807724434587648                 : buff                  # Berserk (Fury)
+-                : 3461189589794816                : buff                  # Destruction (Fury)
+
+# ─── Mercenary / Commando (reviewed) ──────────────────────────────────────
+814218425139200  : 814218425139459                 : buff cd @Arsenal @Bodyguard @InnovativeOrdnance  # Energy Shield (12 s; cooldown -3 s per hit taken, 1.5 s ICD): overrides
+3213829538316288 : 3213829538316288                : buff cd @Arsenal @Bodyguard @InnovativeOrdnance  # Hydraulic Overrides (base)
+814192655335424  : 814192655335424                 : buff cd               # Chaff Flare (6 s AoE DR; buff is an override)
+4085553280581632 : 4085553280581632                : buff cd               # Responsive Safeguards
+-                : 3401326335623168                : stacks                # Supercharge stacks: override
+-                : 3401291975884800                : buff                  # Supercharged Gas (Innovative Ordnance, 16 s): override
+-                : 4056523596627968                : buff                  # Supercharged Kolto Gas (Bodyguard, 8 s)
+-                : 4056536481529856                : buff                  # High Velocity Supercharged Gas (Arsenal, 12 s)
+-                : 994022936018944                 : buff                  # Tracer Lock (Arsenal)
+-                : 2274799363555328                : buff                  # Critical Efficiency (Bodyguard)
+
+# ─── Operative / Scoundrel (draft: seeded from DCD + proc lists) ─────────────────────────
+814811130626048  : 814811130626048 814811130626362 : buff cd               # Evasion, Blow for Blow
+784716294782976  : 784716294782976                 : buff cd               # Shield Probe
+2278037768896512 : 2278037768896512 2278037768896816: buff cd               # Cloaking Screen, its Evasion
+3202400630341632 : 3202400630341632                : buff cd               # Exfiltrate
+4309969616764928 : 4309969616764928                : buff cd               # Tactical Overdrive
+-                : 2278063538700288                : buff                  # Tactical Advantage
+-                : 2278046358831104                : buff                  # Stim Boost
+-                : 3202911731449856                : buff                  # Calculated Frenzy (Concealment)
+-                : 3202769997529088                : buff                  # Fatality (Lethality)
+-                : 4085828158488576                : buff                  # Curative Jolt (Medicine)
+
+# ─── Sniper / Gunslinger (draft: seeded from DCD + proc lists) ───────────────────────────
+2043584094142464 : 2043584094142464                : buff cd               # Entrench
+2305791847563264 : 2305791847563264 2305791847563526: buff cd               # Ballistic Shield, on those inside
+3200519434665984 : 3200519434665984                : buff cd               # Covered Escape
+3650206805524480 : 3650206805524738                : buff cd               # Meticulous Preparation: Over-prepared
+785128611643392  : 785128611643654 785128611643688 : buff cd               # Diversion: Diversion (Tech)
+-                : 814836900429824                 : buff                  # Laze Target
+-                : 988198960365568                 : buff                  # Target Acquired
+-                : 2301299311771648                : buff                  # Sniper Volley (Marksmanship)
+-                : 3255215843180544                : buff                  # Zeroing Shots (Marksmanship)
+-                : 2302746715750400                : buff                  # Energy Overrides (Engineering)
+-                : 3441024718340096                : buff                  # Lethal Takedown (Virulence)
