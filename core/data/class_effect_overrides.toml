@@ -764,6 +764,108 @@ is_affected_by_alacrity = true
 show_single_stack = true
 display_targets = ["raid_frames"]
 
+# Evasion lasts 4.5 s on Concealment, 6 s on Medicine, 8 s on Lethality (measured; datamined 4 s)
+[[effect]]
+id = "evasion_concealment_buff"
+name = "Evasion / Dodge (Concealment)"
+enabled = false
+trigger = { type = "effect_applied", effects = [814811130626048, 1010159128150016], source = "local_player", target = "any" }
+duration_secs = 4.5
+is_affected_by_alacrity = false
+color = [60, 170, 110, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Concealment", "Scrapper"]
+
+[[effect]]
+id = "evasion_medicine_buff"
+name = "Evasion / Dodge (Medicine)"
+enabled = false
+trigger = { type = "effect_applied", effects = [814811130626048, 1010159128150016], source = "local_player", target = "any" }
+duration_secs = 6.0
+is_affected_by_alacrity = false
+color = [60, 170, 110, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Medicine", "Sawbones"]
+
+[[effect]]
+id = "evasion_lethality_buff"
+name = "Evasion / Dodge (Lethality)"
+enabled = false
+trigger = { type = "effect_applied", effects = [814811130626048, 1010159128150016], source = "local_player", target = "any" }
+duration_secs = 8.0
+is_affected_by_alacrity = false
+color = [60, 170, 110, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Lethality", "Ruffian"]
+
+# Datamined 60 s; Evasive Imperative (passive, common pick over Blow for Blow) takes 3 s off per attack taken, 1.5 s ICD
+[[effect]]
+id = "evasion_cd"
+name = "Evasion / Dodge Cooldown"
+display_text = "Evasion"
+enabled = false
+trigger = { type = "ability_cast", abilities = [814811130626048, 1010159128150016], source = "local_player", target = "any" }
+duration_secs = 60.0
+is_affected_by_alacrity = false
+cooldown_ready_secs = 10.0
+color = [60, 170, 110, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Concealment", "Lethality", "Medicine", "Ruffian", "Sawbones", "Scrapper"]
+modifiers = [
+  { adjust_duration_secs = -3.0, icd_secs = 1.5, trigger = { type = "damage_taken" } },
+]
+
+# Tactical Advantage stacks; a new stack (or a refresh at max) refills the 24 s
+[[effect]]
+id = "tactical_advantage_buff"
+name = "Tactical Advantage / Upper Hand"
+enabled = false
+trigger = { type = "effect_applied", effects = [2278063538700288, 2275727076491264], source = "local_player", target = "any" }
+duration_secs = 24.0
+is_affected_by_alacrity = false
+color = [80, 200, 80, 255]
+display_targets = ["personal_buffs"]
+track_uptime = true
+stack_priority = true
+show_single_stack = true
+disciplines = ["Medicine", "Sawbones"]
+modifiers = [
+  { refill_duration = true, trigger = { type = "self_charges_changed", direction = "increased" } },
+  { refill_duration = true, trigger = { type = "self_charges_changed", direction = "neutral" } },
+]
+
+# 10 s timer from each Surgical Probe / Emergency Medpac cast
+[[effect]]
+id = "surgical_probe_timer"
+name = "Surgical Probe / Emergency Medpac (Tactical Advantage)"
+display_text = "Surgical Probe"
+enabled = false
+trigger = { type = "ability_cast", abilities = [815240627355648, 807518276157440], source = "local_player", target = "any" }
+duration_secs = 10.0
+is_affected_by_alacrity = true
+cooldown_ready_secs = 10.0
+ignore_refreshes = true
+refresh_scope = "source"
+color = [80, 200, 80, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Medicine", "Sawbones"]
+
+# Curative Jolt: 18 s timer from a Kolto Infusion / Kolto Pack heal
+[[effect]]
+id = "curative_jolt_timer"
+name = "Curative Jolt / Bootlegged Remedy"
+display_text = "Curative Jolt"
+enabled = false
+trigger = { type = "healing_taken", abilities = [1014376786034688, 3470823201439744], source = "local_player", target = "any" }
+duration_secs = 18.0
+is_affected_by_alacrity = true
+cooldown_ready_secs = 10.0
+ignore_refreshes = true
+refresh_scope = "source"
+color = [80, 200, 80, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Medicine", "Sawbones"]
+
 # ═══ powertech_vanguard ═══════════════════════════════════════════════════════════
 
 [[effect]]

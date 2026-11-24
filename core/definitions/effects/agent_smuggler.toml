@@ -4,6 +4,43 @@
 version = 1
 
 [[effect]]
+id = "shield_probe_buff"
+name = "Shield Probe / Defense Screen"
+enabled = false
+trigger = { type = "effect_applied", effects = [784716294782976, 962484991164416], source = "local_player", target = "any" }
+duration_secs = 10.0
+is_affected_by_alacrity = false
+color = [85, 160, 95, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Concealment", "DirtyFighting", "Engineering", "Lethality", "Marksmanship", "Medicine", "Ruffian", "Saboteur", "Sawbones", "Scrapper", "Sharpshooter", "Virulence"]
+
+[[effect]]
+id = "shield_probe_cd"
+name = "Shield Probe / Defense Screen Cooldown"
+enabled = false
+trigger = { type = "ability_cast", abilities = [784716294782976, 962484991164416], source = "local_player", target = "any" }
+duration_secs = 30.0
+is_affected_by_alacrity = false
+color = [85, 160, 95, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Concealment", "DirtyFighting", "Engineering", "Lethality", "Marksmanship", "Medicine", "Ruffian", "Saboteur", "Sawbones", "Scrapper", "Sharpshooter", "Virulence"]
+display_text = "Shield Probe"
+cooldown_ready_secs = 10.0
+
+[[effect]]
+id = "adrenaline_probe_cd"
+name = "Adrenaline Probe / Cool Head Cooldown"
+enabled = false
+trigger = { type = "ability_cast", abilities = [814776770887680, 807166088839168], source = "local_player", target = "any" }
+duration_secs = 120.0
+is_affected_by_alacrity = true
+color = [85, 160, 95, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Concealment", "DirtyFighting", "Engineering", "Lethality", "Marksmanship", "Medicine", "Ruffian", "Saboteur", "Sawbones", "Scrapper", "Sharpshooter", "Virulence"]
+display_text = "Adrenaline Probe"
+cooldown_ready_secs = 10.0
+
+[[effect]]
 id = "corrosive_dart_marksman"
 name = "Corrosive Dart Marksman / Vital Shot (Sharpshooter)"
 refresh_abilities = [

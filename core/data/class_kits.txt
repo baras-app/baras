@@ -87,17 +87,14 @@
 -                : 994022936018944                 : buff                  # Tracer Lock (Arsenal)
 -                : 2274799363555328                : buff                  # Critical Efficiency (Bodyguard)
 
-# ─── Operative / Scoundrel (draft: seeded from DCD + proc lists) ─────────────────────────
-814811130626048  : 814811130626048 814811130626362 : buff cd               # Evasion, Blow for Blow
+# ─── Operative / Scoundrel (reviewed) ─────────────────────────────────────
+# DCDs for all disciplines plus Medicine trackers; Concealment/Lethality procs not reviewed.
+# Evasion (4.5/6/8 s by discipline) and the Medicine trackers are overrides
 784716294782976  : 784716294782976                 : buff cd               # Shield Probe
-2278037768896512 : 2278037768896512 2278037768896816: buff cd               # Cloaking Screen, its Evasion
-3202400630341632 : 3202400630341632                : buff cd               # Exfiltrate
-4309969616764928 : 4309969616764928                : buff cd               # Tactical Overdrive
--                : 2278063538700288                : buff                  # Tactical Advantage
--                : 2278046358831104                : buff                  # Stim Boost
--                : 3202911731449856                : buff                  # Calculated Frenzy (Concealment)
--                : 3202769997529088                : buff                  # Fatality (Lethality)
--                : 4085828158488576                : buff                  # Curative Jolt (Medicine)
+2278037768896512 : -                               : cd                    # Cloaking Screen
+2278046358831104 : 2278046358831104                : buff                  # Stim Boost
+2278046358831104 : -                               : cd @Medicine          # Stim Boost cooldown (Concealment/Lethality have resets and reducers)
+814776770887680  : -                               : cd                    # Adrenaline Probe (buff is under 3 s)
 
 # ─── Sniper / Gunslinger (draft: seeded from DCD + proc lists) ───────────────────────────
 2043584094142464 : 2043584094142464                : buff cd               # Entrench
