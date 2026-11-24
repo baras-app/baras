@@ -34,7 +34,7 @@ pub fn coverage_rows(targets: &[&RaidDebuffTarget], able: &[(RaidDebuff, Vec<i64
                     None => suppliers.push((source.name.clone(), source.count)),
                 }
             }
-            suppliers.sort_by(|a, b| b.1.cmp(&a.1));
+            suppliers.sort_by_key(|a| std::cmp::Reverse(a.1));
             let worth = targets.iter().flat_map(|t| &t.worth).filter(|w| w.debuff == debuff);
             let (affected_dmg, unbuffed_dmg) =
                 worth.fold((0.0, 0.0), |sum, w| (sum.0 + w.affected_dmg, sum.1 + w.unbuffed_dmg));
