@@ -3282,16 +3282,23 @@
   line-height: 1.2;
 }
 
-/* A slim bar along the cell's foot, as long as the uptime, over a faint
-   tint: high uptimes read at a glance without flooding the table blue.
-   Empty cells stay blank */
+/* Heatmap: the fill deepens with the uptime, capped at 45% blue so the
+   number on top stays readable. Empty cells stay blank */
 .uptime-cell {
   min-width: 4.5em;
   color: var(--text-primary);
-  --bar: color-mix(in srgb, var(--swtor-blue) 65%, transparent);
-  background:
-    linear-gradient(var(--bar), var(--bar)) no-repeat left bottom / calc(var(--pct) * 1%) 3px,
-    color-mix(in srgb, var(--swtor-blue) calc(var(--pct) * 0.08%), transparent);
+  background: color-mix(in srgb, var(--swtor-blue) calc(var(--pct) * 0.45%), transparent);
+}
+
+/* Values and target headers centered over each other */
+.uptime-table td.uptime-cell,
+.uptime-table th.uptime-target {
+  text-align: center;
+}
+
+/* Block-level header icons (the missing-icon fallback) center too */
+.uptime-table th.uptime-target > * {
+  margin-inline: auto;
 }
 
 .uptime-cell.none {

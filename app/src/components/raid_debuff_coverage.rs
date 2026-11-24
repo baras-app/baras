@@ -123,16 +123,10 @@ pub fn RaidDebuffCoverage(
                                             for (name, count) in row.suppliers.iter() {
                                                 span { {icon(name)} "{name} " span { class: "analysis-note", "×{count}" } }
                                             }
-                                            if row.suppliers.is_empty() {
-                                                span { class: "analysis-note", "–" }
-                                            }
                                         }
                                         td { class: "debuff-players",
                                             for name in others.iter().copied() {
                                                 span { {icon(name)} "{name}" }
-                                            }
-                                            if others.is_empty() && row.suppliers.is_empty() {
-                                                span { class: "analysis-note", "–" }
                                             }
                                         }
                                         td { class: "num",
@@ -145,12 +139,7 @@ pub fn RaidDebuffCoverage(
                                                         }
                                                     }
                                                 },
-                                                Some(kind) => rsx! {
-                                                    span { class: "analysis-note", title: "No {kind} damage on these enemies", "–" }
-                                                },
-                                                None => rsx! {
-                                                    span { class: "analysis-note", title: "The log does not tell which damage {d.name()} raises", "–" }
-                                                },
+                                                _ => rsx! {},
                                             }
                                         }
                                     }

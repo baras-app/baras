@@ -188,7 +188,6 @@ pub fn RaidDebuffsView(
                                             td {
                                                 class: "num uptime-cell none",
                                                 title: "{d.name()} was never on {t.name}{missed_text(t, d, european)}",
-                                                "–"
                                             }
                                         }
                                     }
