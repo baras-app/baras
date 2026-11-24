@@ -630,11 +630,18 @@ pub fn App() -> Element {
                                 }
                             }
                             NavMenu {
-                                label: "Links",
+                                label: "More",
                                 icon: "fa-solid fa-ellipsis",
                                 icon_only: true,
                                 items: vec![],
                                 actions: vec![
+                                    if light_theme() {
+                                        ("fa-solid fa-moon", "Dark Theme".into(), "Switch to the dark theme",
+                                            EventHandler::new(move |_| set_light_theme(light_theme, false)))
+                                    } else {
+                                        ("fa-solid fa-sun", "Light Theme".into(), "Switch to the light theme",
+                                            EventHandler::new(move |_| set_light_theme(light_theme, true)))
+                                    },
                                     ("fa-solid fa-circle-question", "Documentation".into(), "Documentation & Help",
                                         EventHandler::new(|_| { spawn(api::open_url("https://baras-app.github.io/features/overview")); })),
                                     ("fa-brands fa-discord", "Discord".into(), "Questions, bugs, or feedback",
@@ -656,33 +663,12 @@ pub fn App() -> Element {
                                 state: ui_state,
                             }
                         }
-                        button {
-                            class: if file_browser_open() { "tab-btn header-files-btn active" } else { "tab-btn header-files-btn" },
-                            title: if file_browser_open() { "Close log files (L)" } else { "Browse log files (L)" },
-                            "data-shortcut": "l",
-                            onclick: move |_| {
-                                // Second click closes the drawer again
-                                if file_browser_open() {
-                                    file_browser_open.set(false);
-                                    return;
-                                }
-                                file_browser_open.set(true);
-                                spawn(async move {
-                                    api::refresh_file_sizes().await;
-                                    let result = api::get_log_files().await;
-                                    if let Ok(files) = serde_wasm_bindgen::from_value::<Vec<LogFileInfo>>(result) {
-                                        log_files.set(files);
-                                    }
-                                });
-                            },
-                            i { class: "fa-solid fa-folder-open" }
-                        }
                     }
-                    // Version, update notice and project links
+                    // Update notice and the log files drawer
                     div { class: "header-meta",
                         div { class: "header-version-group",
                             // Only an available update earns header space; the version and
-                            // changelog live in the links menu
+                            // changelog live in the More menu
                             if let Some(ref update) = update_available() {
                                 // Update available - show clickable notification
                                 button {
@@ -708,17 +694,26 @@ pub fn App() -> Element {
                                     }
                                 }
                             }
-                            div { class: "header-links",
-                                a {
-                                    class: "header-link",
-                                    href: "#",
-                                    title: if light_theme() { "Switch to dark theme" } else { "Switch to light theme" },
-                                    onclick: move |e| {
-                                        e.prevent_default();
-                                        set_light_theme(light_theme, !light_theme());
-                                    },
-                                    i { class: if light_theme() { "fa-solid fa-moon" } else { "fa-solid fa-sun" } }
-                                }
+                            button {
+                                class: if file_browser_open() { "header-files-btn active" } else { "header-files-btn" },
+                                title: if file_browser_open() { "Close log files (L)" } else { "Browse log files (L)" },
+                                "data-shortcut": "l",
+                                onclick: move |_| {
+                                    // Second click closes the drawer again
+                                    if file_browser_open() {
+                                        file_browser_open.set(false);
+                                        return;
+                                    }
+                                    file_browser_open.set(true);
+                                    spawn(async move {
+                                        api::refresh_file_sizes().await;
+                                        let result = api::get_log_files().await;
+                                        if let Ok(files) = serde_wasm_bindgen::from_value::<Vec<LogFileInfo>>(result) {
+                                            log_files.set(files);
+                                        }
+                                    });
+                                },
+                                i { class: "fa-solid fa-folder-open" }
                             }
                         }
                     }

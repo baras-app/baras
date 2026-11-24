@@ -484,12 +484,12 @@ select optgroup {
 
 /* Single header row: brand | navigation | overlay controls, files, settings */
 .header-bar {
-  /* Brand and version keep their natural width; navigation centers in the rest */
+  /* Brand and meta keep their natural width; navigation centers in the rest.
+     Not equal side columns: those would reserve the brand's width on the
+     narrow meta side too. The nav column is the one that gives way, so when
+     room runs out its labels ellipsize instead of sliding over the brand */
   display: grid;
-  /* The side columns never drop below their content, so when room runs out
-     it is the nav column that gives way and its labels ellipsize, instead of
-     the nav growing to its full width and sliding over the brand */
-  grid-template-columns: minmax(min-content, 1fr) minmax(0, auto) minmax(min-content, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   /* The nav collapses by its own width in em (see Header tabs responsive),
      so desktop text scaling and page zoom move the breakpoints with the text */
@@ -722,22 +722,34 @@ select optgroup {
   gap: 0.4rem;
 }
 
-.app-header .header-links {
-  display: flex;
+/* Log files drawer toggle: an action beside the nav, not one of its views */
+.app-header .header-files-btn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
+  padding: 0.4em 0.6em;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  box-shadow: none;
+  color: var(--text-tertiary);
+  font: inherit;
+  font-size: 1.1em;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
-.app-header .header-link {
+.app-header .header-files-btn:hover {
+  background: rgba(var(--fg-rgb), 0.06);
+  color: var(--text-primary);
+}
+
+.app-header .header-files-btn.active {
+  background: var(--bg-raised);
+  border-color: rgba(var(--fg-rgb), 0.08);
   color: var(--swtor-blue);
-  font-size: 0.95rem;
-  opacity: 0.5;
-  transition: opacity var(--transition-normal);
-}
-
-.app-header .header-link:hover {
-  opacity: 1;
 }
 
 .app-header .header-version {
@@ -4149,11 +4161,6 @@ a.contributor-name:hover {
   padding: 0.4em 1.75em;
   font-size: 1em;
 }
-/* Log files: a pill like the others, a little narrower */
-.header-nav .header-files-btn {
-  padding: 0.4em 0.9em;
-  font-size: 1em;
-}
 .header-tabs {
   gap: 3px;
 }
@@ -4211,8 +4218,7 @@ a.contributor-name:hover {
 }
 
 .header-tabs .tab-btn > i,
-.header-tabs .nav-menu-caret,
-.header-nav .header-files-btn {
+.header-tabs .nav-menu-caret {
   flex-shrink: 0;
 }
 
@@ -4314,9 +4320,10 @@ a.contributor-name:hover {
 
 /* Breakpoints are the header row's own content width in em, so they scale with
    the text (desktop "Large Text", WebKitGTK text zoom or page zoom alike).
-   Measured nav widths at 1em: roomy pills ~81.5em, compact ~62em, inactive
-   labels hidden ~34.5em; the brand takes up to ~10.6em, the meta block up to
-   ~6em with the short update button, plus 1.5em of grid gaps. */
+   Measured nav widths at 1em: roomy pills ~78em, compact ~59em, inactive
+   labels hidden ~32em; the brand takes up to ~10.6em, the meta block ~3em
+   (files button) or ~8.5em with the short update button, plus 1.5em of grid
+   gaps. An available update takes the second, wider set of breakpoints. */
 
 @container header-bar (max-width: 108em) {
   .app-header .header-version .update-long {
@@ -4324,18 +4331,20 @@ a.contributor-name:hover {
   }
 }
 
-@container header-bar (max-width: 100em) {
+@container header-bar (max-width: 89em) {
   .header-tabs .tab-btn {
     padding: 0.4em 0.7em;
   }
-  .header-nav .header-files-btn {
-    padding: 0.4em 0.6em;
+}
+@container header-bar (max-width: 95em) {
+  .header-bar:has(.update-available) .header-tabs .tab-btn {
+    padding: 0.4em 0.7em;
   }
 }
 
 /* Pills that are not the open view drop to icon + caret (their tooltip and
    the menu still name them), so the open view's name stays whole */
-@container header-bar (max-width: 80em) {
+@container header-bar (max-width: 70em) {
   .header-tabs .tab-btn:not(.active) .tab-label {
     display: none;
   }
@@ -4346,16 +4355,25 @@ a.contributor-name:hover {
     margin-left: 0.1em;
   }
 }
-
-/* Brand keeps logo; the link icons go, and the pills get that room back */
-@container header-bar (max-width: 66em) {
-  .app-header .header-links {
+@container header-bar (max-width: 75em) {
+  .header-bar:has(.update-available) .header-tabs .tab-btn:not(.active) .tab-label {
     display: none;
+  }
+  .header-bar:has(.update-available) .header-tabs .tab-btn:not(.active) > i {
+    font-size: 1.2em;
+  }
+  .header-bar:has(.update-available) .header-tabs .tab-btn:not(.active) .nav-menu-caret {
+    margin-left: 0.1em;
   }
 }
 
-@container header-bar (max-width: 60em) {
+@container header-bar (max-width: 50em) {
   .header-tabs .tab-label {
+    display: none;
+  }
+}
+@container header-bar (max-width: 55em) {
+  .header-bar:has(.update-available) .header-tabs .tab-label {
     display: none;
   }
 }
