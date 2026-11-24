@@ -5,9 +5,7 @@ use dioxus::prelude::*;
 use wasm_bindgen::JsCast;
 
 use baras_types::formatting;
-use baras_types::{
-    DummyParse, GcdPress, LONG_GCD_MARGIN_SECS, RatingSource, is_long_gap, percentile_label,
-};
+use baras_types::{DummyParse, GcdPress, LONG_GCD_MARGIN_SECS, RatingSource, is_long_gap, percentile_label};
 
 use super::ctx::ExplorerCtx;
 use super::dummy_charts::{IntervalDensity, PressTimeline, ability_gaps, quantile};
