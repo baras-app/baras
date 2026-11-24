@@ -12,6 +12,7 @@ use baras_types::formatting;
 pub(super) fn table_body(grouped_abilities: Memo<AbilityGroups>, cols: TableCols, eu: bool) -> Element {
     let TableCols {
         show_ability_col,
+        show_activations,
         is_damage_tab,
         is_damage_taken,
         is_healing_tab,
@@ -86,7 +87,7 @@ pub(super) fn table_body(grouped_abilities: Memo<AbilityGroups>, cols: TableCols
                                 }
                             }
                         }
-                        if show_ability_col {
+                        if show_activations {
                             td { class: "num group-stat", "{stats.activation_count}" }
                         }
                         td { class: "num group-stat", "{stats.hits}" }
@@ -194,11 +195,13 @@ pub(super) fn table_body(grouped_abilities: Memo<AbilityGroups>, cols: TableCols
                                 }
                             }
                             // Activations and Hits as columns #2 and #3
-                            td { class: "num",
-                                if ability.activation_count > 0 {
-                                    "{ability.activation_count}"
-                                } else {
-                                    "-"
+                            if show_activations {
+                                td { class: "num",
+                                    if ability.activation_count > 0 {
+                                        "{ability.activation_count}"
+                                    } else {
+                                        "-"
+                                    }
                                 }
                             }
                             td { class: "num", "{ability.hit_count}" }

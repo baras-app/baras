@@ -13,6 +13,8 @@ use baras_types::formatting;
 pub(super) struct TableCols {
     pub show_breakdown_col: bool,
     pub show_ability_col: bool,
+    /// Per-ability rows on an outgoing tab: incoming abilities are the enemy's presses
+    pub show_activations: bool,
     pub breakdown_col_label: &'static str,
     pub rate_label: &'static str,
     pub is_damage_tab: bool,
@@ -26,7 +28,7 @@ impl TableCols {
     /// spanning more than this adds columns and squeezes the real ones.
     pub(super) fn count(&self) -> usize {
         let on = |b: bool| b as usize;
-        8 + on(self.show_ability_col)
+        8 + on(self.show_activations)
             + 4 * on(self.is_healing_tab)
             + 2 * on(self.is_damage_tab)
             + 4 * on(self.is_damage_taken)
@@ -43,6 +45,7 @@ pub(super) fn ability_table(ctx: ExplorerCtx, tab: DataTab, european: bool) -> E
     let cols = TableCols {
         show_breakdown_col: mode.by_target_type || mode.by_target_instance,
         show_ability_col: mode.by_ability,
+        show_activations: mode.by_ability && tab.is_outgoing(),
         breakdown_col_label: if tab.is_outgoing() { "Target" } else { "Source" },
         rate_label: tab.rate_label(),
         is_damage_tab,
@@ -82,13 +85,14 @@ fn table_head(
 ) -> Element {
     let TableCols {
         show_breakdown_col,
-        show_ability_col,
+        show_activations,
         breakdown_col_label,
         rate_label,
         is_damage_tab,
         is_damage_taken,
         is_healing_tab,
         is_outgoing_tab,
+        ..
     } = cols;
     let current_sort = *sort_column.read();
     let current_dir = *sort_direction.read();
@@ -138,7 +142,7 @@ fn table_head(
                     }
                 }
                 // Activations and Hits as columns #2 and #3
-                if show_ability_col {
+                if show_activations {
                     th {
                         class: "num col-wide {sort_class(SortColumn::Activations)}",
                         onclick: sort_click(SortColumn::Activations, false),
@@ -281,7 +285,7 @@ fn table_head(
 
 fn table_foot(grouped_abilities: Memo<AbilityGroups>, cols: TableCols, eu: bool) -> Element {
     let TableCols {
-        show_ability_col,
+        show_activations,
         is_damage_tab,
         is_damage_taken,
         is_healing_tab,
@@ -327,7 +331,7 @@ fn table_foot(grouped_abilities: Memo<AbilityGroups>, cols: TableCols, eu: bool)
                 rsx! {
                     tr { class: "totals-row",
                         td { "Total" }
-                        if show_ability_col {
+                        if show_activations {
                             td { class: "num", "{total_activations}" }
                         }
                         td { class: "num", "{total_hits}" }

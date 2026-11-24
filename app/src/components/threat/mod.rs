@@ -370,7 +370,7 @@ pub fn ThreatView(
 /// Share of an enemy's targeted time spent on `on`
 fn share_cell(row: &AggroRow, secs: f32, on: &str, european: bool) -> Element {
     if secs <= 0.0 {
-        return rsx! { td { class: "num uptime-cell none", "–" } };
+        return rsx! { td { class: "num uptime-cell none" } };
     }
     let pct = secs * 100.0 / row.secs.max(0.001);
     rsx! {
