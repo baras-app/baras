@@ -919,7 +919,7 @@ impl OverlayPlatform for WindowsOverlay {
                         self.pointer_x = x;
                         self.pointer_y = y;
 
-                        if !self.is_resizing {
+                        if !self.is_resizing && !self.is_dragging {
                             self.hover(self.resize_edges_at(x, y));
                         }
 
