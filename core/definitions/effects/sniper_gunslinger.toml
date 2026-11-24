@@ -4,6 +4,80 @@
 version = 1
 
 [[effect]]
+id = "diversion_cd"
+name = "Diversion Cooldown"
+enabled = false
+trigger = { type = "ability_cast", abilities = [785128611643392, 3431223602970624], source = "local_player", target = "any" }
+duration_secs = 60.0
+is_affected_by_alacrity = true
+color = [110, 150, 80, 255]
+display_targets = ["cooldowns"]
+disciplines = ["DirtyFighting", "Engineering", "Marksmanship", "Saboteur", "Sharpshooter", "Virulence"]
+display_text = "Diversion"
+cooldown_ready_secs = 10.0
+
+[[effect]]
+id = "target_acquired_buff"
+name = "Target Acquired / Illegal Mods"
+enabled = false
+trigger = { type = "effect_applied", effects = [988198960365568, 760484089298944], source = "local_player", target = "any" }
+duration_secs = 10.0
+is_affected_by_alacrity = false
+color = [110, 150, 80, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["DirtyFighting", "Engineering", "Marksmanship", "Saboteur", "Sharpshooter", "Virulence"]
+
+[[effect]]
+id = "target_acquired_cd"
+name = "Target Acquired / Illegal Mods Cooldown"
+enabled = false
+trigger = { type = "ability_cast", abilities = [988198960365568, 760484089298944], source = "local_player", target = "any" }
+duration_secs = 100.0
+is_affected_by_alacrity = true
+color = [110, 150, 80, 255]
+display_targets = ["cooldowns"]
+disciplines = ["DirtyFighting", "Engineering", "Marksmanship", "Saboteur", "Sharpshooter", "Virulence"]
+display_text = "Target Acquired"
+cooldown_ready_secs = 10.0
+
+[[effect]]
+id = "sniper_volley_buff"
+name = "Sniper Volley / Burst Volley"
+enabled = false
+trigger = { type = "effect_applied", effects = [2301299311771648, 2302072405884928], source = "local_player", target = "any" }
+duration_secs = 15.0
+is_affected_by_alacrity = false
+color = [110, 150, 80, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Marksmanship", "Sharpshooter"]
+
+[[effect]]
+id = "sniper_volley_cd"
+name = "Sniper Volley / Burst Volley Cooldown"
+enabled = false
+trigger = { type = "ability_cast", abilities = [2301299311771648, 2302072405884928], source = "local_player", target = "any" }
+duration_secs = 45.0
+is_affected_by_alacrity = true
+color = [110, 150, 80, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Marksmanship", "Sharpshooter"]
+display_text = "Sniper Volley"
+cooldown_ready_secs = 10.0
+
+[[effect]]
+id = "meticulous_preparation_cd"
+name = "Meticulous Preparation / Bag of Tricks Cooldown"
+enabled = false
+trigger = { type = "ability_cast", abilities = [3650206805524480, 3663340815515648], source = "local_player", target = "any" }
+duration_secs = 180.0
+is_affected_by_alacrity = false
+color = [110, 150, 80, 255]
+display_targets = ["cooldowns"]
+disciplines = ["DirtyFighting", "Engineering", "Marksmanship", "Saboteur", "Sharpshooter", "Virulence"]
+display_text = "Meticulous Preparation"
+cooldown_ready_secs = 10.0
+
+[[effect]]
 id = "corrosive_grenade_snipe"
 name = "Corrosive Grenade (Sniper) / Shrap Bomb (Gunslinger)"
 track_outside_combat = false
@@ -53,3 +127,154 @@ color = [80, 200, 80, 255]
 display_targets = ["dot_tracker"]
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [3440827149844480, 3404620575539200], source = "local_player", target = "any" }
+
+# Entrench / Hunker Down: 20 s, Marksmanship/Sharpshooter measured 23 s
+[[effect]]
+id = "entrench_buff"
+name = "Entrench / Hunker Down"
+enabled = false
+trigger = { type = "effect_applied", effects = [2043584094142464, 2044808159821824], source = "local_player", target = "any" }
+duration_secs = 20.0
+is_affected_by_alacrity = false
+color = [150, 120, 70, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Engineering", "Virulence", "Saboteur", "DirtyFighting"]
+
+[[effect]]
+id = "entrench_marksmanship_buff"
+name = "Entrench / Hunker Down (Marksmanship)"
+enabled = false
+trigger = { type = "effect_applied", effects = [2043584094142464, 2044808159821824], source = "local_player", target = "any" }
+duration_secs = 23.0
+is_affected_by_alacrity = false
+color = [150, 120, 70, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Marksmanship", "Sharpshooter"]
+
+# Datamined 60 s; class passives shorten it in practice. Meticulous Preparation resets it
+[[effect]]
+id = "entrench_cd"
+name = "Entrench / Hunker Down Cooldown"
+display_text = "Entrench"
+enabled = false
+trigger = { type = "ability_cast", abilities = [2043584094142464, 2044808159821824], source = "local_player", target = "any" }
+duration_secs = 60.0
+is_affected_by_alacrity = false
+cooldown_ready_secs = 10.0
+color = [150, 120, 70, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Engineering", "Marksmanship", "Virulence", "Saboteur", "Sharpshooter", "DirtyFighting"]
+modifiers = [
+  { cancel = true, trigger = { type = "ability_cast", abilities = [3650206805524480, 3663340815515648] } },
+]
+
+# Ballistic Shield / Scrambling Field: caster buff and the buff on those inside; Virulence/Dirty Fighting measured 25 s
+[[effect]]
+id = "ballistic_shield_buff"
+name = "Ballistic Shield / Scrambling Field"
+enabled = false
+trigger = { type = "effect_applied", effects = [2305791847563264, 2305916401614848, 2305791847563526, 2305916401615109], source = "local_player", target = "any" }
+duration_secs = 20.0
+is_affected_by_alacrity = false
+color = [90, 140, 210, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Engineering", "Marksmanship", "Saboteur", "Sharpshooter"]
+
+[[effect]]
+id = "ballistic_shield_virulence_buff"
+name = "Ballistic Shield / Scrambling Field (Virulence)"
+enabled = false
+trigger = { type = "effect_applied", effects = [2305791847563264, 2305916401614848, 2305791847563526, 2305916401615109], source = "local_player", target = "any" }
+duration_secs = 25.0
+is_affected_by_alacrity = false
+color = [90, 140, 210, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Virulence", "DirtyFighting"]
+
+# 180 s (log floor 180.6 s)
+[[effect]]
+id = "ballistic_shield_cd"
+name = "Ballistic Shield / Scrambling Field Cooldown"
+display_text = "Ballistic Shield"
+enabled = false
+trigger = { type = "ability_cast", abilities = [2305791847563264, 2305916401614848], source = "local_player", target = "any" }
+duration_secs = 180.0
+is_affected_by_alacrity = false
+cooldown_ready_secs = 10.0
+color = [90, 140, 210, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Engineering", "Marksmanship", "Virulence", "Saboteur", "Sharpshooter", "DirtyFighting"]
+
+# Laze Target / Smuggler's Luck: 20 s, consumed by the next shot (RemoveEffect ends it early)
+[[effect]]
+id = "laze_target_buff"
+name = "Laze Target / Smuggler's Luck"
+enabled = false
+trigger = { type = "effect_applied", effects = [814836900429824, 962811408678912], source = "local_player", target = "any" }
+duration_secs = 20.0
+is_affected_by_alacrity = false
+color = [220, 60, 60, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Engineering", "Marksmanship", "Virulence", "Saboteur", "Sharpshooter", "DirtyFighting"]
+
+# Datamined 60 s, alacrity; Engineering recasts floor at 56-57 s
+[[effect]]
+id = "laze_target_cd"
+name = "Laze Target / Smuggler's Luck Cooldown"
+display_text = "Laze Target"
+enabled = false
+trigger = { type = "ability_cast", abilities = [814836900429824, 814836900430095, 962811408678912], source = "local_player", target = "any" }
+duration_secs = 60.0
+is_affected_by_alacrity = true
+cooldown_ready_secs = 5.0
+color = [220, 60, 60, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Engineering", "Saboteur"]
+
+# Marksmanship recasts at 41-47 s (45 s base after alacrity). 814836900430095 is the Marksmanship cast variant
+[[effect]]
+id = "laze_target_cd_marksmanship"
+name = "Laze Target / Smuggler's Luck Cooldown"
+display_text = "Laze Target"
+enabled = false
+trigger = { type = "ability_cast", abilities = [814836900429824, 814836900430095, 962811408678912], source = "local_player", target = "any" }
+duration_secs = 45.0
+is_affected_by_alacrity = true
+cooldown_ready_secs = 5.0
+color = [220, 60, 60, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Marksmanship", "Sharpshooter"]
+
+# Virulence: Laze Target becomes Viral Targeting (log still says Laze Target). 45 s; Target Acquired resets it
+# (all 118 sub-35 s recasts had a Target Acquired in between)
+[[effect]]
+id = "laze_target_cd_virulence"
+name = "Viral Targeting / Smuggler's Luck Cooldown (Virulence)"
+display_text = "Viral Targeting"
+enabled = false
+trigger = { type = "ability_cast", abilities = [814836900429824, 962811408678912], source = "local_player", target = "any" }
+duration_secs = 45.0
+is_affected_by_alacrity = true
+cooldown_ready_secs = 5.0
+color = [220, 60, 60, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Virulence", "DirtyFighting"]
+modifiers = [
+  { cancel = true, trigger = { type = "ability_cast", abilities = [988198960365568, 760484089298944] } },
+]
+
+# Integrated Toxins / Smuggler's Chems: 10 s window from Viral Targeting; recasting Laze refills it
+# to 10 s with no new ApplyEffect (log windows run up to 19.9 s)
+[[effect]]
+id = "integrated_toxins_buff"
+name = "Integrated Toxins / Smuggler's Chems"
+enabled = false
+trigger = { type = "effect_applied", effects = [4477237118107648, 4527226242465792], source = "local_player", target = "any" }
+duration_secs = 10.0
+is_affected_by_alacrity = false
+color = [120, 200, 60, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Virulence", "DirtyFighting"]
+modifiers = [
+  { refill_duration = true, trigger = { type = "ability_cast", abilities = [814836900429824, 962811408678912] } },
+]

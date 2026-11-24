@@ -15,19 +15,6 @@ display_targets = ["personal_buffs"]
 disciplines = ["Concealment", "DirtyFighting", "Engineering", "Lethality", "Marksmanship", "Medicine", "Ruffian", "Saboteur", "Sawbones", "Scrapper", "Sharpshooter", "Virulence"]
 
 [[effect]]
-id = "shield_probe_cd"
-name = "Shield Probe / Defense Screen Cooldown"
-enabled = false
-trigger = { type = "ability_cast", abilities = [784716294782976, 962484991164416], source = "local_player", target = "any" }
-duration_secs = 30.0
-is_affected_by_alacrity = false
-color = [85, 160, 95, 255]
-display_targets = ["cooldowns"]
-disciplines = ["Concealment", "DirtyFighting", "Engineering", "Lethality", "Marksmanship", "Medicine", "Ruffian", "Saboteur", "Sawbones", "Scrapper", "Sharpshooter", "Virulence"]
-display_text = "Shield Probe"
-cooldown_ready_secs = 10.0
-
-[[effect]]
 id = "adrenaline_probe_cd"
 name = "Adrenaline Probe / Cool Head Cooldown"
 enabled = false
@@ -120,3 +107,20 @@ display_targets = ["dot_tracker"]
 disciplines = ["Concealment", "Medicine", "Sawbones", "Scrapper"]
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [3465720780292096, 2115340112756736], source = "local_player", target = "any" }
+
+# Meticulous Preparation (Sniper) resets it
+[[effect]]
+id = "shield_probe_cd"
+name = "Shield Probe / Defense Screen Cooldown"
+display_text = "Shield Probe"
+enabled = false
+trigger = { type = "ability_cast", abilities = [784716294782976, 962484991164416], source = "local_player", target = "any" }
+duration_secs = 30.0
+is_affected_by_alacrity = false
+cooldown_ready_secs = 10.0
+color = [85, 160, 95, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Concealment", "DirtyFighting", "Engineering", "Lethality", "Marksmanship", "Medicine", "Ruffian", "Saboteur", "Sawbones", "Scrapper", "Sharpshooter", "Virulence"]
+modifiers = [
+  { cancel = true, trigger = { type = "ability_cast", abilities = [3650206805524480, 3663340815515648] } },
+]

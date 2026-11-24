@@ -90,21 +90,19 @@
 # ─── Operative / Scoundrel (reviewed) ─────────────────────────────────────
 # DCDs for all disciplines plus Medicine trackers; Concealment/Lethality procs not reviewed.
 # Evasion (4.5/6/8 s by discipline) and the Medicine trackers are overrides
-784716294782976  : 784716294782976                 : buff cd               # Shield Probe
+784716294782976  : 784716294782976                 : buff                  # Shield Probe (cooldown is an override: Meticulous Preparation resets it)
 2278037768896512 : -                               : cd                    # Cloaking Screen
 2278046358831104 : 2278046358831104                : buff                  # Stim Boost
 2278046358831104 : -                               : cd @Medicine          # Stim Boost cooldown (Concealment/Lethality have resets and reducers)
 814776770887680  : -                               : cd                    # Adrenaline Probe (buff is under 3 s)
 
-# ─── Sniper / Gunslinger (draft: seeded from DCD + proc lists) ───────────────────────────
-2043584094142464 : 2043584094142464                : buff cd               # Entrench
-2305791847563264 : 2305791847563264 2305791847563526: buff cd               # Ballistic Shield, on those inside
-3200519434665984 : 3200519434665984                : buff cd               # Covered Escape
-3650206805524480 : 3650206805524738                : buff cd               # Meticulous Preparation: Over-prepared
-785128611643392  : 785128611643654 785128611643688 : buff cd               # Diversion: Diversion (Tech)
--                : 814836900429824                 : buff                  # Laze Target
--                : 988198960365568                 : buff                  # Target Acquired
--                : 2301299311771648                : buff                  # Sniper Volley (Marksmanship)
--                : 3255215843180544                : buff                  # Zeroing Shots (Marksmanship)
--                : 2302746715750400                : buff                  # Energy Overrides (Engineering)
--                : 3441024718340096                : buff                  # Lethal Takedown (Virulence)
+# ─── Sniper / Gunslinger (reviewed) ──────────────────────────────────────
+# DCDs + short-window buffs; procs and resources skipped (like Marauder).
+# Entrench and Ballistic Shield are overrides (per-discipline durations, Meticulous Preparation reset)
+# Laze Target is an override (60 s Engineering, 45 s Marksmanship, Viral Targeting 45 s reset by Target Acquired)
+# Integrated Toxins (Virulence) is an override: 10 s window refilled by Laze recasts
+# Dropped: Covered Escape (1 s buff, constant resets), Countermeasures (resets)
+785128611643392  : -                               : cd                    # Diversion
+988198960365568  : 988198960365568                 : buff cd               # Target Acquired
+2301299311771648 : 2301299311771648                : buff cd @Marksmanship # Sniper Volley (cd = 45 s proc ICD)
+3650206805524480 : -                               : cd                    # Meticulous Preparation
