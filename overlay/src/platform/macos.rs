@@ -665,6 +665,10 @@ impl OverlayPlatform for MacOSOverlay {
                 self.is_dragging = false;
                 if self.is_resizing {
                     self.is_resizing = false;
+                    // pending_* holds the raw drag size; keep the snapped size the frame shows
+                    let shown = self.view.frame().size;
+                    self.pending_width = shown.width as u32;
+                    self.pending_height = shown.height as u32;
                     // Finalize the resize - update buffers now that resize is complete
                     self.finalize_size();
                 }
@@ -675,7 +679,7 @@ impl OverlayPlatform for MacOSOverlay {
                 let x = loc_x;
                 let y = self.height as f64 - loc_y;
 
-                if !self.is_resizing {
+                if !self.is_resizing && !self.is_dragging {
                     self.hover(self.resize_edges_at(x, y));
                 }
 
@@ -720,6 +724,7 @@ impl OverlayPlatform for MacOSOverlay {
             // window corner, not a sentinel).
             if let Some((mouse_x, mouse_y)) = self.view.mouse_position()
                 && !self.is_resizing
+                && !self.is_dragging
             {
                 let y = self.height as f64 - mouse_y;
                 self.hover(self.resize_edges_at(mouse_x, y));

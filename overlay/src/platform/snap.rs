@@ -9,7 +9,7 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
-use super::{MIN_OVERLAY_SIZE, ResizeEdges, SNAP_GRID_SIZE};
+use super::{MAX_OVERLAY_HEIGHT, MAX_OVERLAY_WIDTH, MIN_OVERLAY_SIZE, ResizeEdges, SNAP_GRID_SIZE};
 
 /// How close (px) an edge must come to another overlay's edge to stick to it
 const EDGE_THRESHOLD: i32 = 8;
@@ -111,11 +111,18 @@ impl Snap {
                 }
             }
         }
-        let fit = |edge: Option<i32>, start: i32, size: u32| match edge {
-            Some(e) if e - start >= MIN_OVERLAY_SIZE as i32 => (e - start) as u32,
-            _ => grid(size as i32) as u32,
+        // Snapping runs after the caller's clamp, so clamp again
+        let fit = |edge: Option<i32>, start: i32, size: u32, max: u32| {
+            let snapped = match edge {
+                Some(e) if e - start >= MIN_OVERLAY_SIZE as i32 => e - start,
+                _ => grid(size as i32),
+            };
+            (snapped as u32).clamp(MIN_OVERLAY_SIZE, max)
         };
-        (fit(best_r, gx, width), fit(best_b, gy, height))
+        (
+            fit(best_r, gx, width, MAX_OVERLAY_WIDTH),
+            fit(best_b, gy, height, MAX_OVERLAY_HEIGHT),
+        )
     }
 
     fn others(&self) -> Vec<Rect> {

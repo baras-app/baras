@@ -634,7 +634,7 @@ impl OverlayPlatform for X11Overlay {
                     let x = e.event_x as i32;
                     let y = e.event_y as i32;
 
-                    if !self.is_resizing {
+                    if !self.is_resizing && !self.is_dragging {
                         self.hover(self.resize_edges_at(x, y));
                     }
 

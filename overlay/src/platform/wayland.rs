@@ -1550,9 +1550,9 @@ impl Dispatch<WlPointer, ()> for WaylandState {
             wl_pointer::Event::Motion {
                 surface_x, surface_y, ..
             } => {
-                // Only update resize corner state when not actively resizing
-                // (during resize, keep it true so grip stays visible)
-                if !state.is_resizing {
+                // Not mid-resize (keeps the grip lit) or mid-drag (a snapped
+                // window holds still while the pointer slides across its edge)
+                if !state.is_resizing && !state.is_dragging {
                     state.hover(ResizeEdges::at(surface_x, surface_y, state.width, state.height));
                 }
 
