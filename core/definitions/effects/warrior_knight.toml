@@ -4,6 +4,19 @@
 version = 1
 
 [[effect]]
+id = "mad_dash_cd"
+name = "Mad Dash / Blade Blitz Cooldown"
+enabled = false
+trigger = { type = "ability_cast", abilities = [3602532668538880, 3618351033090048], source = "local_player", target = "any" }
+duration_secs = 35.0
+is_affected_by_alacrity = false
+color = [215, 85, 45, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Annihilation", "Carnage", "Combat", "Concentration", "Defense", "Focus", "Fury", "Immortal", "Rage", "Vengeance", "Vigilance", "Watchman"]
+display_text = "Mad Dash"
+cooldown_ready_secs = 10.0
+
+[[effect]]
 id = "saber_ward_buff"
 name = "Saber Ward"
 trigger = { type = "effect_applied", effects = [807793154064384, 812169725739008], source = "local_player", target = "any" }
@@ -11,9 +24,10 @@ duration_secs = 12.0
 is_affected_by_alacrity = false
 color = [52, 107, 201, 255]
 
+# Marauder/Sentinel value not reviewed yet; Juggernaut has saber_ward_jugg_cd
 [[effect]]
 id = "saber_ward_cd"
-name = "Saber Ward Cooldown"
+name = "Saber Ward Cooldown (Marauder)"
 display_text = "Saber Ward"
 trigger = { type = "effect_applied", effects = [807793154064384, 812169725739008], source = "local_player", target = "any" }
 duration_secs = 90.0
@@ -21,3 +35,4 @@ is_affected_by_alacrity = false
 cooldown_ready_secs = 10
 color = [52, 107, 201, 255]
 display_targets = ["cooldowns"]
+disciplines = ["Annihilation", "Carnage", "Combat", "Concentration", "Fury", "Watchman"]

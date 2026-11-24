@@ -449,16 +449,70 @@ duration_secs = 10.0
 is_affected_by_alacrity = false
 color = [87, 29, 94, 255]
 
+# 2:30 cooldown on Immortal
 [[effect]]
 id = "invincible_cd"
 name = "Invincible / Warding Call Cooldown"
 display_text = "Invincible"
 trigger = { type = "effect_applied", effects = [1000001530494976, 812483258351616], source = "local_player", target = "any" }
-duration_secs = 180.0
+duration_secs = 150.0
 is_affected_by_alacrity = false
 cooldown_ready_secs = 10
 color = [87, 29, 94, 255]
 display_targets = ["cooldowns"]
+
+# Endure Pain lasts 10 s longer on the tank discipline
+[[effect]]
+id = "endure_pain_tank_buff"
+name = "Endure Pain / Enure (Immortal)"
+enabled = false
+trigger = { type = "effect_applied", effects = [2211074933784576, 2211126473392128], source = "local_player", target = "any" }
+duration_secs = 20.0
+is_affected_by_alacrity = false
+color = [200, 60, 50, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Defense", "Immortal"]
+
+[[effect]]
+id = "endure_pain_buff"
+name = "Endure Pain / Enure"
+enabled = false
+trigger = { type = "effect_applied", effects = [2211074933784576, 2211126473392128], source = "local_player", target = "any" }
+duration_secs = 10.0
+is_affected_by_alacrity = false
+color = [200, 60, 50, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Focus", "Rage", "Vengeance", "Vigilance"]
+
+# Immortal: 180 s minus a 30 s passive; Grit Teeth takes 2 s off per attack taken,
+# at most once per second
+[[effect]]
+id = "saber_ward_jugg_cd"
+name = "Saber Ward Cooldown (Immortal)"
+display_text = "Saber Ward"
+trigger = { type = "effect_applied", effects = [807793154064384, 812169725739008], source = "local_player", target = "any" }
+duration_secs = 150.0
+is_affected_by_alacrity = false
+cooldown_ready_secs = 10.0
+color = [52, 107, 201, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Defense", "Immortal"]
+modifiers = [
+  { adjust_duration_secs = -2.0, icd_secs = 1.0, trigger = { type = "damage_taken" } },
+]
+
+# Full 180 s: the 30 s passive is Immortal only
+[[effect]]
+id = "saber_ward_jugg_dps_cd"
+name = "Saber Ward Cooldown (Vengeance / Rage)"
+display_text = "Saber Ward"
+trigger = { type = "effect_applied", effects = [807793154064384, 812169725739008], source = "local_player", target = "any" }
+duration_secs = 180.0
+is_affected_by_alacrity = false
+cooldown_ready_secs = 10.0
+color = [52, 107, 201, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Focus", "Rage", "Vengeance", "Vigilance"]
 
 # ═══ marauder_sentinel ═══════════════════════════════════════════════════════════
 
@@ -1016,9 +1070,10 @@ duration_secs = 12.0
 is_affected_by_alacrity = false
 color = [52, 107, 201, 255]
 
+# Marauder/Sentinel value not reviewed yet; Juggernaut has saber_ward_jugg_cd
 [[effect]]
 id = "saber_ward_cd"
-name = "Saber Ward Cooldown"
+name = "Saber Ward Cooldown (Marauder)"
 display_text = "Saber Ward"
 trigger = { type = "effect_applied", effects = [807793154064384, 812169725739008], source = "local_player", target = "any" }
 duration_secs = 90.0
@@ -1026,3 +1081,4 @@ is_affected_by_alacrity = false
 cooldown_ready_secs = 10
 color = [52, 107, 201, 255]
 display_targets = ["cooldowns"]
+disciplines = ["Annihilation", "Carnage", "Combat", "Concentration", "Fury", "Watchman"]

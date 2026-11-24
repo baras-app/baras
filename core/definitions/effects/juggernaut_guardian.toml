@@ -4,6 +4,56 @@
 version = 1
 
 [[effect]]
+id = "endure_pain_cd"
+name = "Endure Pain / Enure Cooldown"
+enabled = false
+trigger = { type = "ability_cast", abilities = [2211074933784576, 2211126473392128], source = "local_player", target = "any" }
+duration_secs = 60.0
+is_affected_by_alacrity = false
+color = [200, 60, 50, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Defense", "Focus", "Immortal", "Rage", "Vengeance", "Vigilance"]
+display_text = "Endure Pain"
+cooldown_ready_secs = 10.0
+
+[[effect]]
+id = "saber_reflect_buff"
+name = "Saber Reflect"
+enabled = false
+trigger = { type = "effect_applied", effects = [3126177845739520, 3126160665870336], source = "local_player", target = "any" }
+duration_secs = 5.0
+is_affected_by_alacrity = false
+color = [200, 60, 50, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Defense", "Focus", "Immortal", "Rage", "Vengeance", "Vigilance"]
+
+[[effect]]
+id = "saber_reflect_cd"
+name = "Saber Reflect Cooldown"
+enabled = false
+trigger = { type = "ability_cast", abilities = [3126177845739520, 3126160665870336], source = "local_player", target = "any" }
+duration_secs = 60.0
+is_affected_by_alacrity = false
+color = [200, 60, 50, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Defense", "Focus", "Immortal", "Rage", "Vengeance", "Vigilance"]
+display_text = "Saber Reflect"
+cooldown_ready_secs = 10.0
+
+[[effect]]
+id = "threatening_scream_cd"
+name = "Threatening Scream / Challenging Call Cooldown"
+enabled = false
+trigger = { type = "ability_cast", abilities = [3436141340524544, 812079531425792], source = "local_player", target = "any" }
+duration_secs = 45.0
+is_affected_by_alacrity = false
+color = [200, 60, 50, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Defense", "Focus", "Immortal", "Rage", "Vengeance", "Vigilance"]
+display_text = "Threatening Scream"
+cooldown_ready_secs = 10.0
+
+[[effect]]
 id = "draining_scream"
 name = "Draining Scream / Burning Blade"
 refresh_abilities = [
@@ -92,13 +142,67 @@ duration_secs = 10.0
 is_affected_by_alacrity = false
 color = [87, 29, 94, 255]
 
+# 2:30 cooldown on Immortal
 [[effect]]
 id = "invincible_cd"
 name = "Invincible / Warding Call Cooldown"
 display_text = "Invincible"
 trigger = { type = "effect_applied", effects = [1000001530494976, 812483258351616], source = "local_player", target = "any" }
-duration_secs = 180.0
+duration_secs = 150.0
 is_affected_by_alacrity = false
 cooldown_ready_secs = 10
 color = [87, 29, 94, 255]
 display_targets = ["cooldowns"]
+
+# Endure Pain lasts 10 s longer on the tank discipline
+[[effect]]
+id = "endure_pain_tank_buff"
+name = "Endure Pain / Enure (Immortal)"
+enabled = false
+trigger = { type = "effect_applied", effects = [2211074933784576, 2211126473392128], source = "local_player", target = "any" }
+duration_secs = 20.0
+is_affected_by_alacrity = false
+color = [200, 60, 50, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Defense", "Immortal"]
+
+[[effect]]
+id = "endure_pain_buff"
+name = "Endure Pain / Enure"
+enabled = false
+trigger = { type = "effect_applied", effects = [2211074933784576, 2211126473392128], source = "local_player", target = "any" }
+duration_secs = 10.0
+is_affected_by_alacrity = false
+color = [200, 60, 50, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Focus", "Rage", "Vengeance", "Vigilance"]
+
+# Immortal: 180 s minus a 30 s passive; Grit Teeth takes 2 s off per attack taken,
+# at most once per second
+[[effect]]
+id = "saber_ward_jugg_cd"
+name = "Saber Ward Cooldown (Immortal)"
+display_text = "Saber Ward"
+trigger = { type = "effect_applied", effects = [807793154064384, 812169725739008], source = "local_player", target = "any" }
+duration_secs = 150.0
+is_affected_by_alacrity = false
+cooldown_ready_secs = 10.0
+color = [52, 107, 201, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Defense", "Immortal"]
+modifiers = [
+  { adjust_duration_secs = -2.0, icd_secs = 1.0, trigger = { type = "damage_taken" } },
+]
+
+# Full 180 s: the 30 s passive is Immortal only
+[[effect]]
+id = "saber_ward_jugg_dps_cd"
+name = "Saber Ward Cooldown (Vengeance / Rage)"
+display_text = "Saber Ward"
+trigger = { type = "effect_applied", effects = [807793154064384, 812169725739008], source = "local_player", target = "any" }
+duration_secs = 180.0
+is_affected_by_alacrity = false
+cooldown_ready_secs = 10.0
+color = [52, 107, 201, 255]
+display_targets = ["cooldowns"]
+disciplines = ["Focus", "Rage", "Vengeance", "Vigilance"]

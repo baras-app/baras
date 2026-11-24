@@ -61,19 +61,13 @@
 -                : 4490409782804480                : buff                  # Obfuscating Speed
 -                : 976061382787072                 : buff @Darkness        # Shroud of Darkness
 
-# ─── Juggernaut / Guardian (draft: seeded from DCD + proc lists) ─────────────────────────
-807793154064384  : 807793154064384                 : buff cd               # Saber Ward
-3602532668538880 : 3602532668538880                : buff cd               # Mad Dash
-2211074933784576 : 2211074933784576                : buff cd               # Endure Pain
-2793644297814016 : 2793644297814016                : buff cd               # Enraged Defense
+# ─── Juggernaut / Guardian (reviewed) ─────────────────────────────────────
+# Saber Ward cooldown (150 s, Grit Teeth), Endure Pain buffs (10 s, 20 s on Immortal), Enraged Defense and
+# Invincible (150 s) are overrides
+2211074933784576 : -                               : cd                    # Endure Pain
 3126177845739520 : 3126177845739520                : buff cd               # Saber Reflect
-1000001530494976 : 1000001530494976                : buff cd               # Invincible
--                : 1177770226876416                : buff                  # Savagery (Vengeance)
--                : 3192328932032512                : buff                  # Destroyer (Vengeance)
--                : 1261642348232704                : buff                  # Revenge (Immortal)
--                : 2308471907155968                : buff                  # Sonic Barrier (Immortal)
--                : 1383701023817728                : buff                  # Shockwave (Rage)
--                : 1261775492218880                : buff                  # Dominate (Rage)
+3602532668538880 : -                               : cd                    # Mad Dash
+3436141340524544 : -                               : cd                    # Threatening Scream
 
 # ─── Marauder / Sentinel (draft: seeded from DCD + proc lists) ───────────────────────────
 2473484550668288 : 2473484550668288                : buff cd               # Cloak of Pain
