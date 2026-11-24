@@ -164,6 +164,12 @@
      `all` also eased sizes and font changes nobody meant to animate */
   --transition-props: background-color, color, border-color, box-shadow, opacity, transform;
 
+  /* ─── Stacking layers ────────────────────────────────────────────────────────── */
+  /* App-wide layers only; z-index inside a component (sticky table heads, chart
+     marks) stays local and below --z-header */
+  --z-header: 200; /* header and its menus, over page content */
+  --z-overlay: 1000; /* drawers, modals, fullscreen panels, over the header */
+
   /* ─── Legacy (for compatibility) ─────────────────────────────────────────────── */
   --swtor-bg-dark: var(--bg-dark);
   --swtor-bg-mid: var(--bg-mid);
@@ -460,6 +466,8 @@ select optgroup {
   );
   border-bottom: 1px solid var(--swtor-border);
   border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+  /* One layer for the header, so its menus open over the page below */
+  z-index: var(--z-header);
 }
 
 .app-header h1 {
@@ -489,6 +497,16 @@ select optgroup {
   gap: 0.75em;
   padding: 0.2em 2vw 0.25em;
   border-bottom: 1px solid var(--border-subtle);
+  /* The size container is its own stacking context, which traps the menus'
+     z-index: lift it over the status row that follows */
+  position: relative;
+  z-index: 1;
+}
+
+/* The size container is also the containing block of fixed descendants, so a
+   menu backdrop's inset: 0 would cover only this bar: stretch it to the window */
+.header-bar .nav-menu-backdrop {
+  inset: -100vh -100vw;
 }
 
 /* Second row: action group on the left, session bar filling the rest */
@@ -1917,7 +1935,7 @@ button:active:not(:disabled),
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: var(--z-overlay);
 }
 
 /* Floating settings panel wrapper — no backdrop, clicks pass through */
@@ -1929,7 +1947,7 @@ button:active:not(:disabled),
   top: 0;
   right: 0;
   bottom: 0;
-  z-index: 1000;
+  z-index: var(--z-overlay);
   width: var(--side-drawer-w);
   background: var(--gradient-panel);
   border-left: 1px solid var(--blue-alpha-20);
@@ -6095,7 +6113,7 @@ a.contributor-name:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: var(--z-overlay);
 }
 
 .modal-content {
@@ -6759,7 +6777,7 @@ a.contributor-name:hover {
 .data-explorer .data-panel.fullscreen {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--z-overlay);
   padding: 1em;
   background: var(--gradient-panel);
   border-radius: 0;
