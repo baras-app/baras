@@ -13,7 +13,7 @@ is_affected_by_alacrity = false
 color = [200, 60, 50, 255]
 display_targets = ["cooldowns"]
 disciplines = ["Defense", "Focus", "Immortal", "Rage", "Vengeance", "Vigilance"]
-display_text = "Endure Pain"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
@@ -26,6 +26,7 @@ is_affected_by_alacrity = false
 color = [200, 60, 50, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Defense", "Focus", "Immortal", "Rage", "Vengeance", "Vigilance"]
+display_text = "Saber Reflect"
 
 [[effect]]
 id = "saber_reflect_cd"
@@ -50,12 +51,13 @@ is_affected_by_alacrity = false
 color = [200, 60, 50, 255]
 display_targets = ["cooldowns"]
 disciplines = ["Defense", "Focus", "Immortal", "Rage", "Vengeance", "Vigilance"]
-display_text = "Threatening Scream"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
 id = "draining_scream"
 name = "Draining Scream / Burning Blade"
+display_text = "{effect}"
 refresh_abilities = [
   { ability = 998270658674688, on_first_damage = true },
   { ability = 1261367470325760, on_first_damage = true },
@@ -68,6 +70,7 @@ color = [153, 27, 2, 255]
 display_targets = ["dot_tracker"]
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [807857578574081, 1280638988583168], source = "local_player", target = "any" }
+disciplines = ["Vengeance", "Vigilance"]
 
 [[effect]]
 id = "burning_slash"
@@ -83,10 +86,12 @@ duration_secs = 6.0
 is_affected_by_alacrity = true
 color = [196, 148, 14, 255]
 display_targets = ["dot_tracker"]
+disciplines = ["Vengeance", "Vigilance"]
 
 [[effect]]
 id = "bleeding_shatter"
 name = "Bleeding Shatter / Plasma Brand"
+display_text = "{effect}"
 refresh_abilities = [
   { ability = 1169953386397696, on_first_damage = true },
   { ability = 1261367470325760, on_first_damage = true },
@@ -98,11 +103,13 @@ is_affected_by_alacrity = true
 color = [80, 200, 80, 255]
 display_targets = ["dot_tracker"]
 trigger = { type = "effect_applied", effects = [1169953386397954, 3429368177099009], source = "local_player", target = "any" }
+disciplines = ["Vengeance", "Vigilance"]
 
 # dots.toml had eviscerate twice; this is the copy the loader kept
 [[effect]]
 id = "eviscerate"
 name = "Eviscerate / Burning Purpose"
+display_text = "{effect}"
 refresh_abilities = [
   { ability = 2210507998101504, on_first_damage = true },
   { ability = 1261367470325760, on_first_damage = true },
@@ -114,50 +121,62 @@ color = [194, 8, 29, 255]
 display_targets = ["dot_tracker"]
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [3426078232150278, 3429814853697796], source = "local_player", target = "any" }
+disciplines = ["Vengeance", "Vigilance"]
 
 [[effect]]
 id = "enraged_defense_buff"
+enabled = false
 name = "Enraged Defense / Focused Defense"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [2793644297814016, 2793700132388864], source = "local_player", target = "any" }
 duration_secs = 15.0
 is_affected_by_alacrity = false
 color = [148, 18, 6, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Defense", "Focus", "Immortal", "Rage", "Vengeance", "Vigilance"]
 
 [[effect]]
 id = "enraged_defense_cd"
 name = "Enraged Defense / Focused Defense Cooldown"
-display_text = "Enraged Defense"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [2793644297814016, 2793700132388864], source = "local_player", target = "any" }
 duration_secs = 120.0
 is_affected_by_alacrity = false
 cooldown_ready_secs = 10
 color = [148, 18, 6, 255]
 display_targets = ["cooldowns"]
+disciplines = ["Defense", "Focus", "Immortal", "Rage", "Vengeance", "Vigilance"]
 
 [[effect]]
 id = "invincible_buff"
+enabled = false
 name = "Invincible / Warding Call"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [1000001530494976, 812483258351616], source = "local_player", target = "any" }
 duration_secs = 10.0
 is_affected_by_alacrity = false
 color = [87, 29, 94, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Defense", "Focus", "Immortal", "Rage", "Vengeance", "Vigilance"]
 
 # 2:30 cooldown on Immortal
 [[effect]]
 id = "invincible_cd"
 name = "Invincible / Warding Call Cooldown"
-display_text = "Invincible"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [1000001530494976, 812483258351616], source = "local_player", target = "any" }
 duration_secs = 150.0
 is_affected_by_alacrity = false
 cooldown_ready_secs = 10
 color = [87, 29, 94, 255]
 display_targets = ["cooldowns"]
+disciplines = ["Defense", "Focus", "Immortal", "Rage", "Vengeance", "Vigilance"]
 
 # Endure Pain lasts 10 s longer on the tank discipline
 [[effect]]
 id = "endure_pain_tank_buff"
 name = "Endure Pain / Enure (Immortal)"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [2211074933784576, 2211126473392128], source = "local_player", target = "any" }
 duration_secs = 20.0
@@ -169,6 +188,7 @@ disciplines = ["Defense", "Immortal"]
 [[effect]]
 id = "endure_pain_buff"
 name = "Endure Pain / Enure"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [2211074933784576, 2211126473392128], source = "local_player", target = "any" }
 duration_secs = 10.0

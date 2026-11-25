@@ -13,6 +13,7 @@ is_affected_by_alacrity = false
 color = [85, 160, 95, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Concealment", "DirtyFighting", "Engineering", "Lethality", "Marksmanship", "Medicine", "Ruffian", "Saboteur", "Sawbones", "Scrapper", "Sharpshooter", "Virulence"]
+display_text = "{effect}"
 
 [[effect]]
 id = "adrenaline_probe_cd"
@@ -24,12 +25,13 @@ is_affected_by_alacrity = true
 color = [85, 160, 95, 255]
 display_targets = ["cooldowns"]
 disciplines = ["Concealment", "DirtyFighting", "Engineering", "Lethality", "Marksmanship", "Medicine", "Ruffian", "Saboteur", "Sawbones", "Scrapper", "Sharpshooter", "Virulence"]
-display_text = "Adrenaline Probe"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
 id = "corrosive_dart_marksman"
 name = "Corrosive Dart Marksman / Vital Shot (Sharpshooter)"
+display_text = "{effect}"
 refresh_abilities = [
   { ability = 3394699201085440, trigger = "damage" },
   { ability = 3465720780292096, on_first_damage = true },
@@ -49,7 +51,7 @@ trigger = { type = "effect_applied", effects = [3465720780292096, 21153401127567
 [[effect]]
 id = "corrosive_dart"
 name = "Corrosive Dart Viru / Vital Shot (Dirty Fighting)"
-display_text = "Corrosive Dart"
+display_text = "{effect}"
 refresh_abilities = [
   { ability = 3465720780292096, on_first_damage = true },
   { ability = 2115340112756736, on_first_damage = true },
@@ -65,6 +67,7 @@ trigger = { type = "effect_applied", effects = [3465720780292096, 21153401127567
 [[effect]]
 id = "corrosive_dart_engi"
 name = "Corrosive Dart Engi / Vital Shot Sabo"
+display_text = "{effect}"
 refresh_abilities = [
   { ability = 3465720780292096, on_first_damage = true },
   { ability = 2115340112756736, on_first_damage = true },
@@ -80,6 +83,7 @@ trigger = { type = "effect_applied", effects = [3465720780292096, 21153401127567
 [[effect]]
 id = "corrosive_dart_op"
 name = "Corrosive Dart Lethality / Vital Shot Ruffian"
+display_text = "{effect}"
 refresh_abilities = [
   { ability = 3465720780292096, on_first_damage = true },
   { ability = 2115340112756736, on_first_damage = true },
@@ -95,7 +99,7 @@ trigger = { type = "effect_applied", effects = [3465720780292096, 21153401127567
 [[effect]]
 id = "corrosive_dart_concealment"
 name = "Corrosive Dart Concealment/Medicine / Vital Shot Scrapper/Sawbones"
-display_text = "Corrosive Dart"
+display_text = "{effect}"
 refresh_abilities = [
   { ability = 3465720780292096, on_first_damage = true },
   { ability = 2115340112756736, on_first_damage = true },
@@ -112,7 +116,7 @@ trigger = { type = "effect_applied", effects = [3465720780292096, 21153401127567
 [[effect]]
 id = "shield_probe_cd"
 name = "Shield Probe / Defense Screen Cooldown"
-display_text = "Shield Probe"
+display_text = "{ability}"
 enabled = false
 trigger = { type = "ability_cast", abilities = [784716294782976, 962484991164416], source = "local_player", target = "any" }
 duration_secs = 30.0

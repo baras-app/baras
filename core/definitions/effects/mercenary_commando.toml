@@ -13,6 +13,7 @@ is_affected_by_alacrity = false
 color = [60, 140, 210, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Arsenal", "AssaultSpecialist", "Bodyguard", "CombatMedic", "Gunnery", "InnovativeOrdnance"]
+display_text = "{effect}"
 
 [[effect]]
 id = "hydraulic_overrides_mercenary_cd"
@@ -24,7 +25,7 @@ is_affected_by_alacrity = false
 color = [60, 140, 210, 255]
 display_targets = ["cooldowns"]
 disciplines = ["Arsenal", "AssaultSpecialist", "Bodyguard", "CombatMedic", "Gunnery", "InnovativeOrdnance"]
-display_text = "Hydraulic Overrides"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
@@ -37,7 +38,7 @@ is_affected_by_alacrity = false
 color = [60, 140, 210, 255]
 display_targets = ["cooldowns"]
 disciplines = ["Arsenal", "AssaultSpecialist", "Bodyguard", "CombatMedic", "Gunnery", "InnovativeOrdnance"]
-display_text = "Chaff Flare"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
@@ -50,6 +51,7 @@ is_affected_by_alacrity = false
 color = [60, 140, 210, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Arsenal", "AssaultSpecialist", "Bodyguard", "CombatMedic", "Gunnery", "InnovativeOrdnance"]
+display_text = "{effect}"
 
 [[effect]]
 id = "responsive_safeguards_cd"
@@ -61,7 +63,7 @@ is_affected_by_alacrity = false
 color = [60, 140, 210, 255]
 display_targets = ["cooldowns"]
 disciplines = ["Arsenal", "AssaultSpecialist", "Bodyguard", "CombatMedic", "Gunnery", "InnovativeOrdnance"]
-display_text = "Responsive Safeguards"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
@@ -74,6 +76,7 @@ is_affected_by_alacrity = false
 color = [60, 140, 210, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Bodyguard", "CombatMedic"]
+display_text = "{effect}"
 
 [[effect]]
 id = "high_velocity_supercharged_gas_buff"
@@ -85,6 +88,7 @@ is_affected_by_alacrity = false
 color = [60, 140, 210, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Arsenal", "Gunnery"]
+display_text = "{effect}"
 
 [[effect]]
 id = "tracer_lock_buff"
@@ -96,6 +100,7 @@ is_affected_by_alacrity = false
 color = [60, 140, 210, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Arsenal", "Gunnery"]
+display_text = "{effect}"
 
 [[effect]]
 id = "critical_efficiency_buff"
@@ -107,6 +112,7 @@ is_affected_by_alacrity = false
 color = [60, 140, 210, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Bodyguard", "CombatMedic"]
+display_text = "{effect}"
 
 [[effect]]
 id = "serrated_bolt"
@@ -121,6 +127,7 @@ duration_secs = 15.0
 is_affected_by_alacrity = true
 color = [144, 80, 204, 255]
 display_targets = ["dot_tracker"]
+disciplines = ["AssaultSpecialist", "InnovativeOrdnance"]
 
 [[effect]]
 id = "marked"
@@ -134,6 +141,7 @@ duration_secs = 45.0
 is_affected_by_alacrity = true
 color = [144, 80, 204, 255]
 display_targets = ["dot_tracker"]
+disciplines = ["AssaultSpecialist", "InnovativeOrdnance"]
 
 [[effect]]
 id = "burning_arsenal"
@@ -144,10 +152,12 @@ color = [80, 200, 80, 255]
 display_targets = ["dot_tracker"]
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [4322399252119847], source = "local_player", target = "any" }
+disciplines = ["Arsenal", "Gunnery"]
 
 [[effect]]
 id = "kolto_shell"
 name = "Kolto Shell / Trauma Probe"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [985226842996736, 999516199190528], source = "local_player", target = "group_members" }
 refresh_abilities = [985226842996736, 999516199190528]
 duration_secs = 180.0
@@ -156,10 +166,12 @@ single_instance_per_target = true
 color = [255, 126, 66, 255]
 show_single_stack = true
 display_targets = ["raid_frames"]
+disciplines = ["Bodyguard", "CombatMedic"]
 
 [[effect]]
 id = "kolto_shell_others"
 name = "Other's Kolto Shell / Other's Trauma Probe"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [985226842996736, 999516199190528], source = "other_players", target = "group_members" }
 refresh_abilities = [985226842996736, 999516199190528]
 duration_secs = 180.0
@@ -172,6 +184,7 @@ display_targets = ["raid_frames"]
 [[effect]]
 id = "energy_shield_buff"
 name = "Energy Shield / Reactive Shield (Mercenary)"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [814218425139459, 801329228284194], source = "local_player", target = "any" }
 duration_secs = 12.0
 is_affected_by_alacrity = false
@@ -183,7 +196,7 @@ disciplines = ["Arsenal", "AssaultSpecialist", "Bodyguard", "CombatMedic", "Gunn
 [[effect]]
 id = "energy_shield_cd"
 name = "Energy Shield / Reactive Shield Cooldown (Mercenary)"
-display_text = "Energy Shield"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [814218425139459, 801329228284194], source = "local_player", target = "any" }
 duration_secs = 120.0
 is_affected_by_alacrity = false
@@ -199,6 +212,7 @@ modifiers = [
 [[effect]]
 id = "chaff_flare_buff"
 name = "Chaff Flare / Diversion"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [814192655335424, 801273393709056], source = "local_player", target = "any" }
 duration_secs = 6.0
@@ -228,6 +242,7 @@ disciplines = ["Arsenal", "AssaultSpecialist", "Bodyguard", "CombatMedic", "Gunn
 [[effect]]
 id = "supercharged_gas_buff"
 name = "Supercharged Gas / Supercharged Cell"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [3401291975884800, 3408202578264064], source = "local_player", target = "any" }
 duration_secs = 16.0

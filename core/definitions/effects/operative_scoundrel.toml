@@ -13,7 +13,7 @@ is_affected_by_alacrity = false
 color = [60, 170, 110, 255]
 display_targets = ["cooldowns"]
 disciplines = ["Concealment", "Lethality", "Medicine", "Ruffian", "Sawbones", "Scrapper"]
-display_text = "Cloaking Screen"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
@@ -26,6 +26,7 @@ is_affected_by_alacrity = false
 color = [60, 170, 110, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Concealment", "Lethality", "Medicine", "Ruffian", "Sawbones", "Scrapper"]
+display_text = "{effect}"
 
 [[effect]]
 id = "stim_boost_cd"
@@ -37,12 +38,13 @@ is_affected_by_alacrity = true
 color = [60, 170, 110, 255]
 display_targets = ["cooldowns"]
 disciplines = ["Medicine", "Sawbones"]
-display_text = "Stim Boost"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
 id = "corrosive_grenade_op"
 name = "Corrosive Grenade (Op) / Shrap Bomb (Ruffian)"
+display_text = "{effect}"
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [1703989619982930, 807698664784339], source = "local_player", target = "any" }
 refresh_abilities = [
@@ -54,10 +56,12 @@ duration_secs = 24.0
 is_affected_by_alacrity = true
 color = [32, 173, 7, 255]
 display_targets = ["dot_tracker"]
+disciplines = ["Lethality", "Ruffian"]
 
 [[effect]]
 id = "toxic_blast"
 name = "Toxic Blast / Sanginary Shot"
+display_text = "{effect}"
 refresh_abilities = [
   { ability = 3440831444811776, on_first_damage = true },
   { ability = 3459828085161984, on_first_damage = true },
@@ -67,10 +71,12 @@ color = [80, 200, 80, 255]
 display_targets = ["dot_tracker"]
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [3440831444811776, 3459828085161984], source = "local_player", target = "any" }
+disciplines = ["Lethality", "Ruffian"]
 
 [[effect]]
 id = "kolto_probe"
 name = "Kolto Probe / Slow Release Medpac"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [814832605462528, 3406415871868928], source = "local_player", target = "group_members" }
 refresh_abilities = [814832605462528, { ability = 1014376786034688, min_stacks = 2, trigger = "heal" }, { ability = 815240627355648, min_stacks = 2, trigger = "heal" }, 3406415871868928, { ability = 807518276157440, min_stacks = 2, trigger = "heal" }, { ability = 3470823201439744, min_stacks = 2, trigger = "heal" }]
 duration_secs = 21.0
@@ -78,11 +84,13 @@ color = [38, 181, 81, 255]
 is_affected_by_alacrity = true
 show_single_stack = true
 display_targets = ["raid_frames"]
+disciplines = ["Concealment", "Lethality", "Medicine", "Ruffian", "Sawbones", "Scrapper"]
 
 # Evasion lasts 4.5 s on Concealment, 6 s on Medicine, 8 s on Lethality (measured; datamined 4 s)
 [[effect]]
 id = "evasion_concealment_buff"
 name = "Evasion / Dodge (Concealment)"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [814811130626048, 1010159128150016], source = "local_player", target = "any" }
 duration_secs = 4.5
@@ -94,6 +102,7 @@ disciplines = ["Concealment", "Scrapper"]
 [[effect]]
 id = "evasion_medicine_buff"
 name = "Evasion / Dodge (Medicine)"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [814811130626048, 1010159128150016], source = "local_player", target = "any" }
 duration_secs = 6.0
@@ -105,6 +114,7 @@ disciplines = ["Medicine", "Sawbones"]
 [[effect]]
 id = "evasion_lethality_buff"
 name = "Evasion / Dodge (Lethality)"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [814811130626048, 1010159128150016], source = "local_player", target = "any" }
 duration_secs = 8.0
@@ -117,7 +127,7 @@ disciplines = ["Lethality", "Ruffian"]
 [[effect]]
 id = "evasion_cd"
 name = "Evasion / Dodge Cooldown"
-display_text = "Evasion"
+display_text = "{ability}"
 enabled = false
 trigger = { type = "ability_cast", abilities = [814811130626048, 1010159128150016], source = "local_player", target = "any" }
 duration_secs = 60.0
@@ -134,6 +144,7 @@ modifiers = [
 [[effect]]
 id = "tactical_advantage_buff"
 name = "Tactical Advantage / Upper Hand"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [2278063538700288, 2275727076491264], source = "local_player", target = "any" }
 duration_secs = 24.0
@@ -153,7 +164,7 @@ modifiers = [
 [[effect]]
 id = "surgical_probe_timer"
 name = "Surgical Probe / Emergency Medpac (Tactical Advantage)"
-display_text = "Surgical Probe"
+display_text = "{ability}"
 enabled = false
 trigger = { type = "ability_cast", abilities = [815240627355648, 807518276157440], source = "local_player", target = "any" }
 duration_secs = 10.0

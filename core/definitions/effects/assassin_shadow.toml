@@ -26,6 +26,7 @@ is_affected_by_alacrity = false
 color = [120, 60, 160, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Darkness", "Deception", "Hatred", "Infiltration", "KineticCombat", "Serenity"]
+display_text = "{effect}"
 
 [[effect]]
 id = "mass_mind_control_cd"
@@ -50,6 +51,7 @@ is_affected_by_alacrity = false
 color = [120, 60, 160, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Hatred", "Serenity"]
+display_text = "{effect}"
 
 [[effect]]
 id = "phantom_stride_cd"
@@ -61,7 +63,7 @@ is_affected_by_alacrity = false
 color = [120, 60, 160, 255]
 display_targets = ["cooldowns"]
 disciplines = ["Darkness", "Deception", "Hatred", "Infiltration", "KineticCombat", "Serenity"]
-display_text = "Phantom Stride"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
@@ -74,6 +76,7 @@ is_affected_by_alacrity = false
 color = [120, 60, 160, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Darkness", "Deception", "Hatred", "Infiltration", "KineticCombat", "Serenity"]
+display_text = "{effect}"
 
 [[effect]]
 id = "shroud_of_darkness_buff"
@@ -85,10 +88,12 @@ is_affected_by_alacrity = false
 color = [120, 60, 160, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Darkness", "KineticCombat"]
+display_text = "{effect}"
 
 [[effect]]
 id = "discharge"
 name = "Discharge / Force Breach"
+display_text = "{effect}"
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [808235535695872, 964675424485376], source = "local_player", target = "any" }
 refresh_abilities = [
@@ -99,14 +104,18 @@ duration_secs = 18.0
 is_affected_by_alacrity = true
 color = [126, 14, 196, 255]
 display_targets = ["dot_tracker"]
+disciplines = ["Darkness", "Deception", "Hatred", "Infiltration", "KineticCombat", "Serenity"]
 
 [[effect]]
 id = "deflection_buff"
+enabled = false
 name = "Deflection"
 trigger = { type = "effect_applied", effects = [3421834804461568, 812719481552896], source = "local_player", target = "any" }
 duration_secs = 12.0
 is_affected_by_alacrity = false
 color = [235, 64, 52, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Darkness", "Deception", "Hatred", "Infiltration", "KineticCombat", "Serenity"]
 
 [[effect]]
 id = "deflection_cd"
@@ -118,20 +127,25 @@ is_affected_by_alacrity = false
 cooldown_ready_secs = 10
 color = [235, 64, 52, 255]
 display_targets = ["cooldowns"]
+disciplines = ["Darkness", "Deception", "Hatred", "Infiltration", "KineticCombat", "Serenity"]
 
 [[effect]]
 id = "force_shroud_buff"
+enabled = false
 name = "Force Shroud / Resilience"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [954616611078144, 812822560768000], source = "local_player", target = "any" }
 duration_secs = 3.0
 is_affected_by_alacrity = false
 color = [140, 71, 11, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Darkness", "Deception", "Hatred", "Infiltration", "KineticCombat", "Serenity"]
 
 # Every shield, parry or deflect takes 1 s off the cooldown, at most once per second
 [[effect]]
 id = "force_shroud_cd"
 name = "Force Shroud / Resilience Cooldown"
-display_text = "Force Shroud"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [954616611078144, 812822560768000], source = "local_player", target = "any" }
 duration_secs = 60.0
 is_affected_by_alacrity = false
@@ -141,30 +155,37 @@ display_targets = ["cooldowns"]
 modifiers = [
   { adjust_duration_secs = -1.0, icd_secs = 1.0, trigger = { type = "damage_taken", mitigation = ["shield", "parry", "deflect"] } },
 ]
+disciplines = ["Darkness", "Deception", "Hatred", "Infiltration", "KineticCombat", "Serenity"]
 
 [[effect]]
 id = "overcharge_saber_buff"
+enabled = false
 name = "Overcharge Saber / Battle Readiness"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [975430022594560, 979849543942144], source = "local_player", target = "any" }
 duration_secs = 15.0
 is_affected_by_alacrity = false
 color = [123, 31, 194, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Darkness", "Deception", "Hatred", "Infiltration", "KineticCombat", "Serenity"]
 
 [[effect]]
 id = "overcharge_saber_cd"
 name = "Overcharge Saber / Battle Readiness Cooldown"
-display_text = "Overcharge Saber"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [975430022594560, 979849543942144], source = "local_player", target = "any" }
 duration_secs = 120.0
 is_affected_by_alacrity = true
 cooldown_ready_secs = 10
 color = [123, 31, 194, 255]
 display_targets = ["cooldowns"]
+disciplines = ["Darkness", "Deception", "Hatred", "Infiltration", "KineticCombat", "Serenity"]
 
 # Dark Ward charges: every charge change (spent or gained) adds 1 s
 [[effect]]
 id = "dark_ward_buff"
 name = "Dark Ward / Kinetic Ward"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [975760735076352, 980828796485632], source = "local_player", target = "any" }
 refresh_abilities = [975760735076352, 980828796485632]
@@ -186,7 +207,7 @@ modifiers = [
 [[effect]]
 id = "bloodletting_icd"
 name = "Bloodletting / Crush Spirit ICD"
-display_text = "Bloodletting"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [3430828465979392, 3600552688615424], source = "local_player", target = "any" }
 duration_secs = 15.0

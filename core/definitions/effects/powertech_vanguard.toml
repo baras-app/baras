@@ -13,6 +13,7 @@ is_affected_by_alacrity = false
 color = [230, 180, 40, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["AdvancedPrototype", "Plasmatech", "Pyrotech", "ShieldSpecialist", "ShieldTech", "Tactics"]
+display_text = "{effect}"
 
 [[effect]]
 id = "explosive_fuel_cd"
@@ -24,7 +25,7 @@ is_affected_by_alacrity = true
 color = [230, 180, 40, 255]
 display_targets = ["cooldowns"]
 disciplines = ["AdvancedPrototype", "Plasmatech", "Pyrotech", "ShieldSpecialist", "ShieldTech", "Tactics"]
-display_text = "Explosive Fuel"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
@@ -37,6 +38,7 @@ is_affected_by_alacrity = false
 color = [230, 180, 40, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["ShieldSpecialist", "ShieldTech"]
+display_text = "{effect}"
 
 [[effect]]
 id = "energy_yield_buff"
@@ -48,6 +50,7 @@ is_affected_by_alacrity = false
 color = [230, 180, 40, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["ShieldSpecialist", "ShieldTech"]
+display_text = "{effect}"
 
 [[effect]]
 id = "energy_yield_cd"
@@ -59,7 +62,7 @@ is_affected_by_alacrity = false
 color = [230, 180, 40, 255]
 display_targets = ["cooldowns"]
 disciplines = ["ShieldSpecialist", "ShieldTech"]
-display_text = "Energy Yield"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
@@ -72,6 +75,7 @@ is_affected_by_alacrity = false
 color = [230, 180, 40, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["ShieldSpecialist", "ShieldTech"]
+display_text = "{ability}"
 
 [[effect]]
 id = "oil_slick_cd"
@@ -83,7 +87,7 @@ is_affected_by_alacrity = false
 color = [230, 180, 40, 255]
 display_targets = ["cooldowns"]
 disciplines = ["ShieldSpecialist", "ShieldTech"]
-display_text = "Oil Slick"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
@@ -96,7 +100,7 @@ is_affected_by_alacrity = true
 color = [230, 180, 40, 255]
 display_targets = ["cooldowns"]
 disciplines = ["AdvancedPrototype", "Plasmatech", "Pyrotech", "ShieldSpecialist", "ShieldTech", "Tactics"]
-display_text = "Carbonize"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
@@ -109,7 +113,7 @@ is_affected_by_alacrity = false
 color = [230, 180, 40, 255]
 display_targets = ["cooldowns"]
 disciplines = ["AdvancedPrototype", "Plasmatech", "Pyrotech", "ShieldSpecialist", "ShieldTech", "Tactics"]
-display_text = "Sonic Missile"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
@@ -122,6 +126,7 @@ is_affected_by_alacrity = false
 color = [230, 180, 40, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["AdvancedPrototype", "Plasmatech", "Pyrotech", "ShieldSpecialist", "ShieldTech", "Tactics"]
+display_text = "Shoulder Cannon"
 is_refreshed_on_modify = true
 
 [[effect]]
@@ -134,6 +139,7 @@ is_affected_by_alacrity = false
 color = [230, 180, 40, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["AdvancedPrototype", "Plasmatech", "Pyrotech", "ShieldSpecialist", "ShieldTech", "Tactics"]
+display_text = "{effect}"
 
 [[effect]]
 id = "hydraulic_overrides_cd"
@@ -145,7 +151,7 @@ is_affected_by_alacrity = false
 color = [230, 180, 40, 255]
 display_targets = ["cooldowns"]
 disciplines = ["AdvancedPrototype", "Plasmatech", "Pyrotech", "ShieldSpecialist", "ShieldTech", "Tactics"]
-display_text = "Hydraulic Overrides"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
@@ -158,12 +164,13 @@ is_affected_by_alacrity = false
 color = [230, 180, 40, 255]
 display_targets = ["cooldowns"]
 disciplines = ["Plasmatech", "Pyrotech"]
-display_text = "Thermal Yield"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
 id = "scorch"
 name = "Scorch / Plasmatize"
+display_text = "{effect}"
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [3384812186370048, 3391666954174464], source = "local_player", target = "any" }
 refresh_abilities = [
@@ -174,10 +181,12 @@ duration_secs = 30.0
 is_affected_by_alacrity = true
 color = [173, 46, 3, 255]
 display_targets = ["dot_tracker"]
+disciplines = ["Plasmatech", "Pyrotech"]
 
 [[effect]]
 id = "retractable_blade"
 name = "Retractable Blade / Gut"
+display_text = "{effect}"
 duration_secs = 18.0
 is_affected_by_alacrity = true
 color = [194, 8, 29, 255]
@@ -191,11 +200,13 @@ refresh_abilities = [
   { ability = 3963988526235648, on_first_damage = true },
 ]
 trigger = { type = "effect_applied", effects = [2029831608860928, 2029878853501184], source = "local_player", target = "any" }
+disciplines = ["AdvancedPrototype", "Tactics"]
 
 # Each non-immune/resist Flaming Fist hit refreshes the 20 s duration, also at max stacks where the log shows nothing
 [[effect]]
 id = "heatstroke_buff"
 name = "Heatstroke / Suppressive Heat"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [4499532293341445, 4546910077583621], source = "local_player", target = "any" }
 refresh_scope = "source"
@@ -212,11 +223,14 @@ disciplines = ["Plasmatech", "Pyrotech"]
 
 [[effect]]
 id = "power_yield_buff"
+enabled = false
 name = "Power Yield"
 trigger = { type = "effect_applied", effects = [4498514386092300, 4543706031980812], source = "local_player", target = "any" }
 duration_secs = 10.0
 is_affected_by_alacrity = false
 color = [235, 207, 52, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["AdvancedPrototype", "Tactics"]
 
 [[effect]]
 id = "power_yield_cd"
@@ -228,11 +242,13 @@ is_affected_by_alacrity = false
 cooldown_ready_secs = 10
 color = [235, 207, 52, 255]
 display_targets = ["cooldowns"]
+disciplines = ["AdvancedPrototype", "Tactics"]
 
 # Every hit taken refills it to 10 s, capped at 30 s from application; no ICD (measured)
 [[effect]]
 id = "thermal_yield_buff"
 name = "Thermal Yield / Durasteel Armor"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [4502478640906508, 4546987386994952], source = "local_player", target = "any" }
 duration_secs = 10.0
@@ -248,6 +264,7 @@ modifiers = [
 [[effect]]
 id = "energy_shield_pt_buff"
 name = "Energy Shield / Reactive Shield (Powertech)"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [814218425139459, 801329228284194], source = "local_player", target = "any" }
 duration_secs = 15.0
@@ -259,7 +276,7 @@ disciplines = ["AdvancedPrototype", "Plasmatech", "Pyrotech", "ShieldSpecialist"
 [[effect]]
 id = "energy_shield_pt_cd"
 name = "Energy Shield / Reactive Shield Cooldown (Powertech)"
-display_text = "Energy Shield"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [814218425139459, 801329228284194], source = "local_player", target = "any" }
 duration_secs = 120.0
 is_affected_by_alacrity = false

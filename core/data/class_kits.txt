@@ -23,7 +23,7 @@
 2264285283614720 : 2264285283614720                : buff                  # Kolto Overload heal; Health Monitor + cooldown are overrides
 2027628290637824 : -                               : cd                    # Carbonize
 880189122805760  : -                               : cd                    # Sonic Missile
-814317209387008  : -                               : cd                    # Vent Heat
+# Vent Heat cooldown is an override (90 s, alacrity)
 3066482095292416 : 3066482095292416                : stacks                # Shoulder Cannon (up to 7 charges in logs)
 4516080802332672 : 4516080802332672                : buff cd               # Hydraulic Overrides
 -                : 4499532293341445                : stacks                # Heatstroke (Pyrotech); override refreshes on Flaming Fist damage

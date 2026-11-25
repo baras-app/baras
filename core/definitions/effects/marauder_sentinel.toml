@@ -13,6 +13,7 @@ is_affected_by_alacrity = false
 color = [230, 110, 40, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Annihilation", "Carnage", "Combat", "Concentration", "Fury", "Watchman"]
+display_text = "Force Camouflage"
 
 [[effect]]
 id = "force_camouflage_cd"
@@ -37,6 +38,7 @@ is_affected_by_alacrity = false
 color = [230, 110, 40, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Annihilation", "Carnage", "Combat", "Concentration", "Fury", "Watchman"]
+display_text = "{effect}"
 
 [[effect]]
 id = "undying_rage_cd"
@@ -48,7 +50,7 @@ is_affected_by_alacrity = false
 color = [230, 110, 40, 255]
 display_targets = ["cooldowns"]
 disciplines = ["Annihilation", "Carnage", "Combat", "Concentration", "Fury", "Watchman"]
-display_text = "Undying Rage"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
@@ -61,6 +63,7 @@ is_affected_by_alacrity = false
 color = [230, 110, 40, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Annihilation", "Carnage", "Combat", "Concentration", "Fury", "Watchman"]
+display_text = "{effect}"
 
 [[effect]]
 id = "predation_cd"
@@ -72,12 +75,13 @@ is_affected_by_alacrity = false
 color = [230, 110, 40, 255]
 display_targets = ["cooldowns"]
 disciplines = ["Annihilation", "Carnage", "Combat", "Concentration", "Fury", "Watchman"]
-display_text = "Predation"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
 id = "force_rend"
 name = "Force Rend"
+display_text = "{ability}"
 duration_secs = 9.0
 is_affected_by_alacrity = true
 color = [123, 61, 240, 255]
@@ -88,6 +92,7 @@ trigger = { type = "effect_applied", effects = [3361615068004352, 34092161905459
 [[effect]]
 id = "rupture"
 name = "Rupture"
+display_text = "{ability}"
 refresh_abilities = [
   { ability = 3066602354376704, on_first_damage = true },
   { ability = 807827513802752, on_first_damage = true },
@@ -110,6 +115,7 @@ trigger = { type = "effect_applied", effects = [3455541707800846, 34608416974441
 [[effect]]
 id = "deadly_saber"
 name = "Deadly Saber"
+display_text = "{ability}"
 is_refreshed_on_modify = true
 duration_secs = 6.0
 is_affected_by_alacrity = true
@@ -123,6 +129,7 @@ trigger = { type = "effect_applied", effects = [1259666663276824, 12617196576442
 [[effect]]
 id = "cloak_of_pain_buff"
 name = "Cloak of Pain / Rebuke"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [2473484550668288, 2480816059842560], source = "local_player", target = "any" }
 duration_secs = 10.0
@@ -139,7 +146,7 @@ modifiers = [
 [[effect]]
 id = "cloak_of_pain_cd"
 name = "Cloak of Pain / Rebuke Cooldown"
-display_text = "Cloak of Pain"
+display_text = "{ability}"
 enabled = false
 trigger = { type = "ability_cast", abilities = [2473484550668288, 2480816059842560], source = "local_player", target = "any" }
 duration_secs = 60.0

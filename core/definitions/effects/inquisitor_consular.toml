@@ -13,7 +13,7 @@ is_affected_by_alacrity = true
 color = [135, 75, 185, 255]
 display_targets = ["cooldowns"]
 disciplines = ["Balance", "Corruption", "Darkness", "Deception", "Hatred", "Infiltration", "KineticCombat", "Lightning", "Madness", "Seer", "Serenity", "Telekinetics"]
-display_text = "Electrocute"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
@@ -26,11 +26,13 @@ is_affected_by_alacrity = false
 color = [135, 75, 185, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Balance", "Corruption", "Darkness", "Deception", "Hatred", "Infiltration", "KineticCombat", "Lightning", "Madness", "Seer", "Serenity", "Telekinetics"]
+display_text = "{effect}"
 is_refreshed_on_modify = true
 
 [[effect]]
 id = "creeping_terror"
 name = "Creeping Terror / Sever Force"
+display_text = "{effect}"
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [808424514256896, 813226287693824], source = "local_player", target = "any_except_local" }
 refresh_abilities = [
@@ -41,3 +43,4 @@ duration_secs = 18.0
 is_affected_by_alacrity = true
 color = [145, 66, 9, 255]
 display_targets = ["dot_tracker"]
+disciplines = ["Balance", "Hatred", "Madness", "Serenity"]

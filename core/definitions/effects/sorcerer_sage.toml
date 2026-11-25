@@ -12,6 +12,7 @@ is_affected_by_alacrity = false
 color = [150, 90, 210, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Balance", "Corruption", "Lightning", "Madness", "Seer", "Telekinetics"]
+display_text = "Force Barrier"
 
 [[effect]]
 id = "force_barrier_cd"
@@ -36,6 +37,7 @@ is_affected_by_alacrity = false
 color = [150, 90, 210, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Balance", "Corruption", "Lightning", "Madness", "Seer", "Telekinetics"]
+display_text = "{effect}"
 
 [[effect]]
 id = "cloud_mind_cd"
@@ -60,6 +62,7 @@ is_affected_by_alacrity = false
 color = [150, 90, 210, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Balance", "Corruption", "Lightning", "Madness", "Seer", "Telekinetics"]
+display_text = "{effect}"
 
 [[effect]]
 id = "unnatural_preservation_cd"
@@ -71,7 +74,7 @@ is_affected_by_alacrity = false
 color = [150, 90, 210, 255]
 display_targets = ["cooldowns"]
 disciplines = ["Balance", "Corruption", "Lightning", "Madness", "Seer", "Telekinetics"]
-display_text = "Unnatural Preservation"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
@@ -84,7 +87,7 @@ is_affected_by_alacrity = true
 color = [150, 90, 210, 255]
 display_targets = ["cooldowns"]
 disciplines = ["Balance", "Corruption", "Lightning", "Madness", "Seer", "Telekinetics"]
-display_text = "Extrication"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
@@ -97,6 +100,7 @@ is_affected_by_alacrity = false
 color = [150, 90, 210, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Balance", "Corruption", "Lightning", "Madness", "Seer", "Telekinetics"]
+display_text = "{effect}"
 
 [[effect]]
 id = "unlimited_power_cd"
@@ -108,7 +112,7 @@ is_affected_by_alacrity = false
 color = [150, 90, 210, 255]
 display_targets = ["cooldowns"]
 disciplines = ["Balance", "Corruption", "Lightning", "Madness", "Seer", "Telekinetics"]
-display_text = "Unlimited Power"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
@@ -121,6 +125,7 @@ is_affected_by_alacrity = false
 color = [150, 90, 210, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Lightning", "Telekinetics"]
+display_text = "{effect}"
 is_refreshed_on_modify = true
 
 [[effect]]
@@ -133,6 +138,7 @@ is_affected_by_alacrity = false
 color = [150, 90, 210, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Lightning", "Telekinetics"]
+display_text = "{effect}"
 is_refreshed_on_modify = true
 
 [[effect]]
@@ -145,6 +151,7 @@ is_affected_by_alacrity = false
 color = [150, 90, 210, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Lightning", "Telekinetics"]
+display_text = "{effect}"
 is_refreshed_on_modify = true
 
 [[effect]]
@@ -157,11 +164,13 @@ is_affected_by_alacrity = false
 color = [150, 90, 210, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Balance", "Madness"]
+display_text = "{effect}"
 is_refreshed_on_modify = true
 
 [[effect]]
 id = "affliction"
 name = "Affliction / Weaken Mind"
+display_text = "{effect}"
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [808192586022912, 812861215473664], source = "local_player", target = "any" }
 refresh_abilities = [
@@ -177,7 +186,7 @@ display_targets = ["dot_tracker"]
 [[effect]]
 id = "affliction_lightning"
 name = "Affliction (Lightning) / Weaken Mind (Telekinetics)"
-display_text = "Affliction"
+display_text = "{effect}"
 duration_secs = 18.0
 is_affected_by_alacrity = true
 color = [62, 173, 28, 255]
@@ -198,26 +207,31 @@ trigger = { type = "effect_applied", effects = [808192586022912, 812861215473664
 [[effect]]
 id = "resurgence"
 name = "Resurgence / Rejuvenate"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [3412162538110976, 812809675866112], source = "local_player", target = "group_members" }
 refresh_abilities = [3412162538110976, 812809675866112]
 duration_secs = 15.0
 color = [193, 120, 165, 255]
 is_affected_by_alacrity = true
 display_targets = ["raid_frames"]
+disciplines = ["Balance", "Corruption", "Lightning", "Madness", "Seer", "Telekinetics"]
 
 [[effect]]
 id = "static_barrier"
 name = "Static Barrier / Force Armor"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [3411286364782959, 812736661422605], source = "local_player", target = "group_members" }
 refresh_abilities = [3411286364782959, 812736661422605]
 duration_secs = 30.0
 color = [168, 96, 171, 255]
 display_targets = ["raid_frames"]
+disciplines = ["Balance", "Corruption", "Lightning", "Madness", "Seer", "Telekinetics"]
 
 # Polarity Shift lasts 10 s on Corruption, 15 s on Madness, 20 s on Lightning (measured)
 [[effect]]
 id = "polarity_shift_buff"
 name = "Polarity Shift / Mental Alacrity (Lightning)"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [961325349994496, 3217995656593408], source = "local_player", target = "any" }
 duration_secs = 20.0
@@ -229,6 +243,7 @@ disciplines = ["Lightning", "Telekinetics"]
 [[effect]]
 id = "polarity_shift_madness_buff"
 name = "Polarity Shift / Mental Alacrity (Madness)"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [961325349994496, 3217995656593408], source = "local_player", target = "any" }
 duration_secs = 15.0
@@ -240,6 +255,7 @@ disciplines = ["Balance", "Madness"]
 [[effect]]
 id = "polarity_shift_corruption_buff"
 name = "Polarity Shift / Mental Alacrity (Corruption)"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [961325349994496, 3217995656593408], source = "local_player", target = "any" }
 duration_secs = 10.0
@@ -251,7 +267,7 @@ disciplines = ["Corruption", "Seer"]
 [[effect]]
 id = "polarity_shift_cd"
 name = "Polarity Shift / Mental Alacrity Cooldown"
-display_text = "Polarity Shift"
+display_text = "{ability}"
 enabled = false
 trigger = { type = "ability_cast", abilities = [961325349994496, 3217995656593408], source = "local_player", target = "any" }
 duration_secs = 120.0
@@ -265,7 +281,7 @@ disciplines = ["Corruption", "Lightning", "Seer", "Telekinetics"]
 [[effect]]
 id = "polarity_shift_madness_cd"
 name = "Polarity Shift / Mental Alacrity Cooldown (Madness)"
-display_text = "Polarity Shift"
+display_text = "{ability}"
 enabled = false
 trigger = { type = "ability_cast", abilities = [961325349994496, 3217995656593408], source = "local_player", target = "any" }
 duration_secs = 120.0
@@ -294,6 +310,7 @@ disciplines = ["Balance", "Corruption", "Lightning", "Madness", "Seer", "Telekin
 [[effect]]
 id = "force_surge_buff"
 name = "Force Surge / Resplendence"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [808677917327360, 812985769525248], source = "local_player", target = "any" }
 duration_secs = 30.0
@@ -313,6 +330,7 @@ modifiers = [
 [[effect]]
 id = "reverse_corruptions_buff"
 name = "Reverse Corruptions / Amnesty"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [3613119762923986, 3613175597498708], source = "local_player", target = "any" }
 duration_secs = 10.0

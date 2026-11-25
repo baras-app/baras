@@ -26,6 +26,7 @@ is_affected_by_alacrity = false
 color = [110, 150, 80, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["DirtyFighting", "Engineering", "Marksmanship", "Saboteur", "Sharpshooter", "Virulence"]
+display_text = "{effect}"
 
 [[effect]]
 id = "target_acquired_cd"
@@ -37,7 +38,7 @@ is_affected_by_alacrity = true
 color = [110, 150, 80, 255]
 display_targets = ["cooldowns"]
 disciplines = ["DirtyFighting", "Engineering", "Marksmanship", "Saboteur", "Sharpshooter", "Virulence"]
-display_text = "Target Acquired"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
@@ -50,6 +51,7 @@ is_affected_by_alacrity = false
 color = [110, 150, 80, 255]
 display_targets = ["personal_buffs"]
 disciplines = ["Marksmanship", "Sharpshooter"]
+display_text = "{effect}"
 
 [[effect]]
 id = "sniper_volley_cd"
@@ -61,7 +63,7 @@ is_affected_by_alacrity = true
 color = [110, 150, 80, 255]
 display_targets = ["cooldowns"]
 disciplines = ["Marksmanship", "Sharpshooter"]
-display_text = "Sniper Volley"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
@@ -74,12 +76,13 @@ is_affected_by_alacrity = false
 color = [110, 150, 80, 255]
 display_targets = ["cooldowns"]
 disciplines = ["DirtyFighting", "Engineering", "Marksmanship", "Saboteur", "Sharpshooter", "Virulence"]
-display_text = "Meticulous Preparation"
+display_text = "{ability}"
 cooldown_ready_secs = 10.0
 
 [[effect]]
 id = "corrosive_grenade_snipe"
 name = "Corrosive Grenade (Sniper) / Shrap Bomb (Gunslinger)"
+display_text = "{effect}"
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [1703989619982932, 807698664784337], source = "local_player", target = "any" }
 refresh_abilities = [
@@ -91,10 +94,12 @@ duration_secs = 24.0
 is_affected_by_alacrity = true
 color = [32, 173, 7, 255]
 display_targets = ["dot_tracker"]
+disciplines = ["DirtyFighting", "Virulence"]
 
 [[effect]]
 id = "interrogation_probe"
 name = "Interrogation Probe / Shock Charge"
+display_text = "{effect}"
 refresh_abilities = [
   { ability = 879630777057280, on_first_damage = false },
   { ability = 2299572734918656, trigger = "damage" },
@@ -106,10 +111,12 @@ is_affected_by_alacrity = true
 color = [80, 200, 80, 255]
 display_targets = ["dot_tracker"]
 trigger = { type = "effect_applied", effects = [879630777057280, 1957100632670208], source = "local_player", target = "any" }
+disciplines = ["Engineering", "Saboteur"]
 
 [[effect]]
 id = "plasma_probe"
 name = "Plasma Probe / Incendiary Grenade"
+display_text = "{ability}"
 refresh_abilities = [
   { ability = 993073748246528, on_first_damage = false },
   { ability = 1159319047372800, on_first_damage = false },
@@ -118,20 +125,24 @@ duration_secs = 9.0
 color = [80, 200, 80, 255]
 display_targets = ["dot_tracker"]
 trigger = { type = "ability_cast", abilities = [993073748246528, 1159319047372800], source = "local_player", target = "any" }
+disciplines = ["Engineering", "Saboteur"]
 
 [[effect]]
 id = "weakening_blast"
 name = "Weakening Blast / Hemorrhaging Blast"
+display_text = "{effect}"
 duration_secs = 10.0
 color = [80, 200, 80, 255]
 display_targets = ["dot_tracker"]
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [3440827149844480, 3404620575539200], source = "local_player", target = "any" }
+disciplines = ["DirtyFighting", "Virulence"]
 
 # Entrench / Hunker Down: 20 s, Marksmanship/Sharpshooter measured 23 s
 [[effect]]
 id = "entrench_buff"
 name = "Entrench / Hunker Down"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [2043584094142464, 2044808159821824], source = "local_player", target = "any" }
 duration_secs = 20.0
@@ -143,6 +154,7 @@ disciplines = ["Engineering", "Virulence", "Saboteur", "DirtyFighting"]
 [[effect]]
 id = "entrench_marksmanship_buff"
 name = "Entrench / Hunker Down (Marksmanship)"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [2043584094142464, 2044808159821824], source = "local_player", target = "any" }
 duration_secs = 23.0
@@ -155,7 +167,7 @@ disciplines = ["Marksmanship", "Sharpshooter"]
 [[effect]]
 id = "entrench_cd"
 name = "Entrench / Hunker Down Cooldown"
-display_text = "Entrench"
+display_text = "{ability}"
 enabled = false
 trigger = { type = "ability_cast", abilities = [2043584094142464, 2044808159821824], source = "local_player", target = "any" }
 duration_secs = 60.0
@@ -172,6 +184,7 @@ modifiers = [
 [[effect]]
 id = "ballistic_shield_buff"
 name = "Ballistic Shield / Scrambling Field"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [2305791847563264, 2305916401614848, 2305791847563526, 2305916401615109], source = "local_player", target = "any" }
 duration_secs = 20.0
@@ -183,6 +196,7 @@ disciplines = ["Engineering", "Marksmanship", "Saboteur", "Sharpshooter"]
 [[effect]]
 id = "ballistic_shield_virulence_buff"
 name = "Ballistic Shield / Scrambling Field (Virulence)"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [2305791847563264, 2305916401614848, 2305791847563526, 2305916401615109], source = "local_player", target = "any" }
 duration_secs = 25.0
@@ -195,7 +209,7 @@ disciplines = ["Virulence", "DirtyFighting"]
 [[effect]]
 id = "ballistic_shield_cd"
 name = "Ballistic Shield / Scrambling Field Cooldown"
-display_text = "Ballistic Shield"
+display_text = "{ability}"
 enabled = false
 trigger = { type = "ability_cast", abilities = [2305791847563264, 2305916401614848], source = "local_player", target = "any" }
 duration_secs = 180.0
@@ -209,6 +223,7 @@ disciplines = ["Engineering", "Marksmanship", "Virulence", "Saboteur", "Sharpsho
 [[effect]]
 id = "laze_target_buff"
 name = "Laze Target / Smuggler's Luck"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [814836900429824, 962811408678912], source = "local_player", target = "any" }
 duration_secs = 20.0
@@ -221,7 +236,7 @@ disciplines = ["Engineering", "Marksmanship", "Virulence", "Saboteur", "Sharpsho
 [[effect]]
 id = "laze_target_cd"
 name = "Laze Target / Smuggler's Luck Cooldown"
-display_text = "Laze Target"
+display_text = "{ability}"
 enabled = false
 trigger = { type = "ability_cast", abilities = [814836900429824, 814836900430095, 962811408678912], source = "local_player", target = "any" }
 duration_secs = 60.0
@@ -235,7 +250,7 @@ disciplines = ["Engineering", "Saboteur"]
 [[effect]]
 id = "laze_target_cd_marksmanship"
 name = "Laze Target / Smuggler's Luck Cooldown"
-display_text = "Laze Target"
+display_text = "{ability}"
 enabled = false
 trigger = { type = "ability_cast", abilities = [814836900429824, 814836900430095, 962811408678912], source = "local_player", target = "any" }
 duration_secs = 45.0
@@ -268,6 +283,7 @@ modifiers = [
 [[effect]]
 id = "integrated_toxins_buff"
 name = "Integrated Toxins / Smuggler's Chems"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [4477237118107648, 4527226242465792], source = "local_player", target = "any" }
 duration_secs = 10.0

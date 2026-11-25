@@ -10,6 +10,7 @@ version = 1
 [[effect]]
 id = "corrosive_dart_marksman"
 name = "Corrosive Dart Marksman / Vital Shot (Sharpshooter)"
+display_text = "{effect}"
 refresh_abilities = [
   { ability = 3394699201085440, trigger = "damage" },
   { ability = 3465720780292096, on_first_damage = true },
@@ -29,7 +30,7 @@ trigger = { type = "effect_applied", effects = [3465720780292096, 21153401127567
 [[effect]]
 id = "corrosive_dart"
 name = "Corrosive Dart Viru / Vital Shot (Dirty Fighting)"
-display_text = "Corrosive Dart"
+display_text = "{effect}"
 refresh_abilities = [
   { ability = 3465720780292096, on_first_damage = true },
   { ability = 2115340112756736, on_first_damage = true },
@@ -45,6 +46,7 @@ trigger = { type = "effect_applied", effects = [3465720780292096, 21153401127567
 [[effect]]
 id = "corrosive_dart_engi"
 name = "Corrosive Dart Engi / Vital Shot Sabo"
+display_text = "{effect}"
 refresh_abilities = [
   { ability = 3465720780292096, on_first_damage = true },
   { ability = 2115340112756736, on_first_damage = true },
@@ -60,6 +62,7 @@ trigger = { type = "effect_applied", effects = [3465720780292096, 21153401127567
 [[effect]]
 id = "corrosive_dart_op"
 name = "Corrosive Dart Lethality / Vital Shot Ruffian"
+display_text = "{effect}"
 refresh_abilities = [
   { ability = 3465720780292096, on_first_damage = true },
   { ability = 2115340112756736, on_first_damage = true },
@@ -75,7 +78,7 @@ trigger = { type = "effect_applied", effects = [3465720780292096, 21153401127567
 [[effect]]
 id = "corrosive_dart_concealment"
 name = "Corrosive Dart Concealment/Medicine / Vital Shot Scrapper/Sawbones"
-display_text = "Corrosive Dart"
+display_text = "{effect}"
 refresh_abilities = [
   { ability = 3465720780292096, on_first_damage = true },
   { ability = 2115340112756736, on_first_damage = true },
@@ -92,7 +95,7 @@ trigger = { type = "effect_applied", effects = [3465720780292096, 21153401127567
 [[effect]]
 id = "shield_probe_cd"
 name = "Shield Probe / Defense Screen Cooldown"
-display_text = "Shield Probe"
+display_text = "{ability}"
 enabled = false
 trigger = { type = "ability_cast", abilities = [784716294782976, 962484991164416], source = "local_player", target = "any" }
 duration_secs = 30.0
@@ -110,6 +113,7 @@ modifiers = [
 [[effect]]
 id = "discharge"
 name = "Discharge / Force Breach"
+display_text = "{effect}"
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [808235535695872, 964675424485376], source = "local_player", target = "any" }
 refresh_abilities = [
@@ -120,14 +124,18 @@ duration_secs = 18.0
 is_affected_by_alacrity = true
 color = [126, 14, 196, 255]
 display_targets = ["dot_tracker"]
+disciplines = ["Darkness", "Deception", "Hatred", "Infiltration", "KineticCombat", "Serenity"]
 
 [[effect]]
 id = "deflection_buff"
+enabled = false
 name = "Deflection"
 trigger = { type = "effect_applied", effects = [3421834804461568, 812719481552896], source = "local_player", target = "any" }
 duration_secs = 12.0
 is_affected_by_alacrity = false
 color = [235, 64, 52, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Darkness", "Deception", "Hatred", "Infiltration", "KineticCombat", "Serenity"]
 
 [[effect]]
 id = "deflection_cd"
@@ -139,20 +147,25 @@ is_affected_by_alacrity = false
 cooldown_ready_secs = 10
 color = [235, 64, 52, 255]
 display_targets = ["cooldowns"]
+disciplines = ["Darkness", "Deception", "Hatred", "Infiltration", "KineticCombat", "Serenity"]
 
 [[effect]]
 id = "force_shroud_buff"
+enabled = false
 name = "Force Shroud / Resilience"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [954616611078144, 812822560768000], source = "local_player", target = "any" }
 duration_secs = 3.0
 is_affected_by_alacrity = false
 color = [140, 71, 11, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Darkness", "Deception", "Hatred", "Infiltration", "KineticCombat", "Serenity"]
 
 # Every shield, parry or deflect takes 1 s off the cooldown, at most once per second
 [[effect]]
 id = "force_shroud_cd"
 name = "Force Shroud / Resilience Cooldown"
-display_text = "Force Shroud"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [954616611078144, 812822560768000], source = "local_player", target = "any" }
 duration_secs = 60.0
 is_affected_by_alacrity = false
@@ -162,30 +175,37 @@ display_targets = ["cooldowns"]
 modifiers = [
   { adjust_duration_secs = -1.0, icd_secs = 1.0, trigger = { type = "damage_taken", mitigation = ["shield", "parry", "deflect"] } },
 ]
+disciplines = ["Darkness", "Deception", "Hatred", "Infiltration", "KineticCombat", "Serenity"]
 
 [[effect]]
 id = "overcharge_saber_buff"
+enabled = false
 name = "Overcharge Saber / Battle Readiness"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [975430022594560, 979849543942144], source = "local_player", target = "any" }
 duration_secs = 15.0
 is_affected_by_alacrity = false
 color = [123, 31, 194, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Darkness", "Deception", "Hatred", "Infiltration", "KineticCombat", "Serenity"]
 
 [[effect]]
 id = "overcharge_saber_cd"
 name = "Overcharge Saber / Battle Readiness Cooldown"
-display_text = "Overcharge Saber"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [975430022594560, 979849543942144], source = "local_player", target = "any" }
 duration_secs = 120.0
 is_affected_by_alacrity = true
 cooldown_ready_secs = 10
 color = [123, 31, 194, 255]
 display_targets = ["cooldowns"]
+disciplines = ["Darkness", "Deception", "Hatred", "Infiltration", "KineticCombat", "Serenity"]
 
 # Dark Ward charges: every charge change (spent or gained) adds 1 s
 [[effect]]
 id = "dark_ward_buff"
 name = "Dark Ward / Kinetic Ward"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [975760735076352, 980828796485632], source = "local_player", target = "any" }
 refresh_abilities = [975760735076352, 980828796485632]
@@ -207,7 +227,7 @@ modifiers = [
 [[effect]]
 id = "bloodletting_icd"
 name = "Bloodletting / Crush Spirit ICD"
-display_text = "Bloodletting"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [3430828465979392, 3600552688615424], source = "local_player", target = "any" }
 duration_secs = 15.0
@@ -222,6 +242,7 @@ disciplines = ["Hatred", "Serenity"]
 [[effect]]
 id = "incendiary_missile"
 name = "Incendiary Missile / Incendiary Round"
+display_text = "{effect}"
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [2027022700249344, 3391477975613734], source = "local_player", target = "any" }
 refresh_abilities = [
@@ -232,14 +253,19 @@ duration_secs = 15.0
 is_affected_by_alacrity = true
 color = [204, 145, 37, 255]
 display_targets = ["dot_tracker"]
+disciplines = ["AssaultSpecialist", "InnovativeOrdnance", "Plasmatech", "Pyrotech"]
 
 [[effect]]
 id = "kolto_overload_buff"
+enabled = false
 name = "Kolto Overload: Health Monitor / Adrenaline Rush"
+display_text = "{ability}"
 trigger = { type = "effect_applied", effects = [2264285283615002, 801251918872844], source = "local_player", target = "any" }
 duration_secs = 60.0
 is_affected_by_alacrity = false
 color = [252, 186, 3, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["AdvancedPrototype", "Arsenal", "AssaultSpecialist", "Bodyguard", "CombatMedic", "Gunnery", "InnovativeOrdnance", "Plasmatech", "Pyrotech", "ShieldSpecialist", "ShieldTech", "Tactics"]
 
 # Cooldown starts when Health Monitor is removed
 [[effect]]
@@ -252,6 +278,21 @@ is_affected_by_alacrity = false
 cooldown_ready_secs = 10
 color = [252, 186, 3, 255]
 display_targets = ["cooldowns"]
+disciplines = ["AdvancedPrototype", "Arsenal", "AssaultSpecialist", "Bodyguard", "CombatMedic", "Gunnery", "InnovativeOrdnance", "Plasmatech", "Pyrotech", "ShieldSpecialist", "ShieldTech", "Tactics"]
+
+# Vent Heat / Recharge Cells: 90 s, alacrity (datamined 120 s; log floor 83.5 s)
+[[effect]]
+id = "vent_heat_cd"
+name = "Vent Heat / Recharge Cells Cooldown"
+display_text = "{ability}"
+enabled = false
+trigger = { type = "ability_cast", abilities = [814317209387008, 1991194083065856], source = "local_player", target = "any" }
+duration_secs = 90.0
+is_affected_by_alacrity = true
+cooldown_ready_secs = 10.0
+color = [145, 160, 125, 255]
+display_targets = ["cooldowns"]
+disciplines = ["AdvancedPrototype", "Arsenal", "AssaultSpecialist", "Bodyguard", "CombatMedic", "Gunnery", "InnovativeOrdnance", "Plasmatech", "Pyrotech", "ShieldSpecialist", "ShieldTech", "Tactics"]
 
 # ═══ general ═══════════════════════════════════════════════════════════
 
@@ -364,6 +405,7 @@ disciplines = ["Darkness", "Defense", "Immortal", "KineticCombat", "ShieldSpecia
 [[effect]]
 id = "creeping_terror"
 name = "Creeping Terror / Sever Force"
+display_text = "{effect}"
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [808424514256896, 813226287693824], source = "local_player", target = "any_except_local" }
 refresh_abilities = [
@@ -374,12 +416,14 @@ duration_secs = 18.0
 is_affected_by_alacrity = true
 color = [145, 66, 9, 255]
 display_targets = ["dot_tracker"]
+disciplines = ["Balance", "Hatred", "Madness", "Serenity"]
 
 # ═══ juggernaut_guardian ═══════════════════════════════════════════════════════════
 
 [[effect]]
 id = "draining_scream"
 name = "Draining Scream / Burning Blade"
+display_text = "{effect}"
 refresh_abilities = [
   { ability = 998270658674688, on_first_damage = true },
   { ability = 1261367470325760, on_first_damage = true },
@@ -392,6 +436,7 @@ color = [153, 27, 2, 255]
 display_targets = ["dot_tracker"]
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [807857578574081, 1280638988583168], source = "local_player", target = "any" }
+disciplines = ["Vengeance", "Vigilance"]
 
 [[effect]]
 id = "burning_slash"
@@ -407,10 +452,12 @@ duration_secs = 6.0
 is_affected_by_alacrity = true
 color = [196, 148, 14, 255]
 display_targets = ["dot_tracker"]
+disciplines = ["Vengeance", "Vigilance"]
 
 [[effect]]
 id = "bleeding_shatter"
 name = "Bleeding Shatter / Plasma Brand"
+display_text = "{effect}"
 refresh_abilities = [
   { ability = 1169953386397696, on_first_damage = true },
   { ability = 1261367470325760, on_first_damage = true },
@@ -422,11 +469,13 @@ is_affected_by_alacrity = true
 color = [80, 200, 80, 255]
 display_targets = ["dot_tracker"]
 trigger = { type = "effect_applied", effects = [1169953386397954, 3429368177099009], source = "local_player", target = "any" }
+disciplines = ["Vengeance", "Vigilance"]
 
 # dots.toml had eviscerate twice; this is the copy the loader kept
 [[effect]]
 id = "eviscerate"
 name = "Eviscerate / Burning Purpose"
+display_text = "{effect}"
 refresh_abilities = [
   { ability = 2210507998101504, on_first_damage = true },
   { ability = 1261367470325760, on_first_damage = true },
@@ -438,50 +487,62 @@ color = [194, 8, 29, 255]
 display_targets = ["dot_tracker"]
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [3426078232150278, 3429814853697796], source = "local_player", target = "any" }
+disciplines = ["Vengeance", "Vigilance"]
 
 [[effect]]
 id = "enraged_defense_buff"
+enabled = false
 name = "Enraged Defense / Focused Defense"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [2793644297814016, 2793700132388864], source = "local_player", target = "any" }
 duration_secs = 15.0
 is_affected_by_alacrity = false
 color = [148, 18, 6, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Defense", "Focus", "Immortal", "Rage", "Vengeance", "Vigilance"]
 
 [[effect]]
 id = "enraged_defense_cd"
 name = "Enraged Defense / Focused Defense Cooldown"
-display_text = "Enraged Defense"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [2793644297814016, 2793700132388864], source = "local_player", target = "any" }
 duration_secs = 120.0
 is_affected_by_alacrity = false
 cooldown_ready_secs = 10
 color = [148, 18, 6, 255]
 display_targets = ["cooldowns"]
+disciplines = ["Defense", "Focus", "Immortal", "Rage", "Vengeance", "Vigilance"]
 
 [[effect]]
 id = "invincible_buff"
+enabled = false
 name = "Invincible / Warding Call"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [1000001530494976, 812483258351616], source = "local_player", target = "any" }
 duration_secs = 10.0
 is_affected_by_alacrity = false
 color = [87, 29, 94, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Defense", "Focus", "Immortal", "Rage", "Vengeance", "Vigilance"]
 
 # 2:30 cooldown on Immortal
 [[effect]]
 id = "invincible_cd"
 name = "Invincible / Warding Call Cooldown"
-display_text = "Invincible"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [1000001530494976, 812483258351616], source = "local_player", target = "any" }
 duration_secs = 150.0
 is_affected_by_alacrity = false
 cooldown_ready_secs = 10
 color = [87, 29, 94, 255]
 display_targets = ["cooldowns"]
+disciplines = ["Defense", "Focus", "Immortal", "Rage", "Vengeance", "Vigilance"]
 
 # Endure Pain lasts 10 s longer on the tank discipline
 [[effect]]
 id = "endure_pain_tank_buff"
 name = "Endure Pain / Enure (Immortal)"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [2211074933784576, 2211126473392128], source = "local_player", target = "any" }
 duration_secs = 20.0
@@ -493,6 +554,7 @@ disciplines = ["Defense", "Immortal"]
 [[effect]]
 id = "endure_pain_buff"
 name = "Endure Pain / Enure"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [2211074933784576, 2211126473392128], source = "local_player", target = "any" }
 duration_secs = 10.0
@@ -536,6 +598,7 @@ disciplines = ["Focus", "Rage", "Vengeance", "Vigilance"]
 [[effect]]
 id = "force_rend"
 name = "Force Rend"
+display_text = "{ability}"
 duration_secs = 9.0
 is_affected_by_alacrity = true
 color = [123, 61, 240, 255]
@@ -546,6 +609,7 @@ trigger = { type = "effect_applied", effects = [3361615068004352, 34092161905459
 [[effect]]
 id = "rupture"
 name = "Rupture"
+display_text = "{ability}"
 refresh_abilities = [
   { ability = 3066602354376704, on_first_damage = true },
   { ability = 807827513802752, on_first_damage = true },
@@ -568,6 +632,7 @@ trigger = { type = "effect_applied", effects = [3455541707800846, 34608416974441
 [[effect]]
 id = "deadly_saber"
 name = "Deadly Saber"
+display_text = "{ability}"
 is_refreshed_on_modify = true
 duration_secs = 6.0
 is_affected_by_alacrity = true
@@ -581,6 +646,7 @@ trigger = { type = "effect_applied", effects = [1259666663276824, 12617196576442
 [[effect]]
 id = "cloak_of_pain_buff"
 name = "Cloak of Pain / Rebuke"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [2473484550668288, 2480816059842560], source = "local_player", target = "any" }
 duration_secs = 10.0
@@ -597,7 +663,7 @@ modifiers = [
 [[effect]]
 id = "cloak_of_pain_cd"
 name = "Cloak of Pain / Rebuke Cooldown"
-display_text = "Cloak of Pain"
+display_text = "{ability}"
 enabled = false
 trigger = { type = "ability_cast", abilities = [2473484550668288, 2480816059842560], source = "local_player", target = "any" }
 duration_secs = 60.0
@@ -625,6 +691,7 @@ duration_secs = 15.0
 is_affected_by_alacrity = true
 color = [144, 80, 204, 255]
 display_targets = ["dot_tracker"]
+disciplines = ["AssaultSpecialist", "InnovativeOrdnance"]
 
 [[effect]]
 id = "marked"
@@ -638,6 +705,7 @@ duration_secs = 45.0
 is_affected_by_alacrity = true
 color = [144, 80, 204, 255]
 display_targets = ["dot_tracker"]
+disciplines = ["AssaultSpecialist", "InnovativeOrdnance"]
 
 [[effect]]
 id = "burning_arsenal"
@@ -648,10 +716,12 @@ color = [80, 200, 80, 255]
 display_targets = ["dot_tracker"]
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [4322399252119847], source = "local_player", target = "any" }
+disciplines = ["Arsenal", "Gunnery"]
 
 [[effect]]
 id = "kolto_shell"
 name = "Kolto Shell / Trauma Probe"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [985226842996736, 999516199190528], source = "local_player", target = "group_members" }
 refresh_abilities = [985226842996736, 999516199190528]
 duration_secs = 180.0
@@ -660,10 +730,12 @@ single_instance_per_target = true
 color = [255, 126, 66, 255]
 show_single_stack = true
 display_targets = ["raid_frames"]
+disciplines = ["Bodyguard", "CombatMedic"]
 
 [[effect]]
 id = "kolto_shell_others"
 name = "Other's Kolto Shell / Other's Trauma Probe"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [985226842996736, 999516199190528], source = "other_players", target = "group_members" }
 refresh_abilities = [985226842996736, 999516199190528]
 duration_secs = 180.0
@@ -676,6 +748,7 @@ display_targets = ["raid_frames"]
 [[effect]]
 id = "energy_shield_buff"
 name = "Energy Shield / Reactive Shield (Mercenary)"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [814218425139459, 801329228284194], source = "local_player", target = "any" }
 duration_secs = 12.0
 is_affected_by_alacrity = false
@@ -687,7 +760,7 @@ disciplines = ["Arsenal", "AssaultSpecialist", "Bodyguard", "CombatMedic", "Gunn
 [[effect]]
 id = "energy_shield_cd"
 name = "Energy Shield / Reactive Shield Cooldown (Mercenary)"
-display_text = "Energy Shield"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [814218425139459, 801329228284194], source = "local_player", target = "any" }
 duration_secs = 120.0
 is_affected_by_alacrity = false
@@ -703,6 +776,7 @@ modifiers = [
 [[effect]]
 id = "chaff_flare_buff"
 name = "Chaff Flare / Diversion"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [814192655335424, 801273393709056], source = "local_player", target = "any" }
 duration_secs = 6.0
@@ -732,6 +806,7 @@ disciplines = ["Arsenal", "AssaultSpecialist", "Bodyguard", "CombatMedic", "Gunn
 [[effect]]
 id = "supercharged_gas_buff"
 name = "Supercharged Gas / Supercharged Cell"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [3401291975884800, 3408202578264064], source = "local_player", target = "any" }
 duration_secs = 16.0
@@ -745,6 +820,7 @@ disciplines = ["AssaultSpecialist", "InnovativeOrdnance"]
 [[effect]]
 id = "corrosive_grenade_op"
 name = "Corrosive Grenade (Op) / Shrap Bomb (Ruffian)"
+display_text = "{effect}"
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [1703989619982930, 807698664784339], source = "local_player", target = "any" }
 refresh_abilities = [
@@ -756,10 +832,12 @@ duration_secs = 24.0
 is_affected_by_alacrity = true
 color = [32, 173, 7, 255]
 display_targets = ["dot_tracker"]
+disciplines = ["Lethality", "Ruffian"]
 
 [[effect]]
 id = "toxic_blast"
 name = "Toxic Blast / Sanginary Shot"
+display_text = "{effect}"
 refresh_abilities = [
   { ability = 3440831444811776, on_first_damage = true },
   { ability = 3459828085161984, on_first_damage = true },
@@ -769,10 +847,12 @@ color = [80, 200, 80, 255]
 display_targets = ["dot_tracker"]
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [3440831444811776, 3459828085161984], source = "local_player", target = "any" }
+disciplines = ["Lethality", "Ruffian"]
 
 [[effect]]
 id = "kolto_probe"
 name = "Kolto Probe / Slow Release Medpac"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [814832605462528, 3406415871868928], source = "local_player", target = "group_members" }
 refresh_abilities = [814832605462528, { ability = 1014376786034688, min_stacks = 2, trigger = "heal" }, { ability = 815240627355648, min_stacks = 2, trigger = "heal" }, 3406415871868928, { ability = 807518276157440, min_stacks = 2, trigger = "heal" }, { ability = 3470823201439744, min_stacks = 2, trigger = "heal" }]
 duration_secs = 21.0
@@ -780,11 +860,13 @@ color = [38, 181, 81, 255]
 is_affected_by_alacrity = true
 show_single_stack = true
 display_targets = ["raid_frames"]
+disciplines = ["Concealment", "Lethality", "Medicine", "Ruffian", "Sawbones", "Scrapper"]
 
 # Evasion lasts 4.5 s on Concealment, 6 s on Medicine, 8 s on Lethality (measured; datamined 4 s)
 [[effect]]
 id = "evasion_concealment_buff"
 name = "Evasion / Dodge (Concealment)"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [814811130626048, 1010159128150016], source = "local_player", target = "any" }
 duration_secs = 4.5
@@ -796,6 +878,7 @@ disciplines = ["Concealment", "Scrapper"]
 [[effect]]
 id = "evasion_medicine_buff"
 name = "Evasion / Dodge (Medicine)"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [814811130626048, 1010159128150016], source = "local_player", target = "any" }
 duration_secs = 6.0
@@ -807,6 +890,7 @@ disciplines = ["Medicine", "Sawbones"]
 [[effect]]
 id = "evasion_lethality_buff"
 name = "Evasion / Dodge (Lethality)"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [814811130626048, 1010159128150016], source = "local_player", target = "any" }
 duration_secs = 8.0
@@ -819,7 +903,7 @@ disciplines = ["Lethality", "Ruffian"]
 [[effect]]
 id = "evasion_cd"
 name = "Evasion / Dodge Cooldown"
-display_text = "Evasion"
+display_text = "{ability}"
 enabled = false
 trigger = { type = "ability_cast", abilities = [814811130626048, 1010159128150016], source = "local_player", target = "any" }
 duration_secs = 60.0
@@ -836,6 +920,7 @@ modifiers = [
 [[effect]]
 id = "tactical_advantage_buff"
 name = "Tactical Advantage / Upper Hand"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [2278063538700288, 2275727076491264], source = "local_player", target = "any" }
 duration_secs = 24.0
@@ -855,7 +940,7 @@ modifiers = [
 [[effect]]
 id = "surgical_probe_timer"
 name = "Surgical Probe / Emergency Medpac (Tactical Advantage)"
-display_text = "Surgical Probe"
+display_text = "{ability}"
 enabled = false
 trigger = { type = "ability_cast", abilities = [815240627355648, 807518276157440], source = "local_player", target = "any" }
 duration_secs = 10.0
@@ -888,6 +973,7 @@ disciplines = ["Medicine", "Sawbones"]
 [[effect]]
 id = "scorch"
 name = "Scorch / Plasmatize"
+display_text = "{effect}"
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [3384812186370048, 3391666954174464], source = "local_player", target = "any" }
 refresh_abilities = [
@@ -898,10 +984,12 @@ duration_secs = 30.0
 is_affected_by_alacrity = true
 color = [173, 46, 3, 255]
 display_targets = ["dot_tracker"]
+disciplines = ["Plasmatech", "Pyrotech"]
 
 [[effect]]
 id = "retractable_blade"
 name = "Retractable Blade / Gut"
+display_text = "{effect}"
 duration_secs = 18.0
 is_affected_by_alacrity = true
 color = [194, 8, 29, 255]
@@ -915,11 +1003,13 @@ refresh_abilities = [
   { ability = 3963988526235648, on_first_damage = true },
 ]
 trigger = { type = "effect_applied", effects = [2029831608860928, 2029878853501184], source = "local_player", target = "any" }
+disciplines = ["AdvancedPrototype", "Tactics"]
 
 # Each non-immune/resist Flaming Fist hit refreshes the 20 s duration, also at max stacks where the log shows nothing
 [[effect]]
 id = "heatstroke_buff"
 name = "Heatstroke / Suppressive Heat"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [4499532293341445, 4546910077583621], source = "local_player", target = "any" }
 refresh_scope = "source"
@@ -936,11 +1026,14 @@ disciplines = ["Plasmatech", "Pyrotech"]
 
 [[effect]]
 id = "power_yield_buff"
+enabled = false
 name = "Power Yield"
 trigger = { type = "effect_applied", effects = [4498514386092300, 4543706031980812], source = "local_player", target = "any" }
 duration_secs = 10.0
 is_affected_by_alacrity = false
 color = [235, 207, 52, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["AdvancedPrototype", "Tactics"]
 
 [[effect]]
 id = "power_yield_cd"
@@ -952,11 +1045,13 @@ is_affected_by_alacrity = false
 cooldown_ready_secs = 10
 color = [235, 207, 52, 255]
 display_targets = ["cooldowns"]
+disciplines = ["AdvancedPrototype", "Tactics"]
 
 # Every hit taken refills it to 10 s, capped at 30 s from application; no ICD (measured)
 [[effect]]
 id = "thermal_yield_buff"
 name = "Thermal Yield / Durasteel Armor"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [4502478640906508, 4546987386994952], source = "local_player", target = "any" }
 duration_secs = 10.0
@@ -972,6 +1067,7 @@ modifiers = [
 [[effect]]
 id = "energy_shield_pt_buff"
 name = "Energy Shield / Reactive Shield (Powertech)"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [814218425139459, 801329228284194], source = "local_player", target = "any" }
 duration_secs = 15.0
@@ -983,7 +1079,7 @@ disciplines = ["AdvancedPrototype", "Plasmatech", "Pyrotech", "ShieldSpecialist"
 [[effect]]
 id = "energy_shield_pt_cd"
 name = "Energy Shield / Reactive Shield Cooldown (Powertech)"
-display_text = "Energy Shield"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [814218425139459, 801329228284194], source = "local_player", target = "any" }
 duration_secs = 120.0
 is_affected_by_alacrity = false
@@ -997,6 +1093,7 @@ disciplines = ["AdvancedPrototype", "Plasmatech", "Pyrotech", "ShieldSpecialist"
 [[effect]]
 id = "corrosive_grenade_snipe"
 name = "Corrosive Grenade (Sniper) / Shrap Bomb (Gunslinger)"
+display_text = "{effect}"
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [1703989619982932, 807698664784337], source = "local_player", target = "any" }
 refresh_abilities = [
@@ -1008,10 +1105,12 @@ duration_secs = 24.0
 is_affected_by_alacrity = true
 color = [32, 173, 7, 255]
 display_targets = ["dot_tracker"]
+disciplines = ["DirtyFighting", "Virulence"]
 
 [[effect]]
 id = "interrogation_probe"
 name = "Interrogation Probe / Shock Charge"
+display_text = "{effect}"
 refresh_abilities = [
   { ability = 879630777057280, on_first_damage = false },
   { ability = 2299572734918656, trigger = "damage" },
@@ -1023,10 +1122,12 @@ is_affected_by_alacrity = true
 color = [80, 200, 80, 255]
 display_targets = ["dot_tracker"]
 trigger = { type = "effect_applied", effects = [879630777057280, 1957100632670208], source = "local_player", target = "any" }
+disciplines = ["Engineering", "Saboteur"]
 
 [[effect]]
 id = "plasma_probe"
 name = "Plasma Probe / Incendiary Grenade"
+display_text = "{ability}"
 refresh_abilities = [
   { ability = 993073748246528, on_first_damage = false },
   { ability = 1159319047372800, on_first_damage = false },
@@ -1035,20 +1136,24 @@ duration_secs = 9.0
 color = [80, 200, 80, 255]
 display_targets = ["dot_tracker"]
 trigger = { type = "ability_cast", abilities = [993073748246528, 1159319047372800], source = "local_player", target = "any" }
+disciplines = ["Engineering", "Saboteur"]
 
 [[effect]]
 id = "weakening_blast"
 name = "Weakening Blast / Hemorrhaging Blast"
+display_text = "{effect}"
 duration_secs = 10.0
 color = [80, 200, 80, 255]
 display_targets = ["dot_tracker"]
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [3440827149844480, 3404620575539200], source = "local_player", target = "any" }
+disciplines = ["DirtyFighting", "Virulence"]
 
 # Entrench / Hunker Down: 20 s, Marksmanship/Sharpshooter measured 23 s
 [[effect]]
 id = "entrench_buff"
 name = "Entrench / Hunker Down"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [2043584094142464, 2044808159821824], source = "local_player", target = "any" }
 duration_secs = 20.0
@@ -1060,6 +1165,7 @@ disciplines = ["Engineering", "Virulence", "Saboteur", "DirtyFighting"]
 [[effect]]
 id = "entrench_marksmanship_buff"
 name = "Entrench / Hunker Down (Marksmanship)"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [2043584094142464, 2044808159821824], source = "local_player", target = "any" }
 duration_secs = 23.0
@@ -1072,7 +1178,7 @@ disciplines = ["Marksmanship", "Sharpshooter"]
 [[effect]]
 id = "entrench_cd"
 name = "Entrench / Hunker Down Cooldown"
-display_text = "Entrench"
+display_text = "{ability}"
 enabled = false
 trigger = { type = "ability_cast", abilities = [2043584094142464, 2044808159821824], source = "local_player", target = "any" }
 duration_secs = 60.0
@@ -1089,6 +1195,7 @@ modifiers = [
 [[effect]]
 id = "ballistic_shield_buff"
 name = "Ballistic Shield / Scrambling Field"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [2305791847563264, 2305916401614848, 2305791847563526, 2305916401615109], source = "local_player", target = "any" }
 duration_secs = 20.0
@@ -1100,6 +1207,7 @@ disciplines = ["Engineering", "Marksmanship", "Saboteur", "Sharpshooter"]
 [[effect]]
 id = "ballistic_shield_virulence_buff"
 name = "Ballistic Shield / Scrambling Field (Virulence)"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [2305791847563264, 2305916401614848, 2305791847563526, 2305916401615109], source = "local_player", target = "any" }
 duration_secs = 25.0
@@ -1112,7 +1220,7 @@ disciplines = ["Virulence", "DirtyFighting"]
 [[effect]]
 id = "ballistic_shield_cd"
 name = "Ballistic Shield / Scrambling Field Cooldown"
-display_text = "Ballistic Shield"
+display_text = "{ability}"
 enabled = false
 trigger = { type = "ability_cast", abilities = [2305791847563264, 2305916401614848], source = "local_player", target = "any" }
 duration_secs = 180.0
@@ -1126,6 +1234,7 @@ disciplines = ["Engineering", "Marksmanship", "Virulence", "Saboteur", "Sharpsho
 [[effect]]
 id = "laze_target_buff"
 name = "Laze Target / Smuggler's Luck"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [814836900429824, 962811408678912], source = "local_player", target = "any" }
 duration_secs = 20.0
@@ -1138,7 +1247,7 @@ disciplines = ["Engineering", "Marksmanship", "Virulence", "Saboteur", "Sharpsho
 [[effect]]
 id = "laze_target_cd"
 name = "Laze Target / Smuggler's Luck Cooldown"
-display_text = "Laze Target"
+display_text = "{ability}"
 enabled = false
 trigger = { type = "ability_cast", abilities = [814836900429824, 814836900430095, 962811408678912], source = "local_player", target = "any" }
 duration_secs = 60.0
@@ -1152,7 +1261,7 @@ disciplines = ["Engineering", "Saboteur"]
 [[effect]]
 id = "laze_target_cd_marksmanship"
 name = "Laze Target / Smuggler's Luck Cooldown"
-display_text = "Laze Target"
+display_text = "{ability}"
 enabled = false
 trigger = { type = "ability_cast", abilities = [814836900429824, 814836900430095, 962811408678912], source = "local_player", target = "any" }
 duration_secs = 45.0
@@ -1185,6 +1294,7 @@ modifiers = [
 [[effect]]
 id = "integrated_toxins_buff"
 name = "Integrated Toxins / Smuggler's Chems"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [4477237118107648, 4527226242465792], source = "local_player", target = "any" }
 duration_secs = 10.0
@@ -1201,6 +1311,7 @@ modifiers = [
 [[effect]]
 id = "affliction"
 name = "Affliction / Weaken Mind"
+display_text = "{effect}"
 track_outside_combat = false
 trigger = { type = "effect_applied", effects = [808192586022912, 812861215473664], source = "local_player", target = "any" }
 refresh_abilities = [
@@ -1216,7 +1327,7 @@ display_targets = ["dot_tracker"]
 [[effect]]
 id = "affliction_lightning"
 name = "Affliction (Lightning) / Weaken Mind (Telekinetics)"
-display_text = "Affliction"
+display_text = "{effect}"
 duration_secs = 18.0
 is_affected_by_alacrity = true
 color = [62, 173, 28, 255]
@@ -1237,26 +1348,31 @@ trigger = { type = "effect_applied", effects = [808192586022912, 812861215473664
 [[effect]]
 id = "resurgence"
 name = "Resurgence / Rejuvenate"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [3412162538110976, 812809675866112], source = "local_player", target = "group_members" }
 refresh_abilities = [3412162538110976, 812809675866112]
 duration_secs = 15.0
 color = [193, 120, 165, 255]
 is_affected_by_alacrity = true
 display_targets = ["raid_frames"]
+disciplines = ["Balance", "Corruption", "Lightning", "Madness", "Seer", "Telekinetics"]
 
 [[effect]]
 id = "static_barrier"
 name = "Static Barrier / Force Armor"
+display_text = "{effect}"
 trigger = { type = "effect_applied", effects = [3411286364782959, 812736661422605], source = "local_player", target = "group_members" }
 refresh_abilities = [3411286364782959, 812736661422605]
 duration_secs = 30.0
 color = [168, 96, 171, 255]
 display_targets = ["raid_frames"]
+disciplines = ["Balance", "Corruption", "Lightning", "Madness", "Seer", "Telekinetics"]
 
 # Polarity Shift lasts 10 s on Corruption, 15 s on Madness, 20 s on Lightning (measured)
 [[effect]]
 id = "polarity_shift_buff"
 name = "Polarity Shift / Mental Alacrity (Lightning)"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [961325349994496, 3217995656593408], source = "local_player", target = "any" }
 duration_secs = 20.0
@@ -1268,6 +1384,7 @@ disciplines = ["Lightning", "Telekinetics"]
 [[effect]]
 id = "polarity_shift_madness_buff"
 name = "Polarity Shift / Mental Alacrity (Madness)"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [961325349994496, 3217995656593408], source = "local_player", target = "any" }
 duration_secs = 15.0
@@ -1279,6 +1396,7 @@ disciplines = ["Balance", "Madness"]
 [[effect]]
 id = "polarity_shift_corruption_buff"
 name = "Polarity Shift / Mental Alacrity (Corruption)"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [961325349994496, 3217995656593408], source = "local_player", target = "any" }
 duration_secs = 10.0
@@ -1290,7 +1408,7 @@ disciplines = ["Corruption", "Seer"]
 [[effect]]
 id = "polarity_shift_cd"
 name = "Polarity Shift / Mental Alacrity Cooldown"
-display_text = "Polarity Shift"
+display_text = "{ability}"
 enabled = false
 trigger = { type = "ability_cast", abilities = [961325349994496, 3217995656593408], source = "local_player", target = "any" }
 duration_secs = 120.0
@@ -1304,7 +1422,7 @@ disciplines = ["Corruption", "Lightning", "Seer", "Telekinetics"]
 [[effect]]
 id = "polarity_shift_madness_cd"
 name = "Polarity Shift / Mental Alacrity Cooldown (Madness)"
-display_text = "Polarity Shift"
+display_text = "{ability}"
 enabled = false
 trigger = { type = "ability_cast", abilities = [961325349994496, 3217995656593408], source = "local_player", target = "any" }
 duration_secs = 120.0
@@ -1333,6 +1451,7 @@ disciplines = ["Balance", "Corruption", "Lightning", "Madness", "Seer", "Telekin
 [[effect]]
 id = "force_surge_buff"
 name = "Force Surge / Resplendence"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [808677917327360, 812985769525248], source = "local_player", target = "any" }
 duration_secs = 30.0
@@ -1352,6 +1471,7 @@ modifiers = [
 [[effect]]
 id = "reverse_corruptions_buff"
 name = "Reverse Corruptions / Amnesty"
+display_text = "{effect}"
 enabled = false
 trigger = { type = "effect_applied", effects = [3613119762923986, 3613175597498708], source = "local_player", target = "any" }
 duration_secs = 10.0
@@ -1368,11 +1488,14 @@ modifiers = [
 
 [[effect]]
 id = "saber_ward_buff"
+enabled = false
 name = "Saber Ward"
 trigger = { type = "effect_applied", effects = [807793154064384, 812169725739008], source = "local_player", target = "any" }
 duration_secs = 12.0
 is_affected_by_alacrity = false
 color = [52, 107, 201, 255]
+display_targets = ["personal_buffs"]
+disciplines = ["Annihilation", "Carnage", "Combat", "Concentration", "Defense", "Focus", "Fury", "Immortal", "Rage", "Vengeance", "Vigilance", "Watchman"]
 
 # 180 s on Marauder/Sentinel (Carnage never recasts it within 220 s); Juggernaut has its own
 [[effect]]
