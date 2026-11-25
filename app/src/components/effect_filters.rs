@@ -8,6 +8,7 @@ use super::discipline_selector::{ALL_DISCIPLINES, ALL_ROLES};
 use super::editor_common::{ORIGINS, Origin, OriginFilter};
 use super::effect_editor::effect_origin;
 use super::multi_select::{Entry, MultiSelect};
+use baras_types::history::discipline_mirror;
 use crate::types::{DisplayTarget, EffectFilters, EffectListItem};
 
 const NO_OVERLAY: &str = "No overlay";
@@ -22,8 +23,25 @@ enum Section {
 
 const SECTIONS: [Section; 3] = [Section::Origin, Section::Overlay, Section::Discipline];
 
-/// (sub-group label, values) in display order
-type Groups = Vec<(Option<&'static str>, Vec<String>)>;
+/// (sub-group label, entries) in display order
+type Groups = Vec<(Option<&'static str>, Vec<Entry>)>;
+
+/// One entry per value
+fn plain(values: Vec<&str>) -> Vec<Entry> {
+    values.into_iter().map(|v| (v.to_string(), vec![v.to_string()])).collect()
+}
+
+/// One entry per discipline mirror pair ("Hatred / Serenity"), Imperial order
+fn mirror_pairs(names: &[&str]) -> Vec<Entry> {
+    names
+        .iter()
+        .filter_map(|n| match discipline_mirror(n) {
+            Some((imp, rep)) if imp == *n => Some((format!("{imp} / {rep}"), vec![imp.to_string(), rep.to_string()])),
+            Some(_) => None,
+            None => Some((n.to_string(), vec![n.to_string()])),
+        })
+        .collect()
+}
 
 impl Section {
     /// Picked values; empty = no filter
@@ -53,14 +71,14 @@ impl Section {
         }
     }
 
-    /// Values present in `effects`, in display order; unknown ones go last
+    /// Entries with a value present in `effects`, in display order; unknown values go last
     fn groups(self, effects: &[EffectListItem]) -> Groups {
         let mut present: Vec<&str> = effects.iter().flat_map(|e| self.values(e)).collect();
         present.sort_unstable();
         present.dedup();
 
-        let known: Vec<(Option<&'static str>, Vec<&'static str>)> = match self {
-            Self::Origin => vec![(None, ORIGINS.map(|o| o.label()).to_vec())],
+        let known: Groups = match self {
+            Self::Origin => vec![(None, plain(ORIGINS.map(|o| o.label()).to_vec()))],
             Self::Overlay => {
                 let mut v: Vec<&str> = DisplayTarget::all()
                     .iter()
@@ -69,35 +87,33 @@ impl Section {
                     .map(|t| t.label())
                     .collect();
                 v.push(NO_OVERLAY);
-                vec![(None, v)]
+                vec![(None, plain(v))]
             }
             Self::Discipline => {
-                let mut g = vec![(None, vec![UNRESTRICTED]), (Some("Roles"), ALL_ROLES.to_vec())];
-                g.extend(ALL_DISCIPLINES.iter().map(|(class, d)| (Some(*class), d.to_vec())));
+                let mut g = vec![(None, plain(vec![UNRESTRICTED])), (Some("Roles"), plain(ALL_ROLES.to_vec()))];
+                g.extend(ALL_DISCIPLINES.iter().map(|(class, d)| (Some(*class), mirror_pairs(d))));
                 g
             }
         };
 
-        let extra: Vec<String> = present
+        let extra: Vec<&str> = present
             .iter()
-            .filter(|p| !known.iter().any(|(_, vs)| vs.contains(p)))
-            .map(|p| p.to_string())
+            .copied()
+            .filter(|p| !known.iter().flat_map(|(_, es)| es).any(|(_, vs)| vs.iter().any(|v| v == p)))
             .collect();
         let mut out: Groups = known
             .into_iter()
-            .map(|(g, vs)| {
-                (
-                    g,
-                    vs.into_iter()
-                        .filter(|v| present.contains(v))
-                        .map(String::from)
-                        .collect::<Vec<_>>(),
-                )
+            .map(|(g, es)| {
+                let es: Vec<Entry> = es
+                    .into_iter()
+                    .filter(|(_, vs)| vs.iter().any(|v| present.contains(&v.as_str())))
+                    .collect();
+                (g, es)
             })
-            .filter(|(_, vs)| !vs.is_empty())
+            .filter(|(_, es)| !es.is_empty())
             .collect();
         if !extra.is_empty() {
-            out.push((Some("Other"), extra));
+            out.push((Some("Other"), plain(extra)));
         }
         out
     }
@@ -115,11 +131,11 @@ pub fn matches_filters(f: &EffectFilters, e: &EffectListItem) -> bool {
     passes(f, e, None)
 }
 
-/// How many effects in `effects` picking `value` in `section` would leave
-fn count(f: &EffectFilters, effects: &[EffectListItem], section: Section, value: &str) -> usize {
+/// How many effects in `effects` picking `values` in `section` would leave
+fn count(f: &EffectFilters, effects: &[EffectListItem], section: Section, values: &[String]) -> usize {
     effects
         .iter()
-        .filter(|e| passes(f, e, Some(section)) && section.values(e).contains(&value))
+        .filter(|e| passes(f, e, Some(section)) && section.values(e).iter().any(|v| values.iter().any(|p| p == v)))
         .count()
 }
 
@@ -146,7 +162,7 @@ pub fn EffectFilterBar(
             }
             OriginFilter {
                 selected: ORIGINS.into_iter().find(|o| origin.as_deref() == Some(o.label())),
-                counts: ORIGINS.map(|o| count(&f, &list, Section::Origin, o.label())),
+                counts: ORIGINS.map(|o| count(&f, &list, Section::Origin, &[o.label().to_string()])),
                 kind: "effects",
                 on_pick: move |o: Option<Origin>| filters.write().origin = o.map(|o| o.label().to_string()),
             }
@@ -180,14 +196,13 @@ fn FilterSelect(
     let f = filters.read().clone();
     let list = effects.read();
     let mut entries: Vec<Entry> = Vec::new();
-    for (group, values) in section.groups(&list) {
+    for (group, es) in section.groups(&list) {
         if let Some(g) = group {
             entries.push((g.to_string(), Vec::new()));
         }
         entries.extend(
-            values
-                .into_iter()
-                .map(|v| (format!("{v} ({})", count(&f, &list, section, &v)), vec![v])),
+            es.into_iter()
+                .map(|(label, vs)| (format!("{label} ({})", count(&f, &list, section, &vs)), vs)),
         );
     }
 
