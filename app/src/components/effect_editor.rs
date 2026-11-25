@@ -1,7 +1,7 @@
 //! Effect Editor Panel
 //!
 //! UI for viewing and editing effect definitions with:
-//! - Grouped by file with collapsible headers
+//! - Grouped by class / discipline with collapsible headers
 //! - Inline expansion for editing
 //! - Full CRUD operations
 
@@ -16,6 +16,9 @@ use crate::components::toast::{ToastSeverity, use_toast};
 use crate::components::ability_icon::ColorIcon;
 use crate::components::editor_common::{Origin, OriginBadge};
 use crate::components::editor_sort::{apply_rank, use_stable_rank};
+use crate::components::effect_categories::{CategoryRail, GENERAL_KEY, GroupTitle, group, rail_counts, rail_key};
+use crate::components::sidebar_header::SidebarHeader;
+use crate::components::toggle_switch::ToggleSwitch;
 use crate::components::effect_filters::{EffectFilterBar, matches_filters};
 use crate::types::{
     AlertTrigger, AudioConfig, EffectImportPreview, EffectListItem, EntityFilter, Trigger, UiSessionState,
@@ -116,6 +119,8 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
     let mut expanded_effect = use_signal(|| props.state.read().effects_editor.expanded_effect.clone());
     let mut hide_disabled_effects = use_signal(|| props.state.read().effects_editor.hide_disabled_effects);
     let filters = use_signal(|| props.state.read().effects_editor.filters.clone());
+    let mut selected_category = use_signal(|| props.state.read().effects_editor.selected_category.clone());
+    let mut sidebar_collapsed = use_signal(|| props.state.read().effects_editor.sidebar_collapsed);
 
     // Sync persisted state back to unified state
     use_effect(move || {
@@ -124,7 +129,12 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
         state.effects_editor.expanded_effect = expanded_effect.read().clone();
         state.effects_editor.hide_disabled_effects = *hide_disabled_effects.read();
         state.effects_editor.filters = filters.read().clone();
+        state.effects_editor.selected_category = selected_category.read().clone();
+        state.effects_editor.sidebar_collapsed = *sidebar_collapsed.read();
     });
+
+    // Pick the rail entry holding an effect so its row is visible
+    let mut reveal = move |disciplines: &[String]| selected_category.set(Some(rail_key(disciplines)));
 
     // Load effects on mount
     use_future(move || async move {
@@ -140,6 +150,9 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
         if !loading()
             && let Some(effect_id) = expanded_effect.peek().clone()
         {
+            if let Some(e) = effects.peek().iter().find(|e| e.id == effect_id) {
+                reveal(&e.disciplines);
+            }
             // Small delay to ensure DOM is rendered
             spawn(async move {
                 gloo_timers::future::TimeoutFuture::new(100).await;
@@ -289,6 +302,7 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
             match api::create_effect_definition(&effect).await {
                 Ok(created) => {
                     let created_id = created.id.clone();
+                    reveal(&created.disciplines);
                     let mut current = effects();
                     current.push(created);
                     effects.set(current);
@@ -310,9 +324,69 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
         expanded_effect.set(None);
     };
 
+    let render_row = move |effect: EffectListItem| {
+        let effect_key = effect.id.clone();
+        let is_effect_expanded = expanded_effect() == Some(effect_key.clone());
+        let effect_for_delete = effect.clone();
+        let effect_for_duplicate = effect.clone();
+        let effect_for_export = effect.clone();
+        rsx! {
+            EffectRow {
+                key: "{effect_key}",
+                effect,
+                expanded: is_effect_expanded,
+                is_draft: false,
+                on_toggle: move |_| {
+                    guard.switch(expanded_effect, (!is_effect_expanded).then(|| effect_key.clone()));
+                },
+                on_save: on_save,
+                on_delete: move |_| on_delete(effect_for_delete.clone()),
+                on_duplicate: move |_| on_duplicate(effect_for_duplicate.clone()),
+                on_export: move |_| on_export_effect(effect_for_export.clone()),
+                on_cancel: move |_| {},
+            }
+        }
+    };
+    // A name search looks past the rail, over every category
+    let searching = !search_query().is_empty();
+    let selected = selected_category().unwrap_or_else(|| GENERAL_KEY.to_string());
+    // Rail counts ignore the search so the rail holds still while typing
+    let counts = {
+        let hide_disabled = hide_disabled_effects();
+        let f = filters.read();
+        rail_counts(
+            effects
+                .read()
+                .iter()
+                .filter(|e| (!hide_disabled || e.enabled) && matches_filters(&f, e))
+                .map(|e| e.disciplines.as_slice()),
+        )
+    };
+    let groups: Vec<_> = group(shown_effects, |e| e.disciplines.as_slice())
+        .into_iter()
+        .filter(|g| searching || g.key == selected)
+        .collect();
+
     rsx! {
         div { class: "editor-layout", style: layout_style(),
             DiscardPrompt {}
+            aside { class: "explorer-sidebar effect-rail", class: if sidebar_collapsed() { "collapsed" },
+                SidebarHeader {
+                    icon: "fa-solid fa-users",
+                    title: "Classes",
+                    collapsed: sidebar_collapsed(),
+                    on_toggle: move |_| sidebar_collapsed.toggle(),
+                }
+                if !sidebar_collapsed() {
+                    div { class: "sidebar-encounter-list", class: if searching { "searching" },
+                        CategoryRail {
+                            counts,
+                            selected: selected.clone(),
+                            on_select: move |k| selected_category.set(Some(k)),
+                        }
+                    }
+                }
+            }
             div { class: "editor-main effect-editor-panel",
                 // Header
                 div { class: "effect-editor-header",
@@ -323,13 +397,10 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                             let disabled_count = effects().iter().filter(|e| !e.enabled).count();
                             rsx! {
                                 if disabled_count > 0 {
-                                    label { class: "flex items-center gap-xs text-xs text-muted cursor-pointer",
-                                        input {
-                                            r#type: "checkbox",
-                                            checked: hide_disabled_effects(),
-                                            onchange: move |e| hide_disabled_effects.set(e.checked()),
-                                        }
-                                        "Hide disabled ({disabled_count})"
+                                    ToggleSwitch {
+                                        label: format!("Hide disabled ({disabled_count})"),
+                                        checked: hide_disabled_effects(),
+                                        on_change: move |v| hide_disabled_effects.set(v),
                                     }
                                 }
                             }
@@ -397,7 +468,7 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                 // Effect list (flat)
                 if loading() {
                     div { class: "empty-state loading-late", "Loading effects..." }
-                } else if filtered_effects().is_empty() && draft_effect().is_none() {
+                } else if groups.is_empty() && draft_effect().is_none() {
                     if effects().is_empty() {
                         div { class: "empty-state-guidance",
                             div { class: "empty-state-icon",
@@ -407,7 +478,13 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                             p { class: "hint", "Click \"+ New Effect\" above to create your first effect" }
                         }
                     } else {
-                        div { class: "empty-state", "No effects match the search and filters" }
+                        div { class: "empty-state",
+                            if searching || filtered_effects().is_empty() {
+                                "No effects match the search and filters"
+                            } else {
+                                "No effects in this category match the filters"
+                            }
+                        }
                     }
                 } else {
                     div { class: "effect-list",
@@ -433,30 +510,29 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                             }
                         }
 
-                        // Existing effects
-                        for effect in shown_effects {
-                            {
-                                let effect_key = effect.id.clone();
-                                let is_effect_expanded = expanded_effect() == Some(effect_key.clone());
-                                let effect_clone = effect.clone();
-                                let effect_for_delete = effect.clone();
-                                let effect_for_duplicate = effect.clone();
-                                let effect_for_export = effect.clone();
-
-                                rsx! {
-                                    EffectRow {
-                                        key: "{effect_key}",
-                                        effect: effect_clone,
-                                        expanded: is_effect_expanded,
-                                        is_draft: false,
-                                        on_toggle: move |_| {
-                                            guard.switch(expanded_effect, (!is_effect_expanded).then(|| effect_key.clone()));
-                                        },
-                                        on_save: on_save,
-                                        on_delete: move |_| on_delete(effect_for_delete.clone()),
-                                        on_duplicate: move |_| on_duplicate(effect_for_duplicate.clone()),
-                                        on_export: move |_| on_export_effect(effect_for_export.clone()),
-                                        on_cancel: move |_| {},
+                        // The picked rail entry (every match while searching): its own
+                        // effects, then one divider per discipline pair
+                        for g in groups {
+                            div { key: "{g.key}", class: "effect-group",
+                                GroupTitle {
+                                    label: g.label.clone(),
+                                    icons: g.icons.clone(),
+                                    fa_icon: g.fa_icon,
+                                    sub: false,
+                                }
+                                for effect in g.items {
+                                    {render_row(effect)}
+                                }
+                                for c in g.children {
+                                    GroupTitle {
+                                        key: "{c.key}",
+                                        label: c.label.clone(),
+                                        icons: c.icons.clone(),
+                                        fa_icon: c.fa_icon,
+                                        sub: true,
+                                    }
+                                    for effect in c.items {
+                                        {render_row(effect)}
                                     }
                                 }
                             }

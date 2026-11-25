@@ -4810,6 +4810,96 @@ a.contributor-name:hover {
   overflow-y: auto;
 }
 
+/* Rail: base class headings over their shared / advanced class entries */
+.effect-rail-heading {
+  padding: 0.8em 0.6em 0.3em;
+  font-size: 0.7em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.effect-rail-item {
+  border-left: 3px solid transparent;
+}
+
+.effect-rail-item.selected {
+  border-left-color: var(--swtor-blue);
+}
+
+.effect-rail-item.empty {
+  color: var(--text-disabled);
+}
+
+/* While searching the list spans every category, so no entry reads as picked */
+.searching .effect-rail-item.selected {
+  background: none;
+  border-left-color: transparent;
+  color: var(--text-secondary);
+}
+
+.effect-rail-icon {
+  display: inline-flex;
+  justify-content: center;
+  width: 1.4em;
+  color: var(--swtor-blue);
+}
+
+.effect-rail-icon .class-glyph {
+  width: 1.4em;
+  height: 1.4em;
+}
+
+.effect-rail-count {
+  margin-left: auto;
+  font-size: 0.8em;
+  color: var(--text-disabled);
+  white-space: nowrap;
+}
+
+/* List: one title per rail entry, a divider per discipline pair; both are
+   bare text over a rule so they never read as (carded) effect rows */
+.effect-group + .effect-group {
+  margin-top: 1.75em;
+}
+
+.effect-group-title,
+.effect-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+}
+
+.effect-group-title {
+  padding: 0.2em 0.2em 0.5em;
+  font-size: 1.05em;
+  color: var(--swtor-blue);
+}
+
+.effect-divider {
+  margin-top: 1.4em;
+  padding: 0.3em 0.2em 0.4em;
+  font-size: 0.95em;
+  color: var(--text-heading);
+  border-bottom: 1px solid var(--border-accent-medium);
+}
+
+.effect-category-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+  color: var(--swtor-blue);
+}
+
+.effect-divider .effect-category-icons img {
+  width: 1.7em;
+  height: 1.7em;
+  border-radius: 50%;
+}
+
 /* Class glyph tinted with its overlay class color, dark outline (as in the overlays) */
 .class-glyph {
   width: 24px;
@@ -4820,6 +4910,11 @@ a.contributor-name:hover {
 
 :root[data-theme="light"] .class-glyph {
   filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.4));
+}
+
+.effect-group-title .class-glyph {
+  width: 1.6em;
+  height: 1.6em;
 }
 
 /* Effect Row */

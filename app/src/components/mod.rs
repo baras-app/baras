@@ -19,6 +19,7 @@ pub mod echarts;
 pub mod editor_common;
 pub mod editor_drawer;
 pub mod editor_sort;
+pub mod effect_categories;
 pub mod effect_editor;
 pub mod effect_filters;
 pub mod effect_form;

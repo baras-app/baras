@@ -440,6 +440,8 @@ pub struct EffectsEditorState {
     pub filters: EffectFilters,
     /// Whether the filter sidebar is folded
     pub sidebar_collapsed: bool,
+    /// Picked rail entry key (General / base shared / class); None = General
+    pub selected_category: Option<String>,
 }
 
 /// Effects editor filter bar selection; empty / `None` = all
