@@ -27,6 +27,8 @@ See the [installation guide](https://baras-app.github.io/getting-started/install
 | Linux         | ✔️ X11, Wayland Native   |
 | MacOS         | 🟡 Native (experimental) |
 
+A NixOS flake is available [here](https://github.com/Axiaaa/baras-flake/pulls).
+
 ## Building from Source
 
 ### Prerequisites
@@ -50,27 +52,6 @@ sudo apt-get install -y \
   libasound2-dev \
   libpipewire-0.3-dev
 ```
-
-## NixOS
-
-Add the following to your flake:
-```nix
-inputs = {
-  baras = {
-    url = "github:baras-app/baras";
-  };
-  # ...
-}
-```
-
-Then add the following in `environment.systemPackages` from your `configuration.nix` : 
-```nix
-inputs.baras.packages.${pkgs.stdenv.hostPlatform.system}.
-```
-
-Tested and working on NixOs with Niri & Noctalia.
-Feel free to send me a message on Discord if you encounter any issue with NixOS.
-My discord: `nephtys.` (yes with the dot!).
 
 ### Development
 
