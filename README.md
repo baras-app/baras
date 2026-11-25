@@ -27,7 +27,7 @@ See the [installation guide](https://baras-app.github.io/getting-started/install
 | Linux         | ✔️ X11, Wayland Native   |
 | MacOS         | 🟡 Native (experimental) |
 
-A NixOS flake is available [here](https://github.com/Axiaaa/baras-flake/pulls).
+A Nix flake is available [here](https://github.com/Axiaaa/baras-flake/pulls).
 
 ## Building from Source
 
