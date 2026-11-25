@@ -12,6 +12,7 @@ use super::effect_form::EffectEditForm;
 use super::effect_trigger::effect_icon_id;
 use super::encounter_editor::InlineNameCreator;
 use crate::api;
+use crate::components::toast::{ToastSeverity, use_toast};
 use crate::components::ability_icon::ColorIcon;
 use crate::components::editor_common::{Origin, OriginBadge};
 use crate::components::editor_sort::{apply_rank, use_stable_rank};
@@ -82,6 +83,15 @@ fn default_effect(name: String) -> EffectListItem {
 /// Marker ID for a draft effect that hasn't been saved yet
 const DRAFT_EFFECT_ID: &str = "__new_draft__";
 
+/// An effect ID from free text: lowercase snake_case ("Force Shroud (Copy)" → force_shroud_copy)
+pub(crate) fn slug_id(text: &str) -> String {
+    text.to_lowercase()
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("_")
+}
+
 #[derive(Props, Clone, PartialEq)]
 pub struct EffectEditorProps {
     /// Unified UI session state (includes persisted state for this panel)
@@ -94,8 +104,7 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
     // Data state (loaded fresh)
     let mut effects = use_signal(Vec::<EffectListItem>::new);
     let mut loading = use_signal(|| true);
-    let mut save_status = use_signal(String::new);
-    let mut status_is_error = use_signal(|| false);
+    let mut toast = use_toast();
     // Draft for new effects - not yet saved to backend
     let mut draft_effect = use_signal(|| None::<EffectListItem>);
     // Import state
@@ -178,16 +187,14 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                         current[idx] = updated_effect.clone();
                         effects.set(current);
                     }
-                    save_status.set("Saved".to_string());
-                    status_is_error.set(false);
+                    toast.show("Saved", ToastSeverity::Success);
                     // Refetch to get updated is_bundled/is_user_override flags
                     if let Some(e) = api::get_effect_definitions().await {
                         effects.set(e);
                     }
                 }
                 Err(e) => {
-                    save_status.set(e);
-                    status_is_error.set(true);
+                    toast.show(e, ToastSeverity::Normal);
                 }
             }
         });
@@ -209,42 +216,34 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
             match api::delete_effect_definition(&effect.id).await {
                 Ok(()) => {
                     if is_reset {
-                        save_status.set("Reset to built-in".to_string());
+                        toast.show("Reset to built-in", ToastSeverity::Success);
                         // Refetch to get the original bundled definition back
                         if let Some(e) = api::get_effect_definitions().await {
                             effects.set(e);
                         }
                     } else {
-                        save_status.set("Deleted".to_string());
+                        toast.show("Deleted", ToastSeverity::Success);
                     }
-                    status_is_error.set(false);
                 }
                 Err(e) => {
-                    save_status.set(e);
-                    status_is_error.set(true);
+                    toast.show(e, ToastSeverity::Normal);
                 }
             }
         });
     };
 
-    let on_duplicate = move |effect: EffectListItem| {
-        spawn(async move {
-            match api::duplicate_effect_definition(&effect.id).await {
-                Ok(new_effect) => {
-                    let new_id = new_effect.id.clone();
-                    let mut current = effects();
-                    current.push(new_effect);
-                    effects.set(current);
-                    expanded_effect.set(Some(new_id));
-                    save_status.set("Duplicated".to_string());
-                    status_is_error.set(false);
-                }
-                Err(e) => {
-                    save_status.set(e);
-                    status_is_error.set(true);
-                }
-            }
-        });
+    // A copy opens as an unsaved draft so its ID can be set before it is created
+    let mut on_duplicate = move |effect: EffectListItem| {
+        let copy = EffectListItem {
+            id: String::new(),
+            name: format!("{} (Copy)", effect.name),
+            is_bundled: false,
+            is_user_override: false,
+            ..effect
+        };
+        draft_effect.set(Some(copy));
+        expanded_effect.set(Some(DRAFT_EFFECT_ID.to_string()));
+        toast.show("Set the copy's ID and name, then Save", ToastSeverity::Info);
     };
 
     let on_export_effect = move |effect: EffectListItem| {
@@ -256,19 +255,16 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                     if let Some(path) = api::save_file_dialog(&default_name).await {
                         match api::save_export_file(&path, &toml).await {
                             Ok(()) => {
-                                save_status.set("Exported".to_string());
-                                status_is_error.set(false);
+                                toast.show("Exported", ToastSeverity::Success);
                             }
                             Err(e) => {
-                                save_status.set(e);
-                                status_is_error.set(true);
+                                toast.show(e, ToastSeverity::Normal);
                             }
                         }
                     }
                 }
                 Err(e) => {
-                    save_status.set(e);
-                    status_is_error.set(true);
+                    toast.show(e, ToastSeverity::Normal);
                 }
             }
         });
@@ -276,29 +272,18 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
 
     let on_create = move |name: String| {
         // Create a local draft - don't save to backend yet
-        let mut new_effect = default_effect(name);
-        new_effect.id = DRAFT_EFFECT_ID.to_string();
+        let new_effect = default_effect(name);
 
         // Set the draft and expand it
         draft_effect.set(Some(new_effect));
         expanded_effect.set(Some(DRAFT_EFFECT_ID.to_string()));
-        save_status.set("Fill in effect details and click Save".to_string());
-        status_is_error.set(false);
+        toast.show("Fill in effect details and click Save", ToastSeverity::Info);
     };
 
     // Handler for saving a draft (creates new effect on backend)
     let on_save_draft = move |mut effect: EffectListItem| {
-        // Generate ID from name (snake_case)
-        effect.id = effect
-            .name
-            .to_lowercase()
-            .chars()
-            .map(|c| if c.is_alphanumeric() { c } else { '_' })
-            .collect::<String>()
-            .split('_')
-            .filter(|s| !s.is_empty())
-            .collect::<Vec<_>>()
-            .join("_");
+        // The ID typed in the form, else one made from the name
+        effect.id = slug_id(if effect.id.trim().is_empty() { &effect.name } else { &effect.id });
 
         spawn(async move {
             match api::create_effect_definition(&effect).await {
@@ -310,12 +295,10 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                     // Clear draft and expand the new effect
                     draft_effect.set(None);
                     expanded_effect.set(Some(created_id));
-                    save_status.set("Created".to_string());
-                    status_is_error.set(false);
+                    toast.show("Created", ToastSeverity::Success);
                 }
                 Err(e) => {
-                    save_status.set(e);
-                    status_is_error.set(true);
+                    toast.show(e, ToastSeverity::Normal);
                 }
             }
         });
@@ -325,7 +308,6 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
     let on_cancel_draft = move |_: ()| {
         draft_effect.set(None);
         expanded_effect.set(None);
-        save_status.set(String::new());
     };
 
     rsx! {
@@ -336,12 +318,6 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                 div { class: "effect-editor-header",
                     h2 { "Effect Definitions" }
                     div { class: "header-right",
-                        if !save_status().is_empty() {
-                            span {
-                                class: if status_is_error() { "save-status error" } else { "save-status" },
-                                "{save_status()}"
-                            }
-                        }
                         span { class: "effect-count", "{filtered_effects().len()} of {effects().len()} effects" }
                         {
                             let disabled_count = effects().iter().filter(|e| !e.enabled).count();
@@ -367,19 +343,16 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                                             if let Some(path) = api::save_file_dialog("effects_custom.toml").await {
                                                 match api::save_export_file(&path, &toml).await {
                                                     Ok(()) => {
-                                                        save_status.set("Exported".to_string());
-                                                        status_is_error.set(false);
+                                                        toast.show("Exported", ToastSeverity::Success);
                                                     }
                                                     Err(e) => {
-                                                        save_status.set(e);
-                                                        status_is_error.set(true);
+                                                        toast.show(e, ToastSeverity::Normal);
                                                     }
                                                 }
                                             }
                                         }
                                         Err(e) => {
-                                            save_status.set(e);
-                                            status_is_error.set(true);
+                                            toast.show(e, ToastSeverity::Normal);
                                         }
                                     }
                                 });
@@ -394,8 +367,7 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                                     let content = match api::read_import_file(&path).await {
                                         Ok(c) => c,
                                         Err(e) => {
-                                            save_status.set(e);
-                                            status_is_error.set(true);
+                                            toast.show(e, ToastSeverity::Normal);
                                             return;
                                         }
                                     };
@@ -405,8 +377,7 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                                             import_preview.set(Some(preview));
                                         }
                                         Err(e) => {
-                                            save_status.set(e);
-                                            status_is_error.set(true);
+                                            toast.show(e, ToastSeverity::Normal);
                                         }
                                     }
                                 });
@@ -508,12 +479,10 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                                         if let Some(e) = api::get_effect_definitions().await {
                                             effects.set(e);
                                         }
-                                        save_status.set("Imported".to_string());
-                                        status_is_error.set(false);
+                                        toast.show("Imported", ToastSeverity::Success);
                                     }
                                     Err(e) => {
-                                        save_status.set(e);
-                                        status_is_error.set(true);
+                                        toast.show(e, ToastSeverity::Normal);
                                     }
                                 }
                             });

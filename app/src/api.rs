@@ -1164,13 +1164,6 @@ pub async fn delete_effect_definition(effect_id: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Duplicate an effect
-pub async fn duplicate_effect_definition(effect_id: &str) -> Result<EffectListItem, String> {
-    let args = build_args("effectId", effect_id);
-    let result = try_invoke("duplicate_effect_definition", args).await?;
-    from_js(result).ok_or_else(|| "Failed to parse effect response".to_string())
-}
-
 /// Create a new effect
 /// Returns Ok(created effect) on success, Err(message) on failure (e.g., validation error)
 pub async fn create_effect_definition(effect: &EffectListItem) -> Result<EffectListItem, String> {

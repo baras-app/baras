@@ -362,7 +362,6 @@ pub fn run() {
             commands::update_effect_definition,
             commands::create_effect_definition,
             commands::delete_effect_definition,
-            commands::duplicate_effect_definition,
             commands::get_icon_preview,
             commands::get_mirror_abilities,
             // Effect export/import

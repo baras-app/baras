@@ -4,7 +4,7 @@ use baras_types::preview::{OverlayPreviewRequest, PreviewAlertTiming, PreviewTar
 use dioxus::prelude::*;
 
 use super::discipline_selector::DisciplineSelector;
-use super::effect_editor::effect_origin;
+use super::effect_editor::{effect_origin, slug_id};
 use super::effect_trigger::{
     RefreshAbilitiesEditor, TriggerAbilitiesEditor, effect_icon_id, get_effect_when_label, get_trigger_abilities,
     get_trigger_effects, get_trigger_filters, set_trigger_abilities, set_trigger_effects, set_trigger_source,
@@ -151,8 +151,17 @@ pub(crate) fn EffectEditForm(
                 // ═══ LEFT COLUMN: Identity, Trigger ══════════════════════════════
                 div { class: "edit-grid-left",
                     FormCard { icon: "fa-tag", title: "Identity",
-                        // Read-only id; drafts have none yet
-                        if !is_draft {
+                        // Drafts pick their ID (blank = made from the name); saved IDs are fixed
+                        if is_draft {
+                            Field { label: "Effect ID", help: "Unique ID, lowercase snake_case. Leave blank to make one from the name.",
+                                input {
+                                    r#type: "text",
+                                    placeholder: "{slug_id(&draft().name)}",
+                                    value: "{draft().id}",
+                                    oninput: move |e| draft.write().id = e.value(),
+                                }
+                            }
+                        } else {
                             Field { label: "Effect ID",
                                 code { class: "id-display", "{effect.id}" }
                             }

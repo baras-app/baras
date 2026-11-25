@@ -507,50 +507,6 @@ pub async fn delete_effect_definition(
     Ok(())
 }
 
-/// Duplicate an effect with a new ID (always saved to user file)
-#[tauri::command]
-pub async fn duplicate_effect_definition(
-    app_handle: AppHandle,
-    service: State<'_, ServiceHandle>,
-    effect_id: String,
-) -> Result<EffectListItem, String> {
-    let all_effects = load_all_effects(&app_handle);
-
-    // Find the effect to duplicate
-    let source = all_effects
-        .iter()
-        .find(|(e, _, _)| e.id == effect_id)
-        .ok_or_else(|| format!("Effect '{}' not found", effect_id))?;
-
-    // Generate unique ID
-    let mut new_effect = source.0.clone();
-    let mut suffix = 1;
-    loop {
-        let new_id = format!("{}_copy{}", effect_id, suffix);
-        if !all_effects.iter().any(|(e, _, _)| e.id == new_id) {
-            new_effect.id = new_id;
-            new_effect.name = format!("{} (Copy)", source.0.name);
-            break;
-        }
-        suffix += 1;
-    }
-
-    // Load current user effects and add the duplicate
-    let mut user_effects: Vec<EffectDefinition> = load_user_effects_file()
-        .filter(|(v, _)| *v == EFFECTS_DSL_VERSION)
-        .map(|(_, e)| e)
-        .unwrap_or_default();
-
-    user_effects.push(new_effect.clone());
-    save_user_effects(&user_effects)?;
-
-    // Reload definitions in the running service
-    let _ = service.reload_effect_definitions().await;
-
-    // Duplicated effect is always user-created (not bundled)
-    Ok(EffectListItem::from_definition(&new_effect, true, false))
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Export/Import Types
 // ─────────────────────────────────────────────────────────────────────────────
