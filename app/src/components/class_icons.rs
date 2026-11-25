@@ -160,3 +160,29 @@ pub fn get_role_icon(icon_name: &str) -> Option<&'static Asset> {
         _ => None,
     }
 }
+
+/// Class glyph recolored to its default overlay class color (as in the overlays).
+/// Recolored with an SVG filter rather than a CSS mask: masks are downsampled
+/// without smoothing in WebKit, which breaks thin glyphs apart at 24px.
+#[component]
+pub fn ClassGlyph(name: String, icon: String) -> Element {
+    let Some(src) = get_class_icon(&icon) else {
+        return rsx! {};
+    };
+    let color = baras_types::ClassColorConfig::default()
+        .for_class_name(&name)
+        .map(|[r, g, b, _]| format!("rgb({r}, {g}, {b})"))
+        .unwrap_or_else(|| "currentColor".into());
+    let id = format!("class-tint-{icon}");
+    rsx! {
+        svg { class: "class-glyph", view_box: "0 0 24 24",
+            defs {
+                filter { id: "{id}", color_interpolation_filters: "sRGB",
+                    feFlood { flood_color: "{color}" }
+                    feComposite { in2: "SourceAlpha", operator: "in" }
+                }
+            }
+            image { href: "{src}", width: "24", height: "24", filter: "url(#{id})" }
+        }
+    }
+}

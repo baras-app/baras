@@ -305,18 +305,6 @@
   height: 18px;
 }
 
-/* Dark outline around the tinted class glyph (as in the overlays) */
-.char-class-glyph {
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.85));
-}
-
-:root[data-theme="light"] .char-class-glyph {
-  filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.4));
-}
-
 .char-note {
   max-width: 16em;
   overflow: hidden;

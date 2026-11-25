@@ -4810,6 +4810,18 @@ a.contributor-name:hover {
   overflow-y: auto;
 }
 
+/* Class glyph tinted with its overlay class color, dark outline (as in the overlays) */
+.class-glyph {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.85));
+}
+
+:root[data-theme="light"] .class-glyph {
+  filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.4));
+}
+
 /* Effect Row */
 .effect-name {
   color: var(--text-primary);

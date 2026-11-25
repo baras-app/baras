@@ -2,11 +2,10 @@
 
 use dioxus::prelude::*;
 
-use baras_types::ClassColorConfig;
 use baras_types::characters::{CharacterRow, Faction};
 use baras_types::history::iso_to_ms;
 
-use crate::components::class_icons::{get_class_icon, get_role_icon};
+use crate::components::class_icons::{ClassGlyph, get_role_icon};
 
 use super::lockouts::ago;
 
@@ -25,32 +24,6 @@ pub fn FactionIcon(faction: Faction) -> Element {
         },
         // Blank slot the icon's width, so names stay aligned
         Faction::Unknown => rsx! { span { class: "char-faction unknown", title: "Faction not set" } },
-    }
-}
-
-/// Class glyph recolored to its default overlay class color (as in the overlays).
-/// Recolored with an SVG filter rather than a CSS mask: masks are downsampled
-/// without smoothing in WebKit, which breaks thin glyphs apart at 24px.
-#[component]
-fn ClassGlyph(name: String, icon: String) -> Element {
-    let Some(src) = get_class_icon(&icon) else {
-        return rsx! {};
-    };
-    let color = ClassColorConfig::default()
-        .for_class_name(&name)
-        .map(|[r, g, b, _]| format!("rgb({r}, {g}, {b})"))
-        .unwrap_or_else(|| "currentColor".into());
-    let id = format!("class-tint-{icon}");
-    rsx! {
-        svg { class: "char-class-glyph", view_box: "0 0 24 24",
-            defs {
-                filter { id: "{id}", color_interpolation_filters: "sRGB",
-                    feFlood { flood_color: "{color}" }
-                    feComposite { in2: "SourceAlpha", operator: "in" }
-                }
-            }
-            image { href: "{src}", width: "24", height: "24", filter: "url(#{id})" }
-        }
     }
 }
 
