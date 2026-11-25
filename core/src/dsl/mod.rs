@@ -36,5 +36,5 @@ pub use entity_filter::*;
 pub use error::DslError;
 pub use loader::*;
 pub use phase::*;
-pub use placeholders::format_placeholders;
+pub use placeholders::{format_log_names, format_placeholders};
 pub use triggers::*;

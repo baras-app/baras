@@ -71,8 +71,8 @@ impl EffectTriggerType {
 // Effect Edit Form
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DISPLAY_TEXT_HELP: &str = "Text shown on the overlay. Defaults to effect name. {source} and {target} will show the source/target names if available, {stack} the current stack count";
-const ALERT_TEXT_HELP: &str = "Text shown in the alert notification. Leave blank for no alert. {source} and {target} will show the source/target names if available, {stack} the current stack count";
+const DISPLAY_TEXT_HELP: &str = "Text shown on the overlay. Defaults to effect name. {source} and {target} will show the source/target names if available, {stack} the current stack count, {ability} and {effect} the ability/effect name as logged (each faction sees its own name)";
+const ALERT_TEXT_HELP: &str = "Text shown in the alert notification. Leave blank for no alert. {source} and {target} will show the source/target names if available, {stack} the current stack count, {ability} and {effect} the ability/effect name as logged (each faction sees its own name)";
 
 const REFRESH_HELP: &str = "Abilities that refresh this effect's duration. Per ability: 'Min Stacks' only refreshes when the effect has at least that many stacks. Trigger 'On Cast' refreshes the moment the ability is used; 'On Heal' waits for a cast-time heal to land; 'On Damage' refreshes on any damage dealt by the ability. For 'On Cast', the 'Refresh on' control chooses Cast vs First Damage timing — 'Default' defers DoT-tracker effects to the ability's first damaging hit and refreshes everything else immediately.";
 

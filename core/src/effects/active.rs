@@ -56,6 +56,11 @@ pub struct ActiveEffect {
     /// Name of the target entity (from event)
     pub target_name: IStr,
 
+    /// Ability and effect names the log recorded for the triggering event,
+    /// for `{ability}` / `{effect}` (the ability's name when there is no effect)
+    pub ability_name: IStr,
+    pub effect_name: IStr,
+
     /// Is this effect from the local player?
     pub is_from_local_player: bool,
 
@@ -170,6 +175,8 @@ impl ActiveEffect {
         source_name: IStr,
         target_entity_id: i64,
         target_name: IStr,
+        ability_name: IStr,
+        effect_name: IStr,
         is_from_local_player: bool,
         event_timestamp: NaiveDateTime,
         duration: Option<Duration>,
@@ -187,7 +194,8 @@ impl ActiveEffect {
     ) -> Self {
         let expires_at = duration.map(|d| event_timestamp + chrono::Duration::milliseconds(d.as_millis() as i64));
 
-        let (display_text, display_template) = Self::resolve_display(&display_text, source_name, target_name, 1);
+        let names = [source_name, target_name, ability_name, effect_name];
+        let (display_text, display_template) = Self::resolve_display(&display_text, names, 1);
 
         Self {
             definition_id,
@@ -199,6 +207,8 @@ impl ActiveEffect {
             source_name,
             target_entity_id,
             target_name,
+            ability_name,
+            effect_name,
             is_from_local_player,
             applied_at: event_timestamp,
             expires_at,
@@ -300,7 +310,7 @@ impl ActiveEffect {
         if self.stacks != stacks
             && let Some(template) = &self.display_template
         {
-            self.display_text = Self::resolve_display(template, self.source_name, self.target_name, stacks).0;
+            self.display_text = Self::resolve_display(template, self.log_names(), stacks).0;
         }
         self.stacks = stacks;
     }
@@ -313,15 +323,21 @@ impl ActiveEffect {
     /// Replace the display text template (definition reload) and re-resolve placeholders
     pub fn set_display_template(&mut self, template: &str) {
         (self.display_text, self.display_template) =
-            Self::resolve_display(template, self.source_name, self.target_name, self.stacks);
+            Self::resolve_display(template, self.log_names(), self.stacks);
+    }
+
+    /// Source, target, ability and effect names for placeholder resolution
+    fn log_names(&self) -> [IStr; 4] {
+        [self.source_name, self.target_name, self.ability_name, self.effect_name]
     }
 
     /// Resolve placeholders; returns the template back only if it needs re-resolving on stack change
-    fn resolve_display(template: &str, source: IStr, target: IStr, stacks: u8) -> (String, Option<String>) {
+    fn resolve_display(template: &str, names: [IStr; 4], stacks: u8) -> (String, Option<String>) {
+        let [source, target, ability, effect] = names.map(crate::context::resolve);
         let text = crate::dsl::format_placeholders(
-            template,
-            crate::context::resolve(source),
-            crate::context::resolve(target),
+            &crate::dsl::format_log_names(template, ability, effect),
+            source,
+            target,
             Some(stacks),
         );
         (text, template.contains("{stack}").then(|| template.to_string()))
