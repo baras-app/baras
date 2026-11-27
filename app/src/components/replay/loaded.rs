@@ -35,6 +35,51 @@ fn index_at(times: &[f32], t: f32) -> Option<usize> {
     times.partition_point(|x| *x <= t).checked_sub(1)
 }
 
+/// Where an entity was at `t` (its last sample; its first when `t` is earlier)
+fn position_at(e: &ReplayEntity, t: f32) -> Option<(f32, f32, f32)> {
+    let i = index_at(&e.track.t, t).or_else(|| (!e.track.t.is_empty()).then_some(0))?;
+    Some((e.track.x[i], e.track.y[i], e.track.z[i]))
+}
+
+/// A player's role, from its role icon: tanks sort first, then healers, then damage
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Role {
+    Tank,
+    Healer,
+    Damage,
+    Unknown,
+}
+
+impl Role {
+    pub fn of(e: &ReplayEntity) -> Self {
+        match e.role_icon.as_deref() {
+            Some(icon) if icon.contains("tank") => Self::Tank,
+            Some(icon) if icon.contains("heal") => Self::Healer,
+            Some(_) => Self::Damage,
+            None => Self::Unknown,
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Tank => "TANK",
+            Self::Healer => "HEAL",
+            Self::Damage => "DPS",
+            Self::Unknown => "",
+        }
+    }
+
+    /// Name the canvas script colours rings by
+    pub fn key(self) -> Option<&'static str> {
+        match self {
+            Self::Tank => Some("tank"),
+            Self::Healer => Some("heal"),
+            Self::Damage => Some("dps"),
+            Self::Unknown => None,
+        }
+    }
+}
+
 fn rate(series: &[u32], t: f32) -> f32 {
     let now = t as usize;
     let from = now.saturating_sub(RATE_WINDOW_SECS - 1);
@@ -180,6 +225,12 @@ impl Loaded {
             .get(e.targets.partition_point(|(at, _)| *at <= t).wrapping_sub(1))
             .and_then(|(_, id)| *id)
             .and_then(|id| self.index_of.get(&id).copied());
+        if let Some(target) = view.target.map(|i| &self.data.entities[i])
+            && let (Some(a), Some(b)) = (position_at(e, t), position_at(target, t))
+        {
+            let d = ((a.0 - b.0).powi(2) + (a.1 - b.1).powi(2) + (a.2 - b.2).powi(2)).sqrt();
+            view.target_distance = Some(d.round() as u32);
+        }
 
         if let Some(casts) = self.casts_of.get(&e.id) {
             let last = casts.partition_point(|c| self.data.casts[*c].start <= t).checked_sub(1);
@@ -225,9 +276,14 @@ impl Loaded {
                 (&mut view.buffs, &mut view.more_buffs)
             };
             let from_highlight = highlight == Some(effect.source_id);
+            let stacks = effect
+                .stacks
+                .get(effect.stacks.partition_point(|(at, _)| *at <= t).wrapping_sub(1))
+                .map_or(1, |(_, n)| *n);
             // One icon per effect, whoever applied it
             if let Some(icon) = row.iter_mut().find(|icon| icon.effect_id == effect.effect_id) {
                 icon.from_highlight |= from_highlight;
+                icon.stacks = icon.stacks.max(stacks);
                 continue;
             }
             if row.len() == MAX_ICONS {
@@ -239,6 +295,7 @@ impl Loaded {
                 ability_id: effect.ability_id,
                 name: effect.name.clone(),
                 from_highlight,
+                stacks,
             });
         }
 

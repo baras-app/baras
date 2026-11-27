@@ -133,9 +133,13 @@
   border-color: var(--swtor-gold);
 }
 
-.replay-card.dead,
 .replay-card.elsewhere {
   opacity: 0.55;
+}
+
+.replay-card.dead {
+  opacity: 0.35;
+  filter: grayscale(1);
 }
 
 .replay-card-head {
@@ -308,4 +312,29 @@
 
 .replay-cast-last {
   color: var(--text-secondary);
+}
+
+.replay-card-distance {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* Stack count in the corner of an effect icon */
+.replay-effect {
+  position: relative;
+}
+
+.replay-effect-stacks {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 0 2px;
+  border-radius: 2px;
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 11px;
 }

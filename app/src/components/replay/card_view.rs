@@ -8,6 +8,8 @@ pub struct IconView {
     pub name: String,
     /// Applied by the highlighted entity
     pub from_highlight: bool,
+    /// Stacks right now; 1 when it does not stack
+    pub stacks: u8,
 }
 
 #[derive(Clone, PartialEq)]
@@ -27,6 +29,8 @@ pub struct CardView {
     pub dead: bool,
     /// Index of the targeted entity in the replay data
     pub target: Option<usize>,
+    /// Whole metres to the target
+    pub target_distance: Option<u32>,
     pub cast: Option<CastView>,
     /// Ability last used (id, name), shown while nothing is being cast
     pub last_ability: Option<(i64, String)>,

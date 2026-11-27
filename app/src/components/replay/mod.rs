@@ -20,7 +20,7 @@ use crate::components::enemy_views::{LoadFailed, loading};
 use canvas::{DotMeta, Player};
 use controls::Controls;
 use entity_card::EntityCard;
-use loaded::Loaded;
+use loaded::{Loaded, Role};
 use map_tabs::MapTabs;
 
 const CANVAS_ID: &str = "replay-canvas";
@@ -128,6 +128,9 @@ fn ReplayStage(loaded: LoadedProp, phases: Vec<PhaseSegment>, maps: Vec<MapDefin
             if let Some(n) = mount_state.loaded.numbers.get(&e.id) {
                 meta.numbers.insert(e.id.to_string(), *n);
             }
+            if let Some(role) = Role::of(e).key() {
+                meta.roles.insert(e.id.to_string(), role);
+            }
         }
         let pick_state = mount_state.clone();
         let on_pick = move |id: Option<i64>| {
@@ -199,11 +202,14 @@ fn ReplayStage(loaded: LoadedProp, phases: Vec<PhaseSegment>, maps: Vec<MapDefin
                 .collect::<Vec<usize>>()
         }
     });
-    let players = data
+    // Tanks, healers, damage, then companions; by name within each (the data's order)
+    let mut players: Vec<_> = data
         .entities
         .iter()
         .enumerate()
-        .filter(|(_, e)| e.kind != ReplayEntityKind::Npc);
+        .filter(|(_, e)| e.kind != ReplayEntityKind::Npc)
+        .collect();
+    players.sort_by_key(|(_, e)| (e.kind != ReplayEntityKind::Player, Role::of(e)));
 
     rsx! {
         // Shown instead of the stage when the tab is too narrow for it (CSS)
