@@ -44,6 +44,8 @@ pub struct DefinitionSet {
     refresh: Index,
     /// Refresh ability IDs that use AoE damage correlation (`is_aoe_refresh`)
     aoe_refresh_ability_ids: HashSet<u64>,
+    /// Any enabled definition has duration modifiers
+    has_modifiers: bool,
 }
 
 impl DefinitionSet {
@@ -125,6 +127,8 @@ impl DefinitionSet {
             }
         }
         (self.effects, self.abilities, self.refresh) = (effects, abilities, refresh);
+        let has_modifiers = self.enabled().any(|d| !d.modifiers.is_empty());
+        self.has_modifiers = has_modifiers;
     }
 
     /// Enabled definitions an index maps `id` or `name` to, without duplicates
@@ -182,6 +186,12 @@ impl DefinitionSet {
     /// Definitions an ability can refresh
     pub fn find_refreshable_by(&self, ability_id: u64, ability_name: Option<&str>) -> Vec<(DefId, &EffectDefinition)> {
         self.lookup(&self.refresh, ability_id, ability_name)
+    }
+
+    /// Whether any enabled definition has duration modifiers (else the
+    /// per-batch modifier pass is skipped)
+    pub fn has_modifiers(&self) -> bool {
+        self.has_modifiers
     }
 
     /// Check if an ability ID uses AoE damage correlation for refresh detection

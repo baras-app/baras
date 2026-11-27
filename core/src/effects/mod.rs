@@ -32,6 +32,7 @@ mod audio;
 mod def_id;
 mod definition;
 mod definition_set;
+mod filter_ctx;
 mod lifecycle;
 mod modifier_match;
 pub mod tracker;
