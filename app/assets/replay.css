@@ -235,3 +235,10 @@
   color: var(--text-primary);
   text-decoration: underline;
 }
+
+/* Encounter editor, Maps tab: move and delete buttons under one entry */
+.replay-map-entry-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
