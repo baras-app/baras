@@ -599,6 +599,16 @@ impl CombatService {
             session_guard.set_effect_latency(config.latency_ms);
         }
 
+        // Alerts at or before the last event already processed (e.g. a recovered
+        // stale encounter) must not replay. Game time, read before the tail task
+        // starts: comparing against the OS clock breaks when the game's clock
+        // differs (e.g. a Wine/Proton timezone mismatch).
+        let stale_alert_cutoff = session
+            .read()
+            .await
+            .last_event_time
+            .unwrap_or(chrono::NaiveDateTime::MIN);
+
         // Spawn the tail task to watch for new lines
         // The tail loop is "immortal" - it only exits via task abort or initialization failure
         let path_for_logging = path.clone();
@@ -663,9 +673,6 @@ impl CombatService {
         let overlay_tx = self.overlay_tx.clone();
         let audio_tx = self.audio_tx.clone();
         let icon_cache = self.icon_cache.clone();
-        // Capture the current time so we can suppress audio for alerts that originated
-        // before we started tailing (i.e. recovered from a stale encounter).
-        let tailing_started_at = chrono::Local::now().naive_local();
         let effects_handle = tokio::spawn(async move {
             // Track previous state to avoid redundant updates
             let mut last_raid_effect_count: usize = 0;
@@ -913,7 +920,7 @@ impl CombatService {
                     let text_alerts: Vec<_> = bundle
                         .alerts
                         .iter()
-                        .filter(|a| a.alert_text_enabled && a.timestamp >= tailing_started_at)
+                        .filter(|a| a.alert_text_enabled && a.timestamp > stale_alert_cutoff)
                         .cloned()
                         .collect();
                     if !text_alerts.is_empty() && overlay_tx.try_send(OverlayUpdate::AlertsFired(text_alerts)).is_err()
@@ -924,7 +931,7 @@ impl CombatService {
                     // Send alert audio events (only if audio_enabled for that alert)
                     // Skip alerts from before we started tailing (stale encounter recovery)
                     for alert in bundle.alerts {
-                        if alert.audio_enabled && alert.timestamp >= tailing_started_at {
+                        if alert.audio_enabled && alert.timestamp > stale_alert_cutoff {
                             let _ = audio_tx.try_send(AudioEvent::Alert {
                                 text: alert.text,
                                 custom_sound: alert.audio_file,
