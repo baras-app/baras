@@ -23,6 +23,14 @@ impl EffectTracker {
             .unwrap_or_default()
     }
 
+    /// Whether a live effect still has audio to come (countdown, offset
+    /// warning or expiration sound): the service polls fast while true so
+    /// countdown windows aren't skipped.
+    pub fn has_pending_audio(&self) -> bool {
+        self.active_effects()
+            .any(|e| e.audio_enabled && e.removed_at.is_none() && (!e.audio_played || e.countdown_start > 0))
+    }
+
     /// Audio due at `now`; marks what it returns as played.
     pub fn take_audio_at(&mut self, now: NaiveDateTime) -> Vec<EffectAudio> {
         let mut out = Vec::new();

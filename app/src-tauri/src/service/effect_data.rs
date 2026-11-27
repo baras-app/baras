@@ -8,18 +8,18 @@ use baras_core::{ActiveEffect, DisplayTarget};
 use baras_overlay::{CooldownData, CooldownEntry, DotEntry, DotTarget, DotTrackerData, EffectABEntry, EffectsABData};
 use std::sync::Arc;
 
-/// Effect audio due on this poll (Live mode only)
-pub(super) async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -> Vec<EffectAudio> {
+/// Effect audio due on this poll (Live mode only), and whether more is pending
+pub(super) async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -> (Vec<EffectAudio>, bool) {
     let session_guard = shared.session.read().await;
     let Some(session_arc) = session_guard.as_ref() else {
-        return Vec::new();
+        return (Vec::new(), false);
     };
     let session = session_arc.read().await;
     let Some(effect_tracker) = session.effect_tracker() else {
-        return Vec::new();
+        return (Vec::new(), false);
     };
     let mut tracker = effect_tracker.locked();
-    tracker.take_audio()
+    (tracker.take_audio(), tracker.has_pending_audio())
 }
 
 /// Calculate remaining time for an effect in seconds

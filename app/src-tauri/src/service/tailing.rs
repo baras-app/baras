@@ -682,6 +682,10 @@ impl CombatService {
             // Throttle stale-recovery checks to once per second
             let mut last_stale_check = tokio::time::Instant::now();
 
+            // Set by the effect audio pass: keeps the fast poll while an effect
+            // still has countdown/offset/expiration audio to play
+            let mut effect_audio_pending = false;
+
             loop {
                 // Check which overlays are active to determine sleep interval
                 let raid_active = shared.raid_overlay_active.load(Ordering::Relaxed);
@@ -706,7 +710,7 @@ impl CombatService {
                     || cooldowns_active
                     || cooldowns_b_active
                     || dot_tracker_active;
-                let needs_audio = is_live && (in_combat || raid_active);
+                let needs_audio = is_live && (in_combat || raid_active || effect_audio_pending);
 
                 // Adaptive sleep: fast when active, slow when idle
                 // 30ms matches tail polling for consistent ~60ms max latency
@@ -837,8 +841,11 @@ impl CombatService {
                 // Effect audio: process in live mode
                 // Note: On-end text alerts are handled via tick() -> fired_alerts,
                 // consumed in build_timer_data_with_audio() below.
+                effect_audio_pending = false;
                 if shared.is_live_tailing.load(Ordering::SeqCst) {
-                    for audio in process_effect_audio(&shared).await {
+                    let (due, pending) = process_effect_audio(&shared).await;
+                    effect_audio_pending = pending;
+                    for audio in due {
                         let event = match audio {
                             EffectAudio::Countdown { name, seconds, voice } => AudioEvent::Countdown {
                                 timer_name: name,
