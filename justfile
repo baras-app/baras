@@ -74,6 +74,28 @@ run-app-image:
 validate boss log *args:
   cargo run --bin baras-validate -- --boss {{boss}} --log {{log}} {{args}}
 
+# Record effect-tracker timelines for every test log as the baseline for `just effects-diff`
+effects-golden defs="core/definitions":
+  just _effects-timelines golden {{defs}}
+
+# Replay every test log and diff the effect-tracker timelines against `just effects-golden`
+effects-diff defs="core/definitions":
+  #!/usr/bin/env bash
+  set -euo pipefail
+  just _effects-timelines current {{defs}}
+  tag=$(basename {{defs}})
+  diff -r target/effects-timeline/golden/$tag target/effects-timeline/current/$tag && echo "✓ timelines identical"
+
+_effects-timelines kind defs:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  cargo build -q --release -p baras-validate
+  out=target/effects-timeline/{{kind}}/$(basename {{defs}})
+  rm -rf "$out" && mkdir -p "$out"
+  find test-log-files -name '*.txt' -print0 | xargs -0 -P "$(nproc)" -I{} sh -c \
+    'n=$(echo "{}" | sed "s|^test-log-files/||; s|/|__|g"); target/release/baras-validate -l "{}" -d "{{defs}}" --effects-timeline "'"$out"'/$n" 2>"'"$out"'/$n.coverage" </dev/null'
+  echo "✓ $(ls "$out" | grep -vc coverage) timelines in $out"
+
 # ─────────────────────────────────────────────────────────────────────────
 # Releasing
 # ─────────────────────────────────────────────────────────────────────────

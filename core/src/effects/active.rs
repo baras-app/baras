@@ -339,6 +339,11 @@ impl ActiveEffect {
         }
     }
 
+    /// Neither removed nor past its (heuristic) timer — the overlays show it
+    pub fn is_displayed(&self) -> bool {
+        self.removed_at.is_none() && !self.timer_expired
+    }
+
     /// Check if the effect has expired based on duration
     /// Returns true if we have a duration and current game time is past expiry
     pub fn has_duration_expired(&self, current_game_time: NaiveDateTime) -> bool {

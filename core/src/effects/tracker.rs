@@ -979,12 +979,17 @@ impl EffectTracker {
     /// Uses interpolated game time for accurate remaining time calculations
     /// without comparing SWTOR's clock to the system clock.
     pub fn tick(&mut self) {
+        if let Some(now) = self.interpolated_game_time() {
+            self.tick_at(now);
+        }
+    }
+
+    /// Tick at an explicit game time. Live code goes through `tick()`; replay
+    /// tools pass log time so results don't depend on wall-clock speed.
+    pub fn tick_at(&mut self, interp_time: NaiveDateTime) {
         let Some(current_time) = self.current_game_time else {
             return;
         };
-
-        // Compute interpolated game time once for all effects this tick
-        let interp_time = self.interpolated_game_time().unwrap_or(current_time);
 
         // Collect effects that just ended (duration expired or removed by signal).
         // Include audio info so alerts fire reliably before GC.
