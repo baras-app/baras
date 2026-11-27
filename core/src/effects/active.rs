@@ -537,52 +537,6 @@ impl ActiveEffect {
         false
     }
 
-    /// Check if audio should fire on expiration (offset == 0)
-    ///
-    /// Returns true (and marks as fired) when:
-    /// - audio_file is Some
-    /// - audio_offset == 0 (fire on expiration)
-    /// - remaining time is in [0, 0.3) window (fires just as effect expires)
-    /// - hasn't already fired
-    ///
-    /// `remaining_base` is the BASE remaining seconds (excludes ready state time),
-    /// computed from interpolated game time.
-    pub fn check_expiration_audio(&mut self, remaining_base: f32) -> bool {
-        // Audio must be enabled for this effect
-        if !self.audio_enabled {
-            return false;
-        }
-
-        // No audio file configured
-        if self.audio_file.is_none() {
-            return false;
-        }
-
-        // Only handle offset=0 (on expiration)
-        if self.audio_offset != 0 {
-            return false;
-        }
-
-        // Already fired
-        if self.audio_played {
-            return false;
-        }
-
-        // Fire if effect was removed early (charges depleted, cleansed, etc.)
-        if self.removed_at.is_some() {
-            self.audio_played = true;
-            return true;
-        }
-
-        // Fire in window [0, 0.3) - catches base duration expiration
-        if (0.0..0.3).contains(&remaining_base) {
-            self.audio_played = true;
-            return true;
-        }
-
-        false
-    }
-
     // Note: On-end expiration alerts are fired exclusively by EffectTracker::tick(),
     // which checks on_end_alert_fired + has_base_duration_ended()/removed_at after
     // signals have been dispatched. This avoids false "effect ended" alerts when an

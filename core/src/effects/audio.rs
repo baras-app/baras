@@ -1,4 +1,6 @@
-//! Per-poll effect audio: countdown numbers, offset warnings, expiration sounds.
+//! Per-poll effect audio: countdown numbers and offset warnings. Expiration
+//! sounds are emitted by `tick()` as alerts, since the effect may be gone by
+//! the next poll.
 
 use chrono::NaiveDateTime;
 
@@ -38,7 +40,7 @@ impl EffectTracker {
                     voice: effect.countdown_voice.clone(),
                 });
             }
-            if effect.check_audio_offset(remaining_base) || effect.check_expiration_audio(remaining_base) {
+            if effect.check_audio_offset(remaining_base) {
                 out.push(EffectAudio::Sound {
                     name: effect.display_text.clone(),
                     file: effect.audio_file.clone(),

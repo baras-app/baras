@@ -898,10 +898,6 @@ impl EffectTracker {
             return;
         };
 
-        // Collect effects that just ended (duration expired or removed by signal).
-        // Include audio info so alerts fire reliably before GC.
-        let mut ended_effects: Vec<(String, Option<String>, bool, IStr, IStr, u8)> = Vec::new();
-
         for effect in self.active_effects.values_mut() {
             // Handle duration-expired effects.
             // Timer expiry is a heuristic — the in-game effect may outlast our estimate.
@@ -920,43 +916,39 @@ impl EffectTracker {
                 }
             }
 
-            // Collect alert info for effects that just ended (any reason)
+            // End-of-effect alert and expiration sound (any reason except a
+            // silent discard). The single owner of expiration audio: the
+            // effect may be dropped below before any audio poll could see it.
             let remaining_total = effect.remaining_secs(interp_time).unwrap_or(0.0);
-            if !effect.on_end_alert_fired
-                && (effect.has_base_duration_ended(remaining_total) || effect.removed_at.is_some())
+            if effect.on_end_alert_fired
+                || !(effect.has_base_duration_ended(remaining_total) || effect.removed_at.is_some())
             {
-                effect.on_end_alert_fired = true;
-                let should_play_audio = effect.audio_enabled
-                    && !effect.audio_played
-                    && effect.audio_offset == 0
-                    && effect.audio_file.is_some();
-                if should_play_audio {
-                    effect.audio_played = true;
+                continue;
+            }
+            effect.on_end_alert_fired = true;
+            let play_audio =
+                effect.audio_enabled && !effect.audio_played && effect.audio_offset == 0 && effect.audio_file.is_some();
+            effect.audio_played |= play_audio;
+            let Some(def) = self.definitions.effects.get(&effect.definition_id) else {
+                continue;
+            };
+            let alert = match &def.alert_text {
+                Some(text) if def.alert_on == AlertTrigger::OnExpire => {
+                    let text = alerts::format_text(text, effect.source_name, effect.target_name, effect.stacks);
+                    alerts::text_alert(def, text, current_time)
                 }
-                ended_effects.push((
-                    effect.definition_id.clone(),
-                    effect.audio_file.clone(),
-                    should_play_audio,
-                    effect.source_name,
-                    effect.target_name,
-                    effect.stacks,
-                ));
-            }
-        }
-
-        // Fire OnExpire alerts (with audio for early removals)
-        for (def_id, audio_file, audio_enabled, src_name, tgt_name, stacks) in ended_effects {
-            if let Some(def) = self.definitions.effects.get(&def_id)
-                && def.alert_on == AlertTrigger::OnExpire
-                && let Some(alert_text) = &def.alert_text
-            {
-                let text = alerts::format_text(alert_text, src_name, tgt_name, stacks);
-                self.fired_alerts.push(FiredAlert {
-                    audio_enabled,
-                    audio_file,
-                    ..alerts::text_alert(def, text, current_time)
-                });
-            }
+                // No on-expire alert to carry the sound: send it audio-only
+                _ if play_audio => FiredAlert {
+                    alert_text_enabled: false,
+                    ..alerts::text_alert(def, effect.display_text.clone(), current_time)
+                },
+                _ => continue,
+            };
+            self.fired_alerts.push(FiredAlert {
+                audio_enabled: play_audio,
+                audio_file: effect.audio_file.clone(),
+                ..alert
+            });
         }
 
         // Emit live countdown alerts for active effects whose remaining time
