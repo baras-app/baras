@@ -247,7 +247,7 @@ impl EncounterQuery<'_> {
             })
             .collect();
 
-        let (mut casts, effects) = self.replay_spans(duration).await?;
+        let (activations, mut casts, effects) = self.replay_spans(duration).await?;
         // Dying ends a cast
         let deaths: HashMap<i64, &[(f32, f32)]> = entities.iter().map(|e| (e.id, e.dead.as_slice())).collect();
         for cast in &mut casts {
@@ -261,6 +261,7 @@ impl EncounterQuery<'_> {
         Ok(ReplayData {
             duration_secs: duration,
             entities,
+            activations,
             casts,
             effects,
         })

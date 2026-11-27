@@ -40,6 +40,8 @@ struct ReplayState {
     pinned_map: Signal<Option<usize>>,
     /// Zoom, set by the slider or the mouse wheel
     scale: Signal<f64>,
+    /// Cards show only health, target and cast, except the highlighted one
+    compact: Signal<bool>,
     phases: Rc<Vec<PhaseSegment>>,
     european: bool,
 }
@@ -97,6 +99,7 @@ fn ReplayStage(loaded: LoadedProp, phases: Vec<PhaseSegment>, maps: Vec<MapDefin
         shown_map: Signal::new(None),
         pinned_map: Signal::new(None),
         scale: Signal::new(1.0),
+        compact: Signal::new(false),
         phases: Rc::new(phases),
         european,
     });

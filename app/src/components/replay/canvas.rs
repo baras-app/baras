@@ -28,6 +28,8 @@ extern "C" {
     fn set_speed(this: &Handle, speed: f64);
     #[wasm_bindgen(method, js_name = setScale)]
     fn set_scale(this: &Handle, scale: f64);
+    #[wasm_bindgen(method, js_name = resetView)]
+    fn reset_view(this: &Handle);
     #[wasm_bindgen(method, js_name = setHighlight)]
     fn set_highlight(this: &Handle, id: JsValue);
     #[wasm_bindgen(method, js_name = setMaps)]
@@ -44,6 +46,12 @@ extern "C" {
     fn on_map_change(this: &Handle, cb: &Closure<dyn FnMut(f64)>);
     #[wasm_bindgen(method)]
     fn destroy(this: &Handle);
+}
+
+#[derive(Serialize)]
+struct CanvasData<'a> {
+    duration_secs: f32,
+    entities: &'a [baras_types::ReplayEntity],
 }
 
 /// Icons and numbers the canvas draws on player dots, by entity id
@@ -83,7 +91,12 @@ impl Player {
         mut scale: Signal<f64>,
     ) -> Option<Self> {
         let canvas = web_sys::window()?.document()?.get_element_by_id(element_id)?;
-        let handle = create(&canvas, &to_js(data), &to_js(meta)).ok()?;
+        // The script draws tracks only: casts, effects and ability uses stay in Rust
+        let tracks = CanvasData {
+            duration_secs: data.duration_secs,
+            entities: &data.entities,
+        };
+        let handle = create(&canvas, &to_js(&tracks), &to_js(meta)).ok()?;
         let tick = Closure::<dyn FnMut(f64, bool)>::new(move |secs: f64, is_playing: bool| {
             time.set(secs as f32);
             if *playing.peek() != is_playing {
@@ -125,6 +138,11 @@ impl Player {
 
     pub fn set_scale(&self, scale: f64) {
         self.handle.set_scale(scale);
+    }
+
+    /// Default zoom, recentred
+    pub fn reset_view(&self) {
+        self.handle.reset_view();
     }
 
     pub fn set_highlight(&self, id: Option<i64>) {

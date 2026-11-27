@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
-use baras_types::{ReplayCast, ReplayEffect};
+use baras_types::{ReplayActivation, ReplayCast, ReplayEffect};
 
 use super::effects::{APPLY_EFFECT, DAMAGE_EFFECT, HEAL_EFFECT, REMOVE_EFFECT};
 use super::*;
@@ -22,7 +22,10 @@ fn is_group(entity_type: &str) -> bool {
 }
 
 impl EncounterQuery<'_> {
-    pub(super) async fn replay_spans(&self, duration: f32) -> Result<(Vec<ReplayCast>, Vec<ReplayEffect>), String> {
+    pub(super) async fn replay_spans(
+        &self,
+        duration: f32,
+    ) -> Result<(Vec<ReplayActivation>, Vec<ReplayCast>, Vec<ReplayEffect>), String> {
         let (activate, interrupt, cancel) = (
             effect_id::ABILITYACTIVATE,
             effect_id::ABILITYINTERRUPT,
@@ -40,6 +43,7 @@ impl EncounterQuery<'_> {
             ))
             .await?;
 
+        let mut activations: Vec<ReplayActivation> = Vec::new();
         let mut casts: Vec<ReplayCast> = Vec::new();
         // Entity → its cast still running
         let mut casting: HashMap<i64, usize> = HashMap::new();
@@ -66,6 +70,12 @@ impl EncounterQuery<'_> {
 
                 // ─── Casts ───────────────────────────────────────────────────
                 if id == activate {
+                    activations.push(ReplayActivation {
+                        entity_id: source,
+                        ability_id: abilities[i],
+                        name: ability_names[i].clone(),
+                        t,
+                    });
                     let cast = cast_secs(abilities[i]).filter(|s| *s > 0.0);
                     let channel = channel_secs(abilities[i]).filter(|s| *s > 0.0);
                     let timed = cast.or(channel);
@@ -174,6 +184,6 @@ impl EncounterQuery<'_> {
         effects.retain(|e| {
             e.end - e.start >= MIN_EFFECT_SECS && !(e.source_id == e.target_id && e.start == 0.0 && e.end >= duration)
         });
-        Ok((casts, effects))
+        Ok((activations, casts, effects))
     }
 }
