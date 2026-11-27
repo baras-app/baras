@@ -170,9 +170,8 @@ pub(super) async fn build_effects_ab_data(
     let interp_time = tracker.interpolated_game_time();
 
     let mut effects: Vec<&ActiveEffect> = match target {
-        DisplayTarget::EffectsB => tracker.effects_b().collect(),
-        DisplayTarget::EffectsC => tracker.effects_c().collect(),
-        _ => tracker.effects_a().collect(),
+        DisplayTarget::EffectsB | DisplayTarget::EffectsC => tracker.effects_on(target).collect(),
+        _ => tracker.effects_on(DisplayTarget::EffectsA).collect(),
     };
     effects.sort_by_key(|e| e.applied_at);
 
@@ -244,8 +243,8 @@ pub(super) async fn build_cooldowns_data(
     let interp_time = tracker.interpolated_game_time();
 
     let mut effects: Vec<_> = match target {
-        DisplayTarget::CooldownsB => tracker.cooldown_b_effects().collect(),
-        _ => tracker.cooldown_effects().collect(),
+        DisplayTarget::CooldownsB => tracker.effects_on(DisplayTarget::CooldownsB).collect(),
+        _ => tracker.effects_on(DisplayTarget::Cooldowns).collect(),
     };
 
     // Sort by remaining time (shortest first)

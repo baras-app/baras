@@ -55,7 +55,7 @@ pub fn run(log: &Path, definitions_root: Option<&Path>, out: &Path) -> Result<()
     defs.add_from_dir(&root.join("effects"));
     eprintln!(
         "Loaded {} effect definitions from {}",
-        defs.effects.len(),
+        defs.len(),
         root.display()
     );
 

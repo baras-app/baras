@@ -16,7 +16,7 @@ use std::time::Duration;
 
 use chrono::NaiveDateTime;
 
-use super::{DisplayTarget, EffectDefinition, Lifecycle};
+use super::{DefId, DisplayTarget, EffectDefinition, Lifecycle};
 use crate::context::IStr;
 use baras_types::RefreshScope;
 
@@ -561,9 +561,9 @@ impl ActiveEffect {
 /// `RefreshScope::Source` and `Target` collapse one axis by setting the
 /// corresponding field to `None`. `Option<i64>` is used (not a sentinel like 0)
 /// because `target_id == 0` is a real value in the combat log meaning AoE / no target.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EffectKey {
-    pub definition_id: String,
+    pub def: DefId,
     pub source_entity_id: Option<i64>,
     pub target_entity_id: Option<i64>,
 }
@@ -572,14 +572,14 @@ impl EffectKey {
     /// Construct a key for a definition, dropping one axis when scope is
     /// `Source` or `Target`. This is the canonical constructor for both
     /// storage and lookup so they always agree.
-    pub fn for_scope(definition_id: &str, scope: RefreshScope, source_entity_id: i64, target_entity_id: i64) -> Self {
+    pub fn for_scope(def: DefId, scope: RefreshScope, source_entity_id: i64, target_entity_id: i64) -> Self {
         let (s, t) = match scope {
             RefreshScope::Both => (Some(source_entity_id), Some(target_entity_id)),
             RefreshScope::Source => (Some(source_entity_id), None),
             RefreshScope::Target => (None, Some(target_entity_id)),
         };
         Self {
-            definition_id: definition_id.to_string(),
+            def,
             source_entity_id: s,
             target_entity_id: t,
         }
