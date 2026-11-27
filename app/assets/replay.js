@@ -7,6 +7,8 @@ window.BarasReplay = (() => {
   const EASE_SECS = 0.5;
   // A jump this far (world units) is a teleport: snap
   const SNAP_DIST = 15;
+  // A height change this large between samples is a lift or a drop: snap
+  const SNAP_HEIGHT = 4;
   // An NPC stays drawn this long after its last log line
   const NPC_LINGER_SECS = 2;
   const TICK_MS = 100;
@@ -49,8 +51,9 @@ window.BarasReplay = (() => {
     return -1;
   }
 
-  // Position, facing and presence of an entity at t; null when it is not there
-  function stateAt(e, t, duration) {
+  // Position, facing and presence of an entity at t; null when it is not there.
+  // `mapOf(x, y, z)` says which map entry a position is on, when there are maps.
+  function stateAt(e, t, duration, mapOf) {
     const tr = e.track;
     const n = tr.t.length;
     if (n === 0) return null;
@@ -70,6 +73,9 @@ window.BarasReplay = (() => {
     if (j >= n || t <= tr.t[i]) return s;
     const gap = tr.t[j] - tr.t[i];
     if (Math.hypot(tr.x[j] - s.x, tr.y[j] - s.y) > SNAP_DIST) return s;
+    if (Math.abs(tr.z[j] - s.z) > SNAP_HEIGHT) return s;
+    // Never glide from one map entry onto another
+    if (mapOf && mapOf(s.x, s.y, s.z) !== mapOf(tr.x[j], tr.y[j], tr.z[j])) return s;
     // A long silence: stand still, then move over the last half second
     const start = gap > HOLD_GAP_SECS ? tr.t[j] - EASE_SECS : tr.t[i];
     if (t <= start) return s;
@@ -311,12 +317,13 @@ window.BarasReplay = (() => {
       ctx.fillStyle = colors.bg;
       ctx.fillRect(0, 0, w, h);
 
-      const states = entities.map((e) => stateAt(e, time, duration));
+      const phase = maps.length ? phaseAt(time) : null;
+      const mapOf = maps.length ? (x, y, z) => mapIndexAt(maps, x, y, z, phase) : null;
+      const states = entities.map((e) => stateAt(e, time, duration, mapOf));
       // Which map each entity is on; the shown one follows the living players
       let onMap = null;
-      if (maps.length) {
-        const phase = phaseAt(time);
-        onMap = states.map((s) => (s ? mapIndexAt(maps, s.x, s.y, s.z, phase) : -1));
+      if (mapOf) {
+        onMap = states.map((s) => (s ? mapOf(s.x, s.y, s.z) : -1));
         let next = pinned;
         if (next == null) {
           const counts = new Array(maps.length).fill(0);
@@ -364,6 +371,8 @@ window.BarasReplay = (() => {
     }
 
     function frame(now) {
+      // This frame has run: a paused player must be able to ask for redraws again
+      raf = 0;
       if (destroyed || !playing) return;
       const dt = Math.min((now - lastFrame) / 1000, 0.1);
       lastFrame = now;
@@ -427,6 +436,8 @@ window.BarasReplay = (() => {
       },
       pause() {
         playing = false;
+        cancelAnimationFrame(raf);
+        raf = 0;
         tick(true);
         requestDraw();
       },

@@ -59,8 +59,11 @@ pub struct Player {
     _map: Closure<dyn FnMut(f64)>,
 }
 
+/// Maps and flattened structs become plain objects, which is what the script reads
 fn to_js<T: Serialize>(value: &T) -> JsValue {
-    serde_wasm_bindgen::to_value(value).unwrap_or(JsValue::NULL)
+    value
+        .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+        .unwrap_or(JsValue::NULL)
 }
 
 impl Player {

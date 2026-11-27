@@ -68,7 +68,8 @@ pub async fn get_replay_maps(
 /// could leave the maps directories is refused.
 #[tauri::command]
 pub async fn get_replay_map_image(app_handle: AppHandle, image: String) -> Result<String, String> {
-    if image.is_empty() || image.contains(['/', '\\']) || image.contains("..") {
+    // `:` covers Windows drive-relative names, which `join` would follow off the maps directory
+    if image.is_empty() || image.contains(['/', '\\', ':']) || image.contains("..") {
         return Err(format!("Invalid map image name: {image}"));
     }
     let mime = match image

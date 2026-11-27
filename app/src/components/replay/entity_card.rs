@@ -77,8 +77,11 @@ pub(super) fn EntityCard(index: usize) -> Element {
         0.0
     };
     // On a map other than the one shown: not on the canvas
-    let elsewhere = view.map.zip((state.shown_map)()).filter(|(on, shown)| on != shown);
-    let elsewhere_label = elsewhere.and_then(|(on, _)| maps.read().get(on).map(map_label));
+    let elsewhere = !maps.read().is_empty() && (state.shown_map)().is_some_and(|shown| view.map != Some(shown));
+    let elsewhere_label = view
+        .map
+        .filter(|_| elsewhere)
+        .and_then(|on| maps.read().get(on).map(map_label));
     let european = state.european;
     let compact = move |v: f32| formatting::format_compact(v as i64, european);
     let toggle = {
@@ -92,7 +95,7 @@ pub(super) fn EntityCard(index: usize) -> Element {
             class: "replay-card",
             class: if selected { "selected" },
             class: if view.dead { "dead" },
-            class: if elsewhere.is_some() { "elsewhere" },
+            class: if elsewhere { "elsewhere" },
             onclick: toggle,
             div { class: "replay-card-head",
                 if let Some(src) = class_icon {
@@ -124,6 +127,8 @@ pub(super) fn EntityCard(index: usize) -> Element {
             div { class: "replay-card-line",
                 if let Some(label) = elsewhere_label {
                     "On {label}"
+                } else if elsewhere {
+                    "Off the map"
                 } else if let Some(target) = &view.target {
                     "Target: {target}"
                 } else {

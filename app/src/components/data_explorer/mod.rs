@@ -190,6 +190,8 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                             state: ctx.enemy_views,
                             european: eu,
                         }
+                    } else if matches!(shown, ViewMode::Replay) && !ctx.replay_available(shown_encounter()) {
+                        div { class: "uptime-empty", "Replay is available for operation boss fights that have a map" }
                     } else if matches!(shown, ViewMode::Replay) {
                         ReplayView {
                             key: "{shown_encounter():?}",
