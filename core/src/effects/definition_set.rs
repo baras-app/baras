@@ -42,8 +42,9 @@ pub struct DefinitionSet {
     abilities: Index,
     /// `refresh_abilities` entries
     refresh: Index,
-    /// Refresh ability IDs that use AoE damage correlation (`is_aoe_refresh`)
+    /// Refresh abilities (IDs, lowercase names) that use AoE damage correlation (`is_aoe_refresh`)
     aoe_refresh_ability_ids: HashSet<u64>,
+    aoe_refresh_ability_names: HashSet<String>,
     /// Any enabled definition has duration modifiers
     has_modifiers: bool,
 }
@@ -103,6 +104,7 @@ impl DefinitionSet {
     fn rebuild_indexes(&mut self) {
         let (mut effects, mut abilities, mut refresh) = (Index::default(), Index::default(), Index::default());
         self.aoe_refresh_ability_ids.clear();
+        self.aoe_refresh_ability_names.clear();
 
         for (i, def) in self.defs.iter().enumerate() {
             let id = DefId(i as u32);
@@ -119,10 +121,11 @@ impl DefinitionSet {
             }
             for r in &def.refresh_abilities {
                 refresh.add_ability(r.ability(), id);
-                if def.is_aoe_refresh
-                    && let AbilitySelector::Id(ability_id) = r.ability()
-                {
-                    self.aoe_refresh_ability_ids.insert(*ability_id);
+                if def.is_aoe_refresh {
+                    match r.ability() {
+                        AbilitySelector::Id(ability_id) => self.aoe_refresh_ability_ids.insert(*ability_id),
+                        AbilitySelector::Name(name) => self.aoe_refresh_ability_names.insert(name.to_lowercase()),
+                    };
                 }
             }
         }
@@ -194,9 +197,11 @@ impl DefinitionSet {
         self.has_modifiers
     }
 
-    /// Check if an ability ID uses AoE damage correlation for refresh detection
-    pub fn is_aoe_refresh(&self, ability_id: u64) -> bool {
+    /// Check if an ability uses AoE damage correlation for refresh detection
+    pub fn is_aoe_refresh(&self, ability_id: u64, ability_name: &str) -> bool {
         self.aoe_refresh_ability_ids.contains(&ability_id)
+            || (!self.aoe_refresh_ability_names.is_empty()
+                && self.aoe_refresh_ability_names.contains(&ability_name.to_lowercase()))
     }
 
     /// All definitions, enabled or not
