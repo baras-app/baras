@@ -4,6 +4,7 @@
 //! - Realtime mode (1x): Debug timer display issues
 //! - Accelerated mode: Fast CI validation with checkpoints
 
+mod effects_timeline;
 mod output;
 mod replay;
 mod verification;
@@ -61,8 +62,14 @@ struct Args {
     log: PathBuf,
 
     /// Boss ID to validate (e.g., "sword_squadron")
-    #[arg(short, long)]
-    boss: String,
+    #[arg(short, long, required_unless_present = "effects_timeline")]
+    boss: Option<String>,
+
+    /// Replay the whole log through the effect tracker and write its timeline
+    /// here (no boss needed). `--definitions` then points at the definitions
+    /// root holding `effects/` and `encounters/`.
+    #[arg(long)]
+    effects_timeline: Option<PathBuf>,
 
     /// Path to definitions directory (defaults to bundled)
     #[arg(short, long)]
@@ -183,6 +190,10 @@ struct ValidationState {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
+    if let Some(out) = &args.effects_timeline {
+        return effects_timeline::run(&args.log, args.definitions.as_deref(), out);
+    }
+    let boss_id = args.boss.clone().unwrap_or_default();
 
     // Determine output level
     let output_level = if args.quiet {
@@ -247,11 +258,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Find the requested boss
     let boss_def = bosses
         .iter()
-        .find(|b| b.id.eq_ignore_ascii_case(&args.boss))
+        .find(|b| b.id.eq_ignore_ascii_case(&boss_id))
         .ok_or_else(|| {
             format!(
                 "Boss '{}' not found. Available: {}",
-                args.boss,
+                boss_id,
                 bosses.iter().map(|b| b.id.as_str()).collect::<Vec<_>>().join(", ")
             )
         })?;
