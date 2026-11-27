@@ -1218,7 +1218,10 @@ impl EffectTracker {
 
         for (def_id, scope, duration) in &refreshable {
             let key = EffectKey::for_scope(*def_id, *scope, source_id, target_id);
-            if let Some(effect) = self.active_effects.get_mut(&key) {
+            // The game's RemoveEffect is authoritative: a later hit can't revive it
+            if let Some(effect) = self.active_effects.get_mut(&key)
+                && !effect.is_removed()
+            {
                 effect.refresh(timestamp, *duration);
             }
         }
@@ -1252,7 +1255,9 @@ impl EffectTracker {
         for target_id in collecting.targets {
             for (def_id, scope, duration) in &refreshable_def_ids {
                 let key = EffectKey::for_scope(*def_id, *scope, collecting.source_id, target_id);
-                if let Some(effect) = self.active_effects.get_mut(&key) {
+                if let Some(effect) = self.active_effects.get_mut(&key)
+                    && !effect.is_removed()
+                {
                     effect.refresh(collecting.anchor_timestamp, *duration);
                 }
             }
