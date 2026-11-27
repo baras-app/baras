@@ -20,6 +20,7 @@ use crate::timers::FiredAlert;
 use super::alacrity::AlacrityBuffTracker;
 use super::alerts;
 use super::filter_ctx::{EntityInfo, FilterCtx};
+use super::modifier_adjust::ModifierAdjustment;
 use super::{
     ActiveEffect, AlertTrigger, DefId, DefinitionSet, DisplayTarget, EffectDefinition, EffectKey, RefreshTrigger,
 };
@@ -1761,52 +1762,14 @@ impl EffectTracker {
                         if !super::modifier_match::matches_self_charges(&modifier.trigger, old_stacks, charges) {
                             continue;
                         }
-                        if !effect.modifier_icd_ready(mod_idx, icds[mod_idx], modifier.icd_from_application, timestamp)
-                        {
+                        let adj = ModifierAdjustment::new(modifier, mod_idx, timestamp, 1.0, icds[mod_idx]);
+                        if !effect.modifier_icd_ready(mod_idx, adj.icd_secs, adj.icd_from_application, timestamp) {
                             continue;
                         }
                         effect.modifier_last_proc[mod_idx] = Some(timestamp);
-
-                        if modifier.cancel {
-                            effect.mark_removed();
+                        effect.apply_modifier(&adj, duration, false);
+                        if adj.cancel {
                             break;
-                        }
-
-                        // Apply duration adjustment
-                        if let Some(expires) = effect.expires_at {
-                            let mut new_expires = if modifier.refill_duration {
-                                if let Some(dur) = duration {
-                                    timestamp + dur
-                                } else {
-                                    continue;
-                                }
-                            } else if modifier.adjust_duration_secs != 0.0 {
-                                let delta =
-                                    chrono::Duration::milliseconds((modifier.adjust_duration_secs * 1000.0) as i64);
-                                expires + delta
-                            } else {
-                                continue;
-                            };
-                            if let Some(max) = modifier.max_duration_secs {
-                                let cap = effect.applied_at + chrono::Duration::milliseconds((max * 1000.0) as i64);
-                                new_expires = new_expires.min(cap);
-                                if effect.max_expires_at.is_none() {
-                                    effect.max_expires_at = Some(cap);
-                                }
-                            }
-                            new_expires = new_expires.max(timestamp);
-                            effect.expires_at = Some(new_expires);
-                            // NOTE: `duration` (the fill denominator) is intentionally
-                            // left at the base/effective duration. fill_percent clamps
-                            // to 1.0, so an extension shows a full bar until remaining
-                            // drops back below the base duration. Inflating `duration`
-                            // here folded elapsed time into the denominator and shrank
-                            // the bar on every proc.
-                            if modifier.refill_duration || modifier.adjust_duration_secs > 0.0 {
-                                effect.audio_played = false;
-                                effect.countdown_announced = [false; 10];
-                                effect.on_end_alert_fired = false;
-                            }
                         }
                     }
                 }
@@ -1993,19 +1956,8 @@ impl EffectTracker {
                 );
 
                 for hit in hits {
-                    adjustments.push((
-                        *key,
-                        ModifierAdjustment {
-                            mod_idx,
-                            at: hit.at,
-                            adjust_duration_secs: modifier.adjust_duration_secs * hit.scale,
-                            refill_duration: modifier.refill_duration,
-                            icd_secs: self.effective_icd(modifier, hit.at),
-                            icd_from_application: modifier.icd_from_application,
-                            max_duration_secs: modifier.max_duration_secs,
-                            cancel: modifier.cancel,
-                        },
-                    ));
+                    let icd = self.effective_icd(modifier, hit.at);
+                    adjustments.push((*key, ModifierAdjustment::new(modifier, mod_idx, hit.at, hit.scale, icd)));
                 }
             }
         }
@@ -2034,76 +1986,10 @@ impl EffectTracker {
                 continue;
             }
 
-            // Record proc time
             effect.modifier_last_proc[adj.mod_idx] = Some(adj.at);
-
-            // Cancel: remove the effect outright
-            if adj.cancel {
-                effect.mark_removed();
-                continue;
-            }
-
-            // Apply duration adjustment
-            if effect.expires_at.is_some() {
-                let new_expires = if adj.refill_duration {
-                    if let Some(dur) = refill_dur {
-                        adj.at + dur
-                    } else {
-                        continue;
-                    }
-                } else if adj.adjust_duration_secs != 0.0 {
-                    let delta = chrono::Duration::milliseconds((adj.adjust_duration_secs * 1000.0) as i64);
-                    effect.expires_at.unwrap() + delta
-                } else {
-                    continue;
-                };
-
-                // Clamp to max/min relative to applied_at
-                let clamped = if let Some(max) = adj.max_duration_secs {
-                    let max_expires = effect.applied_at + chrono::Duration::milliseconds((max * 1000.0) as i64);
-                    if effect.max_expires_at.is_none() {
-                        effect.max_expires_at = Some(max_expires);
-                    }
-                    new_expires.min(max_expires)
-                } else {
-                    new_expires
-                };
-                // Don't let expires_at go into the past
-                let final_expires = clamped.max(adj.at);
-                effect.expires_at = Some(final_expires);
-                // NOTE: `duration` (the fill denominator) is intentionally left at the
-                // base/effective duration. fill_percent clamps to 1.0, so an extension
-                // shows a full bar until remaining drops back below the base duration.
-                // Inflating `duration` here folded elapsed time into the denominator and
-                // shrank the bar on every proc.
-
-                // Reset audio/alert state if duration was extended
-                if adj.refill_duration || adj.adjust_duration_secs > 0.0 {
-                    effect.audio_played = false;
-                    effect.countdown_announced = [false; 10];
-                    effect.on_end_alert_fired = false;
-                }
-
-                // Revive an interpolation-expired effect: the log proves it was
-                // still active at `adj.at`.
-                if final_expires > adj.at {
-                    effect.revive();
-                }
-            }
+            effect.apply_modifier(&adj, refill_dur, true);
         }
     }
-}
-
-struct ModifierAdjustment {
-    mod_idx: usize,
-    /// Log time of the triggering signal
-    at: NaiveDateTime,
-    adjust_duration_secs: f32,
-    refill_duration: bool,
-    icd_secs: Option<f32>,
-    icd_from_application: bool,
-    max_duration_secs: Option<f32>,
-    cancel: bool,
 }
 
 impl SignalHandler for EffectTracker {
