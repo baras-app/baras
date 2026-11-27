@@ -16,11 +16,9 @@ use std::time::{Duration, Instant};
 
 use chrono::NaiveDateTime;
 
-use super::DisplayTarget;
+use super::{DisplayTarget, EffectDefinition};
 use crate::context::IStr;
 use baras_types::RefreshScope;
-
-// Instant is still used for `removed_at` (a boolean-like flag for GC)
 
 /// An active effect instance on a specific entity
 ///
@@ -55,9 +53,6 @@ pub struct ActiveEffect {
 
     /// Name of the target entity (from event)
     pub target_name: IStr,
-
-    /// Is this effect from the local player?
-    pub is_from_local_player: bool,
 
     // ─── Timing (game time from combat log) ─────────────────────────────────
     /// When the effect was applied (game time)
@@ -133,12 +128,6 @@ pub struct ActiveEffect {
     /// Whether the "on end" alert has been fired (to prevent duplicates)
     pub on_end_alert_fired: bool,
 
-    /// Alert text to display (None = no alert configured)
-    pub alert_text: Option<String>,
-
-    /// Whether to fire alert on expiration (vs on apply)
-    pub alert_on_expire: bool,
-
     /// Whether this effect was expired by the app's duration timer (heuristic)
     /// rather than an authoritative EffectRemoved signal.
     ///
@@ -158,76 +147,77 @@ pub struct ActiveEffect {
     pub modifier_last_proc: Vec<Option<NaiveDateTime>>,
 }
 
-#[allow(clippy::too_many_arguments)]
 impl ActiveEffect {
-    /// Create a new active effect
-    pub fn new(
-        definition_id: String,
+    /// Create an instance of `def` from the triggering event. `game_effect_id`
+    /// is the logged effect (or ability) ID, the icon fallback when the
+    /// definition sets none. `duration` is the effective (alacrity-scaled) one.
+    pub fn from_definition(
+        def: &EffectDefinition,
         game_effect_id: u64,
-        name: String,
-        display_text: String,
-        source_entity_id: i64,
-        source_name: IStr,
-        target_entity_id: i64,
-        target_name: IStr,
-        is_from_local_player: bool,
+        (source_entity_id, source_name): (i64, IStr),
+        (target_entity_id, target_name): (i64, IStr),
         event_timestamp: NaiveDateTime,
         duration: Option<Duration>,
-        color: [u8; 4],
-        display_targets: Vec<DisplayTarget>,
-        icon_ability_id: u64,
-        show_at_secs: f32,
-        show_icon: bool,
-        display_source: bool,
-        show_target: bool,
-        cooldown_ready_secs: f32,
-        audio: &crate::dsl::AudioConfig,
-        alert_text: Option<String>,
-        alert_on_expire: bool,
     ) -> Self {
         let expires_at = duration.map(|d| event_timestamp + chrono::Duration::milliseconds(d.as_millis() as i64));
-
-        let (display_text, display_template) = Self::resolve_display(&display_text, source_name, target_name, 1);
-
-        Self {
-            definition_id,
+        let mut effect = Self {
+            definition_id: def.id.clone(),
             game_effect_id,
-            name,
-            display_text,
-            display_template,
+            name: String::new(),
+            display_text: String::new(),
+            display_template: None,
             source_entity_id,
             source_name,
             target_entity_id,
             target_name,
-            is_from_local_player,
             applied_at: event_timestamp,
             expires_at,
             last_refreshed_at: event_timestamp,
             duration,
             removed_at: None,
             stacks: 1,
-            color,
-            display_targets,
-            icon_ability_id,
-            show_at_secs,
-            show_icon,
-            display_source,
-            show_target,
-            cooldown_ready_secs,
+            color: [0; 4],
+            display_targets: Vec::new(),
+            icon_ability_id: 0,
+            show_at_secs: 0.0,
+            show_icon: false,
+            display_source: false,
+            show_target: false,
+            cooldown_ready_secs: 0.0,
             audio_played: false,
             countdown_announced: [false; 10],
-            countdown_start: audio.countdown_start,
-            countdown_voice: audio.countdown_voice.clone().unwrap_or_else(|| "Amy".to_string()),
-            audio_file: audio.file.clone(),
-            audio_offset: audio.offset,
-            audio_enabled: audio.enabled,
+            countdown_start: 0,
+            countdown_voice: String::new(),
+            audio_file: None,
+            audio_offset: 0,
+            audio_enabled: false,
             on_end_alert_fired: false,
-            alert_text,
-            alert_on_expire,
             timer_expired: false,
             max_expires_at: None,
             modifier_last_proc: Vec::new(),
-        }
+        };
+        effect.apply_definition(def);
+        effect
+    }
+
+    /// Copy the display and audio settings cached from the definition.
+    /// The single place they're set: on creation and on definition reload.
+    pub fn apply_definition(&mut self, def: &EffectDefinition) {
+        self.name = def.name.clone();
+        self.set_display_template(def.display_text());
+        self.color = def.effective_color();
+        self.display_targets = def.display_targets.clone();
+        self.icon_ability_id = def.icon_ability_id.unwrap_or(self.game_effect_id);
+        self.show_at_secs = def.show_at_secs;
+        self.show_icon = def.show_icon;
+        self.display_source = def.display_source;
+        self.show_target = def.show_target;
+        self.cooldown_ready_secs = def.cooldown_ready_secs;
+        self.countdown_start = def.audio.countdown_start;
+        self.countdown_voice = def.audio.countdown_voice.clone().unwrap_or_else(|| "Amy".to_string());
+        self.audio_file = def.audio.file.clone();
+        self.audio_offset = def.audio.offset;
+        self.audio_enabled = def.audio.enabled;
     }
 
     /// Ensure modifier ICD vec is sized to match definition's modifier count.
@@ -327,15 +317,10 @@ impl ActiveEffect {
         (text, template.contains("{stack}").then(|| template.to_string()))
     }
 
-    /// Mark the effect as removed (starts fade-out)
-    /// Called when we receive an EffectRemoved signal OR duration expires
-    /// Returns true if this was the first time marking removed (for counter tracking)
-    pub fn mark_removed(&mut self) -> bool {
+    /// Mark the effect as removed; the next tick drops it
+    pub fn mark_removed(&mut self) {
         if self.removed_at.is_none() {
             self.removed_at = Some(Instant::now());
-            true
-        } else {
-            false
         }
     }
 
@@ -398,13 +383,6 @@ impl ActiveEffect {
             let remaining = expires.signed_duration_since(current_game_time);
             (remaining.num_milliseconds().max(0) as f32) / 1000.0
         })
-    }
-
-    /// Check if effect is near expiration (within threshold)
-    pub fn is_near_expiration(&self, current_game_time: NaiveDateTime, threshold_secs: f32) -> bool {
-        self.remaining_secs(current_game_time)
-            .map(|r| r <= threshold_secs && r > 0.0)
-            .unwrap_or(false)
     }
 
     // ─── Audio/Display Methods ────────────────────────────────────────────────
@@ -599,14 +577,6 @@ pub struct EffectKey {
 }
 
 impl EffectKey {
-    pub fn new(definition_id: &str, source_entity_id: i64, target_entity_id: i64) -> Self {
-        Self {
-            definition_id: definition_id.to_string(),
-            source_entity_id: Some(source_entity_id),
-            target_entity_id: Some(target_entity_id),
-        }
-    }
-
     /// Construct a key for a definition, dropping one axis when scope is
     /// `Source` or `Target`. This is the canonical constructor for both
     /// storage and lookup so they always agree.

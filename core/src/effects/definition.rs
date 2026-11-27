@@ -393,32 +393,6 @@ impl EffectDefinition {
         matches!(self.trigger, Trigger::HealingTaken { .. })
     }
 
-    /// Check if an effect ID/name matches this definition's trigger
-    pub fn matches_effect(&self, effect_id: u64, effect_name: Option<&str>) -> bool {
-        match &self.trigger {
-            Trigger::EffectApplied { effects, .. } | Trigger::EffectRemoved { effects, .. } => {
-                !effects.is_empty() && effects.iter().any(|s| s.matches(effect_id, effect_name))
-            }
-            _ => false,
-        }
-    }
-
-    /// Check if an ability cast matches this definition's trigger
-    pub fn matches_ability_cast(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
-        if let Trigger::AbilityCast { abilities, .. } = &self.trigger {
-            abilities.is_empty() || abilities.iter().any(|s| s.matches(ability_id, ability_name))
-        } else {
-            false
-        }
-    }
-
-    /// Check if an ability can refresh this effect
-    pub fn can_refresh_with(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
-        self.refresh_abilities
-            .iter()
-            .any(|r| r.matches(ability_id, ability_name))
-    }
-
     /// Find the RefreshAbility entry that matches the given ability.
     /// Returns None if no match found.
     pub fn find_refresh_ability(&self, ability_id: u64, ability_name: Option<&str>) -> Option<&RefreshAbility> {
