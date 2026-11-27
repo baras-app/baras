@@ -5070,6 +5070,57 @@ a.contributor-name:hover {
   }
 }
 
+/* ─── Log limits help popup (encounter editor) ──────────────────────────────── */
+.log-limits {
+  width: 640px;
+  text-align: left;
+}
+
+/* Opens the popup. Highlighted until it has been opened once, then an
+   ordinary toolbar button */
+.log-limits-btn.unread {
+  color: var(--swtor-blue-bright);
+  border-color: var(--swtor-blue-bright);
+  background: var(--blue-alpha-10);
+  font-weight: 600;
+}
+
+.log-limits-body {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: var(--space-sm);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.log-limits-body h4 {
+  margin: 1.1em 0 0.4em;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.log-limits-body p {
+  margin: 0 0 0.6em;
+}
+
+.log-limits-body :is(ol, ul) {
+  margin: 0 0 0.6em;
+  padding-left: 1.4em;
+}
+
+.log-limits-body li {
+  margin-bottom: 0.45em;
+}
+
+.log-limits-body strong {
+  color: var(--text-primary);
+}
+
+.log-limits-examples {
+  color: var(--text-muted);
+}
+
 /* ─── Effect import preview modal ───────────────────────────────────────────────────── */
 .effect-import {
   max-width: 600px;

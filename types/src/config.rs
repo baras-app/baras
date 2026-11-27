@@ -223,6 +223,10 @@ pub struct AppConfig {
     /// one is written, so leaving the option on cannot fill a disk.
     #[serde(default = "default_ocr_debug_max_dumps")]
     pub ocr_debug_max_dumps: u32,
+    /// The user has opened the encounter editor's "why a timer may not fire"
+    /// help; until then its callout is emphasized
+    #[serde(default)]
+    pub log_limits_seen: bool,
 }
 
 fn default_ocr_debug_max_dumps() -> u32 {
@@ -279,6 +283,7 @@ impl AppConfig {
             default_profile_per_role: std::collections::HashMap::new(),
             ocr_debug_dump: false,
             ocr_debug_max_dumps: 100,
+            log_limits_seen: false,
         }
     }
 }
