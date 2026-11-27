@@ -1521,9 +1521,16 @@ pub async fn query_replay(encounter_idx: Option<u32>) -> Option<ReplayData> {
     from_js(invoke_query("query_replay", obj.into()).await)
 }
 
-/// Replay maps of the boss fought in an encounter; empty when it has none.
-pub async fn get_replay_maps(encounter_idx: u32) -> Vec<baras_types::MapDefinition> {
-    from_js(invoke("get_replay_maps", build_args("encounterIdx", &encounter_idx)).await).unwrap_or_default()
+/// Replay maps of the boss fought in an encounter, downloaded when needed.
+/// `allow` records the user's agreement to map downloads.
+pub async fn get_replay_maps(encounter_idx: u32, allow: bool) -> baras_types::ReplayMaps {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "encounterIdx", &JsValue::from_f64(encounter_idx as f64));
+    js_set(&obj, "allow", &JsValue::from_bool(allow));
+    from_js(invoke("get_replay_maps", obj.into()).await).unwrap_or(baras_types::ReplayMaps {
+        maps: Vec::new(),
+        status: baras_types::ReplayMapStatus::Unavailable,
+    })
 }
 
 /// A replay map image as a data URL; None when the file is missing.

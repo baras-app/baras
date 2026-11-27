@@ -106,14 +106,15 @@ countdown_voice = "Amy"
 ### Maps
 
 The Replay tab draws a fight on the game's own map pages. Every operation's pages and the world area each one
-covers are extracted from the game client by `just extract-maps` into `definitions/maps/` (`pages.toml` plus one
-image per page), so a boss normally needs nothing here.
+covers are extracted from the game client into the [baras-maps](https://github.com/baras-app/baras-maps)
+repository (`pages.toml` plus one image per page). The app downloads an operation's pages the first time one of
+its fights is replayed, so a boss normally needs nothing here.
 
 A boss can list its own maps instead, which then replace the area's pages for that boss:
 
 ```toml
 [[boss.maps]]
-image = "the_dread_fortress__map_brontes.webp"   # file name under definitions/maps/
+image = "the_dread_fortress__map_brontes.webp"   # a page from baras-maps, or your own file under definitions/maps/
 label = "brontes"         # optional: name on the map tabs
 min_x = -86.0             # world area the whole image covers
 max_x = 51.9

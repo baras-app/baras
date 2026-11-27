@@ -5,14 +5,16 @@
 
 use dioxus::prelude::*;
 
+use baras_types::ReplayMapStatus;
+
 use crate::api::{PlayerDeath, TimeRange};
 use crate::components::combat_log::CombatLog;
 use crate::components::death_recap_drawer::DeathRecapDrawer;
-use crate::components::enemy_views::live_notice;
+use crate::components::enemy_views::{live_notice, loading};
 use crate::components::mirror_names;
 use crate::components::phase_timeline::PhaseTimelineFilter;
 use crate::components::raid_debuffs::RaidDebuffsView;
-use crate::components::replay::ReplayView;
+use crate::components::replay::{MapPrompt, ReplayView};
 use crate::components::threat::ThreatView;
 use crate::types::{UiSessionState, ViewMode};
 
@@ -192,12 +194,23 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                         }
                     } else if matches!(shown, ViewMode::Replay) && !ctx.replay_available(shown_encounter()) {
                         div { class: "uptime-empty", "Replay is available for operation boss fights that have a map" }
+                    } else if matches!(shown, ViewMode::Replay) && ctx.replay_map_status(shown_encounter()) == ReplayMapStatus::Loading {
+                        {loading()}
+                    } else if matches!(shown, ViewMode::Replay)
+                        && let status = ctx.replay_map_status(shown_encounter())
+                        && (status == ReplayMapStatus::NeedsConsent
+                            || (status == ReplayMapStatus::Unavailable && !cfg!(debug_assertions)))
+                    {
+                        MapPrompt {
+                            failed: status == ReplayMapStatus::Unavailable,
+                            on_download: move |_| ctx.load_replay_maps(shown_encounter(), true),
+                        }
                     } else if matches!(shown, ViewMode::Replay) {
                         ReplayView {
                             key: "{shown_encounter():?}",
                             encounter_idx: shown_encounter(),
                             phases: ctx.timeline.read().as_ref().map(|t| t.phases.clone()).unwrap_or_default(),
-                            maps: ctx.replay_maps.read().1.clone(),
+                            maps: ctx.replay_maps.read().1.maps.clone(),
                             european: eu,
                             jump: (ctx.replay_jump)(),
                             on_recap: move |(name, at): (String, f32)| {

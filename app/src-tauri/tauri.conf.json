@@ -43,7 +43,6 @@
     "resources": {
       "../../core/definitions/effects/*": "definitions/effects/",
       "../../core/definitions/encounters/**/*": "definitions/encounters/",
-      "../../core/definitions/maps/*": "definitions/maps/",
       "../../core/definitions/sounds/*.mp3": "definitions/sounds/",
       "../../core/definitions/sounds/*.wav": "definitions/sounds/",
       "../../core/definitions/sounds/Amy/*": "definitions/sounds/Amy/",

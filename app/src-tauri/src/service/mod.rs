@@ -15,6 +15,7 @@ mod effect_data;
 mod handler;
 mod history;
 mod info;
+pub mod map_store;
 mod operation_timer;
 pub mod parsely_ratings;
 pub(crate) mod process_monitor;

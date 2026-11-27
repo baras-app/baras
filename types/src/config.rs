@@ -127,6 +127,9 @@ pub struct AppConfig {
     pub auto_scan_history: bool,
     #[serde(default = "default_true")]
     pub minimize_to_tray: bool,
+    /// Agreed to downloading replay map images from the maps repository
+    #[serde(default)]
+    pub replay_map_downloads: bool,
     /// Serve the currently visible native overlays on a loopback-only web page.
     #[serde(default)]
     pub web_overlay_enabled: bool,
@@ -258,6 +261,7 @@ impl AppConfig {
             log_cleanup: history::LogCleanup::default(),
             auto_scan_history: true,
             minimize_to_tray: false,
+            replay_map_downloads: false,
             web_overlay_enabled: false,
             overlay_settings: OverlaySettings::default(),
             hotkeys: HotkeySettings::default(),

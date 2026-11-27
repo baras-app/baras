@@ -5,17 +5,20 @@ default:
 dev_config := env("BARAS_DEV_CONFIG_DIR", config_directory() / "baras-dev")
 
 # No sidecar copy in dev: tauri-build repeats it on every definition edit, replacing the fresh parse-worker with the last bundled one
+# A checkout of the maps repository: dev builds read replay maps from it instead of downloading (set it empty to download)
+maps_repo := env("BARAS_MAPS_DIR", justfile_directory() / ".." / "baras-maps")
+
 tauri_dev := """cargo tauri dev --config '{"bundle":{"externalBin":[]}}'"""
 
 # Run the app with hot-reload against the dev config directory (the app finds the parse-worker next to its own exe in target/debug)
 dev:
   cargo build -p baras-parse-worker && \
-  cd app && BARAS_CONFIG_DIR="{{dev_config}}" DEBUG_LOGGING=1 {{tauri_dev}} 2>&1 | tee /tmp/baras.log
+  cd app && BARAS_CONFIG_DIR="{{dev_config}}" BARAS_MAPS_DIR="{{maps_repo}}" DEBUG_LOGGING=1 {{tauri_dev}} 2>&1 | tee /tmp/baras.log
 
 # Same as `dev`, but on the installed app's own config directory
 dev-live:
   cargo build -p baras-parse-worker && \
-  cd app && DEBUG_LOGGING=1 {{tauri_dev}} 2>&1 | tee /tmp/baras.log
+  cd app && BARAS_MAPS_DIR="{{maps_repo}}" DEBUG_LOGGING=1 {{tauri_dev}} 2>&1 | tee /tmp/baras.log
 
 # Copy the installed app's settings, definitions and characters into the dev config directory (not its history, parsed data or logs)
 dev-seed:
@@ -146,7 +149,7 @@ sync-defs:
 build-validate-windows:
   cross build --release -p baras-validate --target x86_64-pc-windows-gnu
 
-# Extract every operation's replay maps (images + world bounds) from the game client into core/definitions/maps (env: SWTOR_EXTRACTOR, SWTOR_ASSETS; needs ImageMagick)
+# Extract every operation's replay maps (images + world bounds) from the game client into the maps repository checkout (env: BARAS_MAPS_DIR, SWTOR_EXTRACTOR, SWTOR_ASSETS; needs ImageMagick)
 extract-maps:
   #!/usr/bin/env bash
   set -euo pipefail
@@ -156,7 +159,9 @@ extract-maps:
   [[ -x "$PY" ]] || { echo "No venv at $EXTRACTOR/.venv (python -m venv .venv && .venv/bin/pip install zstandard)"; exit 1; }
   [[ -d "$ASSETS" ]] || { echo "Assets folder not found: $ASSETS"; exit 1; }
   command -v magick >/dev/null || { echo "ImageMagick (magick) not found"; exit 1; }
-  "$PY" "{{justfile_directory()}}/scripts/extract_maps.py" --assets "$ASSETS" --extractor "$EXTRACTOR"
+  [[ -f "{{maps_repo}}/extract_maps.py" ]] || { echo "No maps repository checkout at {{maps_repo}} (git clone git@github.com:baras-app/baras-maps.git)"; exit 1; }
+  "$PY" "{{maps_repo}}/extract_maps.py" --assets "$ASSETS" --extractor "$EXTRACTOR" \
+    --encounters "{{justfile_directory()}}/core/definitions/encounters/operations"
 
 # Run the SWTOR ability extractor and copy ability_data.csv + effect_data.csv into core/data (env: SWTOR_EXTRACTOR, SWTOR_ASSETS; args pass to main.py, e.g. --no-npc)
 extract-abilities *args:

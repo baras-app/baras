@@ -81,7 +81,6 @@ fn use_recap_reset(ctx: ExplorerCtx) {
 fn use_replay_maps(ctx: ExplorerCtx) {
     let ExplorerCtx {
         selected_encounter,
-        mut replay_maps,
         mut replay_jump,
         ..
     } = ctx;
@@ -99,15 +98,7 @@ fn use_replay_maps(ctx: ExplorerCtx) {
             replay_jump.set(None);
         }
         handled.set(Some((idx, is_boss)));
-        replay_maps.set((idx, Vec::new()));
-        if let Some(encounter) = idx.filter(|_| is_boss) {
-            spawn(async move {
-                let maps = api::get_replay_maps(encounter).await;
-                if *selected_encounter.peek() == idx {
-                    replay_maps.set((idx, maps));
-                }
-            });
-        }
+        ctx.load_replay_maps(idx, false);
     });
 }
 
