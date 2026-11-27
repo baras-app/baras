@@ -32,6 +32,15 @@ macro_rules! parse_i32 {
 /// that reference, because the game stamps the first lines before it creates
 /// the file.
 /// `HH:MM:SS.mmm`
+/// The log's name for an ability or effect, or the game data's internal name
+/// when the log has none (boss mechanics the game shows no name for)
+fn named(name: &str, id: i64) -> &str {
+    match name.is_empty() {
+        true => crate::game_data::internal_name(id).unwrap_or(name),
+        false => name,
+    }
+}
+
 fn parse_time(segment: &str) -> Option<NaiveTime> {
     let b = segment.as_bytes();
     if b.len() != 12 || b[2] != b':' || b[5] != b':' || b[8] != b'.' {
@@ -334,7 +343,7 @@ impl LogParser {
         let action_id = parse_i64!(segment.get(brace? + 1..end_brace?).unwrap_or(""));
 
         Some(Action {
-            name: intern(action_name),
+            name: intern(named(action_name, action_id)),
             action_id,
         })
     }
@@ -368,13 +377,12 @@ impl LogParser {
 
         let type_name = intern(segment.get(..braces[0]).unwrap_or("").trim());
         let type_id = parse_i64!(segment.get(braces[0] + 1..end_braces[0]).unwrap_or(""));
-        let effect_name = intern(
-            segment
-                .get(end_braces[0] + 2..braces[1].saturating_sub(1))
-                .unwrap_or("")
-                .trim(),
-        );
+        let effect_name = segment
+            .get(end_braces[0] + 2..braces[1].saturating_sub(1))
+            .unwrap_or("")
+            .trim();
         let effect_id = parse_i64!(segment.get(braces[1] + 1..end_braces[1]).unwrap_or(""));
+        let effect_name = intern(named(effect_name, effect_id));
 
         let (difficulty_name, difficulty_id) = if type_id == effect_type_id::AREAENTERED && brace_count == 3 {
             (
