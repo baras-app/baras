@@ -47,7 +47,7 @@ window.BarasReplay = (() => {
   // Pages up to this many metres across are never framed
   const FOCUS_MIN_PAGE = 250;
   // The highlighted entity's path over this many seconds, sampled this often
-  const TRAIL_SECS = 8;
+  const TRAIL_SECS = 6;
   const TRAIL_STEP_SECS = 0.25;
   const TICK_MS = 100;
   const PICK_PX = 18;
