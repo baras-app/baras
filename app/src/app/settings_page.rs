@@ -7,6 +7,7 @@ use dioxus::prelude::*;
 
 use super::helpers::{is_linux, is_macos, save_setting, set_light_theme};
 use super::parsely_settings::ParselySettings;
+use super::replay_map_settings::ReplayMapSettings;
 use crate::api;
 use crate::components::{
     CleanupRules, HotkeyInput, LockoutResetSetting, NumberInput, Slider, ToastSeverity, use_toast,
@@ -416,6 +417,7 @@ pub(super) fn SettingsPage(
 
             } // settings-col
             div { class: "settings-col",
+            ReplayMapSettings {}
             ParselySettings {
                 username: parsely_username,
                 password: parsely_password,

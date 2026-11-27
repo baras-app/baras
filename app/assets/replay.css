@@ -393,6 +393,16 @@
   opacity: 1;
 }
 
+/* Outside the time range selected in the explorer: not played */
+.replay-loop-out {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--bg-dark);
+  opacity: 0.75;
+  pointer-events: none;
+}
+
 .replay-playhead {
   position: absolute;
   top: 0;

@@ -26,6 +26,8 @@ extern "C" {
     fn seek(this: &Handle, secs: f64);
     #[wasm_bindgen(method, js_name = setSpeed)]
     fn set_speed(this: &Handle, speed: f64);
+    #[wasm_bindgen(method, js_name = setLoop)]
+    fn set_loop(this: &Handle, from: JsValue, to: JsValue);
     #[wasm_bindgen(method, js_name = setScale)]
     fn set_scale(this: &Handle, scale: f64);
     #[wasm_bindgen(method, js_name = setShowUnnamed)]
@@ -134,6 +136,14 @@ impl Player {
 
     pub fn seek(&self, secs: f32) {
         self.handle.seek(secs as f64);
+    }
+
+    /// Play only this span, over and over; `None` for the whole fight
+    pub fn set_loop(&self, range: Option<(f32, f32)>) {
+        let (from, to) = range.map_or((JsValue::NULL, JsValue::NULL), |(from, to)| {
+            (JsValue::from_f64(from as f64), JsValue::from_f64(to as f64))
+        });
+        self.handle.set_loop(from, to);
     }
 
     pub fn set_speed(&self, speed: f64) {

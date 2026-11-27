@@ -1,4 +1,5 @@
-//! The replay's scrubber: phases as bands, deaths as marks and a playhead. Click or drag to seek; click a death to land before it.
+//! The replay's scrubber: phases as bands, deaths as marks and a playhead. Click or drag to seek; click a death
+//! to land before it. A time range selected in the explorer is the part that plays; the rest is dimmed.
 
 use dioxus::prelude::*;
 
@@ -27,6 +28,7 @@ pub(super) fn Timeline() -> Element {
         time,
         player,
         mut highlight,
+        range,
         ..
     } = state.clone();
     let duration = state.loaded.data.duration_secs.max(0.001);
@@ -91,6 +93,10 @@ pub(super) fn Timeline() -> Element {
                         highlight.set(Some(id));
                     },
                 }
+            }
+            if let Some((from, to)) = range() {
+                div { class: "replay-loop-out", style: "left: 0; width: {pct(from)}%" }
+                div { class: "replay-loop-out", style: "left: {pct(to)}%; right: 0" }
             }
             div { class: "replay-playhead", style: "left: {pct(time())}%" }
         }

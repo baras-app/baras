@@ -213,6 +213,12 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                             maps: ctx.replay_maps.read().1.maps.clone(),
                             european: eu,
                             jump: (ctx.replay_jump)(),
+                            range: ctx
+                                .timeline
+                                .read()
+                                .as_ref()
+                                .filter(|t| !time_range().is_full(t.duration_secs))
+                                .map(|_| (time_range().start, time_range().end)),
                             on_recap: move |(name, at): (String, f32)| {
                                 // The death in the explorer's list closest to that moment
                                 let death = player_deaths
