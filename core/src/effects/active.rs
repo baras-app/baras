@@ -12,11 +12,11 @@
 //!
 //! After removal, the effect is immediately deleted from the tracker.
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use chrono::NaiveDateTime;
 
-use super::{DisplayTarget, EffectDefinition};
+use super::{DisplayTarget, EffectDefinition, Lifecycle};
 use crate::context::IStr;
 use baras_types::RefreshScope;
 
@@ -68,11 +68,8 @@ pub struct ActiveEffect {
     /// Total duration (cached for fill calculations)
     pub duration: Option<Duration>,
 
-    // ─── Removal state ─────────────────────────────────────────────────────
-    /// When the effect was removed (system time).
-    /// Set by either EffectRemoved signal OR duration expiry.
-    /// Effect is immediately deleted from tracker on next tick.
-    pub removed_at: Option<Instant>,
+    /// Live, timer-expired, removed or discarded
+    pub lifecycle: Lifecycle,
 
     // ─── State ──────────────────────────────────────────────────────────────
     /// Current stack/charge count
@@ -128,19 +125,6 @@ pub struct ActiveEffect {
     /// Whether the "on end" alert has been fired (to prevent duplicates)
     pub on_end_alert_fired: bool,
 
-    /// Whether this effect was expired by the app's duration timer (heuristic)
-    /// rather than an authoritative EffectRemoved signal.
-    ///
-    /// Timer-expired effects remain in `active_effects` so that `refresh_abilities`
-    /// can still revive them (the game duration may exceed our estimate). They are
-    /// hidden from display and alerts fire normally on timer expiry.
-    /// After a grace period, the effect is hard-removed for GC.
-    pub timer_expired: bool,
-
-    /// Set by `discard()`: the end-alert and audio flags it overrode, restored
-    /// if the game confirms the removal before the effect is dropped
-    discarded: Option<(bool, bool)>,
-
     // ─── Modifier state ───────────────────────────────────────────────────────
     /// Absolute expiry cap set by refill modifiers with max_duration_secs.
     /// Used by the overlay to show "elapsed / max" budget text.
@@ -178,7 +162,7 @@ impl ActiveEffect {
             expires_at,
             last_refreshed_at: event_timestamp,
             duration,
-            removed_at: None,
+            lifecycle: Lifecycle::Live,
             stacks: 1,
             color: [0; 4],
             display_targets: Vec::new(),
@@ -196,8 +180,6 @@ impl ActiveEffect {
             audio_offset: 0,
             audio_enabled: false,
             on_end_alert_fired: false,
-            timer_expired: false,
-            discarded: None,
             max_expires_at: None,
             modifier_last_proc: Vec::new(),
         };
@@ -262,11 +244,8 @@ impl ActiveEffect {
             self.duration = Some(d);
         }
 
-        // Clear removed state if we were fading out (effect came back)
-        self.removed_at = None;
-        // Clear timer-expired state (refresh revives the effect)
-        self.timer_expired = false;
-        self.discarded = None;
+        // A refresh revives a timer-expired or not-yet-dropped effect
+        self.lifecycle = Lifecycle::Live;
         // Reset on-end alert so it can fire again
         self.on_end_alert_fired = false;
         // Reset audio so it fires again on the next expiration/offset
@@ -283,9 +262,7 @@ impl ActiveEffect {
         self.expires_at = Some(event_timestamp + chrono::Duration::milliseconds(duration.as_millis() as i64));
         self.duration = Some(duration);
 
-        self.removed_at = None;
-        self.timer_expired = false;
-        self.discarded = None;
+        self.lifecycle = Lifecycle::Live;
         self.on_end_alert_fired = false;
         // Reset audio so it fires again on the next expiration/offset
         self.audio_played = false;
@@ -326,8 +303,22 @@ impl ActiveEffect {
 
     /// Mark the effect as removed; the next tick drops it
     pub fn mark_removed(&mut self) {
-        if self.removed_at.is_none() {
-            self.removed_at = Some(Instant::now());
+        if !self.is_removed() {
+            self.lifecycle = Lifecycle::Removed;
+        }
+    }
+
+    /// Hide an effect whose duration estimate ran out (revivable by refresh)
+    pub fn mark_timer_expired(&mut self) {
+        if self.lifecycle == Lifecycle::Live {
+            self.lifecycle = Lifecycle::TimerExpired;
+        }
+    }
+
+    /// Un-hide a timer-expired effect the log proved still active
+    pub fn revive(&mut self) {
+        if self.lifecycle == Lifecycle::TimerExpired {
+            self.lifecycle = Lifecycle::Live;
         }
     }
 
@@ -335,29 +326,45 @@ impl ActiveEffect {
     /// the effect didn't end in the game's terms, so no end alert or sound
     /// fires. No-op on an effect that is already removed.
     pub fn discard(&mut self) {
-        if self.removed_at.is_some() {
+        if self.is_removed() {
             return;
         }
-        self.discarded = Some((self.on_end_alert_fired, self.audio_played));
+        self.lifecycle = Lifecycle::Discarded {
+            alert_fired: self.on_end_alert_fired,
+            audio_played: self.audio_played,
+        };
         self.on_end_alert_fired = true;
         self.audio_played = true;
-        self.mark_removed();
     }
 
     /// Authoritative removal (game `RemoveEffect`). Re-arms the end alert
     /// and sound of an effect discarded earlier in the same batch, e.g. a
     /// death handled just before the game's removal line.
     pub fn confirm_removed(&mut self) {
-        if let Some((alert_fired, audio_played)) = self.discarded.take() {
+        if let Lifecycle::Discarded {
+            alert_fired,
+            audio_played,
+        } = self.lifecycle
+        {
             self.on_end_alert_fired = alert_fired;
             self.audio_played = audio_played;
         }
-        self.mark_removed();
+        self.lifecycle = Lifecycle::Removed;
     }
 
-    /// Neither removed nor past its (heuristic) timer — the overlays show it
+    /// Removed or discarded: gone on the next tick
+    pub fn is_removed(&self) -> bool {
+        matches!(self.lifecycle, Lifecycle::Removed | Lifecycle::Discarded { .. })
+    }
+
+    /// Hidden because its duration estimate ran out (not removed)
+    pub fn is_timer_expired(&self) -> bool {
+        self.lifecycle == Lifecycle::TimerExpired
+    }
+
+    /// Shown on overlays
     pub fn is_displayed(&self) -> bool {
-        self.removed_at.is_none() && !self.timer_expired
+        self.lifecycle == Lifecycle::Live
     }
 
     /// Check if the effect has expired based on duration
@@ -370,7 +377,7 @@ impl ActiveEffect {
 
     /// Check if the effect is still active (not removed and not expired)
     pub fn is_active(&self, current_game_time: NaiveDateTime) -> bool {
-        self.removed_at.is_none() && !self.has_duration_expired(current_game_time)
+        !self.is_removed() && !self.has_duration_expired(current_game_time)
     }
 
     /// Check if the effect is active AND still in its base duration (not in ready state).
@@ -472,7 +479,7 @@ impl ActiveEffect {
     /// computed from interpolated game time.
     pub fn check_countdown(&mut self, remaining_base: f32) -> Option<u8> {
         // Don't announce if effect was manually removed
-        if self.removed_at.is_some() {
+        if self.is_removed() {
             return None;
         }
 
@@ -509,7 +516,7 @@ impl ActiveEffect {
     /// computed from interpolated game time.
     pub fn check_audio_offset(&mut self, remaining_base: f32) -> bool {
         // Don't play if effect was manually removed
-        if self.removed_at.is_some() {
+        if self.is_removed() {
             return false;
         }
 

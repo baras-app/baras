@@ -28,7 +28,7 @@ impl EffectTracker {
     /// countdown windows aren't skipped.
     pub fn has_pending_audio(&self) -> bool {
         self.active_effects()
-            .any(|e| e.audio_enabled && e.removed_at.is_none() && (!e.audio_played || e.countdown_start > 0))
+            .any(|e| e.audio_enabled && !e.is_removed() && (!e.audio_played || e.countdown_start > 0))
     }
 
     /// Audio due at `now`; marks what it returns as played.

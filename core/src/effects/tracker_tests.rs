@@ -570,7 +570,7 @@ fn test_refresh_does_not_resurrect_removed_effect() {
     // The effect is marked removed but still in HashMap (tick() hasn't run yet to GC)
     // Verify it's marked removed
     let effect = tracker.active_effects().next().unwrap();
-    assert!(effect.removed_at.is_some(), "Effect should be marked as removed");
+    assert!(effect.is_removed(), "Effect should be marked as removed");
 
     // Step 3: Cast the refresh ability (slightly too late — probes already fell off)
     let ts_recast = ts_remove + chrono::Duration::milliseconds(500);
@@ -582,7 +582,7 @@ fn test_refresh_does_not_resurrect_removed_effect() {
     // The removed effect should NOT be resurrected by the refresh
     let effect = tracker.active_effects().next().unwrap();
     assert!(
-        effect.removed_at.is_some(),
+        effect.is_removed(),
         "Removed effect should NOT be resurrected by refresh ability"
     );
 }
@@ -1402,14 +1402,14 @@ fn test_resource_spent_modifier_cancels_effect() {
         &[effect_applied_signal_with_source(effect_id as i64, player, player, ts)],
         None,
     );
-    assert!(tracker.active_effects().next().unwrap().removed_at.is_none());
+    assert!(!tracker.active_effects().next().unwrap().is_removed());
 
     tracker.handle_signals(
         &[resource_spent_signal(player, 5.0, ts + chrono::Duration::seconds(1))],
         None,
     );
     assert!(
-        tracker.active_effects().next().unwrap().removed_at.is_some(),
+        tracker.active_effects().next().unwrap().is_removed(),
         "cancel modifier should mark the effect removed"
     );
 }
@@ -1571,7 +1571,7 @@ fn test_modifier_revives_interpolation_expired_effect() {
 
     // Simulate tick() having expired the effect on interpolated time while
     // the log (e.g. a delayed flush) hadn't caught up yet.
-    tracker.active_effects_mut().next().unwrap().timer_expired = true;
+    tracker.active_effects_mut().next().unwrap().mark_timer_expired();
 
     // A log event from BEFORE expires_at proves the effect was still alive.
     tracker.handle_signals(
@@ -1580,16 +1580,16 @@ fn test_modifier_revives_interpolation_expired_effect() {
     );
     let e = tracker.active_effects().next().unwrap();
     assert!(
-        !e.timer_expired,
+        !e.is_timer_expired(),
         "modifier should revive an interpolation-expired effect"
     );
     assert_eq!((e.expires_at.unwrap() - original).num_milliseconds(), 5000);
 
     // A log event from AFTER expires_at must not resurrect a genuinely expired effect.
-    tracker.active_effects_mut().next().unwrap().timer_expired = true;
+    tracker.active_effects_mut().next().unwrap().mark_timer_expired();
     let late = tracker.active_effects().next().unwrap().expires_at.unwrap() + chrono::Duration::seconds(1);
     tracker.handle_signals(&[resource_spent_signal(player, 5.0, late)], None);
-    assert!(tracker.active_effects().next().unwrap().timer_expired);
+    assert!(tracker.active_effects().next().unwrap().is_timer_expired());
 }
 
 #[test]
@@ -1664,7 +1664,7 @@ fn test_duplicate_area_entered_keeps_restated_effects() {
     let ts = now();
 
     tracker.handle_signal(&effect_applied_signal(999, ts), None);
-    assert_eq!(tracker.active_effects().filter(|e| e.removed_at.is_none()).count(), 1);
+    assert_eq!(tracker.active_effects().filter(|e| !e.is_removed()).count(), 1);
 
     // Zone into an instance: wipe, restatement, then duplicate AreaEntered
     tracker.handle_signal(&area_entered_signal(100, ts + chrono::Duration::milliseconds(10)), None);
@@ -1675,7 +1675,7 @@ fn test_duplicate_area_entered_keeps_restated_effects() {
     tracker.handle_signal(&area_entered_signal(100, ts + chrono::Duration::milliseconds(50)), None);
 
     assert_eq!(
-        tracker.active_effects().filter(|e| e.removed_at.is_none()).count(),
+        tracker.active_effects().filter(|e| !e.is_removed()).count(),
         1,
         "duplicate AreaEntered for the same area must not wipe restated effects"
     );
@@ -1683,7 +1683,7 @@ fn test_duplicate_area_entered_keeps_restated_effects() {
     // A genuinely different area still wipes
     tracker.handle_signal(&area_entered_signal(200, ts + chrono::Duration::seconds(5)), None);
     assert_eq!(
-        tracker.active_effects().filter(|e| e.removed_at.is_none()).count(),
+        tracker.active_effects().filter(|e| !e.is_removed()).count(),
         0,
         "entering a different area must clear active effects"
     );
