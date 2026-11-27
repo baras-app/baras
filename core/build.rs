@@ -14,6 +14,7 @@ fn main() {
     generate_attack_types_map(&out_dir);
     generate_alacrity_buffs_map(&out_dir);
     generate_channel_times_map(&out_dir);
+    generate_internal_names_map(&out_dir);
     generate_discipline_abilities_map(&out_dir);
     generate_interrupt_abilities_set(&out_dir);
     generate_battle_rez_set(&out_dir);
@@ -109,6 +110,92 @@ fn generate_channel_times_map(out_dir: &str) {
 }
 
 /// The player classes' cleanses. The game data has no flag for them.
+/// A readable name from an internal one: the last part of the dotted name in
+/// title case (`...ip_cpt.sticky_grenade` → "Sticky Grenade"). A one-word last
+/// part says too little alone and takes its owner along (`...raptus.passive`
+/// → "Raptus Passive").
+fn readable_name(fqn: &str) -> String {
+    // Folders that group abilities rather than name what owns them
+    const GROUPING: [&str; 8] = [
+        "logic", "zlogic", "utility", "combat", "shared", "general", "passive", "passives",
+    ];
+    let is_grouping = |part: &str| {
+        GROUPING.contains(&part)
+            || part
+                .strip_prefix("difficulty_")
+                .is_some_and(|n| n.bytes().all(|b| b.is_ascii_digit()))
+    };
+    let mut parts = fqn.rsplit('.');
+    let tail = parts.next().unwrap_or("");
+    let owner = match tail.contains('_') {
+        true => None,
+        false => parts.find(|part| !is_grouping(part)),
+    };
+    owner
+        .into_iter()
+        .chain([tail])
+        .flat_map(|part| part.split('_'))
+        .filter(|word| !word.is_empty())
+        .map(|word| {
+            let mut chars = word.chars();
+            let first = chars.next().map(|c| c.to_ascii_uppercase());
+            first.into_iter().chain(chars).collect::<String>()
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// Ability or effect ID → a name for the ones the game shows none for (boss
+/// mechanics, hidden helpers), as `INTERNAL_NAMES`. Abilities take it from
+/// their internal name; effects from their own hidden name when they have one.
+/// Columns used: fqn(0), global_combat_id(1), name(2); in effect_data.csv
+/// effect_id(0), ability_fqn(2), name(4).
+fn generate_internal_names_map(out_dir: &str) {
+    const HIDDEN: &str = "[HIDDEN]";
+    // BTreeMap for deterministic output (sorted by key)
+    let mut entries: BTreeMap<i64, String> = BTreeMap::new();
+    for f in ability_rows() {
+        if let Ok(id) = f[1].trim().parse::<i64>()
+            && f[2].trim().is_empty()
+        {
+            entries.insert(id, readable_name(&f[0]));
+        }
+    }
+    let csv = fs::read_to_string("data/effect_data.csv").expect("failed to read effect_data.csv");
+    for f in csv
+        .trim_start_matches('\u{feff}')
+        .lines()
+        .skip(1)
+        .map(split_csv_line)
+        .filter(|f| f.len() > 4)
+    {
+        let Ok(id) = f[0].parse::<i64>() else { continue };
+        let name = f[4].trim();
+        if !name.is_empty() && !name.starts_with(HIDDEN) {
+            continue;
+        }
+        let own = name.trim_start_matches(HIDDEN).trim();
+        match own.is_empty() {
+            true => entries.entry(id).or_insert_with(|| readable_name(&f[2])),
+            false => entries.entry(id).or_insert_with(|| own.to_string()),
+        };
+    }
+    entries.retain(|_, name| !name.is_empty());
+
+    let mut file = BufWriter::new(fs::File::create(Path::new(out_dir).join("internal_names.rs")).unwrap());
+    let mut builder = phf_codegen::Map::new();
+    let quoted: Vec<(i64, String)> = entries.iter().map(|(id, name)| (*id, format!("{name:?}"))).collect();
+    for (id, name) in &quoted {
+        builder.entry(*id, name);
+    }
+    writeln!(
+        file,
+        "static INTERNAL_NAMES: phf::Map<i64, &str> = {};",
+        builder.build()
+    )
+    .unwrap();
+}
+
 fn generate_cleanse_abilities_set(out_dir: &str) {
     const CLEANSES: [&str; 6] = [
         "abl.agent.toxin_scan",
