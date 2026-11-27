@@ -21,6 +21,7 @@ mod phases;
 pub mod selectors;
 mod tabs;
 mod timer_form;
+mod timer_row;
 mod timers;
 pub mod triggers;
 
@@ -489,7 +490,7 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
             }
 
             // ─── Main: the open boss ──────────────────────────────────────────
-            div { class: "editor-main",
+            div { class: "editor-main boss-editor",
                 if let Some(area) = selected_area() {
                     EditorHeader {
                         area_name: area.name.clone(),

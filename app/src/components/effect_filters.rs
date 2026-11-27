@@ -6,6 +6,7 @@
 
 use dioxus::prelude::*;
 
+use super::def_list::HideDisabled;
 use super::discipline_selector::{ALL_DISCIPLINES, class_of};
 use super::editor_common::{ORIGINS, Origin, OriginFilter};
 use super::effect_editor::effect_origin;
@@ -189,16 +190,7 @@ pub fn EffectFilterBar(
                 kind: "effects",
                 on_pick: move |o: Option<Origin>| filters.write().origin = o.map(|o| o.label().to_string()),
             }
-            if disabled_count > 0 {
-                button {
-                    class: "btn btn-xs editor-sort-toggle",
-                    class: if hide_disabled() { "active" },
-                    title: if hide_disabled() { "Disabled effects are hidden: click to list them" } else { "Leave disabled effects out of the list" },
-                    onclick: move |_| hide_disabled.toggle(),
-                    i { class: "fa-solid fa-eye-slash" }
-                    " Hide disabled ({disabled_count})"
-                }
-            }
+            HideDisabled { hidden: hide_disabled, count: disabled_count, noun: "effects" }
             button {
                 class: "btn btn-xs history-clear",
                 class: if active > 0 { "active" },

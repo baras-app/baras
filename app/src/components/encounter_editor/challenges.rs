@@ -3,10 +3,10 @@
 //! CRUD for boss challenge definitions.
 //! Uses ChallengeDefinition DSL type directly.
 
-use crate::components::editor_sort::{ENCOUNTER_SORT_AZ, SortToggle, apply_rank, use_stable_rank};
 use dioxus::prelude::*;
 
 use crate::api;
+use crate::components::def_list::{ColSort, Column, ListCount, ListHead, sort_by_column};
 use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
 use crate::components::editor_drawer::use_drawer_guard;
 use crate::types::{BossWithPath, ChallengeColumns, ChallengeDefinition, ChallengeMetric, EncounterItem};
@@ -35,6 +35,30 @@ fn default_challenge(name: String) -> ChallengeDefinition {
     }
 }
 
+/// Column names, in the order of the rows' grid
+const COLUMNS: [Column; 5] = [
+    Column::new("Name", "", "Sort by name"),
+    Column::new("Metric", "col-dim", "What the challenge measures"),
+    Column::new(
+        "Conditions",
+        "col-dim col-drop-2",
+        "How many conditions an event must meet to count",
+    ),
+    Column::BLANK,
+    Column::BLANK,
+];
+
+fn sort_text(col: usize, c: &ChallengeDefinition) -> String {
+    match col {
+        1 => c.metric.label().to_string(),
+        2 => format!("{:04}", c.conditions.len()),
+        _ => c.name.clone(),
+    }
+}
+
+/// Column the challenges list is sorted by (session-wide)
+static CHALLENGE_SORT: GlobalSignal<ColSort> = Signal::global(|| None);
+
 #[component]
 pub fn ChallengesTab(
     boss_with_path: BossWithPath,
@@ -46,13 +70,7 @@ pub fn ChallengesTab(
     let guard = use_drawer_guard();
     // Extract challenges from BossWithPath
     let challenges = boss_with_path.boss.challenges.clone();
-    // A–Z when toggled; renaming leaves the row in place
-    let rank = use_stable_rank(
-        challenges.iter().map(|x| (x.id.as_str(), x.name.as_str())),
-        ENCOUNTER_SORT_AZ(),
-    );
     let mut sorted_challenges = challenges.clone();
-    apply_rank(&mut sorted_challenges, &rank.read(), |x| &x.id);
     let origin_of = |id: &str| {
         Origin::of(
             boss_with_path.builtin_challenge_ids.iter().any(|b| b == id),
@@ -62,14 +80,14 @@ pub fn ChallengesTab(
     let origin_counts = origin_counts(challenges.iter().map(|x| origin_of(&x.id)));
     let origin_filter = ENCOUNTER_ORIGIN();
     sorted_challenges.retain(|x| origin_filter.is_none_or(|o| origin_of(&x.id) == o));
+    sort_by_column(&mut sorted_challenges, CHALLENGE_SORT(), sort_text);
 
     rsx! {
-        div { class: "challenges-tab",
+        div { class: "def-tab",
             // Header
             div { class: "flex items-center justify-between mb-sm editor-tab-header",
                 div { class: "flex items-center gap-sm",
-                    span { class: "text-sm text-secondary", "{challenges.len()} challenges" }
-                    SortToggle { az: ENCOUNTER_SORT_AZ.signal() }
+                    ListCount { shown: sorted_challenges.len(), total: challenges.len(), noun: "challenges" }
                     OriginFilter { selected: origin_filter, counts: origin_counts, kind: "challenges", on_pick: move |o| *ENCOUNTER_ORIGIN.write() = o }
                 }
                 {
@@ -111,26 +129,32 @@ pub fn ChallengesTab(
             } else if sorted_challenges.is_empty() {
                 div { class: "empty-state text-sm", "No challenges match the filters" }
             } else {
-                for challenge in sorted_challenges.clone() {
-                    {
-                        let challenge_key = challenge.id.clone();
-                        let is_expanded = expanded_challenge() == Some(challenge_key.clone());
-                        let challenges_for_row = challenges.clone();
+                // The column names sit outside the scrolling rows
+                div { class: "def-table",
+                    ListHead { cols: "challenge-cols", columns: &COLUMNS, sort: CHALLENGE_SORT.signal() }
+                    div { class: "def-list",
+                        for challenge in sorted_challenges.clone() {
+                            {
+                                let challenge_key = challenge.id.clone();
+                                let is_expanded = expanded_challenge() == Some(challenge_key.clone());
+                                let challenges_for_row = challenges.clone();
 
-                        rsx! {
-                            ChallengeRow {
-                                key: "{challenge_key}",
-                                challenge: challenge.clone(),
-                                boss_with_path: boss_with_path.clone(),
-                                expanded: is_expanded,
-                                encounter_data: encounter_data.clone(),
-                                on_toggle: move |_| {
-                                    guard.switch(expanded_challenge, if is_expanded { None } else { Some(challenge_key.clone()) });
-                                },
-                                on_change: on_change,
-                                on_status: on_status,
-                                on_collapse: move |_| expanded_challenge.set(None),
-                                all_challenges: challenges_for_row,
+                                rsx! {
+                                    ChallengeRow {
+                                        key: "{challenge_key}",
+                                        challenge: challenge.clone(),
+                                        boss_with_path: boss_with_path.clone(),
+                                        expanded: is_expanded,
+                                        encounter_data: encounter_data.clone(),
+                                        on_toggle: move |_| {
+                                            guard.switch(expanded_challenge, if is_expanded { None } else { Some(challenge_key.clone()) });
+                                        },
+                                        on_change: on_change,
+                                        on_status: on_status,
+                                        on_collapse: move |_| expanded_challenge.set(None),
+                                        all_challenges: challenges_for_row,
+                                    }
+                                }
                             }
                         }
                     }
@@ -177,25 +201,26 @@ fn ChallengeRow(
         div { class: "list-item", class: if expanded { "expanded" }, class: if !challenge.enabled { "item-disabled" },
             // Header row
             div {
-                class: "list-item-header",
+                class: "list-item-header def-row challenge-cols",
                 onclick: move |_| on_toggle.call(()),
 
-                div { class: "row-col-name-id",
-                    span { class: "font-medium text-primary truncate", "{challenge.name}" }
+                span { class: "col-name", title: "{challenge.id}",
+                    span { class: "def-name truncate", "{challenge.name}" }
                     if expanded && is_dirty() {
                         span { class: "unsaved-indicator", title: "Unsaved changes" }
                     }
-                    span { class: "text-xs text-mono text-muted", title: "{challenge.id}", "{challenge.id}" }
                 }
-                span { class: "row-col-tags",
-                    if condition_count > 0 {
-                        span { class: "tag tag-secondary", "{condition_count} conditions" }
+                span { class: "col-dim truncate", "{metric_label}" }
+                span { class: "col-dim col-drop-2 truncate",
+                    match condition_count {
+                        0 => rsx! { span { class: "text-muted", title: "Every event counts", "—" } },
+                        1 => rsx! { "1 condition" },
+                        n => rsx! { "{n} conditions" },
                     }
-                    span { class: "tag", "{metric_label}" }
                 }
+                OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "challenge" }
 
-                // Right side - enable toggle
-                div { class: "flex items-center gap-xs shrink-0",
+                div { class: "def-row-toggles",
                     span {
                         class: "row-toggle",
                         title: if challenge.enabled { "Disable challenge" } else { "Enable challenge" },
@@ -219,7 +244,6 @@ fn ChallengeRow(
                         },
                         i { class: if challenge.enabled { "fa-solid fa-power-off text-success" } else { "fa-solid fa-power-off text-muted" } }
                     }
-                    OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "challenge" }
                 }
             }
 

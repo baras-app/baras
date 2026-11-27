@@ -4,10 +4,10 @@
 //! Entities define which NPCs are bosses, adds, triggers, and kill targets.
 //! Uses EntityDefinition DSL type directly.
 
-use crate::components::editor_sort::{ENCOUNTER_SORT_AZ, SortToggle, apply_rank, use_stable_rank};
 use dioxus::prelude::*;
 
 use crate::api;
+use crate::components::def_list::{ColSort, Column, ListCount, ListHead, sort_by_column};
 use crate::components::editor_drawer::use_drawer_guard;
 use crate::types::{BossWithPath, EncounterItem, EntityDefinition};
 
@@ -35,6 +35,49 @@ fn default_entity(name: String) -> EntityDefinition {
     }
 }
 
+/// Column names, in the order of the rows' grid
+const COLUMNS: [Column; 3] = [
+    Column::new("Name", "", "Sort by name"),
+    Column::new("Flags", "", "How the encounter treats the entity"),
+    Column::new("NPC IDs", "col-dim col-num", "How many game ids the entity matches"),
+];
+
+/// Flags as the row tags them: (label, tag class)
+fn flags(e: &EntityDefinition) -> Vec<(String, &'static str)> {
+    let mut out = Vec::new();
+    if e.is_boss {
+        out.push(("Boss".to_string(), "tag-danger"));
+    }
+    // triggers_encounter defaults to is_boss when None
+    if e.triggers_encounter.unwrap_or(e.is_boss) {
+        out.push(("Trigger".to_string(), "tag-warning"));
+    }
+    if e.is_kill_target {
+        out.push(("Kill Target".to_string(), "tag-success"));
+    }
+    // Only when the HP overlay differs from the is_boss default
+    match (e.show_on_hp_overlay.unwrap_or(e.is_boss), e.is_boss) {
+        (true, false) => out.push(("HP Overlay".to_string(), "tag-info")),
+        (false, true) => out.push(("HP Hidden".to_string(), "tag-muted")),
+        _ => {}
+    }
+    if let Some(pct) = e.pushes_at {
+        out.push((format!("Pushes {pct}%"), "tag-warning"));
+    }
+    out
+}
+
+fn sort_text(col: usize, e: &EntityDefinition) -> String {
+    match col {
+        1 => flags(e).into_iter().map(|f| f.0).collect::<Vec<_>>().join(","),
+        2 => format!("{:04}", e.ids.len()),
+        _ => e.name.clone(),
+    }
+}
+
+/// Column the entities list is sorted by (session-wide)
+static ENTITY_SORT: GlobalSignal<ColSort> = Signal::global(|| None);
+
 #[component]
 pub fn EntitiesTab(
     boss_with_path: BossWithPath,
@@ -45,21 +88,15 @@ pub fn EntitiesTab(
     let guard = use_drawer_guard();
     // Extract entities from BossWithPath
     let entities = boss_with_path.boss.entities.clone();
-    // A–Z when toggled; renaming leaves the row in place
-    let rank = use_stable_rank(
-        entities.iter().map(|x| (x.name.as_str(), x.name.as_str())),
-        ENCOUNTER_SORT_AZ(),
-    );
     let mut sorted_entities = entities.clone();
-    apply_rank(&mut sorted_entities, &rank.read(), |x| &x.name);
+    sort_by_column(&mut sorted_entities, ENTITY_SORT(), sort_text);
 
     rsx! {
-        div { class: "entities-tab",
+        div { class: "def-tab",
             // Header
             div { class: "flex items-center justify-between mb-sm editor-tab-header",
                 div { class: "flex items-center gap-sm",
-                    span { class: "text-sm text-secondary", "{entities.len()} entities" }
-                    SortToggle { az: ENCOUNTER_SORT_AZ.signal() }
+                    ListCount { shown: entities.len(), total: entities.len(), noun: "entities" }
                 }
                 {
                     let bwp = boss_with_path.clone();
@@ -103,25 +140,31 @@ pub fn EntitiesTab(
             if entities.is_empty() {
                 div { class: "empty-state text-sm", "No entities defined" }
             } else {
-                for entity in sorted_entities.clone() {
-                    {
-                        let entity_key = entity.name.clone();
-                        let is_expanded = expanded_entity() == Some(entity_key.clone());
-                        let entities_for_row = entities.clone();
+                // The column names sit outside the scrolling rows
+                div { class: "def-table",
+                    ListHead { cols: "entity-cols", columns: &COLUMNS, sort: ENTITY_SORT.signal() }
+                    div { class: "def-list",
+                        for entity in sorted_entities.clone() {
+                            {
+                                let entity_key = entity.name.clone();
+                                let is_expanded = expanded_entity() == Some(entity_key.clone());
+                                let entities_for_row = entities.clone();
 
-                        rsx! {
-                            EntityRow {
-                                key: "{entity_key}",
-                                entity: entity.clone(),
-                                boss_with_path: boss_with_path.clone(),
-                                expanded: is_expanded,
-                                on_toggle: move |_| {
-                                    guard.switch(expanded_entity, if is_expanded { None } else { Some(entity_key.clone()) });
-                                },
-                                on_change: on_change,
-                                on_status: on_status,
-                                on_collapse: move |_| expanded_entity.set(None),
-                                all_entities: entities_for_row,
+                                rsx! {
+                                    EntityRow {
+                                        key: "{entity_key}",
+                                        entity: entity.clone(),
+                                        boss_with_path: boss_with_path.clone(),
+                                        expanded: is_expanded,
+                                        on_toggle: move |_| {
+                                            guard.switch(expanded_entity, if is_expanded { None } else { Some(entity_key.clone()) });
+                                        },
+                                        on_change: on_change,
+                                        on_status: on_status,
+                                        on_collapse: move |_| expanded_entity.set(None),
+                                        all_entities: entities_for_row,
+                                    }
+                                }
                             }
                         }
                     }
@@ -158,40 +201,19 @@ fn EntityRow(
         div { class: "list-item", class: if expanded { "expanded" },
             // Header row
             div {
-                class: "list-item-header",
+                class: "list-item-header def-row entity-cols",
                 onclick: move |_| on_toggle.call(()),
-                div { class: "row-col-name-id",
-                    span { class: "font-medium text-primary truncate", "{entity.name}" }
+                span { class: "col-name",
+                    span { class: "def-name truncate", "{entity.name}" }
                     if expanded && is_dirty() {
                         span { class: "unsaved-indicator", title: "Unsaved changes" }
                     }
-                    span { class: "text-xs text-muted text-mono", "{id_count} IDs" }
                 }
-                span { class: "row-col-tags",
-                if entity.is_boss {
-                    span { class: "tag tag-danger", "Boss" }
-                }
-                // triggers_encounter defaults to is_boss when None
-                if entity.triggers_encounter.unwrap_or(entity.is_boss) {
-                    span { class: "tag tag-warning", "Trigger" }
-                }
-                if entity.is_kill_target {
-                    span { class: "tag tag-success", "Kill Target" }
-                }
-                // Show HP overlay tag when behavior differs from is_boss default
-                {
-                    let shows_hp = entity.show_on_hp_overlay.unwrap_or(entity.is_boss);
-                    if shows_hp && !entity.is_boss {
-                        rsx! { span { class: "tag tag-info", "HP Overlay" } }
-                    } else if !shows_hp && entity.is_boss {
-                        rsx! { span { class: "tag tag-muted", "HP Hidden" } }
-                    } else {
-                        rsx! {}
+                span { class: "col-tags",
+                    for (label, class) in flags(&entity) {
+                        span { class: "tag {class}", "{label}" }
                     }
-                }
-                if let Some(pct) = entity.pushes_at {
-                    span { class: "tag tag-warning", "Pushes {pct}%" }
-                }
+                span { class: "col-dim col-num", "{id_count}" }
                 }
             }
 

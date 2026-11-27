@@ -1,5 +1,5 @@
 //! One row of the effects list (name, discipline, source → target, overlays,
-//! toggles) and the column header above the rows
+//! toggles) and its columns
 
 use dioxus::prelude::*;
 use manganis::Asset;
@@ -10,6 +10,7 @@ use super::effect_form::EffectEditForm;
 use super::effect_trigger::{effect_icon_id, get_trigger_filters};
 use crate::components::ability_icon::ColorIcon;
 use crate::components::class_icons::get_class_icon;
+use crate::components::def_list::Column;
 use crate::components::editor_common::OriginBadge;
 use crate::types::{DisplayTarget, EffectListItem, EntityFilter};
 
@@ -66,86 +67,40 @@ fn party(filter: &EntityFilter) -> &'static str {
     }
 }
 
-/// Column the list is ordered by; names are A–Z within equal values
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub(crate) enum SortKey {
-    #[default]
-    Name,
-    Discipline,
-    Who,
-    Overlays,
-}
+/// Column names, in the order of the rows' grid
+pub(crate) const COLUMNS: [Column; 7] = [
+    Column::BLANK,
+    Column::new("Name", "", "Sort by name"),
+    Column::new(
+        "Discipline",
+        "col-discipline col-drop-2",
+        "Your disciplines the effect is live on",
+    ),
+    Column::new(
+        "Source → Target",
+        "col-dim col-drop-1",
+        "Who must cast or apply it, and who it lands on",
+    ),
+    Column::new("Overlays", "", "Overlays the effect is shown on"),
+    Column::BLANK,
+    Column::BLANK,
+];
 
-impl SortKey {
-    /// What `e` sorts by; nothing for Name, which keeps the A–Z order
-    pub(crate) fn text(self, e: &EffectListItem) -> String {
-        match self {
-            Self::Name => String::new(),
-            Self::Discipline => e.disciplines.join(","),
-            Self::Who => {
-                let (source, target) = get_trigger_filters(&e.trigger);
-                format!("{} {}", party(&source), party(&target))
-            }
-            Self::Overlays => e
-                .display_targets
-                .iter()
-                .map(|t| t.label())
-                .collect::<Vec<_>>()
-                .join(","),
+/// What `e` sorts by in column `col` of [`COLUMNS`]
+pub(crate) fn sort_text(col: usize, e: &EffectListItem) -> String {
+    match col {
+        2 => e.disciplines.join(","),
+        3 => {
+            let (source, target) = get_trigger_filters(&e.trigger);
+            format!("{} {}", party(&source), party(&target))
         }
-    }
-}
-
-/// A column name that sorts by its column; a second click reverses
-#[component]
-fn HeadCell(
-    sort: Signal<(SortKey, bool)>,
-    by: SortKey,
-    label: &'static str,
-    class: &'static str,
-    title: &'static str,
-) -> Element {
-    let (current, desc) = sort();
-    let active = current == by;
-    rsx! {
-        span {
-            class: "{class} sortable",
-            class: if active { "active" },
-            title: "{title}",
-            onclick: move |_| sort.set((by, active && !desc)),
-            "{label}"
-            if active {
-                i { class: if desc { "fa-solid fa-caret-down" } else { "fa-solid fa-caret-up" } }
-            }
-        }
-    }
-}
-
-/// Column names, on the rows' grid; `sort` is (column, descending)
-#[component]
-pub(crate) fn EffectListHead(sort: Signal<(SortKey, bool)>) -> Element {
-    rsx! {
-        div { class: "effect-row effect-list-head",
-            span {}
-            HeadCell { sort, by: SortKey::Name, label: "Name", class: "", title: "Sort by name" }
-            HeadCell {
-                sort,
-                by: SortKey::Discipline,
-                label: "Discipline",
-                class: "col-discipline",
-                title: "Your disciplines the effect is live on",
-            }
-            HeadCell {
-                sort,
-                by: SortKey::Who,
-                label: "Source → Target",
-                class: "col-who",
-                title: "Who must cast or apply it, and who it lands on",
-            }
-            HeadCell { sort, by: SortKey::Overlays, label: "Overlays", class: "", title: "Overlays the effect is shown on" }
-            span {}
-            span {}
-        }
+        4 => e
+            .display_targets
+            .iter()
+            .map(|t| t.label())
+            .collect::<Vec<_>>()
+            .join(","),
+        _ => e.name.clone(),
     }
 }
 
@@ -182,7 +137,7 @@ pub(crate) fn EffectRow(
             class: if expanded { "expanded" },
             class: if !effect.enabled { "item-disabled" },
             div {
-                class: "list-item-header effect-row",
+                class: "list-item-header def-row effect-cols",
                 onclick: move |_| on_toggle.call(()),
 
                 ColorIcon {
@@ -191,14 +146,14 @@ pub(crate) fn EffectRow(
                 }
 
                 span { class: "col-name", title: if is_draft { "" } else { "{effect.id}" },
-                    span { class: "effect-name truncate", "{effect.name}" }
+                    span { class: "effect-name def-name truncate", "{effect.name}" }
                     if expanded && is_dirty() {
                         span { class: "unsaved-indicator", title: "Unsaved changes" }
                     }
                 }
 
                 span {
-                    class: "col-discipline",
+                    class: "col-discipline col-drop-2",
                     class: if effect.disciplines.is_empty() { "text-muted" },
                     title: if effect.disciplines.is_empty() { "Live on every discipline".to_string() } else { effect.disciplines.join(", ") },
                     for name in icons {
@@ -214,11 +169,11 @@ pub(crate) fn EffectRow(
                     }
                 }
 
-                span { class: "col-who truncate", title: "Source: {source.label()} · Target: {target.label()}",
+                span { class: "col-dim col-drop-1 truncate", title: "Source: {source.label()} · Target: {target.label()}",
                     "{party(&source)} → {party(&target)}"
                 }
 
-                span { class: "col-overlays",
+                span { class: "col-tags",
                     if effect.is_alert {
                         span { class: "tag tag-alert", "Alert" }
                     } else if overlays.is_empty() {
@@ -233,7 +188,7 @@ pub(crate) fn EffectRow(
                 OriginBadge { origin: effect_origin(is_draft, effect.is_bundled, effect.is_user_override), kind: "effect" }
 
                 // Toggles save straight away, without opening the effect
-                div { class: "effect-row-toggles",
+                div { class: "def-row-toggles",
                     span {
                         class: "row-toggle",
                         class: if !effect.audio.enabled { "row-toggle-quiet" },

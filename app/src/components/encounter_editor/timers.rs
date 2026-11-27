@@ -3,12 +3,11 @@
 //! Full CRUD for boss timers with all fields exposed.
 //! Uses BossTimerDefinition DSL type directly.
 
-use crate::components::editor_sort::{ENCOUNTER_SORT_AZ, SortToggle, apply_rank, use_stable_rank};
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::components::ability_icon::ColorIcon;
-use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
+use crate::components::def_list::{ColSort, HideDisabled, ListCount, ListHead, sort_by_column};
+use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginFilter, origin_counts};
 use crate::components::editor_drawer::use_drawer_guard;
 use crate::types::{
     AlertTrigger, AudioConfig, BossTimerDefinition, BossWithPath, EncounterItem, TimerDisplayTarget, Trigger,
@@ -16,7 +15,7 @@ use crate::types::{
 
 use super::InlineNameCreator;
 use super::tabs::EncounterData;
-use super::timer_form::TimerEditForm;
+use super::timer_row::{self, TimerRow};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Timers Tab
@@ -64,6 +63,9 @@ fn default_timer(name: String) -> BossTimerDefinition {
     }
 }
 
+/// Column the timers list is sorted by (session-wide)
+static TIMER_SORT: GlobalSignal<ColSort> = Signal::global(|| None);
+
 #[component]
 pub fn TimersTab(
     boss_with_path: BossWithPath,
@@ -76,25 +78,11 @@ pub fn TimersTab(
 ) -> Element {
     let guard = use_drawer_guard();
 
-    // Extract timers from BossWithPath
     let timers = boss_with_path.boss.timers.clone();
-    // A–Z when toggled; renaming leaves the row in place
-    let rank = use_stable_rank(
-        timers.iter().map(|x| (x.id.as_str(), x.name.as_str())),
-        ENCOUNTER_SORT_AZ(),
-    );
     let builtin_timer_ids = boss_with_path.builtin_timer_ids.clone();
     let modified_timer_ids = boss_with_path.modified_timer_ids.clone();
-
     let disabled_count = timers.iter().filter(|t| !t.enabled).count();
 
-    // Filter timers based on toggle
-    let mut visible_timers: Vec<BossTimerDefinition> = if hide_disabled_timers() {
-        timers.iter().filter(|t| t.enabled).cloned().collect()
-    } else {
-        timers.clone()
-    };
-    apply_rank(&mut visible_timers, &rank.read(), |x| &x.id);
     let origin_of = |id: &str| {
         Origin::of(
             builtin_timer_ids.iter().any(|b| b == id),
@@ -103,397 +91,118 @@ pub fn TimersTab(
     };
     let origin_counts = origin_counts(timers.iter().map(|x| origin_of(&x.id)));
     let origin_filter = ENCOUNTER_ORIGIN();
-    visible_timers.retain(|x| origin_filter.is_none_or(|o| origin_of(&x.id) == o));
+    let mut visible_timers: Vec<BossTimerDefinition> = timers
+        .iter()
+        .filter(|t| !(hide_disabled_timers() && !t.enabled))
+        .filter(|t| origin_filter.is_none_or(|o| origin_of(&t.id) == o))
+        .cloned()
+        .collect();
+    sort_by_column(&mut visible_timers, TIMER_SORT(), timer_row::sort_text);
+
+    let all_hidden = timers.iter().all(|t| t.roles.is_empty());
+    let (bwp_bulk, timers_for_bulk) = (boss_with_path.clone(), timers.clone());
+    let (bwp_create, timers_for_create) = (boss_with_path.clone(), timers.clone());
 
     rsx! {
-        div { class: "timers-tab",
-            // Header
+        div { class: "def-tab",
             div { class: "flex items-center justify-between mb-sm editor-tab-header",
                 div { class: "flex items-center gap-sm",
-                    span { class: "text-sm text-secondary", "{timers.len()} timers" }
-                    if disabled_count > 0 {
-                        label { class: "flex items-center gap-xs text-xs text-muted cursor-pointer",
-                            input {
-                                r#type: "checkbox",
-                                checked: hide_disabled_timers(),
-                                onchange: move |e| hide_disabled_timers.set(e.checked()),
-                            }
-                            "Hide disabled ({disabled_count})"
-                        }
-                    }
-                    SortToggle { az: ENCOUNTER_SORT_AZ.signal() }
+                    ListCount { shown: visible_timers.len(), total: timers.len(), noun: "timers" }
                     OriginFilter { selected: origin_filter, counts: origin_counts, kind: "timers", on_pick: move |o| *ENCOUNTER_ORIGIN.write() = o }
+                    HideDisabled { hidden: hide_disabled_timers, count: disabled_count, noun: "timers" }
                 }
                 div { class: "flex items-center gap-sm",
                     if !timers.is_empty() {
-                        {
-                            let all_hidden = timers.iter().all(|t| t.roles.is_empty());
-                            let bwp_bulk = boss_with_path.clone();
-                            let timers_for_bulk = timers.clone();
-                            rsx! {
-                                button {
-                                    class: "btn btn-sm text-xs",
-                                    title: if all_hidden { "Show all timers for all roles" } else { "Hide all timers for all roles" },
-                                    onclick: move |_| {
-                                        let new_roles: Vec<String> = if all_hidden {
-                                            vec!["Tank".into(), "Healer".into(), "Dps".into()]
-                                        } else {
-                                            vec![]
-                                        };
-                                        let mut updated = timers_for_bulk.clone();
-                                        for t in &mut updated {
-                                            t.roles = new_roles.clone();
-                                        }
-                                        on_change.call(updated);
-                                        let boss_id = bwp_bulk.boss.id.clone();
-                                        let file_path = bwp_bulk.file_path.clone();
-                                        let roles = new_roles.clone();
-                                        spawn(async move {
-                                            if let Err(e) = api::set_all_timer_roles(&boss_id, &file_path, &roles).await {
-                                                on_status.call((format!("Failed to save: {e}"), true));
-                                            }
-                                            on_refetch.call(());
-                                        });
-                                    },
-                                    if all_hidden { "Show All" } else { "Hide All" }
+                        button {
+                            class: "btn btn-sm",
+                            title: if all_hidden { "Show every timer of this boss for all roles" } else { "Hide every timer of this boss for all roles" },
+                            onclick: move |_| {
+                                let new_roles: Vec<String> = if all_hidden {
+                                    vec!["Tank".into(), "Healer".into(), "Dps".into()]
+                                } else {
+                                    vec![]
+                                };
+                                let mut updated = timers_for_bulk.clone();
+                                for t in &mut updated {
+                                    t.roles = new_roles.clone();
                                 }
-                            }
+                                on_change.call(updated);
+                                let boss_id = bwp_bulk.boss.id.clone();
+                                let file_path = bwp_bulk.file_path.clone();
+                                spawn(async move {
+                                    if let Err(e) = api::set_all_timer_roles(&boss_id, &file_path, &new_roles).await {
+                                        on_status.call((format!("Failed to save: {e}"), true));
+                                    }
+                                    on_refetch.call(());
+                                });
+                            },
+                            i { class: if all_hidden { "fa-solid fa-eye" } else { "fa-solid fa-eye-slash" } }
+                            if all_hidden { " Show all" } else { " Hide all" }
                         }
                     }
-                    {
-                        let bwp = boss_with_path.clone();
-                        let timers_for_create = timers.clone();
-                        rsx! {
-                            InlineNameCreator {
-                                button_label: "+ New Timer",
-                                placeholder: "Timer name...",
-                                on_create: move |name: String| {
-                                    let timers_clone = timers_for_create.clone();
-                                    let boss_id = bwp.boss.id.clone();
-                                    let file_path = bwp.file_path.clone();
-                                    let timer = default_timer(name);
-                                    let item = EncounterItem::Timer(timer);
-                                    spawn(async move {
-                                        match api::create_encounter_item(&boss_id, &file_path, &item).await {
-                                            Ok(EncounterItem::Timer(created)) => {
-                                                let created_id = created.id.clone();
-                                                let mut current = timers_clone;
-                                                current.push(created);
-                                                on_change.call(current);
-                                                expanded_timer.set(Some(created_id));
-                                                on_status.call(("Created".to_string(), false));
-                                            }
-                                            Ok(_) => on_status.call(("Unexpected response type".to_string(), true)),
-                                            Err(e) => on_status.call((e, true)),
-                                        }
-                                    });
+                    InlineNameCreator {
+                        button_label: "+ New Timer",
+                        placeholder: "Timer name...",
+                        on_create: move |name: String| {
+                            let timers_clone = timers_for_create.clone();
+                            let boss_id = bwp_create.boss.id.clone();
+                            let file_path = bwp_create.file_path.clone();
+                            let item = EncounterItem::Timer(default_timer(name));
+                            spawn(async move {
+                                match api::create_encounter_item(&boss_id, &file_path, &item).await {
+                                    Ok(EncounterItem::Timer(created)) => {
+                                        let created_id = created.id.clone();
+                                        let mut current = timers_clone;
+                                        current.push(created);
+                                        on_change.call(current);
+                                        expanded_timer.set(Some(created_id));
+                                        on_status.call(("Created".to_string(), false));
+                                    }
+                                    Ok(_) => on_status.call(("Unexpected response type".to_string(), true)),
+                                    Err(e) => on_status.call((e, true)),
                                 }
-                            }
+                            });
                         }
                     }
                 }
             }
 
-            // Timer list
             if visible_timers.is_empty() {
-                if timers.is_empty() {
-                    div { class: "empty-state text-sm", "No timers defined" }
-                } else {
-                    div { class: "empty-state text-sm", "No timers match the filters" }
+                div { class: "empty-state text-sm",
+                    if timers.is_empty() { "No timers defined" } else { "No timers match the filters" }
                 }
             } else {
-                for timer in visible_timers {
-                    {
-                        let timer_key = timer.id.clone();
-                        let is_expanded = expanded_timer() == Some(timer_key.clone());
-                        let timers_for_row = timers.clone();
-                        let timer_is_builtin = builtin_timer_ids.contains(&timer.id);
-                        let timer_is_modified = modified_timer_ids.contains(&timer.id);
-
-                        rsx! {
-                            TimerRow {
-                                key: "{timer_key}",
-                                timer: timer.clone(),
-                                all_timers: timers_for_row,
-                                is_builtin: timer_is_builtin,
-                                is_modified: timer_is_modified,
-                                boss_with_path: boss_with_path.clone(),
-                                encounter_data: encounter_data.clone(),
-                                expanded: is_expanded,
-                                on_toggle: move |_| {
-                                    guard.switch(expanded_timer, if is_expanded { None } else { Some(timer_key.clone()) });
-                                },
-                                on_change: on_change,
-                                on_refetch: on_refetch,
-                                on_status: on_status,
-                                on_collapse: move |_| expanded_timer.set(None),
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Timer Row
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[component]
-fn TimerRow(
-    timer: BossTimerDefinition,
-    all_timers: Vec<BossTimerDefinition>,
-    is_builtin: bool,
-    is_modified: bool,
-    boss_with_path: BossWithPath,
-    encounter_data: EncounterData,
-    expanded: bool,
-    on_toggle: EventHandler<()>,
-    on_change: EventHandler<Vec<BossTimerDefinition>>,
-    on_refetch: EventHandler<()>,
-    on_status: EventHandler<(String, bool)>,
-    on_collapse: EventHandler<()>,
-) -> Element {
-    let mut is_dirty = use_signal(|| false);
-    let color_hex = format!("#{:02x}{:02x}{:02x}", timer.color[0], timer.color[1], timer.color[2]);
-    let timer_for_visibility = timer.clone();
-    let timer_for_audio = timer.clone();
-    let timer_for_tank = timer.clone();
-    let timer_for_healer = timer.clone();
-    let timer_for_dps = timer.clone();
-    let timers_for_visibility = all_timers.clone();
-    let timers_for_audio = all_timers.clone();
-    let timers_for_tank = all_timers.clone();
-    let timers_for_healer = all_timers.clone();
-    let timers_for_dps = all_timers.clone();
-    let bwp_for_visibility = boss_with_path.clone();
-    let bwp_for_audio = boss_with_path.clone();
-    let bwp_for_tank = boss_with_path.clone();
-    let bwp_for_healer = boss_with_path.clone();
-    let bwp_for_dps = boss_with_path.clone();
-    let has_tank = timer.roles.contains(&"Tank".to_string());
-    let has_healer = timer.roles.contains(&"Healer".to_string());
-    let has_dps = timer.roles.contains(&"Dps".to_string());
-    let is_role_visible = !timer.roles.is_empty();
-
-    rsx! {
-        div { class: "list-item", class: if expanded { "expanded" }, class: if !timer.enabled { "item-disabled" },
-            // Header row
-            div {
-                class: "list-item-header timer-row-header",
-                onclick: move |_| on_toggle.call(()),
-
-                ColorIcon { icon_id: timer.icon_ability_id, color: color_hex.clone() }
-
-                // Name | ID grouped left-aligned
-                div { class: "row-col-name-id",
-                    span { class: "font-medium text-primary truncate", "{timer.name}" }
-                    if expanded && is_dirty() {
-                        span { class: "unsaved-indicator", title: "Unsaved changes" }
-                    }
-                    span { class: "text-xs text-mono text-muted", title: "{timer.id}", "{timer.id}" }
-                }
-
-                // Overlay tag, or Alert for instant alerts
-                span { class: "row-col-trigger",
-                    if timer.is_alert {
-                        span { class: "tag tag-alert", "Alert" }
-                    } else {
-                        {
-                            let targets_label = match timer.display_targets.len() {
-                                0 => "None".to_string(),
-                                1 => timer.display_targets[0].label().to_string(),
-                                n => format!("{n} overlays"),
-                            };
-                            rsx! { span { class: "tag", "{targets_label}" } }
-                        }
-                    }
-                }
-
-                // Duration / Alert
-                span { class: "row-col-duration",
-                    if !timer.is_alert {
-                        // Whole seconds drop the ".0"
-                        "{(timer.duration_secs * 10.0).round() / 10.0}s"
-                    }
-                }
-
-                // Right side - fixed toggle buttons
-                div { class: "flex items-center gap-xs shrink-0",
-                    // Visibility toggle (clickable without expanding)
-                    span {
-                        class: "row-toggle",
-                        title: if is_role_visible { "Hide for all roles" } else { "Show for all roles" },
-                        onclick: move |e| {
-                            e.stop_propagation();
-                            let mut updated = timer_for_visibility.clone();
-                            if !updated.roles.is_empty() {
-                                updated.roles = vec![];
-                            } else {
-                                updated.roles = vec!["Tank".into(), "Healer".into(), "Dps".into()];
-                            }
-                            let mut current = timers_for_visibility.clone();
-                            if let Some(idx) = current.iter().position(|t| t.id == updated.id) {
-                                current[idx] = updated.clone();
-                                on_change.call(current);
-                            }
-                            let boss_id = bwp_for_visibility.boss.id.clone();
-                            let file_path = bwp_for_visibility.file_path.clone();
-                            let item = EncounterItem::Timer(updated);
-                            spawn(async move {
-                                if let Err(e) = api::update_encounter_item(&boss_id, &file_path, &item, None).await {
-                                    on_status.call((format!("Failed to save: {e}"), true));
+                // The column names sit outside the scrolling rows
+                div { class: "def-table",
+                    ListHead { cols: "timer-cols", columns: &timer_row::COLUMNS, sort: TIMER_SORT.signal() }
+                    div { class: "def-list",
+                        for timer in visible_timers {
+                            {
+                                let timer_key = timer.id.clone();
+                                let is_expanded = expanded_timer() == Some(timer_key.clone());
+                                rsx! {
+                                    TimerRow {
+                                        key: "{timer_key}",
+                                        is_builtin: builtin_timer_ids.contains(&timer.id),
+                                        is_modified: modified_timer_ids.contains(&timer.id),
+                                        timer,
+                                        all_timers: timers.clone(),
+                                        boss_with_path: boss_with_path.clone(),
+                                        encounter_data: encounter_data.clone(),
+                                        expanded: is_expanded,
+                                        on_toggle: move |_| {
+                                            guard.switch(expanded_timer, if is_expanded { None } else { Some(timer_key.clone()) });
+                                        },
+                                        on_change,
+                                        on_refetch,
+                                        on_status,
+                                        on_collapse: move |_| expanded_timer.set(None),
+                                    }
                                 }
-                                on_refetch.call(());
-                            });
-                        },
-                        i {
-                            class: if is_role_visible { "fa-solid fa-eye text-success" } else { "fa-solid fa-eye-slash text-muted" },
+                            }
                         }
                     }
-
-                    // Audio toggle (clickable without expanding)
-                    span {
-                        class: "row-toggle",
-                        title: if timer.audio.enabled { "Disable audio" } else { "Enable audio" },
-                        onclick: move |e| {
-                            e.stop_propagation();
-                            let mut updated = timer_for_audio.clone();
-                            updated.audio.enabled = !updated.audio.enabled;
-                            let mut current = timers_for_audio.clone();
-                            if let Some(idx) = current.iter().position(|t| t.id == updated.id) {
-                                current[idx] = updated.clone();
-                                on_change.call(current);
-                            }
-                            let boss_id = bwp_for_audio.boss.id.clone();
-                            let file_path = bwp_for_audio.file_path.clone();
-                            let item = EncounterItem::Timer(updated);
-                            spawn(async move {
-                                if let Err(e) = api::update_encounter_item(&boss_id, &file_path, &item, None).await {
-                                    on_status.call((format!("Failed to save: {e}"), true));
-                                }
-                                on_refetch.call(());
-                            });
-                        },
-                        i { class: if timer.audio.enabled { "fa-solid fa-volume-high text-primary" } else { "fa-solid fa-volume-xmark text-muted" } }
-                    }
-
-                    // Role toggles [T] [H] [D]
-                    div { class: "flex items-center role-toggle-group",
-                        {role_toggle("T", "Tank", has_tank, timer_for_tank, timers_for_tank, bwp_for_tank, on_change, on_refetch, on_status)}
-                        {role_toggle("H", "Healer", has_healer, timer_for_healer, timers_for_healer, bwp_for_healer, on_change, on_refetch, on_status)}
-                        {role_toggle("D", "Dps", has_dps, timer_for_dps, timers_for_dps, bwp_for_dps, on_change, on_refetch, on_status)}
-                    }
-                    OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "timer" }
                 }
-            }
-
-            // Edit form
-            if expanded {
-                TimerEditForm {
-                    timer: timer.clone(),
-                    all_timers: all_timers,
-                    is_builtin: is_builtin,
-                    is_modified: is_modified,
-                    boss_with_path: boss_with_path,
-                    encounter_data: encounter_data,
-                    on_change: on_change,
-                    on_refetch: on_refetch,
-                    on_status: on_status,
-                    on_collapse: on_collapse,
-                    on_dirty: move |dirty: bool| is_dirty.set(dirty),
-                }
-            }
-        }
-    }
-}
-
-/// Render a single role toggle button [T], [H], or [D]
-fn role_toggle(
-    label: &str,
-    role_name: &str,
-    active: bool,
-    timer: BossTimerDefinition,
-    all_timers: Vec<BossTimerDefinition>,
-    bwp: BossWithPath,
-    on_change: EventHandler<Vec<BossTimerDefinition>>,
-    on_refetch: EventHandler<()>,
-    on_status: EventHandler<(String, bool)>,
-) -> Element {
-    let role_name = role_name.to_string();
-    let css_class = match label {
-        "T" => {
-            if active {
-                "role-toggle role-toggle-tank active"
-            } else {
-                "role-toggle"
-            }
-        }
-        "H" => {
-            if active {
-                "role-toggle role-toggle-healer active"
-            } else {
-                "role-toggle"
-            }
-        }
-        _ => {
-            if active {
-                "role-toggle role-toggle-dps active"
-            } else {
-                "role-toggle"
-            }
-        }
-    };
-    let title = if active {
-        format!(
-            "Hide for {}",
-            match label {
-                "T" => "Tanks",
-                "H" => "Healers",
-                _ => "DPS",
-            }
-        )
-    } else {
-        format!(
-            "Show for {}",
-            match label {
-                "T" => "Tanks",
-                "H" => "Healers",
-                _ => "DPS",
-            }
-        )
-    };
-    rsx! {
-        span {
-            class: css_class,
-            title: title,
-            onclick: move |e| {
-                e.stop_propagation();
-                let mut updated = timer.clone();
-                if active {
-                    updated.roles.retain(|r| r != &role_name);
-                } else {
-                    updated.roles.push(role_name.clone());
-                }
-                let mut current = all_timers.clone();
-                if let Some(idx) = current.iter().position(|t| t.id == updated.id) {
-                    current[idx] = updated.clone();
-                    on_change.call(current);
-                }
-                let boss_id = bwp.boss.id.clone();
-                let file_path = bwp.file_path.clone();
-                let item = EncounterItem::Timer(updated);
-                spawn(async move {
-                    if let Err(e) = api::update_encounter_item(&boss_id, &file_path, &item, None).await {
-                        on_status.call((format!("Failed to save: {e}"), true));
-                    }
-                    on_refetch.call(());
-                });
-            },
-            span {
-                class: if active { "" } else { "text-muted" },
-                "{label}"
             }
         }
     }

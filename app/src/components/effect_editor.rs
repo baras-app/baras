@@ -5,10 +5,11 @@
 
 use dioxus::prelude::*;
 
+use super::def_list::{ListHead, sort_by_column};
 use super::discipline_selector::class_of;
 use super::effect_bulk::{BulkAction, BulkMenu};
 use super::effect_import_modal::EffectImportPreviewModal;
-use super::effect_row::{EffectListHead, EffectRow, SortKey};
+use super::effect_row::{self, EffectRow};
 use super::encounter_editor::InlineNameCreator;
 use crate::api;
 use crate::components::editor_common::Origin;
@@ -210,14 +211,8 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
     let rank = use_stable_rank(effects.read().iter().map(|e| (e.id.as_str(), e.name.as_str())), true);
     let mut shown_effects = filtered_effects();
     apply_rank(&mut shown_effects, &rank.read(), |e| &e.id);
-    let sort = use_signal(|| (SortKey::Name, false));
-    let (sort_by, descending) = sort();
-    if sort_by != SortKey::Name {
-        shown_effects.sort_by_cached_key(|e| sort_by.text(e));
-    }
-    if descending {
-        shown_effects.reverse();
-    }
+    let sort = use_signal(|| None);
+    sort_by_column(&mut shown_effects, sort(), effect_row::sort_text);
     let disabled_count = effects.read().iter().filter(|e| !e.enabled).count();
 
     // Handlers
@@ -390,9 +385,9 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                     }
                 } else {
                     // The column names sit outside the scrolling rows
-                    div { class: "effect-defs",
-                    EffectListHead { sort }
-                    div { class: "effect-list",
+                    div { class: "def-table",
+                    ListHead { cols: "effect-cols", columns: &effect_row::COLUMNS, sort }
+                    div { class: "def-list",
                         if let Some(draft) = draft_effect() {
                             {
                                 let is_draft_expanded = expanded_effect().as_deref() == Some(DRAFT_EFFECT_ID);

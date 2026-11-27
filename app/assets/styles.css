@@ -4821,8 +4821,9 @@ a.contributor-name:hover {
   margin-bottom: 0.75em;
 }
 
-/* Column names above, rows scrolling below */
-.effect-defs {
+/* ─── Definition lists (effects, timers, phases, counters, challenges, entities) ─
+   Column names above, rows scrolling below */
+.def-table {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -4831,73 +4832,73 @@ a.contributor-name:hover {
   container-type: inline-size;
 }
 
-.effect-list {
+.def-list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   scrollbar-gutter: stable;
 }
 
-/* ─── Effect rows: one grid shared by the column header and every row ────────── */
-/* icon | name | discipline | source → target | overlays | origin | toggles */
-.effect-row,
-.list-item-header.effect-row {
+/* One grid shared by the column header and every row; each list sets its
+   own columns (px, not em: the header's font is smaller than a row's) */
+.def-row,
+.list-item-header.def-row {
   display: grid;
-  /* px, not em: the header's font is smaller than a row's */
-  grid-template-columns:
-    22px minmax(128px, 2.2fr) minmax(84px, 1.1fr) minmax(104px, 1fr)
-    minmax(96px, 1.6fr) 8px 56px;
   align-items: center;
   column-gap: var(--space-md);
   text-align: left;
 }
 
-.effect-row > * {
+.def-row > * {
   min-width: 0;
 }
 
-.effect-row .col-name {
+.def-row .col-name {
   display: flex;
   align-items: center;
 }
 
-.effect-row .col-discipline,
-.effect-row .col-who {
+.list-item.expanded > .list-item-header .def-name {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Secondary columns: quieter than the name */
+.def-row .col-dim {
   font-size: 0.85em;
   color: var(--text-secondary);
 }
 
-.effect-row .col-discipline {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  overflow: hidden;
-  white-space: nowrap;
+.def-row .col-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
-.discipline-icon {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
-
-.effect-row .col-discipline > .truncate {
-  margin-left: 2px;
-}
-
-.effect-row .col-overlays {
+.def-row .col-tags {
   display: flex;
   gap: var(--space-xs);
   overflow: hidden;
   white-space: nowrap;
 }
 
-.effect-row .col-overlays > .tag {
+.def-row .col-tags > .tag {
   flex-shrink: 0;
 }
 
-.effect-row-toggles {
+.def-row .col-id {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8em;
+  color: var(--text-muted);
+}
+
+.def-list-head .col-id {
+  font: inherit;
+  color: inherit;
+}
+
+.def-row-toggles {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
 }
 
@@ -4906,14 +4907,14 @@ a.contributor-name:hover {
   opacity: 0;
 }
 
-.effect-row:hover .row-toggle-quiet {
+.def-row:hover .row-toggle-quiet {
   opacity: 1;
 }
 
 /* Column names: a fixed strip above the scrolling rows, so no row can show
    around it. The gutter, side border and padding match the rows' so the
    columns line up */
-.effect-list-head {
+.def-list-head {
   flex-shrink: 0;
   overflow-y: hidden;
   scrollbar-gutter: stable;
@@ -4930,49 +4931,130 @@ a.contributor-name:hover {
   white-space: nowrap;
 }
 
+.def-list-head > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Column names sort by their column; the sorted one is lit with its arrow */
-.effect-list-head .sortable {
+.def-list-head .sortable {
   cursor: pointer;
   user-select: none;
 }
 
-.effect-list-head .sortable:hover,
-.effect-list-head .sortable.active {
+.def-list-head .sortable:hover,
+.def-list-head .sortable.active {
   color: var(--text-primary);
 }
 
-.effect-list-head .sortable > i {
+.def-list-head .sortable > i {
   margin-left: 0.4em;
 }
 
-.effect-list-head .col-discipline,
-.effect-list-head .col-who {
+.def-list-head :is(.col-dim, .col-discipline) {
   display: block;
   font-size: inherit;
   color: inherit;
 }
 
+/* ─── Effects: icon | name | discipline | source → target | overlays | origin | toggles */
+.effect-cols {
+  grid-template-columns:
+    22px minmax(128px, 2.2fr) minmax(84px, 1.1fr) minmax(104px, 1fr)
+    minmax(96px, 1.6fr) 8px 56px;
+}
+
+.def-row .col-discipline {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+.discipline-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.def-row .col-discipline > .truncate {
+  margin-left: 2px;
+}
+
+/* ─── Timers: icon | name | id | trigger | overlays | origin | toggles */
+.timer-cols {
+  grid-template-columns:
+    22px minmax(120px, 2fr) minmax(88px, 1.4fr) minmax(96px, 1.1fr)
+    minmax(88px, 1.3fr) 8px 132px;
+}
+
+/* ─── Phases: name | starts on | ends on | origin */
+.phase-cols {
+  grid-template-columns: minmax(120px, 2fr) minmax(96px, 1.2fr) minmax(96px, 1.2fr) 8px;
+}
+
+/* ─── Counters: name | counts on | decrements on | resets on | origin */
+.counter-cols {
+  grid-template-columns:
+    minmax(120px, 2fr) minmax(96px, 1.2fr) minmax(96px, 1.2fr)
+    minmax(96px, 1.2fr) 8px;
+}
+
+/* ─── Challenges: name | metric | conditions | origin | toggle */
+.challenge-cols {
+  grid-template-columns: minmax(120px, 2fr) minmax(96px, 1.2fr) minmax(96px, 1.6fr) 8px 26px;
+}
+
+/* ─── Entities: name | flags | npc ids */
+.entity-cols {
+  grid-template-columns: minmax(120px, 1.6fr) minmax(120px, 2fr) 64px;
+}
+
+/* Narrow lists drop their least telling columns: .col-drop-1 first */
 @container (max-width: 760px) {
-  .effect-row .col-who,
-  .effect-list-head .col-who {
+  .def-row .col-drop-1 {
     display: none;
   }
 
-  .effect-row,
-  .list-item-header.effect-row {
+  .effect-cols {
     grid-template-columns: 22px minmax(128px, 2.2fr) minmax(84px, 1.1fr) minmax(96px, 1.6fr) 8px 56px;
+  }
+
+  .timer-cols {
+    grid-template-columns: 22px minmax(120px, 2fr) minmax(88px, 1.4fr) minmax(88px, 1.3fr) 8px 132px;
+  }
+
+  .counter-cols {
+    grid-template-columns: minmax(120px, 2fr) minmax(96px, 1.2fr) minmax(96px, 1.2fr) 8px;
   }
 }
 
 @container (max-width: 560px) {
-  .effect-row .col-discipline,
-  .effect-list-head .col-discipline {
+  .def-row .col-drop-2 {
     display: none;
   }
 
-  .effect-row,
-  .list-item-header.effect-row {
+  .effect-cols {
     grid-template-columns: 22px minmax(128px, 2.2fr) minmax(96px, 1.6fr) 8px 56px;
+  }
+
+  .timer-cols {
+    grid-template-columns: 22px minmax(120px, 2fr) minmax(88px, 1.3fr) 8px 132px;
+  }
+
+  .phase-cols {
+    grid-template-columns: minmax(120px, 2fr) minmax(96px, 1.2fr) 8px;
+  }
+
+  .counter-cols {
+    grid-template-columns: minmax(120px, 2fr) minmax(96px, 1.2fr) 8px;
+  }
+
+  .challenge-cols {
+    grid-template-columns: minmax(120px, 2fr) minmax(96px, 1.2fr) 8px 26px;
   }
 }
 
@@ -5986,6 +6068,37 @@ a.contributor-name:hover {
   padding: var(--space-md);
 }
 
+/* Encounter editor: the tab bar, list toolbar and column names stay put;
+   only the rows scroll */
+.editor-main.boss-editor {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.boss-editor > * {
+  flex-shrink: 0;
+}
+
+.boss-editor > .boss-tabs,
+.boss-tab-body,
+.def-tab {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.boss-tab-body {
+  padding: var(--space-sm);
+  /* Notes has no list of its own to scroll */
+  overflow-y: auto;
+}
+
+.editor-tab-header {
+  flex-shrink: 0;
+}
+
 /* ─── Tab Navigation ─────────────────────────────────────────────────────────── */
 .tab-nav {
   display: flex;
@@ -6040,8 +6153,7 @@ a.contributor-name:hover {
   background: rgba(74, 158, 255, 0.18);
 }
 
-.list-item.expanded > .list-item-header .font-medium,
-.list-item.expanded > .list-item-header .effect-name {
+.list-item.expanded > .list-item-header .font-medium {
   color: var(--text-primary);
   font-weight: 600;
 }
@@ -6081,10 +6193,6 @@ a.contributor-name:hover {
 
 .list-item-header > .text-mono {
   flex-shrink: 10;
-}
-
-.list-item-header > .row-col-name-id {
-  flex-shrink: 1;
 }
 
 .list-item-expand {
@@ -6178,73 +6286,12 @@ a.contributor-name:hover {
   color: var(--swtor-orange);
 }
 
-/* ─── Timer Row Grid Layout ──────────────────────────────────────────────────── */
-.timer-row-header {
-  display: flex !important;
-  align-items: center;
-  gap: var(--space-xs) !important;
-}
-
-.row-col-name-id {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-sm);
-  min-width: 0;
-  flex: 1 1 0;
-  overflow: hidden;
-}
-
 /* Single line, ellipsis when it does not fit */
 .truncate {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* Name takes the room; the id, overlay and duration are fixed columns so
-   they line up down the list */
-.row-col-name-id > .truncate {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.row-col-name-id > .text-mono {
-  flex: 0 0 36%;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.row-col-trigger {
-  flex: 0 0 7.5em;
-  overflow: hidden;
-  text-align: right;
-  white-space: nowrap;
-}
-
-/* Trailing tags (trigger, metric, entity flags): right-aligned, one line */
-.row-col-tags {
-  display: flex;
-  flex: 0 1 auto;
-  justify-content: flex-end;
-  gap: var(--space-xs);
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.row-col-tags > .tag {
-  flex-shrink: 0;
-}
-
-.row-col-duration {
-  flex: 0 0 3.4em;
-  text-align: right;
-  font-size: 0.85em;
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
 }
 
 /* ─── Origin dot (modified / custom / new) ───────────────────────────────────── */
