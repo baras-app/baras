@@ -35,6 +35,9 @@ window.BarasReplay = (() => {
   const DOT_ZOOM_POWER = 0.45;
   const DOT_MIN_ZOOM = 0.8;
   const DOT_MAX_ZOOM = 3;
+  // The selected dot is this much larger, and the others this opaque
+  const SELECTED_GROW = 1.3;
+  const UNSELECTED_ALPHA = 0.7;
   // Opening a map framed on the fight: room around the positions, a floor on
   // how tight it gets (metres), and skipped when it would show most of the page
   const FOCUS_PADDING = 2.15;
@@ -407,8 +410,19 @@ window.BarasReplay = (() => {
       const npc = e.kind === "Npc";
       // Dots grow as the map is zoomed in, but far slower than the map does
       const zoom = Math.max(DOT_MIN_ZOOM, Math.min(DOT_MAX_ZOOM, Math.pow(scale, DOT_ZOOM_POWER)));
-      const r = (npc ? (e.is_boss ? 13 : 8) : 12) * zoom;
-      ctx.globalAlpha = s.dead ? 0.35 : 1;
+      const r = (npc ? (e.is_boss ? 13 : 8) : 12) * zoom * (selected ? SELECTED_GROW : 1);
+      // With someone selected, everyone else steps back
+      const alpha = (s.dead ? 0.35 : 1) * (highlight != null && !selected ? UNSELECTED_ALPHA : 1);
+      ctx.globalAlpha = alpha;
+      if (selected) {
+        // A soft gold halo, so the selection reads at a glance
+        ctx.fillStyle = colors.gold;
+        ctx.globalAlpha = 0.28;
+        ctx.beginPath();
+        ctx.arc(x, y, r + 11 * zoom, 0, TAU);
+        ctx.fill();
+        ctx.globalAlpha = alpha;
+      }
 
       // Facing arc: world direction (-sin f, -cos f)
       const f = (s.facing * Math.PI) / 180;
@@ -429,7 +443,7 @@ window.BarasReplay = (() => {
         ctx.fillStyle = colors.npc;
         ctx.globalAlpha *= 0.75;
         ctx.fill();
-        ctx.globalAlpha = s.dead ? 0.35 : 1;
+        ctx.globalAlpha = alpha;
       } else if (img && img.complete && img.naturalWidth) {
         ctx.save();
         ctx.clip();
@@ -441,7 +455,15 @@ window.BarasReplay = (() => {
         ctx.fillStyle = colors.player;
         ctx.fill();
       }
-      ctx.lineWidth = selected ? 3 : 2;
+      if (selected) {
+        // Dark edge under the gold ring keeps it clear of the map's own lines
+        ctx.lineWidth = 7;
+        ctx.strokeStyle = colors.bg;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, TAU);
+        ctx.stroke();
+      }
+      ctx.lineWidth = selected ? 4 : 2;
       ctx.strokeStyle = selected ? colors.gold : tint;
       ctx.beginPath();
       ctx.arc(x, y, r, 0, TAU);

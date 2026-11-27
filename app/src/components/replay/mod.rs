@@ -5,6 +5,7 @@ mod canvas;
 mod card_view;
 mod controls;
 mod entity_card;
+mod focus_card;
 mod loaded;
 mod map_tabs;
 mod timeline;
@@ -21,6 +22,7 @@ use crate::components::enemy_views::{LoadFailed, loading};
 use canvas::{DotMeta, Player};
 use controls::Controls;
 use entity_card::EntityCard;
+use focus_card::FocusCard;
 use loaded::{Loaded, Role};
 use map_tabs::MapTabs;
 
@@ -270,7 +272,10 @@ fn ReplayStage(
             }
             div { class: "replay-stage",
                 MapTabs {}
-                canvas { id: CANVAS_ID, class: "replay-canvas" }
+                div { class: "replay-canvas-wrap",
+                    canvas { id: CANVAS_ID, class: "replay-canvas" }
+                    FocusCard {}
+                }
                 Controls {}
             }
             div { class: "replay-cards",
