@@ -82,6 +82,7 @@ fn use_replay_maps(ctx: ExplorerCtx) {
     let ExplorerCtx {
         selected_encounter,
         mut replay_maps,
+        mut replay_jump,
         ..
     } = ctx;
     // What the last run handled. The encounter list can arrive after a restored
@@ -92,6 +93,10 @@ fn use_replay_maps(ctx: ExplorerCtx) {
         let is_boss = ctx.is_operation_boss(idx);
         if *handled.peek() == Some((idx, is_boss)) {
             return;
+        }
+        // A jump request belongs to the encounter it was made on
+        if handled.peek().is_some_and(|(was, _)| was != idx) {
+            replay_jump.set(None);
         }
         handled.set(Some((idx, is_boss)));
         replay_maps.set((idx, Vec::new()));

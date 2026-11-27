@@ -5,8 +5,11 @@ use dioxus::prelude::*;
 use baras_types::formatting;
 
 use super::ReplayState;
+use super::timeline::Timeline;
 
 const SPEEDS: [f64; 4] = [0.5, 1.0, 2.0, 4.0];
+/// Seconds the step buttons and arrow keys move
+const STEP_SECS: f32 = 5.0;
 
 /// Zoom range, matching the canvas. The slider is logarithmic so each step
 /// zooms by the same factor.
@@ -36,6 +39,7 @@ pub(super) fn Controls() -> Element {
     let mut speed = use_signal(|| 1.0f64);
     let mut scale = state.scale;
     let mut compact_cards = state.compact;
+    let mut show_unnamed = state.show_unnamed;
     let mut show_dps = use_signal(|| false);
     let mut show_hps = use_signal(|| false);
     let with_player = move |f: &dyn Fn(&super::Player)| {
@@ -50,6 +54,8 @@ pub(super) fn Controls() -> Element {
         div { class: "replay-controls",
             button {
                 class: "btn btn-small",
+                title: "Play or pause (Space)",
+                "data-shortcut": "space",
                 onclick: move |_| with_player(&|p| if playing() { p.pause() } else { p.play() }),
                 if playing() { "Pause" } else { "Play" }
             }
@@ -57,6 +63,20 @@ pub(super) fn Controls() -> Element {
                 class: "btn btn-small",
                 onclick: move |_| with_player(&|p| p.seek(0.0)),
                 "Restart"
+            }
+            button {
+                class: "btn btn-small",
+                title: "Back {STEP_SECS} seconds (Left arrow)",
+                "data-shortcut": "arrowleft",
+                onclick: move |_| with_player(&|p| p.seek((time() - STEP_SECS).max(0.0))),
+                "−{STEP_SECS}s"
+            }
+            button {
+                class: "btn btn-small",
+                title: "Forward {STEP_SECS} seconds (Right arrow)",
+                "data-shortcut": "arrowright",
+                onclick: move |_| with_player(&|p| p.seek(time() + STEP_SECS)),
+                "+{STEP_SECS}s"
             }
             select {
                 class: "replay-speed",
@@ -72,19 +92,7 @@ pub(super) fn Controls() -> Element {
                 }
             }
             span { class: "replay-clock", "{clock(time())}" }
-            input {
-                class: "replay-scrubber",
-                r#type: "range",
-                min: "0",
-                max: "{duration}",
-                step: "0.1",
-                value: "{time()}",
-                oninput: move |e| {
-                    if let Ok(v) = e.value().parse::<f32>() {
-                        with_player(&|p| p.seek(v));
-                    }
-                },
-            }
+            Timeline {}
             span { class: "replay-clock", "{clock(duration)}" }
             label { class: "replay-option", title: "Zoom (or use the mouse wheel over the map)",
                 "Scale"
@@ -119,6 +127,14 @@ pub(super) fn Controls() -> Element {
                     onchange: move |e| compact_cards.set(e.checked()),
                 }
                 "Compact cards"
+            }
+            label { class: "replay-option", title: "NPCs with no name: invisible helpers that boss mechanics are scripted on",
+                input {
+                    r#type: "checkbox",
+                    checked: show_unnamed(),
+                    onchange: move |e| show_unnamed.set(e.checked()),
+                }
+                "Unnamed NPCs"
             }
             label { class: "replay-option",
                 input { r#type: "checkbox", checked: show_dps(), onchange: move |e| show_dps.set(e.checked()) }

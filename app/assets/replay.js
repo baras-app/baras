@@ -37,8 +37,8 @@ window.BarasReplay = (() => {
   const DOT_MAX_ZOOM = 3;
   // Opening a map framed on the fight: room around the positions, a floor on
   // how tight it gets (metres), and skipped when it would show most of the page
-  const FOCUS_PADDING = 1.6;
-  const FOCUS_MIN_SIZE = 60;
+  const FOCUS_PADDING = 2.15;
+  const FOCUS_MIN_SIZE = 80;
   const FOCUS_MAX_SHARE = 0.7;
   const FOCUS_MIN_SAMPLES = 20;
   // Pages up to this many metres across are never framed
@@ -190,6 +190,8 @@ window.BarasReplay = (() => {
     let pickCb = null;
     let mapCb = null;
     let scaleCb = null;
+    // Nameless NPCs are invisible helpers that mechanics are scripted on
+    let showUnnamed = false;
     let destroyed = false;
     let colors = {};
     // Maps: entries, their images, phase spans, the pinned entry (null = follow the raid)
@@ -511,7 +513,9 @@ window.BarasReplay = (() => {
 
       drawn = [];
       const visible = (i) =>
-        states[i] && (!maps.length || mapNear(maps[shownMap], states[i].x, states[i].y, states[i].z, phase));
+        states[i] &&
+        (showUnnamed || entities[i].name) &&
+        (!maps.length || mapNear(maps[shownMap], states[i].x, states[i].y, states[i].z, phase));
       // Who a boss is on, and who the highlighted entity is on
       entities.forEach((e, i) => {
         if ((e.is_boss || e.id === highlight) && visible(i) && !states[i].dead) {
@@ -644,6 +648,10 @@ window.BarasReplay = (() => {
       },
       setScale(x) {
         zoomTo(x, null);
+      },
+      setShowUnnamed(on) {
+        showUnnamed = on;
+        requestDraw();
       },
       // Default zoom, recentred
       resetView() {

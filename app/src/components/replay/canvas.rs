@@ -28,6 +28,8 @@ extern "C" {
     fn set_speed(this: &Handle, speed: f64);
     #[wasm_bindgen(method, js_name = setScale)]
     fn set_scale(this: &Handle, scale: f64);
+    #[wasm_bindgen(method, js_name = setShowUnnamed)]
+    fn set_show_unnamed(this: &Handle, on: bool);
     #[wasm_bindgen(method, js_name = resetView)]
     fn reset_view(this: &Handle);
     #[wasm_bindgen(method, js_name = setHighlight)]
@@ -140,6 +142,11 @@ impl Player {
 
     pub fn set_scale(&self, scale: f64) {
         self.handle.set_scale(scale);
+    }
+
+    /// Whether NPCs with no name are drawn
+    pub fn set_show_unnamed(&self, on: bool) {
+        self.handle.set_show_unnamed(on);
     }
 
     /// Default zoom, recentred

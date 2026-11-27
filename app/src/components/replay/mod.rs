@@ -7,6 +7,7 @@ mod controls;
 mod entity_card;
 mod loaded;
 mod map_tabs;
+mod timeline;
 
 use std::rc::Rc;
 
@@ -24,6 +25,10 @@ use loaded::{Loaded, Role};
 use map_tabs::MapTabs;
 
 const CANVAS_ID: &str = "replay-canvas";
+/// Wait before loading a newly selected encounter's fight
+const LOAD_DEBOUNCE_MS: u32 = 150;
+/// A jump to a death lands this long before it
+const DEATH_LEAD_SECS: f32 = 5.0;
 
 /// Shared by the canvas, the controls and the cards of one mounted replay
 #[derive(Clone)]
@@ -42,6 +47,10 @@ struct ReplayState {
     scale: Signal<f64>,
     /// Cards show only health, target and cast, except the highlighted one
     compact: Signal<bool>,
+    /// Whether NPCs with no name (invisible mechanic helpers) are shown
+    show_unnamed: Signal<bool>,
+    /// Opens the death recap of a player's death at a time
+    on_recap: EventHandler<(String, f32)>,
     phases: Rc<Vec<PhaseSegment>>,
     european: bool,
 }
@@ -71,8 +80,14 @@ pub fn ReplayView(
     phases: Vec<PhaseSegment>,
     maps: Vec<MapDefinition>,
     european: bool,
+    /// A player and a moment to open on (from a death recap)
+    jump: Option<(String, f32)>,
+    on_recap: EventHandler<(String, f32)>,
 ) -> Element {
     let mut fight = use_resource(use_reactive!(|encounter_idx| async move {
+        // Stepping through encounters remounts this view each time: only the
+        // one that is stayed on asks for its fight
+        gloo_timers::future::TimeoutFuture::new(LOAD_DEBOUNCE_MS).await;
         api::query_replay(encounter_idx)
             .await
             .map(|data| LoadedProp(Rc::new(Loaded::new(data))))
@@ -80,7 +95,7 @@ pub fn ReplayView(
     let loaded = fight.read();
     match loaded.as_ref() {
         Some(Some(loaded)) => rsx! {
-            ReplayStage { loaded: loaded.clone(), phases, maps, european }
+            ReplayStage { loaded: loaded.clone(), phases, maps, european, jump, on_recap }
         },
         Some(None) => rsx! { LoadFailed { on_retry: move |_| fight.restart() } },
         None => loading(),
@@ -88,7 +103,14 @@ pub fn ReplayView(
 }
 
 #[component]
-fn ReplayStage(loaded: LoadedProp, phases: Vec<PhaseSegment>, maps: Vec<MapDefinition>, european: bool) -> Element {
+fn ReplayStage(
+    loaded: LoadedProp,
+    phases: Vec<PhaseSegment>,
+    maps: Vec<MapDefinition>,
+    european: bool,
+    jump: Option<(String, f32)>,
+    on_recap: EventHandler<(String, f32)>,
+) -> Element {
     let state = use_hook(|| ReplayState {
         loaded: loaded.0.clone(),
         time: Signal::new(0.0),
@@ -100,6 +122,8 @@ fn ReplayStage(loaded: LoadedProp, phases: Vec<PhaseSegment>, maps: Vec<MapDefin
         pinned_map: Signal::new(None),
         scale: Signal::new(1.0),
         compact: Signal::new(false),
+        show_unnamed: Signal::new(false),
+        on_recap,
         phases: Rc::new(phases),
         european,
     });
@@ -180,6 +204,27 @@ fn ReplayStage(loaded: LoadedProp, phases: Vec<PhaseSegment>, maps: Vec<MapDefin
             }
         });
     }));
+    let show_unnamed = state.show_unnamed;
+    use_effect(move || {
+        let on = show_unnamed();
+        if let Some(player) = player.read().as_ref() {
+            player.set_show_unnamed(on);
+        }
+    });
+    // Opened from a death recap: land shortly before the death with the player selected
+    let jump_loaded = state.loaded.clone();
+    let mut jump_highlight = state.highlight;
+    use_effect(use_reactive!(|jump| {
+        let Some(player) = player.read().clone() else { return };
+        if let Some((name, at)) = jump {
+            player.pause();
+            player.seek((at - DEATH_LEAD_SECS).max(0.0));
+            if let Some(e) = jump_loaded.data.entities.iter().find(|e| e.name == name) {
+                jump_highlight.set(Some(e.id));
+                scroll_to_card(e.id);
+            }
+        }
+    }));
     use_drop(move || {
         if let Some(player) = player.peek().as_ref() {
             player.destroy();
@@ -192,12 +237,14 @@ fn ReplayStage(loaded: LoadedProp, phases: Vec<PhaseSegment>, maps: Vec<MapDefin
         let loaded = state.loaded.clone();
         move || {
             let t = time();
+            let unnamed = show_unnamed();
             loaded
                 .data
                 .entities
                 .iter()
                 .enumerate()
                 .filter(|(_, e)| e.kind == ReplayEntityKind::Npc && loaded.is_present(e, t))
+                .filter(|(_, e)| unnamed || !e.name.is_empty())
                 .map(|(i, _)| i)
                 .collect::<Vec<usize>>()
         }
@@ -214,7 +261,7 @@ fn ReplayStage(loaded: LoadedProp, phases: Vec<PhaseSegment>, maps: Vec<MapDefin
     rsx! {
         // Shown instead of the stage when the tab is too narrow for it (CSS)
         div { class: "replay-too-narrow uptime-empty", "Widen the window to watch the replay" }
-        div { class: "replay-layout",
+        div { class: "replay-layout fade-in",
             div { class: "replay-cards",
                 div { class: "replay-cards-title", "Players" }
                 for (index, entity) in players {

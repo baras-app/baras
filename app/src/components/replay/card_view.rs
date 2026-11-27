@@ -27,6 +27,8 @@ pub struct CardView {
     pub hp: i32,
     pub max_hp: i32,
     pub dead: bool,
+    /// When the current death happened
+    pub died_at: Option<f32>,
     /// Index of the targeted entity in the replay data
     pub target: Option<usize>,
     /// Whole metres to the target

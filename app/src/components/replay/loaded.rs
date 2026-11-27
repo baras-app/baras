@@ -210,8 +210,14 @@ impl Loaded {
         shown_map: Option<usize>,
         phases: &[PhaseSegment],
     ) -> CardView {
+        let died_at = e
+            .dead
+            .iter()
+            .find(|(from, to)| t >= *from && t < *to)
+            .map(|(from, _)| *from);
         let mut view = CardView {
-            dead: e.dead.iter().any(|(from, to)| t >= *from && t < *to),
+            dead: died_at.is_some(),
+            died_at,
             ..CardView::default()
         };
         if let Some(i) = index_at(&e.track.t, t).or_else(|| (!e.track.t.is_empty()).then_some(0)) {

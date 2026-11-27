@@ -3,7 +3,7 @@
 //! Escape is DOM-driven so dialogs need no registration: it clicks the
 //! topmost click-to-dismiss backdrop, else the last open drawer's
 //! `data-esc-close` button. Letter keys click the visible element tagged
-//! `data-shortcut="<key>"`, so buttons own their actions. Up/Down step through
+//! `data-shortcut="<key>"` (also `space`, `arrowleft`, `arrowright`), so buttons own their actions. Up/Down step through
 //! the Analysis encounter list and digits pick its view tab. Shortcuts are
 //! ignored while typing, with a modifier held, or inside a
 //! `data-no-shortcuts` element (hotkey capture). The exception is Ctrl+S,
@@ -113,6 +113,18 @@ pub fn use_app_shortcuts(ui_state: Signal<UiSessionState>) {
                     let n = key.parse::<usize>().unwrap_or(0);
                     let tabs = visible_all(&doc, VIEW_TABS);
                     let Some(el) = tabs.get(if n == 0 { 9 } else { n - 1 }) else {
+                        return;
+                    };
+                    el.click();
+                }
+                // Named keys work like letters: `data-shortcut="space"`, `"arrowleft"`, `"arrowright"`
+                key @ (" " | "ArrowLeft" | "ArrowRight") => {
+                    let name = if key == " " {
+                        "space".to_string()
+                    } else {
+                        key.to_ascii_lowercase()
+                    };
+                    let Some(el) = last_visible(&doc, &format!("[data-shortcut=\"{name}\"]")) else {
                         return;
                     };
                     el.click();
