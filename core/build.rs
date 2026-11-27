@@ -86,23 +86,26 @@ fn generate_interrupt_abilities_set(out_dir: &str) {
     write_id_set(out_dir, "interrupt_abilities.rs", "INTERRUPT_ABILITIES", ids);
 }
 
-/// Ability ID → base channel time in seconds (`channel_time` column).
+/// Ability ID → base cast and channel times in seconds (`cast_time` and
+/// `channel_time` columns), as `CAST_TIMES` and `CHANNEL_TIMES`.
 fn generate_channel_times_map(out_dir: &str) {
-    // BTreeMap for deterministic output (sorted by key)
-    let mut entries = BTreeMap::new();
-    for f in ability_rows() {
-        let (Ok(id), Some(Ok(secs))) = (f[1].parse::<i64>(), f.get(17).map(|s| s.parse::<f32>())) else {
-            continue;
-        };
-        entries.insert(id, format!("{secs}f32"));
-    }
-
+    let rows = ability_rows();
     let mut file = BufWriter::new(fs::File::create(Path::new(out_dir).join("channel_abilities.rs")).unwrap());
-    let mut builder = phf_codegen::Map::new();
-    for (id, secs) in &entries {
-        builder.entry(*id, secs);
+    for (static_name, column) in [("CAST_TIMES", 16), ("CHANNEL_TIMES", 17)] {
+        // BTreeMap for deterministic output (sorted by key)
+        let mut entries = BTreeMap::new();
+        for f in &rows {
+            let (Ok(id), Some(Ok(secs))) = (f[1].parse::<i64>(), f.get(column).map(|s| s.parse::<f32>())) else {
+                continue;
+            };
+            entries.insert(id, format!("{secs}f32"));
+        }
+        let mut builder = phf_codegen::Map::new();
+        for (id, secs) in &entries {
+            builder.entry(*id, secs);
+        }
+        writeln!(file, "static {static_name}: phf::Map<i64, f32> = {};", builder.build()).unwrap();
     }
-    writeln!(file, "static CHANNEL_TIMES: phf::Map<i64, f32> = {};", builder.build()).unwrap();
 }
 
 /// The player classes' cleanses. The game data has no flag for them.
