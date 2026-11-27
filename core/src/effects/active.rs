@@ -137,6 +137,10 @@ pub struct ActiveEffect {
     /// After a grace period, the effect is hard-removed for GC.
     pub timer_expired: bool,
 
+    /// Set by `discard()`: the end-alert and audio flags it overrode, restored
+    /// if the game confirms the removal before the effect is dropped
+    discarded: Option<(bool, bool)>,
+
     // ─── Modifier state ───────────────────────────────────────────────────────
     /// Absolute expiry cap set by refill modifiers with max_duration_secs.
     /// Used by the overlay to show "elapsed / max" budget text.
@@ -193,6 +197,7 @@ impl ActiveEffect {
             audio_enabled: false,
             on_end_alert_fired: false,
             timer_expired: false,
+            discarded: None,
             max_expires_at: None,
             modifier_last_proc: Vec::new(),
         };
@@ -261,6 +266,7 @@ impl ActiveEffect {
         self.removed_at = None;
         // Clear timer-expired state (refresh revives the effect)
         self.timer_expired = false;
+        self.discarded = None;
         // Reset on-end alert so it can fire again
         self.on_end_alert_fired = false;
         // Reset audio so it fires again on the next expiration/offset
@@ -279,6 +285,7 @@ impl ActiveEffect {
 
         self.removed_at = None;
         self.timer_expired = false;
+        self.discarded = None;
         self.on_end_alert_fired = false;
         // Reset audio so it fires again on the next expiration/offset
         self.audio_played = false;
@@ -322,6 +329,30 @@ impl ActiveEffect {
         if self.removed_at.is_none() {
             self.removed_at = Some(Instant::now());
         }
+    }
+
+    /// Remove for tracker housekeeping (combat end, zone change, death):
+    /// the effect didn't end in the game's terms, so no end alert or sound
+    /// fires. No-op on an effect that is already removed.
+    pub fn discard(&mut self) {
+        if self.removed_at.is_some() {
+            return;
+        }
+        self.discarded = Some((self.on_end_alert_fired, self.audio_played));
+        self.on_end_alert_fired = true;
+        self.audio_played = true;
+        self.mark_removed();
+    }
+
+    /// Authoritative removal (game `RemoveEffect`). Re-arms the end alert
+    /// and sound of an effect discarded earlier in the same batch, e.g. a
+    /// death handled just before the game's removal line.
+    pub fn confirm_removed(&mut self) {
+        if let Some((alert_fired, audio_played)) = self.discarded.take() {
+            self.on_end_alert_fired = alert_fired;
+            self.audio_played = audio_played;
+        }
+        self.mark_removed();
     }
 
     /// Neither removed nor past its (heuristic) timer — the overlays show it

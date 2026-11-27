@@ -2054,7 +2054,7 @@ impl EffectTracker {
                         .signed_duration_since(effect.last_refreshed_at)
                         .num_milliseconds();
                     if since_refresh_ms > 1000 {
-                        effect.mark_removed();
+                        effect.confirm_removed();
                     }
                 }
             } else if def.is_effect_removed_trigger() && self.matches_filters(def, source_info, target_info, encounter)
@@ -2271,7 +2271,7 @@ impl EffectTracker {
                 .map(|def| def.persist_past_death)
                 .unwrap_or(false);
             if !persist {
-                effect.mark_removed();
+                effect.discard();
             }
         }
     }
@@ -2293,7 +2293,7 @@ impl EffectTracker {
 
         for (key, effect) in self.active_effects.iter_mut() {
             if !outside_combat_ids.contains(key.definition_id.as_str()) {
-                effect.mark_removed();
+                effect.discard();
             }
         }
     }
@@ -2307,7 +2307,7 @@ impl EffectTracker {
         self.alacrity_buffs.clear();
 
         for effect in self.active_effects.values_mut() {
-            effect.mark_removed();
+            effect.discard();
         }
     }
 
