@@ -72,6 +72,8 @@ struct PendingDotRefresh {
 struct AoeRefreshCollecting {
     /// The ability being tracked
     ability_id: i64,
+    /// Its name, for refresh abilities selected by name
+    ability_name: IStr,
     /// Who cast the ability
     source_id: i64,
     /// Anchor timestamp (when primary target was hit)
@@ -1105,11 +1107,15 @@ impl EffectTracker {
     fn setup_pending_aoe_refresh(
         &mut self,
         ability_id: i64,
+        ability_name: IStr,
         source_id: i64,
         timestamp: NaiveDateTime,
         primary_target: i64,
     ) {
-        if self.definitions.is_aoe_refresh(ability_id as u64) {
+        if self
+            .definitions
+            .is_aoe_refresh(ability_id as u64, crate::context::resolve(ability_name))
+        {
             self.pending_aoe_refresh = Some(PendingAoeRefresh {
                 ability_id,
                 source_id,
@@ -1127,7 +1133,13 @@ impl EffectTracker {
     ///   false-refreshing. Only damage within ±10ms of the primary target hit refreshes.
     /// - Immediate (`aoe_refresh_immediate = true`): any damage from the ability
     ///   after activation refreshes the target directly.
-    fn handle_damage_for_aoe_refresh(&mut self, ability_id: i64, target_id: i64, timestamp: NaiveDateTime) {
+    fn handle_damage_for_aoe_refresh(
+        &mut self,
+        ability_id: i64,
+        ability_name: IStr,
+        target_id: i64,
+        timestamp: NaiveDateTime,
+    ) {
         // Timeout for pending state (2 seconds - longer than any grenade travel time)
         const PENDING_TIMEOUT_MS: i64 = 2000;
         // Window for collecting additional targets after anchor (±10ms)
@@ -1170,12 +1182,13 @@ impl EffectTracker {
         let primary_target = pending.primary_target;
 
         // Immediate path: refresh effects with aoe_refresh_immediate on any damage hit
-        self.refresh_aoe_immediate(ability_id, source_id, target_id, timestamp);
+        self.refresh_aoe_immediate(ability_id, ability_name, source_id, target_id, timestamp);
 
         // DOT path: anchor on primary target then collect within window
         if target_id == primary_target {
             self.aoe_collecting = Some(AoeRefreshCollecting {
                 ability_id,
+                ability_name,
                 source_id,
                 anchor_timestamp: timestamp,
                 targets: vec![target_id],
@@ -1187,10 +1200,17 @@ impl EffectTracker {
     /// Immediately refresh effects with `aoe_refresh_immediate` on the damaged target.
     /// These effects have no ongoing ticks that could cause false refreshes,
     /// so any damage from the ability after activation is a valid refresh trigger.
-    fn refresh_aoe_immediate(&mut self, ability_id: i64, source_id: i64, target_id: i64, timestamp: NaiveDateTime) {
+    fn refresh_aoe_immediate(
+        &mut self,
+        ability_id: i64,
+        ability_name: IStr,
+        source_id: i64,
+        target_id: i64,
+        timestamp: NaiveDateTime,
+    ) {
         let refreshable: Vec<_> = self
             .definitions
-            .find_refreshable_by(ability_id as u64, None)
+            .find_refreshable_by(ability_id as u64, Some(crate::context::resolve(ability_name)))
             .into_iter()
             .filter(|(_, def)| def.aoe_refresh_immediate)
             .map(|(id, def)| (id, def.refresh_scope, self.effective_duration(def, timestamp)))
@@ -1214,7 +1234,10 @@ impl EffectTracker {
 
         let refreshable_def_ids: Vec<_> = self
             .definitions
-            .find_refreshable_by(collecting.ability_id as u64, None)
+            .find_refreshable_by(
+                collecting.ability_id as u64,
+                Some(crate::context::resolve(collecting.ability_name)),
+            )
             .into_iter()
             .filter(|(_, def)| !def.aoe_refresh_immediate)
             .map(|(id, def)| {
@@ -1241,7 +1264,13 @@ impl EffectTracker {
     /// When a refresh ability is cast for a DotTracker effect, the refresh is deferred
     /// until the next damage event from that ability lands. This confirms which target
     /// was actually hit and refreshes the DOT on that specific target only.
-    fn handle_damage_for_dot_refresh(&mut self, ability_id: i64, target_id: i64, timestamp: NaiveDateTime) {
+    fn handle_damage_for_dot_refresh(
+        &mut self,
+        ability_id: i64,
+        ability_name: IStr,
+        target_id: i64,
+        timestamp: NaiveDateTime,
+    ) {
         const PENDING_TIMEOUT_MS: i64 = 2000;
 
         let Some(ref pending) = self.pending_dot_refresh else {
@@ -1279,13 +1308,14 @@ impl EffectTracker {
         // first damage event from this ability, and refresh the effect on the
         // damaged target. Defaults to DotTracker effects when `on_first_damage`
         // is unspecified, but any display target can opt in.
+        let name = Some(crate::context::resolve(ability_name));
         let refreshable_def_ids: Vec<_> = self
             .definitions
-            .find_refreshable_by(ability_id as u64, None)
+            .find_refreshable_by(ability_id as u64, name)
             .into_iter()
             .filter(|(_, def)| {
                 let is_dot_tracker = def.display_targets.contains(&DisplayTarget::DotTracker);
-                def.find_refresh_ability(ability_id as u64, None)
+                def.find_refresh_ability(ability_id as u64, name)
                     .is_some_and(|ra| ra.refresh_on_first_damage(is_dot_tracker))
             })
             .map(|(id, def)| (id, def.refresh_scope, self.effective_duration(def, timestamp)))
@@ -2309,7 +2339,7 @@ impl SignalHandler for EffectTracker {
                 );
 
                 // For AoE abilities, set up pending state for damage correlation
-                self.setup_pending_aoe_refresh(*ability_id, *source_id, *timestamp, target.id);
+                self.setup_pending_aoe_refresh(*ability_id, *ability_name, *source_id, *timestamp, target.id);
             }
             GameSignal::DamageTaken {
                 ability_id,
@@ -2327,9 +2357,9 @@ impl SignalHandler for EffectTracker {
                 ..
             } => {
                 // AoE refresh damage correlation
-                self.handle_damage_for_aoe_refresh(*ability_id, *target_id, *timestamp);
+                self.handle_damage_for_aoe_refresh(*ability_id, *ability_name, *target_id, *timestamp);
                 // Single-target DotTracker refresh damage confirmation
-                self.handle_damage_for_dot_refresh(*ability_id, *target_id, *timestamp);
+                self.handle_damage_for_dot_refresh(*ability_id, *ability_name, *target_id, *timestamp);
                 // Refresh abilities configured with the Damage trigger
                 let is_immune_or_resist = *defense_type_id
                     == crate::game_data::defense_type::IMMUNE
