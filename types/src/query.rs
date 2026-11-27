@@ -7,6 +7,7 @@ mod dummy;
 mod overview_columns;
 mod raid_debuffs;
 mod rotation;
+mod replay;
 mod threat;
 
 pub use breakdown::*;
@@ -16,4 +17,5 @@ pub use dummy::*;
 pub use overview_columns::*;
 pub use raid_debuffs::*;
 pub use rotation::*;
+pub use replay::*;
 pub use threat::*;
