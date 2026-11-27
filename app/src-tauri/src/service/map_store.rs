@@ -133,6 +133,28 @@ pub fn missing_images(maps: &[MapDefinition]) -> Vec<String> {
     missing
 }
 
+/// Bytes of downloaded images and index on disk
+pub fn stored_bytes() -> u64 {
+    download_dir()
+        .and_then(|dir| std::fs::read_dir(dir).ok())
+        .into_iter()
+        .flatten()
+        .filter_map(|entry| entry.ok()?.metadata().ok())
+        .filter(|meta| meta.is_file())
+        .map(|meta| meta.len())
+        .sum()
+}
+
+/// Delete everything downloaded; the user's own maps are elsewhere and stay
+pub fn clear() -> Result<(), String> {
+    match download_dir() {
+        Some(dir) if dir.is_dir() => {
+            std::fs::remove_dir_all(&dir).map_err(|e| format!("Failed to delete {}: {e}", dir.display()))
+        }
+        _ => Ok(()),
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Downloads
 // ─────────────────────────────────────────────────────────────────────────────

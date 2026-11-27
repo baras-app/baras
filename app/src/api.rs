@@ -1533,6 +1533,16 @@ pub async fn get_replay_maps(encounter_idx: u32, allow: bool) -> baras_types::Re
     })
 }
 
+/// Bytes of downloaded replay maps on disk
+pub async fn get_replay_map_storage() -> u64 {
+    from_js(invoke("get_replay_map_storage", JsValue::NULL).await).unwrap_or(0)
+}
+
+/// Delete the downloaded replay maps
+pub async fn clear_replay_maps() {
+    let _ = try_invoke("clear_replay_maps", JsValue::NULL).await;
+}
+
 /// A replay map image as a data URL; None when the file is missing.
 pub async fn get_replay_map_image(image: &str) -> Option<String> {
     from_js(invoke("get_replay_map_image", build_args("image", image)).await)

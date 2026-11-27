@@ -53,6 +53,8 @@ struct ReplayState {
     compact: Signal<bool>,
     /// Whether NPCs with no name (invisible mechanic helpers) are shown
     show_unnamed: Signal<bool>,
+    /// The explorer's selected time range, played on a loop; None plays the whole fight
+    range: Signal<Option<(f32, f32)>>,
     /// Opens the death recap of a player's death at a time
     on_recap: EventHandler<(String, f32)>,
     phases: Rc<Vec<PhaseSegment>>,
@@ -86,6 +88,8 @@ pub fn ReplayView(
     european: bool,
     /// A player and a moment to open on (from a death recap)
     jump: Option<(String, f32)>,
+    /// The explorer's selected time range, when it is not the whole fight
+    range: Option<(f32, f32)>,
     on_recap: EventHandler<(String, f32)>,
 ) -> Element {
     let mut fight = use_resource(use_reactive!(|encounter_idx| async move {
@@ -99,7 +103,7 @@ pub fn ReplayView(
     let loaded = fight.read();
     match loaded.as_ref() {
         Some(Some(loaded)) => rsx! {
-            ReplayStage { loaded: loaded.clone(), phases, maps, european, jump, on_recap }
+            ReplayStage { loaded: loaded.clone(), phases, maps, european, jump, range, on_recap }
         },
         Some(None) => rsx! { LoadFailed { on_retry: move |_| fight.restart() } },
         None => loading(),
@@ -113,6 +117,7 @@ fn ReplayStage(
     maps: Vec<MapDefinition>,
     european: bool,
     jump: Option<(String, f32)>,
+    range: Option<(f32, f32)>,
     on_recap: EventHandler<(String, f32)>,
 ) -> Element {
     let state = use_hook(|| ReplayState {
@@ -127,6 +132,7 @@ fn ReplayStage(
         scale: Signal::new(1.0),
         compact: Signal::new(false),
         show_unnamed: Signal::new(false),
+        range: Signal::new(None),
         on_recap,
         phases: Rc::new(phases),
         european,
@@ -215,6 +221,13 @@ fn ReplayStage(
             player.set_show_unnamed(on);
         }
     });
+    let mut state_range = state.range;
+    use_effect(use_reactive!(|range| {
+        state_range.set(range);
+        if let Some(player) = player.read().as_ref() {
+            player.set_loop(range);
+        }
+    }));
     // Opened from a death recap: land shortly before the death with the player selected
     let jump_loaded = state.loaded.clone();
     let mut jump_highlight = state.highlight;

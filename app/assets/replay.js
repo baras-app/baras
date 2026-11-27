@@ -46,6 +46,9 @@ window.BarasReplay = (() => {
   const FOCUS_MIN_SAMPLES = 20;
   // Pages up to this many metres across are never framed
   const FOCUS_MIN_PAGE = 250;
+  // The highlighted entity's path over this many seconds, sampled this often
+  const TRAIL_SECS = 8;
+  const TRAIL_STEP_SECS = 0.25;
   const TICK_MS = 100;
   const PICK_PX = 18;
   const GRID_STEPS = [1, 2, 5, 10, 20, 50, 100, 200, 500];
@@ -187,6 +190,8 @@ window.BarasReplay = (() => {
     let pan = { x: 0, y: 0 };
     let highlight = null;
     let raf = 0;
+    // A span of the fight to play over and over ({ from, to }), or null
+    let loop = null;
     let lastFrame = 0;
     let lastTick = 0;
     let tickCb = null;
@@ -404,6 +409,31 @@ window.BarasReplay = (() => {
       ctx.restore();
     }
 
+    // Where an entity walked over the last seconds, fading with age. `shown`
+    // tells whether a past position is on the map being drawn.
+    function drawTrail(e, v, onShown, shown) {
+      ctx.save();
+      ctx.strokeStyle = colors.gold;
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = "round";
+      let prev = null;
+      for (let age = TRAIL_SECS; age >= 0; age -= TRAIL_STEP_SECS) {
+        const at = time - age;
+        const s = at >= 0 ? stateAt(e, at, duration, onShown) : null;
+        const point = s && !s.dead && shown(s) ? s : null;
+        // A teleport is not a walk
+        if (prev && point && Math.hypot(point.x - prev.x, point.y - prev.y) <= SNAP_DIST) {
+          ctx.globalAlpha = 0.75 * (1 - age / TRAIL_SECS);
+          ctx.beginPath();
+          ctx.moveTo(v.sx(prev.x), v.sy(prev.y));
+          ctx.lineTo(v.sx(point.x), v.sy(point.y));
+          ctx.stroke();
+        }
+        prev = point;
+      }
+      ctx.restore();
+    }
+
     function drawEntity(e, s, v, selected) {
       const x = v.sx(s.x);
       const y = v.sy(s.y);
@@ -504,6 +534,7 @@ window.BarasReplay = (() => {
 
       const phase = maps.length ? phaseAt(time) : null;
       let states = entities.map((e) => stateAt(e, time, duration, null));
+      let onShown = null;
       if (maps.length) {
         let next = pinned;
         if (next == null) {
@@ -525,7 +556,7 @@ window.BarasReplay = (() => {
           pan = { x: 0, y: 0 };
           if (mapCb) mapCb(shownMap);
         }
-        const onShown = (x, y, z) => mapNear(maps[shownMap], x, y, z, phase);
+        onShown = (x, y, z) => mapNear(maps[shownMap], x, y, z, phase);
         states = entities.map((e) => stateAt(e, time, duration, onShown));
       }
 
@@ -545,6 +576,11 @@ window.BarasReplay = (() => {
           if (to != null && to !== i && visible(to)) {
             drawTargetLine(v, states[i], states[to], e.id === highlight ? colors.gold : colors.npc);
           }
+        }
+      });
+      entities.forEach((e, i) => {
+        if (e.id === highlight && visible(i)) {
+          drawTrail(e, v, onShown, (s) => !onShown || onShown(s.x, s.y, s.z));
         }
       });
       // NPCs under players, the highlighted entity on top
@@ -577,7 +613,10 @@ window.BarasReplay = (() => {
       const dt = Math.min((now - lastFrame) / 1000, 0.1);
       lastFrame = now;
       time += dt * speed;
-      if (time >= duration) {
+      if (loop && time >= loop.to) {
+        time = loop.from;
+        settleMap = true;
+      } else if (time >= duration) {
         time = duration;
         playing = false;
       }
@@ -645,7 +684,7 @@ window.BarasReplay = (() => {
     return {
       play() {
         if (playing || destroyed) return;
-        if (time >= duration) time = 0;
+        if (time >= duration) time = loop ? loop.from : 0;
         playing = true;
         lastFrame = performance.now();
         cancelAnimationFrame(raf);
@@ -660,13 +699,23 @@ window.BarasReplay = (() => {
         requestDraw();
       },
       seek(secs) {
-        time = Math.max(0, Math.min(duration, secs));
+        time = Math.max(loop ? loop.from : 0, Math.min(loop ? loop.to : duration, secs));
         settleMap = true;
         tick(true);
         requestDraw();
       },
       setSpeed(x) {
         speed = x;
+      },
+      // Play only from..to, over and over; null for the whole fight
+      setLoop(from, to) {
+        loop = from == null || to == null || to <= from ? null : { from: Math.max(0, from), to: Math.min(duration, to) };
+        if (loop && (time < loop.from || time > loop.to)) {
+          time = loop.from;
+          settleMap = true;
+        }
+        tick(true);
+        requestDraw();
       },
       setScale(x) {
         zoomTo(x, null);

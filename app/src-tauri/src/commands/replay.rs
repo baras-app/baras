@@ -109,3 +109,15 @@ pub async fn get_replay_map_image(image: String) -> Result<String, String> {
         base64::engine::general_purpose::STANDARD.encode(bytes)
     ))
 }
+
+/// Bytes of downloaded maps on disk
+#[tauri::command]
+pub async fn get_replay_map_storage() -> u64 {
+    map_store::stored_bytes()
+}
+
+/// Delete the downloaded maps; they are fetched again when next needed
+#[tauri::command]
+pub async fn clear_replay_maps() -> Result<(), String> {
+    map_store::clear()
+}
