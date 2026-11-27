@@ -5,19 +5,10 @@ use dioxus::prelude::*;
 use baras_types::{ReplayEntityKind, formatting};
 
 use super::card_view::IconView;
+use super::loaded::Role;
 use super::{ReplayState, card_id};
 use crate::components::ability_icon::AbilityIcon;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
-
-/// Role shown on a player's card, from the role icon's name
-fn role_label(role_icon: Option<&str>) -> &'static str {
-    match role_icon {
-        Some(icon) if icon.contains("tank") => "TANK",
-        Some(icon) if icon.contains("heal") => "HEAL",
-        Some(_) => "DPS",
-        None => "",
-    }
-}
 
 fn icon_row(title: &'static str, icons: &[IconView], more: usize) -> Element {
     rsx! {
@@ -35,6 +26,9 @@ fn icon_row(title: &'static str, icons: &[IconView], more: usize) -> Element {
                             fallback_id: Some(icon.ability_id),
                             fallback: icon.name.clone(),
                             size: 18,
+                        }
+                        if icon.stacks > 1 {
+                            span { class: "replay-effect-stacks", "{icon.stacks}" }
                         }
                     }
                 }
@@ -77,7 +71,7 @@ pub(super) fn EntityCard(index: usize) -> Element {
     } else if entity.kind == ReplayEntityKind::Companion {
         "COMPANION"
     } else {
-        role_label(entity.role_icon.as_deref())
+        Role::of(entity).label()
     };
     let class_icon = entity.class_icon.as_deref().and_then(get_class_icon).copied();
     let role_icon = entity.role_icon.as_deref().and_then(get_role_icon).copied();
@@ -160,6 +154,9 @@ pub(super) fn EntityCard(index: usize) -> Element {
                             img { class: "class-icon", src, alt: "" }
                         }
                         span { class: "replay-card-target-name", "{target.name}" }
+                        if let Some(metres) = view.target_distance {
+                            span { class: "replay-card-distance", "{metres} m" }
+                        }
                     }
                 } else {
                     "No target"

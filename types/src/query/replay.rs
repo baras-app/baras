@@ -80,6 +80,9 @@ pub struct ReplayEffect {
     pub start: f32,
     pub end: f32,
     pub is_debuff: bool,
+    /// Stack count changes inside the window (time, stacks); empty when it never stacked
+    #[serde(default)]
+    pub stacks: Vec<(f32, u8)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

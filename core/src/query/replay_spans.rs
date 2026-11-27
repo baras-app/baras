@@ -10,12 +10,20 @@ use baras_types::{ReplayActivation, ReplayCast, ReplayEffect};
 
 use super::effects::{APPLY_EFFECT, DAMAGE_EFFECT, HEAL_EFFECT, REMOVE_EFFECT};
 use super::*;
-use crate::game_data::{cast_secs, channel_secs, effect_id, is_off_gcd};
+use crate::game_data::{cast_secs, channel_secs, correct_apply_charges, effect_id, effect_type_id, is_off_gcd};
 
 /// Effect windows shorter than this are not worth an icon
 const MIN_EFFECT_SECS: f32 = 0.1;
 /// A cancel with more than this share of the cast left counts as an interruption
 const CANCEL_SLACK: f32 = 0.2;
+
+/// Records a stack count on an effect window when it differs from the last one
+fn set_stacks(effect: &mut ReplayEffect, t: f32, stacks: u8) {
+    let last = effect.stacks.last().map_or(1, |(_, n)| *n);
+    if stacks != last && (stacks > 1 || !effect.stacks.is_empty()) {
+        effect.stacks.push((t, stacks));
+    }
+}
 
 fn is_group(entity_type: &str) -> bool {
     matches!(entity_type, "Player" | "Companion")
@@ -31,13 +39,14 @@ impl EncounterQuery<'_> {
             effect_id::ABILITYINTERRUPT,
             effect_id::ABILITYCANCEL,
         );
+        let modify_charges = effect_type_id::MODIFYCHARGES;
         let batches = self
             .sql(&format!(
                 "SELECT combat_time_secs, effect_type_id, effect_id, effect_name, ability_id, ability_name,
-                        source_id, source_entity_type, target_id, target_entity_type
+                        source_id, source_entity_type, target_id, target_entity_type, charges
                  FROM events
                  WHERE effect_id IN ({activate}, {interrupt}, {cancel})
-                    OR (effect_type_id IN ({APPLY_EFFECT}, {REMOVE_EFFECT})
+                    OR (effect_type_id IN ({APPLY_EFFECT}, {REMOVE_EFFECT}, {modify_charges})
                         AND effect_id NOT IN ({DAMAGE_EFFECT}, {HEAL_EFFECT}))
                  ORDER BY line_number"
             ))
@@ -57,6 +66,7 @@ impl EncounterQuery<'_> {
             let (abilities, ability_names) = (col_i64(batch, 4)?, col_strings(batch, 5)?);
             let (sources, source_types) = (col_i64(batch, 6)?, col_strings(batch, 7)?);
             let (targets, target_types) = (col_i64(batch, 8)?, col_strings(batch, 9)?);
+            let charges = col_i32(batch, 10)?;
             for i in 0..batch.num_rows() {
                 let t = match times[i] {
                     Some(t) => {
@@ -127,8 +137,25 @@ impl EncounterQuery<'_> {
                     continue;
                 }
                 let key = (id, target, source);
+                let stacks = charges[i].clamp(0, u8::MAX as i32) as u8;
+                if kinds[i] == modify_charges {
+                    // The applier may be gone by now: any window of this effect on the target
+                    let window = open.get(&key).copied().or_else(|| {
+                        open.iter()
+                            .find(|((effect, on, _), _)| *effect == id && *on == target)
+                            .map(|(_, w)| *w)
+                    });
+                    if let Some(w) = window {
+                        set_stacks(&mut effects[w], t, stacks);
+                    }
+                    continue;
+                }
                 if kinds[i] == APPLY_EFFECT {
+                    let stacks = correct_apply_charges(id, stacks);
                     // A re-apply refreshes the window already open
+                    if let Some(w) = open.get(&key) {
+                        set_stacks(&mut effects[*w], t, stacks);
+                    }
                     if let Entry::Vacant(slot) = open.entry(key) {
                         slot.insert(effects.len());
                         let name = if effect_names[i].is_empty() {
@@ -146,6 +173,7 @@ impl EncounterQuery<'_> {
                             end: duration,
                             // A blank source is a despawned NPC
                             is_debuff: is_group(&source_types[i]) != is_group(&target_types[i]),
+                            stacks: if stacks > 1 { vec![(t, stacks)] } else { Vec::new() },
                         });
                     }
                 } else if source == 0 {
@@ -175,6 +203,7 @@ impl EncounterQuery<'_> {
                         start: 0.0,
                         end: t,
                         is_debuff: is_group(&source_types[i]) != is_group(&target_types[i]),
+                        stacks: Vec::new(),
                     });
                 }
             }

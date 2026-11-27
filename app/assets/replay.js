@@ -64,6 +64,18 @@ window.BarasReplay = (() => {
     return a + d * f;
   }
 
+  // Entity id an entity has targeted at t, or null
+  function targetAt(e, t) {
+    let lo = 0;
+    let hi = e.targets.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (e.targets[mid][0] <= t) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo ? e.targets[lo - 1][1] : null;
+  }
+
   function isDead(e, t) {
     return e.dead.some(([from, to]) => t >= from && t < to);
   }
@@ -161,6 +173,8 @@ window.BarasReplay = (() => {
       icons.set(Number(id), img);
     }
     const numbers = meta.numbers || {};
+    const roles = meta.roles || {};
+    const byId = new Map(entities.map((e, i) => [e.id, i]));
     const fit = fitBounds(entities);
 
     let time = 0;
@@ -205,6 +219,9 @@ window.BarasReplay = (() => {
         muted: v("--text-muted", "#888"),
         npc: v("--swtor-red", "#ff4a4a"),
         player: v("--swtor-blue", "#4a9eff"),
+        tank: v("--swtor-blue", "#4a9eff"),
+        heal: v("--color-success", "#5fd98e"),
+        dps: v("--swtor-orange", "#ff8c42"),
         gold: v("--swtor-gold", "#c9a227"),
       };
     }
@@ -369,6 +386,19 @@ window.BarasReplay = (() => {
       ctx.restore();
     }
 
+    function drawTargetLine(v, from, to, color) {
+      ctx.save();
+      ctx.globalAlpha = 0.6;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(v.sx(from.x), v.sy(from.y));
+      ctx.lineTo(v.sx(to.x), v.sy(to.y));
+      ctx.stroke();
+      ctx.restore();
+    }
+
     function drawEntity(e, s, v, selected) {
       const x = v.sx(s.x);
       const y = v.sy(s.y);
@@ -381,7 +411,9 @@ window.BarasReplay = (() => {
       // Facing arc: world direction (-sin f, -cos f)
       const f = (s.facing * Math.PI) / 180;
       const dir = Math.atan2((v.flipY ? 1 : -1) * Math.cos(f), (v.flipX ? 1 : -1) * Math.sin(f));
-      ctx.strokeStyle = npc ? colors.npc : colors.player;
+      // Players are ringed by role: tank, healer or damage
+      const tint = npc ? colors.npc : colors[roles[e.id]] || colors.player;
+      ctx.strokeStyle = tint;
       ctx.lineWidth = 3 * zoom;
       ctx.lineCap = "round";
       ctx.beginPath();
@@ -407,8 +439,8 @@ window.BarasReplay = (() => {
         ctx.fillStyle = colors.player;
         ctx.fill();
       }
-      ctx.lineWidth = selected ? 3 : 1.5;
-      ctx.strokeStyle = selected ? colors.gold : npc ? colors.npc : colors.text;
+      ctx.lineWidth = selected ? 3 : 2;
+      ctx.strokeStyle = selected ? colors.gold : tint;
       ctx.beginPath();
       ctx.arc(x, y, r, 0, TAU);
       ctx.stroke();
@@ -480,6 +512,15 @@ window.BarasReplay = (() => {
       drawn = [];
       const visible = (i) =>
         states[i] && (!maps.length || mapNear(maps[shownMap], states[i].x, states[i].y, states[i].z, phase));
+      // Who a boss is on, and who the highlighted entity is on
+      entities.forEach((e, i) => {
+        if ((e.is_boss || e.id === highlight) && visible(i) && !states[i].dead) {
+          const to = byId.get(targetAt(e, time));
+          if (to != null && to !== i && visible(to)) {
+            drawTargetLine(v, states[i], states[to], e.id === highlight ? colors.gold : colors.npc);
+          }
+        }
+      });
       // NPCs under players, the highlighted entity on top
       for (const pass of ["Npc", "Companion", "Player"]) {
         entities.forEach((e, i) => {

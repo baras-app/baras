@@ -54,11 +54,13 @@ struct CanvasData<'a> {
     entities: &'a [baras_types::ReplayEntity],
 }
 
-/// Icons and numbers the canvas draws on player dots, by entity id
+/// Icons, numbers and roles the canvas draws player dots with, by entity id
 #[derive(Serialize, Default)]
 pub struct DotMeta {
     pub icons: std::collections::HashMap<String, String>,
     pub numbers: std::collections::HashMap<String, u8>,
+    /// "tank" | "heal" | "dps", for the ring colour
+    pub roles: std::collections::HashMap<String, &'static str>,
 }
 
 /// A mounted canvas player. Dropping it does not stop it: call `destroy`.
