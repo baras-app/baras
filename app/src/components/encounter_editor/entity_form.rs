@@ -58,7 +58,7 @@ pub(super) fn EntityEditForm(
 
     let body = rsx! {
         div { class: "entity-edit-form",
-            FormCard { icon: "fa-tag", title: "Identity",
+            FormCard { icon: "fa-tag", title: "Basics",
                 TextField { label: "Name", value: d.name.clone(), on_input: move |v| draft.write().name = v }
                 SubSection { title: "NPC IDs",
                     NpcIdChipEditor { ids: d.ids.clone(), on_change: move |ids| draft.write().ids = ids }

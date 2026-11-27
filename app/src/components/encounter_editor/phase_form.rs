@@ -66,120 +66,121 @@ pub(super) fn PhaseEditForm(
 
     let body = rsx! {
         div { class: "phase-edit-form",
-            div { class: "edit-grid",
-                // ═══ LEFT: Identity Card ═════════════════════════════════════
-                FormCard { icon: "fa-tag", title: "Identity",
-                    Field { label: "Phase ID",
-                        code { class: "id-display", "{phase_id_display}" }
-                    }
-                    TextField { label: "Name", value: draft().name, on_input: move |v| draft.write().name = v }
-                    TextField {
-                        label: "Display Text",
-                        value: draft().display_text.unwrap_or_default(),
-                        placeholder: "(defaults to name)",
-                        on_input: move |v: String| draft.write().display_text = (!v.is_empty()).then_some(v),
-                    }
-                    Field { label: "Difficulties", help: "Only activate this phase on selected difficulties. Empty = all difficulties.",
-                        DifficultiesEditor {
-                            difficulties: draft().difficulties.clone(),
-                            on_change: move |updated: Vec<String>| draft.write().difficulties = updated,
+            div { class: "edit-grid form-grid-2",
+                // Left: what it is
+                div { class: "edit-grid-left",
+                    FormCard { icon: "fa-tag", title: "Basics",
+                        TextField { label: "Name", value: draft().name, on_input: move |v| draft.write().name = v }
+                        Field { label: "Phase ID",
+                            code { class: "id-display", "{phase_id_display}" }
+                        }
+                        TextField {
+                            label: "Display Text",
+                            value: draft().display_text.unwrap_or_default(),
+                            placeholder: "(defaults to name)",
+                            on_input: move |v: String| draft.write().display_text = (!v.is_empty()).then_some(v),
+                        }
+                        Field { label: "Difficulties", help: "Only activate this phase on selected difficulties. Empty = all difficulties.",
+                            DifficultiesEditor {
+                                difficulties: draft().difficulties.clone(),
+                                on_change: move |updated: Vec<String>| draft.write().difficulties = updated,
+                            }
+                        }
+                        CheckField { label: "Enabled", checked: draft().enabled, on_change: move |v| draft.write().enabled = v }
+                        if !draft().enabled {
+                            div { class: "text-xs text-warning mt-xs",
+                                i { class: "fa-solid fa-triangle-exclamation" }
+                                " Disabling a phase may break timers or other phases that depend on it."
+                            }
                         }
                     }
-
-                    SubSection { title: "Conditions", help: "State conditions that must ALL be true for this phase to activate",
-                        Field { label: "Preceded By", help: "This phase can only start if the specified phase was the most recent active phase",
-                            {
-                                let selected_phase = draft().preceded_by.unwrap_or_default();
-                                rsx! {
-                                    select {
-                                        onchange: move |e| {
-                                            let v = e.value();
-                                            draft.write().preceded_by = (!v.is_empty()).then_some(v);
-                                        },
-                                        option { value: "", selected: selected_phase.is_empty(), "(none)" }
-                                        for phase_id in &phase_ids {
-                                            option { value: "{phase_id}", selected: phase_id == &selected_phase, "{phase_id}" }
+                    FormCard { icon: "fa-rotate-left", title: "On Start",
+                        SubSection { title: "Resets Counters", help: "Counters to reset when this phase starts",
+                            CounterListEditor {
+                                counters: draft().resets_counters.clone(),
+                                available: encounter_data.counter_options(),
+                                on_change: move |counters| draft.write().resets_counters = counters,
+                            }
+                        }
+                    }
+                }
+                // Right: the mechanics, what starts and ends it and the state it needs
+                div { class: "edit-grid-right",
+                    FormCard { icon: "fa-bolt", title: "Trigger",
+                        SubSection { title: "Start On", help: "The game event that starts this phase",
+                            ComposableTriggerEditor {
+                                trigger: draft().start_trigger,
+                                encounter_data: encounter_data.clone(),
+                                on_change: move |t| draft.write().start_trigger = t,
+                                hide_timer_only: true,
+                            }
+                        }
+                        OptionalTrigger {
+                            title: "End On",
+                            help: "Ends this phase when the trigger fires. Default: when another phase starts",
+                            noun: "End",
+                            empty: "Ends when another phase starts",
+                            trigger: draft().end_trigger,
+                            initial: Trigger::CombatStart,
+                            hide_timer_only: true,
+                            encounter_data: encounter_data.clone(),
+                            on_change: move |t| draft.write().end_trigger = t,
+                        }
+                        SubSection { title: "Conditions", help: "State conditions that must ALL be true for this phase to activate",
+                            Field { label: "Preceded By", help: "This phase can only start if the specified phase was the most recent active phase",
+                                {
+                                    let selected_phase = draft().preceded_by.unwrap_or_default();
+                                    rsx! {
+                                        select {
+                                            onchange: move |e| {
+                                                let v = e.value();
+                                                draft.write().preceded_by = (!v.is_empty()).then_some(v);
+                                            },
+                                            option { value: "", selected: selected_phase.is_empty(), "(none)" }
+                                            for phase_id in &phase_ids {
+                                                option { value: "{phase_id}", selected: phase_id == &selected_phase, "{phase_id}" }
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
-                        ConditionsEditor {
-                            conditions: draft().conditions.clone(),
-                            encounter_data: encounter_data.clone(),
-                            on_change: move |c| draft.write().conditions = c,
-                        }
+                            ConditionsEditor {
+                                conditions: draft().conditions.clone(),
+                                encounter_data: encounter_data.clone(),
+                                on_change: move |c| draft.write().conditions = c,
+                            }
 
-                        // Legacy counter condition: show migration banner if old field has value
-                        if draft().counter_condition.is_some() {
-                            div { class: "legacy-conditions-banner",
-                                i { class: "fa-solid fa-circle-info" }
-                                span { "Legacy counter condition detected." }
-                                button {
-                                    class: "btn btn-sm",
-                                    title: "Move legacy counter condition into the new Conditions system",
-                                    onclick: move |_| {
-                                        let mut d = draft.write();
-                                        if let Some(cc) = d.counter_condition.take() {
-                                            d.conditions.push(Condition::CounterCompare {
-                                                counter_id: cc.counter_id,
-                                                operator: cc.operator,
-                                                value: cc.value,
-                                            });
-                                        }
-                                    },
-                                    "Migrate"
+                            // Legacy counter condition: show migration banner if old field has value
+                            if draft().counter_condition.is_some() {
+                                div { class: "legacy-conditions-banner",
+                                    i { class: "fa-solid fa-circle-info" }
+                                    span { "Legacy counter condition detected." }
+                                    button {
+                                        class: "btn btn-sm",
+                                        title: "Move legacy counter condition into the new Conditions system",
+                                        onclick: move |_| {
+                                            let mut d = draft.write();
+                                            if let Some(cc) = d.counter_condition.take() {
+                                                d.conditions.push(Condition::CounterCompare {
+                                                    counter_id: cc.counter_id,
+                                                    operator: cc.operator,
+                                                    value: cc.value,
+                                                });
+                                            }
+                                        },
+                                        "Migrate"
+                                    }
+                                }
+                                Field { label: "Counter (legacy)", muted: true,
+                                    CounterConditionEditor {
+                                        condition: draft().counter_condition.clone(),
+                                        counters: encounter_data.counter_options(),
+                                        on_change: move |cond| draft.write().counter_condition = cond,
+                                    }
                                 }
                             }
-                            Field { label: "Counter (legacy)", muted: true,
-                                CounterConditionEditor {
-                                    condition: draft().counter_condition.clone(),
-                                    counters: encounter_data.counter_options(),
-                                    on_change: move |cond| draft.write().counter_condition = cond,
-                                }
-                            }
                         }
-                    }
 
-                    SubSection { title: "Resets Counters", help: "Counters to reset when this phase starts",
-                        CounterListEditor {
-                            counters: draft().resets_counters.clone(),
-                            available: encounter_data.counter_options(),
-                            on_change: move |counters| draft.write().resets_counters = counters,
-                        }
-                    }
-                }
-
-                // ═══ RIGHT: Trigger Card ═════════════════════════════════════
-                FormCard { icon: "fa-bolt", title: "Trigger",
-                    SubSection { title: "Start On", help: "The game event that starts this phase",
-                        ComposableTriggerEditor {
-                            trigger: draft().start_trigger,
-                            encounter_data: encounter_data.clone(),
-                            on_change: move |t| draft.write().start_trigger = t,
-                            hide_timer_only: true,
-                        }
-                    }
-                    OptionalTrigger {
-                        title: "End On",
-                        help: "Ends this phase when the trigger fires. Default: when another phase starts",
-                        noun: "End",
-                        empty: "Ends when another phase starts",
-                        trigger: draft().end_trigger,
-                        initial: Trigger::CombatStart,
-                        hide_timer_only: true,
-                        encounter_data: encounter_data.clone(),
-                        on_change: move |t| draft.write().end_trigger = t,
-                    }
-                }
-            }
-
-            FormCard { icon: "fa-triangle-exclamation", title: "Advanced",
-                CheckField { label: "Phase enabled", checked: draft().enabled, on_change: move |v| draft.write().enabled = v }
-                if !draft().enabled {
-                    div { class: "text-xs text-warning mt-xs",
-                        i { class: "fa-solid fa-triangle-exclamation" }
-                        " Disabling a phase may break timers or other phases that depend on it."
                     }
                 }
             }

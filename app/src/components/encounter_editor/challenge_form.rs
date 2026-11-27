@@ -88,58 +88,36 @@ pub(super) fn ChallengeEditForm(
 
     let body = rsx! {
         div { class: "challenge-edit-form",
-            div { class: "edit-grid",
-                // ═══ LEFT: Identity Card ═════════════════════════════════════
-                FormCard { icon: "fa-tag", title: "Identity",
-                    Field { label: "Challenge ID",
-                        code { class: "id-display", "{challenge_id_display}" }
-                    }
-                    TextField { label: "Name", value: draft().name, on_input: move |v| draft.write().name = v }
-                    TextField {
-                        label: "Display Text",
-                        value: draft().display_text.unwrap_or_default(),
-                        placeholder: "(defaults to name)",
-                        on_input: move |v: String| draft.write().display_text = (!v.is_empty()).then_some(v),
-                    }
-                    TextField {
-                        label: "Description",
-                        value: draft().description.unwrap_or_default(),
-                        placeholder: "(optional)",
-                        on_input: move |v: String| draft.write().description = (!v.is_empty()).then_some(v),
-                    }
-                    Field {
-                        label: "Difficulties",
-                        help: "Only track this challenge on selected difficulties. Empty = all difficulties.",
-                        DifficultiesEditor {
-                            difficulties: draft().difficulties.clone(),
-                            on_change: move |updated: Vec<String>| draft.write().difficulties = updated,
+            div { class: "edit-grid form-grid-2",
+                // Left: what it is and how it shows
+                div { class: "edit-grid-left",
+                    FormCard { icon: "fa-tag", title: "Basics",
+                        TextField { label: "Name", value: draft().name, on_input: move |v| draft.write().name = v }
+                        Field { label: "Challenge ID",
+                            code { class: "id-display", "{challenge_id_display}" }
+                        }
+                        Field {
+                            label: "Difficulties",
+                            help: "Only track this challenge on selected difficulties. Empty = all difficulties.",
+                            DifficultiesEditor {
+                                difficulties: draft().difficulties.clone(),
+                                on_change: move |updated: Vec<String>| draft.write().difficulties = updated,
+                            }
+                        }
+                        CheckField { label: "Enabled", checked: draft().enabled, on_change: move |v| draft.write().enabled = v }
+                        TextField {
+                            label: "Description",
+                            value: draft().description.unwrap_or_default(),
+                            placeholder: "(optional)",
+                            on_input: move |v: String| draft.write().description = (!v.is_empty()).then_some(v),
                         }
                     }
-                    CheckField { label: "Enabled", checked: draft().enabled, on_change: move |v| draft.write().enabled = v }
-
-                    SubSection { title: "Display",
-                        Field { label: "Metric", help: "What combat metric to track for this challenge",
-                            select {
-                                value: "{draft().metric:?}",
-                                onchange: move |e| {
-                                    draft.write().metric = match e.value().as_str() {
-                                        "Damage" => ChallengeMetric::Damage,
-                                        "Healing" => ChallengeMetric::Healing,
-                                        "EffectiveHealing" => ChallengeMetric::EffectiveHealing,
-                                        "DamageTaken" => ChallengeMetric::DamageTaken,
-                                        "HealingTaken" => ChallengeMetric::HealingTaken,
-                                        "AbilityCount" => ChallengeMetric::AbilityCount,
-                                        "EffectCount" => ChallengeMetric::EffectCount,
-                                        "EffectStacks" => ChallengeMetric::EffectStacks,
-                                        "DamageAbsorbed" => ChallengeMetric::DamageAbsorbed,
-                                        "InterruptCount" => ChallengeMetric::InterruptCount,
-                                        _ => ChallengeMetric::Damage,
-                                    };
-                                },
-                                for metric in ChallengeMetric::all() {
-                                    option { value: "{metric:?}", selected: draft().metric == *metric, "{metric.label()}" }
-                                }
-                            }
+                    FormCard { icon: "fa-display", title: "Display",
+                        TextField {
+                            label: "Display Text",
+                            value: draft().display_text.unwrap_or_default(),
+                            placeholder: "(defaults to name)",
+                            on_input: move |v: String| draft.write().display_text = (!v.is_empty()).then_some(v),
                         }
                         Field { label: "Columns", help: "Which data columns to show in the challenge overlay",
                             select {
@@ -181,27 +159,51 @@ pub(super) fn ChallengeEditForm(
                         }
                     }
                 }
-
-                // ═══ RIGHT: Conditions Card ══════════════════════════════════
-                FormCard { icon: "fa-filter", title: "Conditions",
-                    SubSection { title: "Match", help: "Events count toward the challenge only when every condition holds",
-                        div { class: "flex-col gap-xs",
-                            if draft().conditions.is_empty() {
-                                span { class: "conditions-editor-empty", "No conditions (matches all events)" }
-                            } else {
-                                for (idx, condition) in draft().conditions.iter().enumerate() {
-                                    ChallengeConditionRow {
-                                        condition: condition.clone(),
-                                        encounter_data: encounter_data.clone(),
-                                        on_change: move |updated| draft.write().conditions[idx] = updated,
-                                        on_remove: move |_| { draft.write().conditions.remove(idx); },
-                                    }
+                // Right: the mechanics, what is measured and which events count
+                div { class: "edit-grid-right",
+                    FormCard { icon: "fa-chart-simple", title: "Tracking",
+                        Field { label: "Metric", help: "What combat metric to track for this challenge",
+                            select {
+                                value: "{draft().metric:?}",
+                                onchange: move |e| {
+                                    draft.write().metric = match e.value().as_str() {
+                                        "Damage" => ChallengeMetric::Damage,
+                                        "Healing" => ChallengeMetric::Healing,
+                                        "EffectiveHealing" => ChallengeMetric::EffectiveHealing,
+                                        "DamageTaken" => ChallengeMetric::DamageTaken,
+                                        "HealingTaken" => ChallengeMetric::HealingTaken,
+                                        "AbilityCount" => ChallengeMetric::AbilityCount,
+                                        "EffectCount" => ChallengeMetric::EffectCount,
+                                        "EffectStacks" => ChallengeMetric::EffectStacks,
+                                        "DamageAbsorbed" => ChallengeMetric::DamageAbsorbed,
+                                        "InterruptCount" => ChallengeMetric::InterruptCount,
+                                        _ => ChallengeMetric::Damage,
+                                    };
+                                },
+                                for metric in ChallengeMetric::all() {
+                                    option { value: "{metric:?}", selected: draft().metric == *metric, "{metric.label()}" }
                                 }
                             }
-                            button {
-                                class: "btn-dashed text-sm",
-                                onclick: move |_| draft.write().conditions.push(ChallengeCondition::Phase { phase_ids: vec![] }),
-                                "+ Add Condition"
+                        }
+                        SubSection { title: "Conditions", help: "Events count toward the challenge only when every condition holds",
+                            div { class: "flex-col gap-xs",
+                                if draft().conditions.is_empty() {
+                                    span { class: "conditions-editor-empty", "No conditions (matches all events)" }
+                                } else {
+                                    for (idx, condition) in draft().conditions.iter().enumerate() {
+                                        ChallengeConditionRow {
+                                            condition: condition.clone(),
+                                            encounter_data: encounter_data.clone(),
+                                            on_change: move |updated| draft.write().conditions[idx] = updated,
+                                            on_remove: move |_| { draft.write().conditions.remove(idx); },
+                                        }
+                                    }
+                                }
+                                button {
+                                    class: "btn-dashed text-sm",
+                                    onclick: move |_| draft.write().conditions.push(ChallengeCondition::Phase { phase_ids: vec![] }),
+                                    "+ Add Condition"
+                                }
                             }
                         }
                     }
