@@ -15,7 +15,7 @@ trigger = { type = "effect_applied", effects = [
 refresh_abilities = [{ ability = 808192586022912, on_first_damage = true }]
 duration_secs = 18.0
 is_affected_by_alacrity = true
-discplines = ["Corruption", "Madness"]
+disciplines = ["Corruption", "Madness"]
 color = [62, 173, 28, 255]
 
 [[effect]]
