@@ -1107,7 +1107,7 @@ fn test_single_instance_charges_create_missing_instance() {
     let effect = tracker.active_effects().next().unwrap();
     assert_eq!(effect.definition_id, "kolto_shell_others");
     assert_eq!(effect.source_entity_id, other_player_id);
-    assert!(!effect.is_from_local_player);
+    assert_ne!(Some(effect.source_entity_id), Some(local_player_id));
     assert_eq!(effect.stacks, 6, "Stacks come from the event");
     assert!(
         effect.expires_at > Some(ts + chrono::Duration::seconds(179)),
@@ -1126,7 +1126,7 @@ fn test_single_instance_charges_create_missing_instance() {
     );
     let effect = tracker.active_effects().next().unwrap();
     assert_eq!(effect.definition_id, "kolto_shell");
-    assert!(effect.is_from_local_player);
+    assert_eq!(effect.source_entity_id, local_player_id);
     assert_eq!(effect.stacks, 5);
 }
 
