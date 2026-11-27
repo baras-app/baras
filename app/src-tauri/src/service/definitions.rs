@@ -362,7 +362,7 @@ impl CombatService {
             .ok()
             .filter(|p| p.exists())
         {
-            Self::load_bundled_definitions(&mut set, &bundled_dir);
+            set.add_from_dir(&bundled_dir);
         }
 
         // 2. Load user overrides from single config file
@@ -373,38 +373,6 @@ impl CombatService {
         }
 
         set
-    }
-
-    /// Load bundled effect definitions from a directory
-    fn load_bundled_definitions(set: &mut DefinitionSet, dir: &std::path::Path) {
-        let Ok(entries) = std::fs::read_dir(dir) else {
-            debug!(path = ?dir, "Failed to read bundled effects directory");
-            return;
-        };
-
-        let files: Vec<_> = entries
-            .flatten()
-            .map(|e| e.path())
-            .filter(|p| {
-                p.extension().is_some_and(|ext| ext == "toml") && p.file_name().is_none_or(|n| n != "custom.toml") // Skip template
-            })
-            .collect();
-
-        debug!(count = files.len(), path = ?dir, "Loading bundled effect files");
-
-        for path in files {
-            if let Ok(contents) = std::fs::read_to_string(&path)
-                && let Ok(config) = toml::from_str::<DefinitionConfig>(&contents)
-            {
-                let count = config.effects.len();
-                set.add_definitions(config.effects, false);
-                debug!(
-                    file = ?path.file_name().unwrap_or_default(),
-                    count,
-                    "Loaded effect definitions"
-                );
-            }
-        }
     }
 
     /// Load user effect overrides from single config file
