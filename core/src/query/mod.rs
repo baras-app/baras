@@ -15,6 +15,8 @@ mod gcd;
 mod overview;
 mod raid_debuffs;
 mod recap_defensives;
+mod replay;
+mod replay_spans;
 mod rotation;
 mod search_parser;
 mod threat;
@@ -43,8 +45,8 @@ pub use baras_types::{
     DeathRecapDefensive, DeathRecapEffect, DeathRecapEvent, DeathRecapEventKind, DeathRecapHealRow,
     DeathRecapHealSource, DeathRecapHpPoint, DeathRecapKillingBlow, EffectChartData, EffectUptimeCell, EffectWindow,
     EncounterTimeline, EntityBreakdown, GcdSlot, GroupMetric, GroupTimeSeries, GroupedEntityNames, HpPoint,
-    NpcHealthRow, PhaseSegment, PlayerDeath, RaidDebuffReport, RaidOverviewRow, RotationAnalysis, RotationCycle,
-    RotationEvent, SortDirection, ThreatReport, TimeRange, TimeSeriesPoint,
+    NpcHealthRow, PhaseSegment, PlayerDeath, RaidDebuffReport, RaidOverviewRow, ReplayData, RotationAnalysis,
+    RotationCycle, RotationEvent, SortDirection, ThreatReport, TimeRange, TimeSeriesPoint,
 };
 
 /// Escape single quotes for SQL string literals (O'Brien -> O''Brien)
