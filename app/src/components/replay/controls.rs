@@ -7,7 +7,7 @@ use baras_types::formatting;
 use super::ReplayState;
 use super::timeline::Timeline;
 
-const SPEEDS: [f64; 4] = [0.5, 1.0, 2.0, 4.0];
+const SPEEDS: [f64; 5] = [0.25, 0.5, 1.0, 2.0, 4.0];
 /// Seconds the step buttons and arrow keys move
 const STEP_SECS: f32 = 5.0;
 
