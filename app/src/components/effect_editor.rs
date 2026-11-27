@@ -1,21 +1,21 @@
 //! Effect Editor Panel
 //!
-//! UI for viewing and editing effect definitions with:
-//! - Grouped by file with collapsible headers
-//! - Inline expansion for editing
-//! - Full CRUD operations
+//! The effect definitions as one filterable list; the picked effect's form
+//! opens in the editor drawer.
 
-use crate::components::editor_drawer::{DiscardPrompt, layout_style, provide_drawer_guard};
 use dioxus::prelude::*;
 
-use super::effect_form::EffectEditForm;
-use super::effect_trigger::effect_icon_id;
+use super::discipline_selector::class_of;
+use super::effect_bulk::{BulkAction, BulkMenu};
+use super::effect_import_modal::EffectImportPreviewModal;
+use super::effect_row::{EffectListHead, EffectRow, SortKey};
 use super::encounter_editor::InlineNameCreator;
 use crate::api;
-use crate::components::ability_icon::ColorIcon;
-use crate::components::editor_common::{Origin, OriginBadge};
+use crate::components::editor_common::Origin;
+use crate::components::editor_drawer::{DiscardPrompt, layout_style, provide_drawer_guard};
 use crate::components::editor_sort::{apply_rank, use_stable_rank};
-use crate::components::effect_filters::{EffectFilterBar, matches_filters};
+use crate::components::effect_filters::{EffectFilterBar, matches_filters, resolved};
+use crate::components::toast::{ToastManager, ToastSeverity, use_toast};
 use crate::types::{
     AlertTrigger, AudioConfig, EffectImportPreview, EffectListItem, EntityFilter, Trigger, UiSessionState,
 };
@@ -82,33 +82,71 @@ fn default_effect(name: String) -> EffectListItem {
 /// Marker ID for a draft effect that hasn't been saved yet
 const DRAFT_EFFECT_ID: &str = "__new_draft__";
 
+/// Bundled + user override = edited built-in
+pub(crate) fn effect_origin(is_draft: bool, is_bundled: bool, is_user_override: bool) -> Origin {
+    if is_draft {
+        Origin::New
+    } else {
+        Origin::of(is_bundled && !is_user_override, is_bundled && is_user_override)
+    }
+}
+
+/// The value, or the error as a toast
+fn or_toast<T>(mut toast: ToastManager, result: Result<T, String>) -> Option<T> {
+    result.map_err(|e| toast.show(e, ToastSeverity::Normal)).ok()
+}
+
+/// A mutation's outcome as a toast: `done` on success
+fn notify<T>(mut toast: ToastManager, done: &str, result: Result<T, String>) -> Option<T> {
+    let value = or_toast(toast, result)?;
+    toast.show(done, ToastSeverity::Success);
+    Some(value)
+}
+
+/// Export the given effects (none = every user effect) to a file the user picks
+async fn export_to_file(toast: ToastManager, effect_ids: Option<&[String]>, default_name: &str) {
+    let Some(toml) = or_toast(toast, api::export_effects_toml(effect_ids).await) else {
+        return;
+    };
+    if let Some(path) = api::save_file_dialog(default_name).await {
+        notify(toast, "Exported", api::save_export_file(&path, &toml).await);
+    }
+}
+
+/// An effect ID from free text: lowercase snake_case ("Force Shroud (Copy)" → force_shroud_copy)
+pub(crate) fn slug_id(text: &str) -> String {
+    text.to_lowercase()
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("_")
+}
+
 #[derive(Props, Clone, PartialEq)]
 pub struct EffectEditorProps {
     /// Unified UI session state (includes persisted state for this panel)
     pub state: Signal<UiSessionState>,
+    /// Discipline of the logged-in character: its class starts the class filter
+    #[props(default)]
+    pub player_discipline: Option<String>,
 }
 
 #[component]
 pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
     let guard = provide_drawer_guard();
-    // Data state (loaded fresh)
+    let toast = use_toast();
     let mut effects = use_signal(Vec::<EffectListItem>::new);
     let mut loading = use_signal(|| true);
-    let mut save_status = use_signal(String::new);
-    let mut status_is_error = use_signal(|| false);
     // Draft for new effects - not yet saved to backend
     let mut draft_effect = use_signal(|| None::<EffectListItem>);
-    // Import state
     let mut import_preview = use_signal(|| None::<EffectImportPreview>);
     let mut import_toml_content = use_signal(|| None::<String>);
 
-    // Extract persisted state fields
+    // Persisted state: local copies, synced back one way
     let search_query = use_signal(|| props.state.read().effects_editor.search_query.clone());
     let mut expanded_effect = use_signal(|| props.state.read().effects_editor.expanded_effect.clone());
-    let mut hide_disabled_effects = use_signal(|| props.state.read().effects_editor.hide_disabled_effects);
+    let hide_disabled_effects = use_signal(|| props.state.read().effects_editor.hide_disabled_effects);
     let filters = use_signal(|| props.state.read().effects_editor.filters.clone());
-
-    // Sync persisted state back to unified state
     use_effect(move || {
         let mut state = props.state.write();
         state.effects_editor.search_query = search_query.read().clone();
@@ -117,11 +155,13 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
         state.effects_editor.filters = filters.read().clone();
     });
 
-    // Load effects on mount
-    use_future(move || async move {
+    let reload = move || async move {
         if let Some(e) = api::get_effect_definitions().await {
             effects.set(e);
         }
+    };
+    use_future(move || async move {
+        reload().await;
         loading.set(false);
     });
 
@@ -134,280 +174,184 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
             // Small delay to ensure DOM is rendered
             spawn(async move {
                 gloo_timers::future::TimeoutFuture::new(100).await;
-                if let Some(window) = web_sys::window()
-                    && let Some(document) = window.document()
+                if let Some(element) = web_sys::window()
+                    .and_then(|w| w.document())
+                    .and_then(|d| d.get_element_by_id(&format!("effect-{effect_id}")))
                 {
-                    let element_id = format!("effect-{}", effect_id);
-                    if let Some(element) = document.get_element_by_id(&element_id) {
-                        element.scroll_into_view();
-                    }
+                    element.scroll_into_view();
                 }
             });
         }
     });
 
-    // Name search + hide-disabled; the sidebar counts against this list
+    let player_class = props.player_discipline.as_deref().and_then(class_of);
+
+    // Search + hide-disabled; the filter counts run against this list
     let searched_effects = use_memo(move || {
         let query = search_query().to_lowercase();
         let hide_disabled = hide_disabled_effects();
+        let hit = |s: &str| s.to_lowercase().contains(&query);
         effects()
             .into_iter()
-            .filter(|e| (!hide_disabled || e.enabled) && (query.is_empty() || e.name.to_lowercase().contains(&query)))
+            .filter(|e| {
+                (!hide_disabled || e.enabled)
+                    && (query.is_empty() || hit(&e.name) || hit(&e.id) || e.display_text.as_deref().is_some_and(hit))
+            })
             .collect::<Vec<_>>()
     });
-    let filtered_effects = use_memo(move || {
-        let f = filters.read();
+    let filtered_effects = use_memo(use_reactive!(|player_class| {
+        let f = resolved(&filters.read(), player_class);
         searched_effects()
             .into_iter()
             .filter(|e| matches_filters(&f, e))
             .collect::<Vec<_>>()
-    });
+    }));
     // Always A–Z (the backend order is arbitrary); a rename keeps its row in place
     let rank = use_stable_rank(effects.read().iter().map(|e| (e.id.as_str(), e.name.as_str())), true);
     let mut shown_effects = filtered_effects();
     apply_rank(&mut shown_effects, &rank.read(), |e| &e.id);
+    let sort = use_signal(|| (SortKey::Name, false));
+    let (sort_by, descending) = sort();
+    if sort_by != SortKey::Name {
+        shown_effects.sort_by_cached_key(|e| sort_by.text(e));
+    }
+    if descending {
+        shown_effects.reverse();
+    }
+    let disabled_count = effects.read().iter().filter(|e| !e.enabled).count();
 
     // Handlers
-    let on_save = move |updated_effect: EffectListItem| {
+    let on_save = move |updated: EffectListItem| {
         spawn(async move {
-            match api::update_effect_definition(&updated_effect).await {
-                Ok(()) => {
-                    // Only a stored save reaches the list: the form stays unsaved on failure
-                    let mut current = effects();
-                    if let Some(idx) = current.iter().position(|e| e.id == updated_effect.id) {
-                        current[idx] = updated_effect.clone();
-                        effects.set(current);
-                    }
-                    save_status.set("Saved".to_string());
-                    status_is_error.set(false);
-                    // Refetch to get updated is_bundled/is_user_override flags
-                    if let Some(e) = api::get_effect_definitions().await {
-                        effects.set(e);
-                    }
+            if notify(toast, "Saved", api::update_effect_definition(&updated).await).is_some() {
+                // The saved values reach the list first, exactly as the form
+                // holds them, so its draft reads as saved; only then the
+                // refetch, whose changed origin flags the draft follows
+                if let Some(e) = effects.write().iter_mut().find(|e| e.id == updated.id) {
+                    *e = updated;
                 }
-                Err(e) => {
-                    save_status.set(e);
-                    status_is_error.set(true);
-                }
+                reload().await;
             }
         });
     };
 
+    // Built-in items get "reset", not "delete"
     let mut on_delete = move |effect: EffectListItem| {
-        let effect_id = effect.id.clone();
-        let is_reset = effect.is_bundled; // Built-in items get "reset", not "delete"
-
-        if !is_reset {
-            // Custom item — remove from local list immediately
-            let current = effects();
-            let filtered: Vec<_> = current.into_iter().filter(|e| e.id != effect_id).collect();
-            effects.set(filtered);
-        }
         expanded_effect.set(None);
-
         spawn(async move {
-            match api::delete_effect_definition(&effect.id).await {
-                Ok(()) => {
-                    if is_reset {
-                        save_status.set("Reset to built-in".to_string());
-                        // Refetch to get the original bundled definition back
-                        if let Some(e) = api::get_effect_definitions().await {
-                            effects.set(e);
-                        }
-                    } else {
-                        save_status.set("Deleted".to_string());
-                    }
-                    status_is_error.set(false);
-                }
-                Err(e) => {
-                    save_status.set(e);
-                    status_is_error.set(true);
-                }
-            }
+            let done = if effect.is_bundled {
+                "Reset to built-in"
+            } else {
+                "Deleted"
+            };
+            notify(toast, done, api::delete_effect_definition(&effect.id).await);
+            reload().await;
         });
     };
 
+    // A copy opens as an unsaved draft, so its ID can be set before it is created
     let on_duplicate = move |effect: EffectListItem| {
-        spawn(async move {
-            match api::duplicate_effect_definition(&effect.id).await {
-                Ok(new_effect) => {
-                    let new_id = new_effect.id.clone();
-                    let mut current = effects();
-                    current.push(new_effect);
-                    effects.set(current);
-                    expanded_effect.set(Some(new_id));
-                    save_status.set("Duplicated".to_string());
-                    status_is_error.set(false);
-                }
-                Err(e) => {
-                    save_status.set(e);
-                    status_is_error.set(true);
-                }
-            }
+        guard.confirm(move |_| {
+            draft_effect.set(Some(EffectListItem {
+                id: String::new(),
+                name: format!("{} (Copy)", effect.name),
+                is_bundled: false,
+                is_user_override: false,
+                ..effect.clone()
+            }));
+            expanded_effect.set(Some(DRAFT_EFFECT_ID.to_string()));
         });
     };
 
     let on_export_effect = move |effect: EffectListItem| {
-        let effect_id = effect.id.clone();
         spawn(async move {
-            match api::export_effects_toml(Some(&effect_id)).await {
-                Ok(toml) => {
-                    let default_name = format!("{}.toml", effect_id);
-                    if let Some(path) = api::save_file_dialog(&default_name).await {
-                        match api::save_export_file(&path, &toml).await {
-                            Ok(()) => {
-                                save_status.set("Exported".to_string());
-                                status_is_error.set(false);
-                            }
-                            Err(e) => {
-                                save_status.set(e);
-                                status_is_error.set(true);
-                            }
-                        }
-                    }
+            export_to_file(
+                toast,
+                Some(std::slice::from_ref(&effect.id)),
+                &format!("{}.toml", effect.id),
+            )
+            .await;
+        });
+    };
+
+    // Bulk actions take the list as shown
+    let shown_ids: Vec<String> = shown_effects.iter().map(|e| e.id.clone()).collect();
+    let shown_count = shown_ids.len();
+    let on_bulk = move |action: BulkAction| {
+        let ids = shown_ids.clone();
+        spawn(async move {
+            let n = ids.len();
+            let done = match action {
+                BulkAction::Export => return export_to_file(toast, Some(&ids), "effects.toml").await,
+                BulkAction::ExportOwn => return export_to_file(toast, None, "effects_custom.toml").await,
+                BulkAction::Enabled(v) => {
+                    let verb = if v { "Enabled" } else { "Disabled" };
+                    notify(
+                        toast,
+                        &format!("{verb} {n} effects"),
+                        api::set_effect_toggles(&ids, Some(v), None).await,
+                    )
                 }
-                Err(e) => {
-                    save_status.set(e);
-                    status_is_error.set(true);
+                BulkAction::Audio(v) => {
+                    let state = if v { "on" } else { "off" };
+                    notify(
+                        toast,
+                        &format!("Audio {state} for {n} effects"),
+                        api::set_effect_toggles(&ids, None, Some(v)).await,
+                    )
                 }
+            };
+            if done.is_some() {
+                reload().await;
             }
         });
     };
 
+    // A new effect is a local draft until its first save
     let on_create = move |name: String| {
-        // Create a local draft - don't save to backend yet
-        let mut new_effect = default_effect(name);
-        new_effect.id = DRAFT_EFFECT_ID.to_string();
-
-        // Set the draft and expand it
-        draft_effect.set(Some(new_effect));
+        draft_effect.set(Some(default_effect(name)));
         expanded_effect.set(Some(DRAFT_EFFECT_ID.to_string()));
-        save_status.set("Fill in effect details and click Save".to_string());
-        status_is_error.set(false);
     };
 
-    // Handler for saving a draft (creates new effect on backend)
     let on_save_draft = move |mut effect: EffectListItem| {
-        // Generate ID from name (snake_case)
-        effect.id = effect
-            .name
-            .to_lowercase()
-            .chars()
-            .map(|c| if c.is_alphanumeric() { c } else { '_' })
-            .collect::<String>()
-            .split('_')
-            .filter(|s| !s.is_empty())
-            .collect::<Vec<_>>()
-            .join("_");
-
+        // The ID typed in the form, else one made from the name
+        effect.id = slug_id(if effect.id.trim().is_empty() {
+            &effect.name
+        } else {
+            &effect.id
+        });
         spawn(async move {
-            match api::create_effect_definition(&effect).await {
-                Ok(created) => {
-                    let created_id = created.id.clone();
-                    let mut current = effects();
-                    current.push(created);
-                    effects.set(current);
-                    // Clear draft and expand the new effect
-                    draft_effect.set(None);
-                    expanded_effect.set(Some(created_id));
-                    save_status.set("Created".to_string());
-                    status_is_error.set(false);
-                }
-                Err(e) => {
-                    save_status.set(e);
-                    status_is_error.set(true);
-                }
+            if let Some(created) = notify(toast, "Created", api::create_effect_definition(&effect).await) {
+                let created_id = created.id.clone();
+                effects.write().push(created);
+                draft_effect.set(None);
+                expanded_effect.set(Some(created_id));
             }
         });
     };
 
-    // Handler for canceling draft creation
     let on_cancel_draft = move |_: ()| {
         draft_effect.set(None);
         expanded_effect.set(None);
-        save_status.set(String::new());
     };
 
     rsx! {
         div { class: "editor-layout", style: layout_style(),
             DiscardPrompt {}
             div { class: "editor-main effect-editor-panel",
-                // Header
                 div { class: "effect-editor-header",
                     h2 { "Effect Definitions" }
                     div { class: "header-right",
-                        if !save_status().is_empty() {
-                            span {
-                                class: if status_is_error() { "save-status error" } else { "save-status" },
-                                "{save_status()}"
-                            }
-                        }
-                        span { class: "effect-count", "{filtered_effects().len()} of {effects().len()} effects" }
-                        {
-                            let disabled_count = effects().iter().filter(|e| !e.enabled).count();
-                            rsx! {
-                                if disabled_count > 0 {
-                                    label { class: "flex items-center gap-xs text-xs text-muted cursor-pointer",
-                                        input {
-                                            r#type: "checkbox",
-                                            checked: hide_disabled_effects(),
-                                            onchange: move |e| hide_disabled_effects.set(e.checked()),
-                                        }
-                                        "Hide disabled ({disabled_count})"
-                                    }
-                                }
-                            }
-                        }
-                        button {
-                            class: "btn btn-sm",
-                            onclick: move |_| {
-                                spawn(async move {
-                                    match api::export_effects_toml(None).await {
-                                        Ok(toml) => {
-                                            if let Some(path) = api::save_file_dialog("effects_custom.toml").await {
-                                                match api::save_export_file(&path, &toml).await {
-                                                    Ok(()) => {
-                                                        save_status.set("Exported".to_string());
-                                                        status_is_error.set(false);
-                                                    }
-                                                    Err(e) => {
-                                                        save_status.set(e);
-                                                        status_is_error.set(true);
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        Err(e) => {
-                                            save_status.set(e);
-                                            status_is_error.set(true);
-                                        }
-                                    }
-                                });
-                            },
-                            "Export All"
-                        }
+                        BulkMenu { count: shown_count, total: effects.read().len(), on_pick: on_bulk }
                         button {
                             class: "btn btn-sm",
                             onclick: move |_| {
                                 spawn(async move {
                                     let Some(path) = api::open_toml_file_dialog().await else { return };
-                                    let content = match api::read_import_file(&path).await {
-                                        Ok(c) => c,
-                                        Err(e) => {
-                                            save_status.set(e);
-                                            status_is_error.set(true);
-                                            return;
-                                        }
-                                    };
-                                    match api::preview_import_effects(&content).await {
-                                        Ok(preview) => {
-                                            import_toml_content.set(Some(content));
-                                            import_preview.set(Some(preview));
-                                        }
-                                        Err(e) => {
-                                            save_status.set(e);
-                                            status_is_error.set(true);
-                                        }
+                                    let Some(content) = or_toast(toast, api::read_import_file(&path).await) else { return };
+                                    if let Some(preview) = or_toast(toast, api::preview_import_effects(&content).await) {
+                                        import_toml_content.set(Some(content));
+                                        import_preview.set(Some(preview));
                                     }
                                 });
                             },
@@ -421,9 +365,15 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                     }
                 }
 
-                EffectFilterBar { effects: searched_effects, filters, search: search_query }
+                EffectFilterBar {
+                    effects: searched_effects,
+                    filters,
+                    search: search_query,
+                    hide_disabled: hide_disabled_effects,
+                    disabled_count,
+                    player_class,
+                }
 
-                // Effect list (flat)
                 if loading() {
                     div { class: "empty-state loading-late", "Loading effects..." }
                 } else if filtered_effects().is_empty() && draft_effect().is_none() {
@@ -439,11 +389,13 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                         div { class: "empty-state", "No effects match the search and filters" }
                     }
                 } else {
+                    // The column names sit outside the scrolling rows
+                    div { class: "effect-defs",
+                    EffectListHead { sort }
                     div { class: "effect-list",
-                        // Draft effect at the top (if any)
                         if let Some(draft) = draft_effect() {
                             {
-                                let is_draft_expanded = expanded_effect() == Some(DRAFT_EFFECT_ID.to_string());
+                                let is_draft_expanded = expanded_effect().as_deref() == Some(DRAFT_EFFECT_ID);
                                 rsx! {
                                     EffectRow {
                                         key: "{DRAFT_EFFECT_ID}",
@@ -456,65 +408,47 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                                         on_save: on_save_draft,
                                         on_delete: on_cancel_draft,
                                         on_duplicate: move |_| {},
-                                        on_cancel: on_cancel_draft,
                                     }
                                 }
                             }
                         }
 
-                        // Existing effects
                         for effect in shown_effects {
                             {
                                 let effect_key = effect.id.clone();
-                                let is_effect_expanded = expanded_effect() == Some(effect_key.clone());
-                                let effect_clone = effect.clone();
-                                let effect_for_delete = effect.clone();
-                                let effect_for_duplicate = effect.clone();
-                                let effect_for_export = effect.clone();
+                                let is_effect_expanded = expanded_effect().as_deref() == Some(effect_key.as_str());
+                                let (for_delete, for_duplicate, for_export) = (effect.clone(), effect.clone(), effect.clone());
 
                                 rsx! {
                                     EffectRow {
                                         key: "{effect_key}",
-                                        effect: effect_clone,
+                                        effect,
                                         expanded: is_effect_expanded,
-                                        is_draft: false,
                                         on_toggle: move |_| {
                                             guard.switch(expanded_effect, (!is_effect_expanded).then(|| effect_key.clone()));
                                         },
                                         on_save: on_save,
-                                        on_delete: move |_| on_delete(effect_for_delete.clone()),
-                                        on_duplicate: move |_| on_duplicate(effect_for_duplicate.clone()),
-                                        on_export: move |_| on_export_effect(effect_for_export.clone()),
-                                        on_cancel: move |_| {},
+                                        on_delete: move |_| on_delete(for_delete.clone()),
+                                        on_duplicate: move |_| on_duplicate(for_duplicate.clone()),
+                                        on_export: move |_| on_export_effect(for_export.clone()),
                                     }
                                 }
                             }
                         }
                     }
+                    }
                 }
 
-                // Import preview modal
                 if let Some(preview) = import_preview() {
                     EffectImportPreviewModal {
-                        preview: preview,
+                        preview,
                         on_confirm: move |_| {
                             let content = import_toml_content().unwrap_or_default();
                             import_preview.set(None);
                             import_toml_content.set(None);
                             spawn(async move {
-                                match api::import_effects_toml(&content).await {
-                                    Ok(()) => {
-                                        // Refresh the effects list
-                                        if let Some(e) = api::get_effect_definitions().await {
-                                            effects.set(e);
-                                        }
-                                        save_status.set("Imported".to_string());
-                                        status_is_error.set(false);
-                                    }
-                                    Err(e) => {
-                                        save_status.set(e);
-                                        status_is_error.set(true);
-                                    }
+                                if notify(toast, "Imported", api::import_effects_toml(&content).await).is_some() {
+                                    reload().await;
                                 }
                             });
                         },
@@ -523,245 +457,6 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                             import_toml_content.set(None);
                         },
                     }
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Import Preview Modal
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[component]
-fn EffectImportPreviewModal(
-    preview: EffectImportPreview,
-    on_confirm: EventHandler<()>,
-    on_cancel: EventHandler<()>,
-) -> Element {
-    let has_errors = !preview.errors.is_empty();
-    let replace_count = preview.effects_to_replace.len();
-    let add_count = preview.effects_to_add.len();
-
-    // Build combined rows: replacements first, then additions
-    let rows: Vec<(&str, &crate::types::EffectImportDiff)> = preview
-        .effects_to_replace
-        .iter()
-        .map(|e| ("replace", e))
-        .chain(preview.effects_to_add.iter().map(|e| ("add", e)))
-        .collect();
-
-    rsx! {
-        div { class: "modal-overlay", onclick: move |_| on_cancel.call(()),
-            div { class: "modal-content", style: "max-width: 600px;",
-                onclick: move |e| e.stop_propagation(),
-
-                div { class: "modal-header",
-                    h3 { "Import Effect Definitions" }
-                }
-
-                div { class: "modal-body", style: "max-height: 400px; overflow-y: auto; padding: 0;",
-                    // Errors
-                    for error in &preview.errors {
-                        div { style: "color: var(--color-error); padding: 4px 12px;",
-                            "{error}"
-                        }
-                    }
-
-                    if !rows.is_empty() {
-                        table { class: "import-table", style: "width: 100%; border-collapse: collapse;",
-                            thead {
-                                tr { style: "text-align: left; border-bottom: 1px solid var(--border-medium);",
-                                    th { style: "padding: 4px 8px; width: 24px;" }
-                                    th { style: "padding: 4px 8px;", "Name" }
-                                    th { style: "padding: 4px 8px;", "ID" }
-                                    th { style: "padding: 4px 8px;", "Target" }
-                                }
-                            }
-                            tbody {
-                                for (action, effect) in &rows {
-                                    tr { style: "border-bottom: 1px solid var(--border-subtle);",
-                                        td { style: "padding: 3px 8px; width: 24px; text-align: center;",
-                                            if *action == "replace" {
-                                                span { class: "text-warning", "~" }
-                                            } else {
-                                                span { class: "text-success", "+" }
-                                            }
-                                        }
-                                        td { style: "padding: 3px 8px;", "{effect.name}" }
-                                        td { style: "padding: 3px 8px;",
-                                            code { class: "text-xs", "{effect.id}" }
-                                        }
-                                        td { style: "padding: 3px 8px;",
-                                            {
-                                                let targets_label = match effect.display_targets.len() {
-                                                    0 => "None".to_string(),
-                                                    1 => effect.display_targets[0].label().to_string(),
-                                                    n => format!("{n} overlays"),
-                                                };
-                                                rsx! { span { class: "tag", "{targets_label}" } }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                div { class: "modal-footer",
-                    div { class: "text-muted text-sm", style: "margin-right: auto;",
-                        "{replace_count} replace, {add_count} new"
-                        if preview.effects_unchanged > 0 {
-                            {
-                                let unchanged = preview.effects_unchanged;
-                                rsx! { ", {unchanged} unchanged" }
-                            }
-                        }
-                    }
-                    button {
-                        class: "btn",
-                        onclick: move |_| on_cancel.call(()),
-                        "Cancel"
-                    }
-                    button {
-                        class: "btn btn-success",
-                        disabled: has_errors,
-                        onclick: move |_| on_confirm.call(()),
-                        "Import"
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Effect Row
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Bundled + user override = edited built-in
-pub(crate) fn effect_origin(is_draft: bool, is_bundled: bool, is_user_override: bool) -> Origin {
-    if is_draft {
-        Origin::New
-    } else {
-        Origin::of(is_bundled && !is_user_override, is_bundled && is_user_override)
-    }
-}
-
-#[component]
-fn EffectRow(
-    effect: EffectListItem,
-    expanded: bool,
-    #[props(default = false)] is_draft: bool,
-    on_toggle: EventHandler<()>,
-    on_save: EventHandler<EffectListItem>,
-    on_delete: EventHandler<()>,
-    on_duplicate: EventHandler<()>,
-    #[props(default)] on_export: EventHandler<()>,
-    #[props(default)] on_cancel: EventHandler<()>,
-) -> Element {
-    let mut is_dirty = use_signal(|| false);
-    let color = effect.color.unwrap_or([128, 128, 128, 255]);
-    let color_hex = format!("#{:02x}{:02x}{:02x}", color[0], color[1], color[2]);
-
-    // Clones for toggle handlers
-    let effect_for_enable = effect.clone();
-    let effect_for_audio = effect.clone();
-
-    rsx! {
-        div {
-            id: "effect-{effect.id}",
-            class: "list-item",
-            class: if expanded { "expanded" },
-            class: if !effect.enabled { "item-disabled" },
-            div {
-                class: "list-item-header",
-                onclick: move |_| on_toggle.call(()),
-
-                ColorIcon {
-                    icon_id: effect.show_icon.then(|| effect_icon_id(effect.icon_ability_id, &effect.trigger)).flatten(),
-                    color: color_hex.clone(),
-                }
-
-                // Name | ID grouped left-aligned
-                div { class: "row-col-name-id",
-                    span { class: "effect-name truncate", "{effect.name}" }
-                    if expanded && is_dirty() {
-                        span { class: "unsaved-indicator", title: "Unsaved changes" }
-                    }
-                    if !is_draft {
-                        span { class: "text-xs text-mono text-muted", title: "{effect.id}", "{effect.id}" }
-                    }
-                }
-
-                // Trigger / target / duration
-                span { class: "row-col-trigger",
-                    if effect.is_alert {
-                        span { class: "tag tag-alert", "Alert" }
-                    } else {
-                        {
-                            let targets_label = match effect.display_targets.len() {
-                                0 => "None".to_string(),
-                                1 => effect.display_targets[0].label().to_string(),
-                                n => format!("⊞ {n} targets"),
-                            };
-                            rsx! { span { class: "tag", "{targets_label}" } }
-                        }
-                    }
-                }
-
-                span { class: "row-col-duration",
-                    if !effect.is_alert {
-                        if let Some(dur) = effect.duration_secs {
-                            "{dur:.0}s"
-                        }
-                    }
-                }
-
-                // Right side - toggle buttons (clickable without expanding)
-                div { class: "flex items-center gap-xs shrink-0",
-                    // Enabled toggle
-                    span {
-                        class: "row-toggle",
-                        title: if effect.enabled { "Disable effect" } else { "Enable effect" },
-                        onclick: move |e| {
-                            e.stop_propagation();
-                            let mut updated = effect_for_enable.clone();
-                            updated.enabled = !updated.enabled;
-                            on_save.call(updated);
-                        },
-                        i { class: if effect.enabled { "fa-solid fa-power-off text-success" } else { "fa-solid fa-power-off text-muted" } }
-                    }
-
-                    // Audio toggle
-                    span {
-                        class: "row-toggle",
-                        title: if effect.audio.enabled { "Disable audio" } else { "Enable audio" },
-                        onclick: move |e| {
-                            e.stop_propagation();
-                            let mut updated = effect_for_audio.clone();
-                            updated.audio.enabled = !updated.audio.enabled;
-                            on_save.call(updated);
-                        },
-                        i { class: if effect.audio.enabled { "fa-solid fa-volume-high text-primary" } else { "fa-solid fa-volume-xmark text-muted" } }
-                    }
-                    OriginBadge { origin: effect_origin(is_draft, effect.is_bundled, effect.is_user_override), kind: "effect" }
-                }
-            }
-
-            if expanded {
-                EffectEditForm {
-                    effect: effect.clone(),
-                    is_draft: is_draft,
-                    is_bundled: effect.is_bundled,
-                    is_user_override: effect.is_user_override,
-                    on_save: on_save,
-                    on_delete: on_delete,
-                    on_duplicate: on_duplicate,
-                    on_export: on_export,
-                    on_dirty: move |dirty: bool| is_dirty.set(dirty),
-                    on_close: on_toggle,
                 }
             }
         }

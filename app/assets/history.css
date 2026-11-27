@@ -1715,6 +1715,22 @@
   letter-spacing: 0.03em;
 }
 
+/* A heading that picks or clears its whole group */
+button.multi-select-group.pickable {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.multi-select-group.pickable:hover {
+  color: var(--text-primary);
+}
+
 /* ── Raid Summaries: header actions, bosses with their pulls ── */
 
 .run-header-actions {

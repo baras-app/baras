@@ -75,11 +75,19 @@ pub(crate) const ALL_DISCIPLINES: &[(&str, &[&str])] = &[
     ),
 ];
 
+/// Class pair label ("Sorcerer / Sage") a discipline belongs to
+pub(crate) fn class_of(discipline: &str) -> Option<&'static str> {
+    ALL_DISCIPLINES
+        .iter()
+        .find(|(_, names)| names.contains(&discipline))
+        .map(|(class, _)| *class)
+}
+
 /// Role display names selectable when `include_roles` is set
 pub(crate) const ALL_ROLES: &[&str] = &["Tank", "Healer", "DPS"];
 
 /// Disciplines grouped by class (roles first with `include_roles`), as the
-/// shared multi-select
+/// shared multi-select; a class heading picks all of its disciplines
 #[component]
 pub fn DisciplineSelector(
     selected: Vec<String>,
@@ -102,6 +110,6 @@ pub fn DisciplineSelector(
         .collect();
 
     rsx! {
-        MultiSelect { any_label: empty_label, noun: "selected", entries, picked: selected, on_change }
+        MultiSelect { any_label: empty_label, noun: "selected", entries, picked: selected, group_toggle: true, on_change }
     }
 }

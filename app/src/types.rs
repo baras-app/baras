@@ -29,6 +29,7 @@ pub use baras_types::{
     DotTrackerConfig,
     EffectFilters,
     EffectModifier,
+    EffectScope,
     EffectSelector,
     EffectStackConfig,
     EffectsAConfig,

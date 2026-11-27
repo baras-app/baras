@@ -1229,6 +1229,7 @@ pub fn App() -> Element {
                     div { class: "kept-page", style: shown(MainTab::Effects),
                         EffectEditorPanel {
                             state: ui_state,
+                            player_discipline: session_info().and_then(|s| s.player_discipline),
                         }
                     }
                 }

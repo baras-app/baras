@@ -61,6 +61,16 @@ fn toggle(picked: &[String], values: &[String]) -> Vec<String> {
     next
 }
 
+/// `picked` with every one of `values` added, or all removed when all are in
+fn toggle_group(picked: &[String], values: &[String]) -> Vec<String> {
+    let all_on = values.iter().all(|v| picked.contains(v));
+    let mut next: Vec<String> = picked.iter().filter(|p| !values.contains(p)).cloned().collect();
+    if !all_on {
+        next.extend(values.iter().cloned());
+    }
+    next
+}
+
 /// Toggle one value in `picked` (a board click); a discipline brings its mirror
 pub fn toggle_value(picked: &[String], value: &str, mirrored: bool) -> Vec<String> {
     let values = if mirrored {
@@ -80,6 +90,9 @@ pub fn MultiSelect(
     entries: Vec<Entry>,
     picked: Vec<String>,
     #[props(default = "")] title: &'static str,
+    /// Group headings are clickable: picks or clears the whole group
+    #[props(default)]
+    group_toggle: bool,
     on_change: EventHandler<Vec<String>>,
 ) -> Element {
     let mut open = use_signal(|| false);
@@ -111,8 +124,26 @@ pub fn MultiSelect(
                         " {any_label}"
                     }
                     div { class: "nav-menu-divider" }
-                    for (label, values) in entries.iter().cloned() {
-                        if values.is_empty() {
+                    for (i, (label, values)) in entries.iter().cloned().enumerate() {
+                        if values.is_empty() && group_toggle {
+                            {
+                                let group: Vec<String> = entries[i + 1..]
+                                    .iter()
+                                    .take_while(|(_, v)| !v.is_empty())
+                                    .flat_map(|(_, v)| v.iter().cloned())
+                                    .collect();
+                                let current = picked.clone();
+                                rsx! {
+                                    button {
+                                        key: "{label}",
+                                        class: "multi-select-group pickable",
+                                        title: "Pick or clear all of {label}",
+                                        onclick: move |_| on_change.call(toggle_group(&current, &group)),
+                                        "{label}"
+                                    }
+                                }
+                            }
+                        } else if values.is_empty() {
                             div { key: "{label}", class: "multi-select-group", "{label}" }
                         } else {
                             {

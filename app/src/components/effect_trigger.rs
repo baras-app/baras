@@ -17,15 +17,6 @@ pub(crate) fn get_trigger_filters(trigger: &Trigger) -> (EntityFilter, EntityFil
     }
 }
 
-/// Get the "when" label for effect-based triggers
-pub(crate) fn get_effect_when_label(trigger: &Trigger) -> &'static str {
-    match trigger {
-        Trigger::EffectApplied { .. } => "Effect Applied",
-        Trigger::EffectRemoved { .. } => "Effect Removed",
-        _ => "Effect Applied",
-    }
-}
-
 /// Icon the overlay shows: the explicit icon, else the trigger's first effect/ability id
 pub(crate) fn effect_icon_id(icon: Option<u64>, trigger: &Trigger) -> Option<u64> {
     icon.or_else(|| {

@@ -1,29 +1,46 @@
-//! Effects editor filter bar, pinned above the list in one row: the name
-//! search, an origin toggle, overlay and discipline multi-selects, then Clear. Counts apply the search and the other filters, so they show what
-//! picking that value would leave.
+//! Effects editor filter bar, pinned above the list in one row: the search,
+//! the class picker with its class / general scope, the overlay picker, an
+//! origin toggle, hide-disabled, then Clear.
+//! Counts apply the search and the other filters, so they show what picking
+//! that value would leave.
 
 use dioxus::prelude::*;
 
-use super::discipline_selector::{ALL_DISCIPLINES, ALL_ROLES};
+use super::discipline_selector::{ALL_DISCIPLINES, class_of};
 use super::editor_common::{ORIGINS, Origin, OriginFilter};
 use super::effect_editor::effect_origin;
 use super::multi_select::{Entry, MultiSelect};
-use crate::types::{DisplayTarget, EffectFilters, EffectListItem};
+use crate::types::{DisplayTarget, EffectFilters, EffectListItem, EffectScope};
 
 const NO_OVERLAY: &str = "No overlay";
-const UNRESTRICTED: &str = "Unrestricted";
+const ALL_CLASSES: &str = "All classes";
+/// (scope, label, tooltip) in toggle order
+const SCOPES: [(EffectScope, &str, &str); 3] = [
+    (
+        EffectScope::Both,
+        "Class + General",
+        "Effects tied to disciplines, plus the general ones",
+    ),
+    (
+        EffectScope::ClassOnly,
+        "Class only",
+        "Only effects tied to specific disciplines",
+    ),
+    (
+        EffectScope::GeneralOnly,
+        "General only",
+        "Only general effects: no discipline set, so they are live on every class",
+    ),
+];
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Section {
     Origin,
     Overlay,
-    Discipline,
+    Class,
 }
 
-const SECTIONS: [Section; 3] = [Section::Origin, Section::Overlay, Section::Discipline];
-
-/// (sub-group label, values) in display order
-type Groups = Vec<(Option<&'static str>, Vec<String>)>;
+const SECTIONS: [Section; 3] = [Section::Origin, Section::Overlay, Section::Class];
 
 impl Section {
     /// Picked values; empty = no filter
@@ -31,7 +48,7 @@ impl Section {
         match self {
             Self::Origin => f.origin.as_slice(),
             Self::Overlay => &f.overlays,
-            Self::Discipline => &f.disciplines,
+            Self::Class => f.class.as_slice(),
         }
     }
 
@@ -48,69 +65,39 @@ impl Section {
                     .collect();
                 if v.is_empty() { vec![NO_OVERLAY] } else { v }
             }
-            Self::Discipline if e.disciplines.is_empty() => vec![UNRESTRICTED],
-            Self::Discipline => e.disciplines.iter().map(String::as_str).collect(),
+            // A general effect is live on every class
+            Self::Class if e.disciplines.is_empty() => ALL_DISCIPLINES.iter().map(|(class, _)| *class).collect(),
+            Self::Class => e.disciplines.iter().filter_map(|d| class_of(d)).collect(),
         }
     }
+}
 
-    /// Values present in `effects`, in display order; unknown ones go last
-    fn groups(self, effects: &[EffectListItem]) -> Groups {
-        let mut present: Vec<&str> = effects.iter().flat_map(|e| self.values(e)).collect();
-        present.sort_unstable();
-        present.dedup();
-
-        let known: Vec<(Option<&'static str>, Vec<&'static str>)> = match self {
-            Self::Origin => vec![(None, ORIGINS.map(|o| o.label()).to_vec())],
-            Self::Overlay => {
-                let mut v: Vec<&str> = DisplayTarget::all()
-                    .iter()
-                    .chain([&DisplayTarget::EffectsOverlay])
-                    .filter(|t| **t != DisplayTarget::None)
-                    .map(|t| t.label())
-                    .collect();
-                v.push(NO_OVERLAY);
-                vec![(None, v)]
-            }
-            Self::Discipline => {
-                let mut g = vec![(None, vec![UNRESTRICTED]), (Some("Roles"), ALL_ROLES.to_vec())];
-                g.extend(ALL_DISCIPLINES.iter().map(|(class, d)| (Some(*class), d.to_vec())));
-                g
-            }
-        };
-
-        let extra: Vec<String> = present
-            .iter()
-            .filter(|p| !known.iter().any(|(_, vs)| vs.contains(p)))
-            .map(|p| p.to_string())
-            .collect();
-        let mut out: Groups = known
-            .into_iter()
-            .map(|(g, vs)| {
-                (
-                    g,
-                    vs.into_iter()
-                        .filter(|v| present.contains(v))
-                        .map(String::from)
-                        .collect::<Vec<_>>(),
-                )
-            })
-            .filter(|(_, vs)| !vs.is_empty())
-            .collect();
-        if !extra.is_empty() {
-            out.push((Some("Other"), extra));
-        }
-        out
-    }
+/// `f` with the class settled: no pick is the character's class, "All
+/// classes" is no filter
+pub fn resolved(f: &EffectFilters, player_class: Option<&'static str>) -> EffectFilters {
+    let class = match f.class.as_deref() {
+        None => player_class.map(String::from),
+        Some(ALL_CLASSES) => None,
+        Some(c) => Some(c.to_string()),
+    };
+    EffectFilters { class, ..f.clone() }
 }
 
 /// Whether `e` passes every section's filter except `skip`
 fn passes(f: &EffectFilters, e: &EffectListItem, skip: Option<Section>) -> bool {
-    SECTIONS.iter().filter(|s| Some(**s) != skip).all(|s| {
-        let picked = s.picked(f);
-        picked.is_empty() || s.values(e).iter().any(|v| picked.iter().any(|p| p == v))
-    })
+    let in_scope = match f.scope {
+        EffectScope::Both => true,
+        EffectScope::ClassOnly => !e.disciplines.is_empty(),
+        EffectScope::GeneralOnly => e.disciplines.is_empty(),
+    };
+    in_scope
+        && SECTIONS.iter().filter(|s| Some(**s) != skip).all(|s| {
+            let picked = s.picked(f);
+            picked.is_empty() || s.values(e).iter().any(|v| picked.iter().any(|p| p == v))
+        })
 }
 
+/// `f` is a [`resolved`] filter
 pub fn matches_filters(f: &EffectFilters, e: &EffectListItem) -> bool {
     passes(f, e, None)
 }
@@ -123,26 +110,78 @@ fn count(f: &EffectFilters, effects: &[EffectListItem], section: Section, value:
         .count()
 }
 
-/// `effects` is the list after the name search and hide-disabled toggle
+/// `effects` is the list after the search and hide-disabled toggle
 #[component]
 pub fn EffectFilterBar(
     effects: Memo<Vec<EffectListItem>>,
     filters: Signal<EffectFilters>,
     search: Signal<String>,
+    hide_disabled: Signal<bool>,
+    /// Disabled effects in the whole list
+    disabled_count: usize,
+    /// Class of the logged-in character, the class filter's starting point
+    player_class: Option<&'static str>,
 ) -> Element {
-    let f = filters.read().clone();
+    let f = resolved(&filters.read(), player_class);
     let list = effects.read();
-    let active = SECTIONS.iter().filter(|s| !s.picked(&f).is_empty()).count();
+    let active =
+        SECTIONS.iter().filter(|s| !s.picked(&f).is_empty()).count() + usize::from(f.scope != EffectScope::Both);
     let origin = f.origin.clone();
+
+    let overlays: Vec<Entry> = DisplayTarget::all()
+        .iter()
+        .chain([&DisplayTarget::EffectsOverlay])
+        .filter(|t| **t != DisplayTarget::None)
+        .map(|t| t.label())
+        .chain([NO_OVERLAY])
+        .map(|v| (v, count(&f, &list, Section::Overlay, v)))
+        .filter(|(v, n)| *n > 0 || f.overlays.iter().any(|p| p == v))
+        .map(|(v, n)| (format!("{v} ({n})"), vec![v.to_string()]))
+        .collect();
+
+    let class = f.class.clone();
+    let any_class = list.iter().filter(|e| passes(&f, e, Some(Section::Class))).count();
+    let classes = ALL_DISCIPLINES.iter().map(|(c, _)| *c);
 
     rsx! {
         div { class: "history-toolbar effect-filter-bar",
             input {
                 class: "search-input",
                 r#type: "text",
-                placeholder: "Search by name...",
+                placeholder: "Search name or ID...",
                 value: "{search}",
                 oninput: move |e| search.set(e.value()),
+            }
+            select {
+                class: if class.is_some() { "active" },
+                title: "Effects live on this class",
+                onchange: move |e| filters.write().class = Some(e.value()),
+                option { value: ALL_CLASSES, selected: class.is_none(), "{ALL_CLASSES} ({any_class})" }
+                for c in classes {
+                    option {
+                        value: c,
+                        selected: class.as_deref() == Some(c),
+                        "{c} ({count(&f, &list, Section::Class, c)})"
+                    }
+                }
+            }
+            div { class: "filter-pills", title: "General effects have no discipline set and are live on every class",
+                for (scope, label, title) in SCOPES {
+                    button {
+                        class: "seg",
+                        class: if f.scope == scope { "active" },
+                        title,
+                        onclick: move |_| filters.write().scope = scope,
+                        "{label}"
+                    }
+                }
+            }
+            MultiSelect {
+                any_label: "Any overlay",
+                noun: "overlays",
+                entries: overlays,
+                picked: f.overlays.clone(),
+                on_change: move |v: Vec<String>| filters.write().overlays = v,
             }
             OriginFilter {
                 selected: ORIGINS.into_iter().find(|o| origin.as_deref() == Some(o.label())),
@@ -150,61 +189,29 @@ pub fn EffectFilterBar(
                 kind: "effects",
                 on_pick: move |o: Option<Origin>| filters.write().origin = o.map(|o| o.label().to_string()),
             }
-            FilterSelect { section: Section::Overlay, any: "Any overlay", noun: "overlays", effects, filters }
-            FilterSelect { section: Section::Discipline, any: "Any discipline", noun: "disciplines", effects, filters }
+            if disabled_count > 0 {
+                button {
+                    class: "btn btn-xs editor-sort-toggle",
+                    class: if hide_disabled() { "active" },
+                    title: if hide_disabled() { "Disabled effects are hidden: click to list them" } else { "Leave disabled effects out of the list" },
+                    onclick: move |_| hide_disabled.toggle(),
+                    i { class: "fa-solid fa-eye-slash" }
+                    " Hide disabled ({disabled_count})"
+                }
+            }
             button {
                 class: "btn btn-xs history-clear",
                 class: if active > 0 { "active" },
                 disabled: active == 0,
-                title: "Show every effect: any origin, overlay and discipline (X)",
+                title: "Show every effect: any class, overlay and origin (X)",
                 "data-shortcut": "x",
-                onclick: move |_| filters.set(EffectFilters::default()),
+                onclick: move |_| {
+                    filters.set(EffectFilters { class: Some(ALL_CLASSES.to_string()), ..Default::default() });
+                },
                 i { class: "fa-solid fa-filter-circle-xmark" }
                 " Clear filters"
                 if active > 0 { span { class: "history-more-count", "{active}" } }
             }
-        }
-    }
-}
-
-/// Multi-select for one section: each value with the count picking it would
-/// leave, under its group heading
-#[component]
-fn FilterSelect(
-    section: Section,
-    any: &'static str,
-    noun: &'static str,
-    effects: Memo<Vec<EffectListItem>>,
-    filters: Signal<EffectFilters>,
-) -> Element {
-    let f = filters.read().clone();
-    let list = effects.read();
-    let mut entries: Vec<Entry> = Vec::new();
-    for (group, values) in section.groups(&list) {
-        if let Some(g) = group {
-            entries.push((g.to_string(), Vec::new()));
-        }
-        entries.extend(
-            values
-                .into_iter()
-                .map(|v| (format!("{v} ({})", count(&f, &list, section, &v)), vec![v])),
-        );
-    }
-
-    rsx! {
-        MultiSelect {
-            any_label: any,
-            noun,
-            entries,
-            picked: section.picked(&f).to_vec(),
-            on_change: move |v: Vec<String>| {
-                let mut w = filters.write();
-                match section {
-                    Section::Overlay => w.overlays = v,
-                    Section::Discipline => w.disciplines = v,
-                    Section::Origin => w.origin = v.into_iter().next(),
-                }
-            },
         }
     }
 }
