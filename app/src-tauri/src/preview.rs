@@ -30,11 +30,10 @@ const DEFAULT_TOTAL_SECS: f32 = 10.0;
 const LIVE_WINDOW: Duration = Duration::from_millis(150);
 const TICK: Duration = Duration::from_millis(50);
 const PREVIEW_ENTITY_ID: i64 = -1;
-/// Sample names for `{source}`/`{target}`/`{ability}`/`{effect}` and the source/target display options
+/// Sample names for `{source}`/`{target}` and the source/target display options.
+/// `{ability}`/`{effect}` stay as written: only the live log knows those names
 const SOURCE_NAME: &str = "Source";
 const TARGET_NAME: &str = "Target";
-const ABILITY_NAME: &str = "Ability";
-const EFFECT_NAME: &str = "Effect";
 
 type Icon = Arc<(u32, u32, Vec<u8>)>;
 
@@ -317,9 +316,8 @@ pub async fn start(
     let placeholders = Placeholders {
         source: Some(SOURCE_NAME),
         target: Some(TARGET_NAME),
-        ability: Some(ABILITY_NAME),
-        effect: Some(EFFECT_NAME),
         stacks: req.stacks,
+        ..Default::default()
     };
     let resolve = |text: &str| placeholders.format(text);
 

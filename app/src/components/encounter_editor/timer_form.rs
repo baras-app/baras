@@ -591,8 +591,8 @@ fn preview_request(timer: &BossTimerDefinition) -> OverlayPreviewRequest {
     }
 }
 
-const DISPLAY_TEXT_HELP: &str = "Text shown on the overlay timer bar. Defaults to timer name. {source} and {target} will show the source/target names if available";
-const ALERT_TEXT_HELP: &str = "Text shown in the alert notification. Defaults to timer name. {source} and {target} will show the source/target names if available";
+const DISPLAY_TEXT_HELP: &str = "Text shown on the overlay timer bar. Defaults to timer name. Templates: {source}, {target}. Templating does not appear in previews.";
+const ALERT_TEXT_HELP: &str = "Text shown in the alert notification. Defaults to timer name. Templates: {source}, {target}. Templating does not appear in previews.";
 
 #[component]
 fn AbilityQueueCard(
