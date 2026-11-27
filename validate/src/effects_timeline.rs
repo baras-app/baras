@@ -1,8 +1,8 @@
 //! Effect-tracker timeline replay (`--effects-timeline`).
 //!
 //! Replays a whole log through a live-mode `ParsingSession` with the bundled
-//! effect and encounter definitions, ticks the tracker in log time after every
-//! event, and writes one line per observable change. Only the tracker's public
+//! effect and encounter definitions, ticks the tracker in log time after each
+//! timestamp's lines, and writes one line per observable change. Only the tracker's public
 //! outputs are read, so the timeline stays comparable across internal
 //! refactors: an unchanged timeline means unchanged behavior on that log.
 //! Audio is polled right after each tick, so the tick/audio race in live
@@ -87,12 +87,19 @@ pub fn run(log: &Path, definitions_root: Option<&Path>, out: &Path) -> Result<()
     let mut countdowns_prev: Vec<String> = Vec::new();
     let mut lines_out: Vec<String> = Vec::new();
 
-    for (line_num, line) in content.lines().enumerate() {
-        let Some(event) = parser.parse_line(line_num as u64, line) else {
-            continue;
-        };
+    let mut events = content
+        .lines()
+        .enumerate()
+        .filter_map(|(line_num, line)| parser.parse_line(line_num as u64, line))
+        .peekable();
+    while let Some(event) = events.next() {
         let ts = event.timestamp;
         session.process_event(event);
+        // Live ticks only when the reader catches up, and the game flushes a
+        // timestamp's lines together: tick once per timestamp, not per line.
+        if events.peek().is_some_and(|next| next.timestamp == ts) {
+            continue;
+        }
 
         let mut t = tracker.lock().unwrap_or_else(|p| p.into_inner());
         t.tick_at(ts);
