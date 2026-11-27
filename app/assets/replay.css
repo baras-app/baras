@@ -1,0 +1,231 @@
+/* Replay tab: canvas between a players column and an enemies column. */
+
+.replay-layout {
+  display: grid;
+  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr) minmax(200px, 260px);
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
+}
+
+.replay-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.replay-cards-title {
+  color: var(--text-muted);
+  font-size: 0.75em;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.replay-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.replay-canvas {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  cursor: grab;
+  touch-action: none;
+}
+
+/* ─── Controls ───────────────────────────────────────────────────────────── */
+
+.replay-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  background: var(--bg-mid);
+}
+
+.replay-speed {
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  border-radius: 3px;
+  padding: 2px 4px;
+}
+
+.replay-clock {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+.replay-scrubber {
+  flex: 1;
+  min-width: 120px;
+}
+
+.replay-option {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 0.85em;
+}
+
+.replay-option input[type="range"] {
+  width: 80px;
+}
+
+.replay-rates {
+  display: flex;
+  gap: 10px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+.replay-map-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+/* ─── Cards ──────────────────────────────────────────────────────────────── */
+
+.replay-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  background: var(--bg-mid);
+  cursor: pointer;
+}
+
+.replay-card.selected {
+  border-color: var(--swtor-gold);
+}
+
+.replay-card.dead,
+.replay-card.elsewhere {
+  opacity: 0.55;
+}
+
+.replay-card-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.replay-card-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-card-number {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.replay-card-tag {
+  color: var(--text-muted);
+  font-size: 0.7em;
+  letter-spacing: 0.05em;
+}
+
+.replay-hp {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border-light);
+  overflow: hidden;
+}
+
+.replay-hp-fill {
+  height: 100%;
+  background: var(--color-success);
+}
+
+.replay-card-line {
+  color: var(--text-secondary);
+  font-size: 0.8em;
+}
+
+.replay-card-rates {
+  display: flex;
+  gap: 10px;
+  font-family: var(--font-mono);
+}
+
+.replay-effects {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 20px;
+}
+
+.replay-effects-title {
+  width: 52px;
+  color: var(--text-muted);
+  font-size: 0.7em;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.replay-effects-icons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+}
+
+.replay-effects-more {
+  color: var(--text-muted);
+  font-size: 0.75em;
+}
+
+/* Always takes its row, so cards do not jump when a cast starts */
+.replay-cast {
+  position: relative;
+  height: 18px;
+  border-radius: 3px;
+  background: var(--border-subtle);
+  overflow: hidden;
+}
+
+.replay-cast-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--swtor-blue-dim);
+}
+
+.replay-cast.interrupted .replay-cast-fill {
+  background: var(--color-error-bg-hover);
+}
+
+.replay-cast-name {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.75em;
+  line-height: 18px;
+  white-space: nowrap;
+}

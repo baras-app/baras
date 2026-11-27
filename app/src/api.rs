@@ -1358,7 +1358,8 @@ pub use baras_types::{
     CombatLogSortColumn, DamageTakenSummary, DataTab, DeathRecap, DeathRecapEventKind, EffectChartData,
     EffectUptimeCell, EffectWindow, EncounterRatings, EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries,
     GroupedEntityNames, HpPoint, NpcHealthRow, NpcSpawn, PhaseSegment, PlayerDeath, PvpFaction, RaidDebuffCell,
-    RaidDebuffReport, RaidOverviewRow, RotationAnalysis, SortDirection, ThreatReport, TimeRange, TimeSeriesPoint,
+    RaidDebuffReport, RaidOverviewRow, ReplayData, RotationAnalysis, SortDirection, ThreatReport, TimeRange,
+    TimeSeriesPoint,
 };
 
 /// Query ability breakdown for an encounter and data tab.
@@ -1489,6 +1490,17 @@ pub async fn query_effect_uptime_by_target(
     js_set(&obj, "timeRange", &tr.unwrap_or(JsValue::NULL));
     js_set(&obj, "durationSecs", &JsValue::from_f64(duration_secs as f64));
     from_js(invoke_query("query_effect_uptime_by_target", obj.into()).await)
+}
+
+/// Movement, casts and effects of the whole fight (Replay tab).
+pub async fn query_replay(encounter_idx: Option<u32>) -> Option<ReplayData> {
+    let obj = js_sys::Object::new();
+    js_set(
+        &obj,
+        "encounterIdx",
+        &encounter_idx.map_or(JsValue::NULL, |i| JsValue::from_f64(i as f64)),
+    );
+    from_js(invoke_query("query_replay", obj.into()).await)
 }
 
 /// Uptime of each standard raid debuff on every enemy.

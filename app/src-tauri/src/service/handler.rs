@@ -15,8 +15,8 @@ use baras_core::history::{now_iso, start_ms_of};
 use baras_core::query::{
     AbilityBreakdown, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow, CombatLogSortColumn,
     DamageTakenSummary, DataTab, EffectChartData, EffectUptimeCell, EffectWindow, EncounterTimeline, EntityBreakdown,
-    GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath, RaidDebuffReport, RaidOverviewRow, SortDirection,
-    ThreatReport, TimeRange, TimeSeriesPoint,
+    GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath, RaidDebuffReport, RaidOverviewRow, ReplayData,
+    SortDirection, ThreatReport, TimeRange, TimeSeriesPoint,
 };
 use baras_types::history::{
     CleanupPlan, CleanupReport, ContentTag, HistoryStatus, LibraryRow, LogStatus, ParselyUpload, PullFilter,
@@ -1243,6 +1243,34 @@ impl ServiceHandle {
             .query()
             .raid_debuffs(time_range.as_ref())
             .await
+    }
+
+    /// Movement, casts and effects of the whole fight (Replay tab), with each
+    /// player's icons from the encounter's summary.
+    pub async fn query_replay(&self, encounter_idx: Option<u32>) -> Result<ReplayData, String> {
+        self.register_encounter(encounter_idx).await?;
+        let mut data = self.shared.query_context.query().await.query().replay().await?;
+
+        let session_guard = self.shared.session.read().await;
+        let session = session_guard.as_ref().ok_or("No active session")?;
+        let session = session.read().await;
+        if let Some(idx) = encounter_idx
+            && let Some(cache) = session.session_cache.as_ref()
+            && let Some(summary) = cache
+                .encounter_history
+                .summaries()
+                .iter()
+                .find(|s| s.encounter_id == idx as u64)
+        {
+            for entity in &mut data.entities {
+                if let Some(pm) = summary.player_metrics.iter().find(|pm| pm.name == entity.name) {
+                    entity.discipline_id = pm.discipline.map(Discipline::guid);
+                    entity.class_icon = pm.class_icon.clone();
+                    entity.role_icon = pm.role_icon.clone();
+                }
+            }
+        }
+        Ok(data)
     }
 
     /// Enemy and player targets over the whole fight, taunts and threat drops (Aggro tab).

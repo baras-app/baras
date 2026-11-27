@@ -6,7 +6,8 @@ use baras_core::query::{
     AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow,
     CombatLogSortColumn, DamageTakenSummary, DataTab, EffectChartData, EffectUptimeCell, EffectWindow,
     EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath,
-    RaidDebuffReport, RaidOverviewRow, RotationAnalysis, SortDirection, ThreatReport, TimeRange, TimeSeriesPoint,
+    RaidDebuffReport, RaidOverviewRow, ReplayData, RotationAnalysis, SortDirection, ThreatReport, TimeRange,
+    TimeSeriesPoint,
 };
 use tauri::State;
 
@@ -104,6 +105,12 @@ pub async fn query_effect_uptime_by_target(
     handle
         .query_effect_uptime_by_target(encounter_idx, source, time_range, duration_secs)
         .await
+}
+
+/// Movement, casts and effects of the whole fight (Replay tab).
+#[tauri::command]
+pub async fn query_replay(handle: State<'_, ServiceHandle>, encounter_idx: Option<u32>) -> Result<ReplayData, String> {
+    handle.query_replay(encounter_idx).await
 }
 
 /// Uptime of each standard raid debuff on every enemy.

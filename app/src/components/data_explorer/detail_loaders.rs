@@ -220,7 +220,9 @@ pub(super) async fn fetch_detail(
         ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts | ViewMode::Uptime => DataTab::Damage,
         // Overview has its own loader; the combat log loads its own rows and
         // reports in through `on_ready`; Raid Debuffs queries from its component
-        ViewMode::CombatLog | ViewMode::Overview | ViewMode::RaidDebuffs | ViewMode::Aggro => return None,
+        ViewMode::CombatLog | ViewMode::Overview | ViewMode::RaidDebuffs | ViewMode::Aggro | ViewMode::Replay => {
+            return None;
+        }
     };
     let tr_opt = if tr.start == 0.0 && tr.end == 0.0 {
         None

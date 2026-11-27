@@ -1,0 +1,158 @@
+//! One entity's card beside the replay canvas
+
+use dioxus::prelude::*;
+
+use baras_types::{ReplayEntityKind, formatting};
+
+use super::card_view::IconView;
+use super::{ReplayState, card_id};
+use crate::components::ability_icon::AbilityIcon;
+use crate::components::class_icons::{get_class_icon, get_role_icon};
+
+/// Role shown on a player's card, from the role icon's name
+fn role_label(role_icon: Option<&str>) -> &'static str {
+    match role_icon {
+        Some(icon) if icon.contains("tank") => "TANK",
+        Some(icon) if icon.contains("heal") => "HEAL",
+        Some(_) => "DPS",
+        None => "",
+    }
+}
+
+fn icon_row(title: &'static str, icons: &[IconView], more: usize) -> Element {
+    rsx! {
+        div { class: "replay-effects",
+            span { class: "replay-effects-title", "{title}" }
+            div { class: "replay-effects-icons",
+                for icon in icons {
+                    span { key: "{icon.effect_id}", title: "{icon.name}",
+                        AbilityIcon {
+                            ability_id: icon.effect_id,
+                            fallback_id: Some(icon.ability_id),
+                            fallback: icon.name.clone(),
+                            size: 18,
+                        }
+                    }
+                }
+                if more > 0 {
+                    span { class: "replay-effects-more", "+{more}" }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+pub(super) fn EntityCard(index: usize) -> Element {
+    let state = use_context::<ReplayState>();
+    let entity = &state.loaded.data.entities[index];
+    let id = entity.id;
+    let (time, highlight, maps) = (state.time, state.highlight, state.maps);
+    // Recomputed every tick, re-rendered only when something on the card changed
+    let view = use_memo({
+        let state = state.clone();
+        move || {
+            let entity = &state.loaded.data.entities[index];
+            let selected = highlight() == Some(id);
+            state.loaded.card(entity, time(), selected, &maps.read(), &state.phases)
+        }
+    });
+    let view = view();
+    let selected = highlight() == Some(id);
+    let is_npc = entity.kind == ReplayEntityKind::Npc;
+    let tag = if entity.is_boss {
+        "BOSS"
+    } else if is_npc {
+        "NPC"
+    } else if entity.kind == ReplayEntityKind::Companion {
+        "COMPANION"
+    } else {
+        role_label(entity.role_icon.as_deref())
+    };
+    let class_icon = entity.class_icon.as_deref().and_then(get_class_icon).copied();
+    let role_icon = entity.role_icon.as_deref().and_then(get_role_icon).copied();
+    let pct = if view.max_hp > 0 {
+        view.hp as f32 * 100.0 / view.max_hp as f32
+    } else {
+        0.0
+    };
+    // On a map other than the one shown: not on the canvas
+    let elsewhere = view.map.zip((state.shown_map)()).filter(|(on, shown)| on != shown);
+    let elsewhere_label = elsewhere.and_then(|(on, _)| maps.read().get(on).map(map_label));
+    let european = state.european;
+    let compact = move |v: f32| formatting::format_compact(v as i64, european);
+    let toggle = {
+        let state = state.clone();
+        move |_| state.toggle_highlight(Some(id))
+    };
+
+    rsx! {
+        div {
+            id: card_id(id),
+            class: "replay-card",
+            class: if selected { "selected" },
+            class: if view.dead { "dead" },
+            class: if elsewhere.is_some() { "elsewhere" },
+            onclick: toggle,
+            div { class: "replay-card-head",
+                if let Some(src) = class_icon {
+                    img { class: "class-icon", src, alt: "" }
+                }
+                span { class: "replay-card-name", title: "{entity.name}", "{entity.name}" }
+                if let Some(n) = state.loaded.numbers.get(&id) {
+                    span { class: "replay-card-number", "{n}" }
+                }
+                if let Some(src) = role_icon {
+                    img { class: "class-icon", src, alt: "" }
+                }
+                span { class: "replay-card-tag", "{tag}" }
+            }
+            div { class: "replay-hp",
+                div { class: "replay-hp-fill", style: "width: {pct:.1}%" }
+            }
+            div { class: "replay-card-line",
+                if view.dead {
+                    "Dead"
+                } else if view.max_hp > 0 {
+                    "{formatting::format_thousands(view.hp)} / {formatting::format_thousands(view.max_hp)} ({pct:.0}%)"
+                } else {
+                    "HP unavailable"
+                }
+            }
+            {icon_row("Buffs", &view.buffs, view.more_buffs)}
+            {icon_row("Debuffs", &view.debuffs, view.more_debuffs)}
+            div { class: "replay-card-line",
+                if let Some(label) = elsewhere_label {
+                    "On {label}"
+                } else if let Some(target) = &view.target {
+                    "Target: {target}"
+                } else {
+                    "No target"
+                }
+            }
+            div { class: "replay-cast", class: if view.cast.as_ref().is_some_and(|c| c.interrupted) { "interrupted" },
+                if let Some(cast) = &view.cast {
+                    div { class: "replay-cast-fill", style: "width: {cast.pct}%" }
+                    span { class: "replay-cast-name",
+                        AbilityIcon { ability_id: cast.ability_id, size: 14 }
+                        if cast.interrupted { "{cast.name} (interrupted)" } else { "{cast.name}" }
+                    }
+                }
+            }
+            if let Some((dps, hps)) = view.rates && !is_npc {
+                div { class: "replay-card-line replay-card-rates",
+                    span { "DPS {compact(dps)}" }
+                    span { "HPS {compact(hps)}" }
+                }
+            }
+        }
+    }
+}
+
+/// A map entry's name on tabs and cards: its image file without the extension
+pub(super) fn map_label(map: &baras_types::MapDefinition) -> String {
+    map.image
+        .rsplit_once('.')
+        .map_or(map.image.as_str(), |(stem, _)| stem)
+        .to_string()
+}
