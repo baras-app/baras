@@ -4,16 +4,13 @@
 //! configured effect definitions. Produces `ActiveEffect` instances
 //! that can be fed to overlay renderers.
 
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use chrono::NaiveDateTime;
 
 use crate::combat_log::EntityType;
 use crate::context::IStr;
-use crate::dsl::EntityDefinition;
-use crate::dsl::EntityFilterMatching;
 use crate::encounter::{CombatEncounter, PvpFaction};
 use crate::game_data::{Discipline, DisciplineFilter};
 use crate::signal_processor::{GameSignal, SignalHandler};
@@ -22,6 +19,7 @@ use crate::timers::FiredAlert;
 
 use super::alacrity::AlacrityBuffTracker;
 use super::alerts;
+use super::filter_ctx::{EntityInfo, FilterCtx};
 use super::{
     ActiveEffect, AlertTrigger, DefId, DefinitionSet, DisplayTarget, EffectDefinition, EffectKey, RefreshTrigger,
 };
@@ -31,37 +29,6 @@ use super::{
 /// revive the effect — the timer is a heuristic and the in-game buff may outlast it.
 /// An authoritative `EffectRemoved` signal always removes immediately, bypassing this.
 const TIMER_EXPIRY_GRACE_MS: i64 = 8000;
-
-/// Get the entity roster from the current encounter, or empty slice if none.
-fn get_entities(encounter: Option<&CombatEncounter>) -> &[EntityDefinition] {
-    static EMPTY: &[EntityDefinition] = &[];
-    let Some(enc) = encounter else {
-        return EMPTY;
-    };
-    let Some(idx) = enc.active_boss_idx() else {
-        return EMPTY;
-    };
-    // Use get() to avoid panic if index is stale after boss definitions reload
-    enc.boss_definitions()
-        .get(idx)
-        .map(|def| def.entities.as_slice())
-        .unwrap_or(EMPTY)
-}
-
-/// Boss entity IDs of the current encounter (the per-event cache, not a rebuild).
-fn get_boss_ids(encounter: Option<&CombatEncounter>) -> Arc<HashSet<i64>> {
-    encounter.map(|e| e.boss_entity_ids()).unwrap_or_default()
-}
-
-/// Entity info for filter matching
-#[derive(Debug, Clone, Copy)]
-struct EntityInfo {
-    id: i64,
-    /// NPC class/template ID (0 for players/companions)
-    npc_id: i64,
-    entity_type: EntityType,
-    name: IStr,
-}
 
 /// Info about a newly registered target (for raid frame registration)
 #[derive(Debug, Clone)]
@@ -668,8 +635,6 @@ impl EffectTracker {
         charges: Option<u8>,
         encounter: Option<&crate::encounter::CombatEncounter>,
     ) {
-        self.advance_game_time_anchor(timestamp);
-
         // Note: GC is handled by tick() - don't duplicate here to reduce work per signal
 
         let local_player_id = self.local_player_id;
@@ -692,6 +657,7 @@ impl EffectTracker {
             entity_type: target_entity_type,
             name: target_name,
         };
+        let ctx = self.filter_ctx(encounter);
 
         // Resolve effect name for matching
         let effect_name_str = crate::context::resolve(effect_name);
@@ -711,7 +677,7 @@ impl EffectTracker {
         let matching_defs: Vec<_> = all_matches
             .into_iter()
             .filter(|(_, def)| def.is_effect_applied_trigger())
-            .filter(|(_, def)| self.matches_filters(def, source_info, target_info, encounter))
+            .filter(|(_, def)| self.matches_filters(&ctx, def, source_info, target_info))
             .collect();
 
         let is_from_local = local_player_id == Some(source_id);
@@ -909,12 +875,9 @@ impl EffectTracker {
             return;
         }
 
-        // Prepare source filter context
         let local_player_id = self.local_player_id;
-        let current_target_id = local_player_id.and_then(|id| self.current_targets.get(&id).map(|(tid, _, _)| *tid));
-        let boss_ids = get_boss_ids(encounter);
-        let entities = get_entities(encounter);
-        let pvp_factions = encounter.and_then(|e| e.pvp_faction_context());
+        let current_target_id = self.local_target_id();
+        let ctx = self.filter_ctx(encounter);
 
         // In PvP, only classified teammates may claim raid-frame slots.
         let can_register = is_player && Self::can_register_target(local_player_id, source_id, target_id, encounter);
@@ -950,34 +913,16 @@ impl EffectTracker {
             .filter(|(_, def)| def.matches_discipline(local_discipline.as_ref()))
             .filter_map(|(def_id, def)| {
                 // Only refresh/create effects whose filters match the actual entities
-                let source_ok =
-                    def.source_filter().matches(
-                        entities,
-                        source_id,
-                        source_entity_type,
-                        source_name,
-                        0,
-                        local_player_id,
-                        current_target_id,
-                        &boss_ids,
-                        pvp_factions,
-                    ) && self.matches_entity_disciplines(&def.source_disciplines, source_id, source_entity_type);
-                if !source_ok {
+                let entity = |id, entity_type, name| EntityInfo {
+                    id,
+                    npc_id: 0,
+                    entity_type,
+                    name,
+                };
+                if !self.source_ok(&ctx, def, entity(source_id, source_entity_type, source_name)) {
                     return None;
                 }
-                let target_ok = |id: i64, etype: EntityType, name: IStr| {
-                    def.target_filter().matches(
-                        entities,
-                        id,
-                        etype,
-                        name,
-                        0,
-                        local_player_id,
-                        current_target_id,
-                        &boss_ids,
-                        pvp_factions,
-                    ) && self.matches_entity_disciplines(&def.target_disciplines, id, etype)
-                };
+                let target_ok = |id, etype, name| self.target_ok(&ctx, def, entity(id, etype, name));
                 // Self-buffs refreshed by an offensive cast: the effect lives on the
                 // caster, so retry the target filter against the caster (same
                 // condition as the self fallback key below).
@@ -1383,7 +1328,6 @@ impl EffectTracker {
         timestamp: NaiveDateTime,
         encounter: Option<&crate::encounter::CombatEncounter>,
     ) {
-        let local_player_id = self.local_player_id;
         let ability_name_str = crate::context::resolve(ability_name);
 
         // Find definitions with AbilityCast triggers that match this ability
@@ -1403,12 +1347,13 @@ impl EffectTracker {
             name: source_name,
         };
 
-        // Get boss IDs for filter matching
-        let boss_ids = get_boss_ids(encounter);
-
-        let entities = get_entities(encounter);
-        let pvp_factions = encounter.and_then(|e| e.pvp_faction_context());
-        let current_target_id = local_player_id.and_then(|id| self.current_targets.get(&id).map(|(tid, _, _)| *tid));
+        let ctx = self.filter_ctx(encounter);
+        let target_info = EntityInfo {
+            id: target_id,
+            npc_id: 0,
+            entity_type: target_entity_type,
+            name: target_name,
+        };
         for (def_id, def) in matching_defs {
             // Only process AbilityCast triggers here (index also contains DamageTaken/HealingTaken)
             if !def.is_ability_cast_trigger() {
@@ -1420,25 +1365,7 @@ impl EffectTracker {
                 continue;
             }
 
-            // Check source filter from the trigger
-            let source_filter = def.source_filter();
-            if !source_filter.is_any()
-                && !source_filter.matches(
-                    entities,
-                    source_info.id,
-                    source_info.entity_type,
-                    source_info.name,
-                    source_info.npc_id,
-                    local_player_id,
-                    current_target_id,
-                    &boss_ids,
-                    pvp_factions,
-                )
-            {
-                continue;
-            }
-
-            if !self.matches_entity_disciplines(&def.source_disciplines, source_info.id, source_info.entity_type) {
+            if !self.source_ok(&ctx, def, source_info) {
                 continue;
             }
 
@@ -1450,21 +1377,7 @@ impl EffectTracker {
             }
 
             // Validate resolved target against the definition's target filter
-            if !def.target_filter().matches(
-                entities,
-                target_id,
-                target_entity_type,
-                target_name,
-                0,
-                local_player_id,
-                current_target_id,
-                &boss_ids,
-                pvp_factions,
-            ) {
-                continue;
-            }
-
-            if !self.matches_entity_disciplines(&def.target_disciplines, target_id, target_entity_type) {
+            if !self.target_ok(&ctx, def, target_info) {
                 continue;
             }
 
@@ -1530,7 +1443,6 @@ impl EffectTracker {
         encounter: Option<&crate::encounter::CombatEncounter>,
         trigger_check: fn(&EffectDefinition) -> bool,
     ) {
-        self.advance_game_time_anchor(timestamp);
         let ability_name_str = crate::context::resolve(ability_name);
 
         let matching_defs: Vec<_> = self
@@ -1553,12 +1465,13 @@ impl EffectTracker {
             entity_type: target_entity_type,
             name: target_name,
         };
+        let ctx = self.filter_ctx(encounter);
 
         for (def_id, def) in matching_defs {
             if !trigger_check(def) {
                 continue;
             }
-            if !self.matches_filters(def, source_info, target_info, encounter) {
+            if !self.matches_filters(&ctx, def, source_info, target_info) {
                 continue;
             }
 
@@ -1619,7 +1532,6 @@ impl EffectTracker {
         timestamp: NaiveDateTime,
         encounter: Option<&crate::encounter::CombatEncounter>,
     ) {
-        self.advance_game_time_anchor(timestamp);
         let local_player_id = self.local_player_id;
 
         // Alacrity buff fell off the local player
@@ -1640,6 +1552,7 @@ impl EffectTracker {
             entity_type: target_entity_type,
             name: target_name,
         };
+        let ctx = self.filter_ctx(encounter);
 
         // Resolve effect name for matching
         let effect_name_str = crate::context::resolve(effect_name);
@@ -1689,8 +1602,7 @@ impl EffectTracker {
                         effect.confirm_removed();
                     }
                 }
-            } else if def.is_effect_removed_trigger() && self.matches_filters(def, source_info, target_info, encounter)
-            {
+            } else if def.is_effect_removed_trigger() && self.matches_filters(&ctx, def, source_info, target_info) {
                 // Instant alerts: fire and skip — no ActiveEffect created
                 if def.is_alert {
                     self.fired_alerts
@@ -1736,8 +1648,6 @@ impl EffectTracker {
         charges: u8,
         encounter: Option<&crate::encounter::CombatEncounter>,
     ) {
-        self.advance_game_time_anchor(timestamp);
-
         // Stack count changed on a local-player alacrity buff
         if self.local_player_id == Some(target_id) {
             self.alacrity_buffs.on_charges_changed(effect_id, charges, timestamp);
@@ -1756,6 +1666,7 @@ impl EffectTracker {
             entity_type: target_entity_type,
             name: target_name,
         };
+        let ctx = self.filter_ctx(encounter);
 
         // Find matching definitions (by ID or name)
         let effect_name_str = crate::context::resolve(effect_name);
@@ -1866,7 +1777,7 @@ impl EffectTracker {
             } else if def.single_instance_per_target
                 && def.is_effect_applied_trigger()
                 && !def.is_alert
-                && self.matches_filters(def, source_info, target_info, encounter)
+                && self.matches_filters(&ctx, def, source_info, target_info)
             {
                 // Nothing tracked on this target: the original apply predates the
                 // log (e.g. the local player zoned in after another healer applied).
@@ -1950,55 +1861,33 @@ impl EffectTracker {
                 .is_some_and(|d| filters.iter().any(|f| f.matches(*d)))
     }
 
-    /// Check if an effect matches source/target filters and discipline scope
-    fn matches_filters(
-        &self,
-        def: &EffectDefinition,
-        source: EntityInfo,
-        target: EntityInfo,
-        encounter: Option<&crate::encounter::CombatEncounter>,
-    ) -> bool {
-        // Check discipline filter (only relevant for player characters)
-        if !def.matches_discipline(self.local_player_discipline.as_ref()) {
-            return false;
-        }
+    /// Local player's current target (TargetChanged cache)
+    fn local_target_id(&self) -> Option<i64> {
+        self.local_player_id
+            .and_then(|id| self.current_targets.get(&id).map(|(tid, _, _)| *tid))
+    }
 
-        // Check source/target discipline filters
-        if !self.matches_entity_disciplines(&def.source_disciplines, source.id, source.entity_type)
-            || !self.matches_entity_disciplines(&def.target_disciplines, target.id, target.entity_type)
-        {
-            return false;
-        }
+    fn filter_ctx<'a>(&self, encounter: Option<&'a CombatEncounter>) -> FilterCtx<'a> {
+        FilterCtx::new(encounter, self.local_player_id, self.local_target_id())
+    }
 
-        // Get local player ID from self, boss entity IDs from encounter
-        let local_player_id = self.local_player_id;
-        let current_target_id = local_player_id.and_then(|id| self.current_targets.get(&id).map(|(tid, _, _)| *tid));
-        let boss_ids = get_boss_ids(encounter);
+    /// Source filter and source discipline filter
+    fn source_ok(&self, ctx: &FilterCtx, def: &EffectDefinition, e: EntityInfo) -> bool {
+        ctx.matches(def.source_filter(), e)
+            && self.matches_entity_disciplines(&def.source_disciplines, e.id, e.entity_type)
+    }
 
-        let entities = get_entities(encounter);
-        let pvp_factions = encounter.and_then(|e| e.pvp_faction_context());
+    /// Target filter and target discipline filter
+    fn target_ok(&self, ctx: &FilterCtx, def: &EffectDefinition, e: EntityInfo) -> bool {
+        ctx.matches(def.target_filter(), e)
+            && self.matches_entity_disciplines(&def.target_disciplines, e.id, e.entity_type)
+    }
 
-        def.source_filter().matches(
-            entities,
-            source.id,
-            source.entity_type,
-            source.name,
-            source.npc_id,
-            local_player_id,
-            current_target_id,
-            &boss_ids,
-            pvp_factions,
-        ) && def.target_filter().matches(
-            entities,
-            target.id,
-            target.entity_type,
-            target.name,
-            target.npc_id,
-            local_player_id,
-            current_target_id,
-            &boss_ids,
-            pvp_factions,
-        )
+    /// Local discipline scope plus source and target filters
+    fn matches_filters(&self, ctx: &FilterCtx, def: &EffectDefinition, source: EntityInfo, target: EntityInfo) -> bool {
+        def.matches_discipline(self.local_player_discipline.as_ref())
+            && self.source_ok(ctx, def, source)
+            && self.target_ok(ctx, def, target)
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -2006,6 +1895,9 @@ impl EffectTracker {
     // ═══════════════════════════════════════════════════════════════════════════
 
     fn evaluate_modifiers(&mut self, signals: &[GameSignal]) {
+        if !self.definitions.has_modifiers() {
+            return;
+        }
         // Seed last_seen_charges from EffectApplied so first ChargesChanged has a baseline
         for s in signals {
             if let GameSignal::EffectApplied {
@@ -2204,6 +2096,7 @@ impl SignalHandler for EffectTracker {
     }
 
     fn handle_signal(&mut self, signal: &GameSignal, encounter: Option<&crate::encounter::CombatEncounter>) {
+        self.advance_game_time_anchor(signal.timestamp());
         match signal {
             GameSignal::EffectApplied {
                 effect_id,
@@ -2345,7 +2238,6 @@ impl SignalHandler for EffectTracker {
                 timestamp,
                 ..
             } => {
-                self.advance_game_time_anchor(*timestamp);
 
                 // Resolve actual target: the signal already has a resolved target from
                 // encounter state, but our local current_targets cache may be more
