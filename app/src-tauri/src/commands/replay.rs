@@ -1,33 +1,23 @@
 //! Replay tab: the maps of the boss an encounter was fought on, and their images.
 
-use std::path::PathBuf;
-
 use base64::Engine;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, State};
 
 use baras_core::boss::{build_area_index, load_bosses_with_custom};
-use baras_types::MapDefinition;
+use baras_types::{ReplayMapStatus, ReplayMaps};
 
 use super::encounters::{get_bundled_encounters_dir, get_user_encounters_dir};
-use crate::service::ServiceHandle;
+use crate::service::{ServiceHandle, map_store};
 
-/// Directories map images are looked up in, user files first
-fn map_dirs(app_handle: &AppHandle) -> Vec<PathBuf> {
-    let user = baras_core::paths::config_dir().map(|p| p.join("definitions").join("maps"));
-    let bundled = app_handle
-        .path()
-        .resolve("definitions/maps", tauri::path::BaseDirectory::Resource)
-        .ok();
-    user.into_iter().chain(bundled).collect()
-}
-
-/// Maps of the boss fought in an encounter; empty when its definition has none.
+/// Maps of the boss fought in an encounter, downloading the images that are
+/// not on disk yet. `allow` records the user's agreement to those downloads.
 #[tauri::command]
 pub async fn get_replay_maps(
     app_handle: AppHandle,
     handle: State<'_, ServiceHandle>,
     encounter_idx: u32,
-) -> Result<Vec<MapDefinition>, String> {
+    allow: bool,
+) -> Result<ReplayMaps, String> {
     let (area_id, boss_name) = {
         let session_guard = handle.shared.session.read().await;
         let session = session_guard.as_ref().ok_or("No active session")?;
@@ -44,7 +34,7 @@ pub async fn get_replay_maps(
             })
             .ok_or("Encounter not found")?;
         let Some(boss_name) = summary.boss_name.clone() else {
-            return Ok(Vec::new());
+            return Ok(ready(Vec::new()));
         };
         (summary.area_id, boss_name)
     };
@@ -55,6 +45,17 @@ pub async fn get_replay_maps(
         .flatten()
         .find_map(|dir| build_area_index(&dir).ok()?.remove(&area_id))
         .map(|entry| entry.file_path);
+    let mut config = handle.config().await;
+    if allow && !config.replay_map_downloads {
+        config.replay_map_downloads = true;
+        handle.update_config(config.clone()).await?;
+    }
+    let may_download = config.replay_map_downloads;
+    let index_error = match may_download {
+        true => map_store::refresh_index().await.err(),
+        false => None,
+    };
+
     // The boss's own maps win; otherwise every page the game has for the area
     let own = match file {
         Some(file) => load_bosses_with_custom(&file, user_dir.as_deref())?
@@ -63,56 +64,45 @@ pub async fn get_replay_maps(
             .map(|b| b.maps),
         None => None,
     };
-    Ok(own.unwrap_or_else(|| area_pages(&app_handle, area_id)))
-}
-
-/// `pages.toml`: the game's map pages per area, written by `just extract-maps`
-#[derive(serde::Deserialize)]
-struct MapIndex {
-    #[serde(default)]
-    area: Vec<AreaPages>,
-}
-
-#[derive(serde::Deserialize)]
-struct AreaPages {
-    id: i64,
-    #[serde(default)]
-    maps: Vec<MapDefinition>,
-}
-
-fn area_pages(app_handle: &AppHandle, area_id: i64) -> Vec<MapDefinition> {
-    map_dirs(app_handle)
-        .into_iter()
-        .filter_map(|dir| std::fs::read_to_string(dir.join("pages.toml")).ok())
-        .filter_map(|text| toml::from_str::<MapIndex>(&text).ok())
-        .find_map(|index| index.area.into_iter().find(|a| a.id == area_id))
-        .map(|a| a.maps)
-        .unwrap_or_default()
-}
-
-/// A map image as a data URL. `image` is a bare file name: anything that
-/// could leave the maps directories is refused.
-#[tauri::command]
-pub async fn get_replay_map_image(app_handle: AppHandle, image: String) -> Result<String, String> {
-    // `:` covers Windows drive-relative names, which `join` would follow off the maps directory
-    if image.is_empty() || image.contains(['/', '\\', ':']) || image.contains("..") {
-        return Err(format!("Invalid map image name: {image}"));
-    }
-    let mime = match image
-        .rsplit_once('.')
-        .map(|(_, ext)| ext.to_ascii_lowercase())
-        .as_deref()
-    {
-        Some("png") => "image/png",
-        Some("jpg" | "jpeg") => "image/jpeg",
-        Some("webp") => "image/webp",
-        _ => return Err(format!("Unsupported map image type: {image}")),
+    let has_own = own.is_some();
+    let maps = own.unwrap_or_else(|| map_store::area_pages(area_id));
+    let missing = map_store::missing_images(&maps);
+    let status = if !has_own && !map_store::has_index() {
+        // Without the index there is no telling whether the area has maps
+        match may_download {
+            true => unavailable(index_error.unwrap_or_default()),
+            false => ReplayMapStatus::NeedsConsent,
+        }
+    } else if missing.is_empty() {
+        ReplayMapStatus::Ready
+    } else if !may_download {
+        ReplayMapStatus::NeedsConsent
+    } else {
+        match map_store::download_images(missing).await {
+            Ok(()) => ReplayMapStatus::Ready,
+            Err(e) => unavailable(e),
+        }
     };
-    let path = map_dirs(&app_handle)
-        .into_iter()
-        .map(|dir| dir.join(&image))
-        .find(|path| path.is_file())
-        .ok_or_else(|| format!("Map image not found: {image}"))?;
+    Ok(ReplayMaps { maps, status })
+}
+
+fn ready(maps: Vec<baras_types::MapDefinition>) -> ReplayMaps {
+    ReplayMaps {
+        maps,
+        status: ReplayMapStatus::Ready,
+    }
+}
+
+fn unavailable(error: String) -> ReplayMapStatus {
+    tracing::warn!(error = %error, "Replay maps unavailable");
+    ReplayMapStatus::Unavailable
+}
+
+/// A map image as a data URL
+#[tauri::command]
+pub async fn get_replay_map_image(image: String) -> Result<String, String> {
+    let mime = map_store::image_mime(&image)?;
+    let path = map_store::find_image(&image).ok_or_else(|| format!("Map image not found: {image}"))?;
     let bytes = std::fs::read(&path).map_err(|e| format!("Failed to read {}: {e}", path.display()))?;
     Ok(format!(
         "data:{mime};base64,{}",

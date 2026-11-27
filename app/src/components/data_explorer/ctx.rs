@@ -16,7 +16,7 @@ use crate::components::encounter_types::EncounterSummary;
 use crate::types::{
     CombatLogSessionState, EnemyViewsState, SortColumn, SortDirection, UiSessionState, UsageSortColumn, ViewMode,
 };
-use baras_types::{OverviewColumn, OverviewLayouts};
+use baras_types::{OverviewColumn, OverviewLayouts, ReplayMapStatus};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Local Types (not persisted)
@@ -110,7 +110,7 @@ pub(super) struct ExplorerCtx {
     /// A player and a moment the Replay tab should open on (set from a death recap)
     pub replay_jump: Signal<Option<(String, f32)>>,
     /// Replay maps of the selected encounter's boss, with the encounter they are for
-    pub replay_maps: Signal<(Option<u32>, Vec<baras_types::MapDefinition>)>,
+    pub replay_maps: Signal<(Option<u32>, baras_types::ReplayMaps)>,
     pub dt_summary: Signal<Option<DamageTakenSummary>>,
     pub overview_table_data: Memo<OverviewTableData>,
     pub filtered_history: Memo<Vec<EncounterSummary>>,
@@ -227,7 +227,7 @@ pub(super) fn use_explorer_ctx(state: Signal<UiSessionState>) -> ExplorerCtx {
 
     // Death whose recap modal is open (None = closed)
     let recap_death = use_signal(|| None::<PlayerDeath>);
-    let replay_maps = use_signal(|| (None, Vec::new()));
+    let replay_maps = use_signal(|| (None, baras_types::ReplayMaps::default()));
     let replay_jump = use_signal(|| None::<(String, f32)>);
 
     // DamageTaken summary (shown above the ability table for a selected source)
@@ -392,11 +392,39 @@ impl ExplorerCtx {
         })
     }
 
-    /// Whether the Replay tab is offered for `idx`. Release builds need a map
-    /// for the boss; debug builds also play on a bare grid.
-    pub(super) fn replay_available(self, idx: Option<u32>) -> bool {
+    /// Where the maps of `idx` stand; `Loading` until its own answer is in
+    pub(super) fn replay_map_status(self, idx: Option<u32>) -> ReplayMapStatus {
         let maps = self.replay_maps.read();
-        self.is_operation_boss(idx) && (cfg!(debug_assertions) || (maps.0 == idx && !maps.1.is_empty()))
+        match maps.0 == idx {
+            true => maps.1.status,
+            false => ReplayMapStatus::Loading,
+        }
+    }
+
+    /// Whether the Replay tab is offered for `idx`. Release builds need a map
+    /// for the boss (or the chance of one); debug builds also play on a bare grid.
+    pub(super) fn replay_available(self, idx: Option<u32>) -> bool {
+        let known_mapless =
+            self.replay_map_status(idx) == ReplayMapStatus::Ready && self.replay_maps.read().1.maps.is_empty();
+        self.is_operation_boss(idx) && (cfg!(debug_assertions) || !known_mapless)
+    }
+
+    /// Ask for the maps of `idx`; `allow` agrees to downloading them
+    pub(super) fn load_replay_maps(self, idx: Option<u32>, allow: bool) {
+        let ExplorerCtx {
+            selected_encounter,
+            mut replay_maps,
+            ..
+        } = self;
+        replay_maps.set((idx, baras_types::ReplayMaps::default()));
+        if let Some(encounter) = idx.filter(|_| self.is_operation_boss(idx)) {
+            spawn(async move {
+                let maps = api::get_replay_maps(encounter, allow).await;
+                if *selected_encounter.peek() == idx {
+                    replay_maps.set((idx, maps));
+                }
+            });
+        }
     }
 
     // Filter by source when selected

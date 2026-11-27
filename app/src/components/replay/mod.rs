@@ -7,6 +7,7 @@ mod controls;
 mod entity_card;
 mod focus_card;
 mod loaded;
+mod map_prompt;
 mod map_tabs;
 mod timeline;
 
@@ -24,6 +25,7 @@ use controls::Controls;
 use entity_card::EntityCard;
 use focus_card::FocusCard;
 use loaded::{Loaded, Role};
+pub use map_prompt::MapPrompt;
 use map_tabs::MapTabs;
 
 const CANVAS_ID: &str = "replay-canvas";

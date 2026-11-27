@@ -97,7 +97,7 @@ pub fn MapsTab(
                 "An entity is on the first entry whose bounds, height range and phases contain it, so order matters. "
                 "Bounds are the world area the whole image covers; Min X is the image's left edge and Min Y its top edge."
             }
-            p { "Images are files in the definitions/maps folder of the config directory." }
+            p { "Images are the game's map pages (downloaded when first needed) or your own files in the definitions/maps folder of the config directory." }
         }
         EditorDrawer {
             title: "Replay Maps".to_string(),

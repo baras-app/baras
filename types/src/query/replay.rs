@@ -92,3 +92,22 @@ pub struct ReplayActivation {
     pub name: String,
     pub t: f32,
 }
+
+/// The maps of one fight and whether their images are on this machine
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct ReplayMaps {
+    pub maps: Vec<crate::MapDefinition>,
+    pub status: ReplayMapStatus,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ReplayMapStatus {
+    /// Not answered yet
+    #[default]
+    Loading,
+    Ready,
+    /// Images have to be downloaded and the user has not agreed to that yet
+    NeedsConsent,
+    /// The download failed
+    Unavailable,
+}
