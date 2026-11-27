@@ -30,6 +30,7 @@ mod alacrity;
 mod alerts;
 mod audio;
 mod definition;
+mod lifecycle;
 mod modifier_match;
 pub mod tracker;
 
@@ -42,4 +43,5 @@ pub use definition::{
     AbilitySelector, AlertTrigger, DefinitionConfig, DisplayTarget, EFFECTS_DSL_VERSION, EffectDefinition,
     EffectSelector, EntityFilter, RefreshAbility, RefreshScope, RefreshTrigger,
 };
+pub use lifecycle::Lifecycle;
 pub use tracker::{DefinitionSet, EffectTracker, NewTargetInfo};

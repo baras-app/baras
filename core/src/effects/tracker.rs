@@ -711,30 +711,30 @@ impl EffectTracker {
 
     /// Get effects destined for raid frames overlay (HOTs on group members)
     pub fn raid_frame_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
-        self.active_effects.values().filter(|e| {
-            e.display_targets.contains(&DisplayTarget::RaidFrames) && e.removed_at.is_none() && !e.timer_expired
-        })
+        self.active_effects
+            .values()
+            .filter(|e| e.display_targets.contains(&DisplayTarget::RaidFrames) && e.is_displayed())
     }
 
     /// Get effects destined for Effects A overlay
     pub fn effects_a(&self) -> impl Iterator<Item = &ActiveEffect> {
-        self.active_effects.values().filter(|e| {
-            e.display_targets.contains(&DisplayTarget::EffectsA) && e.removed_at.is_none() && !e.timer_expired
-        })
+        self.active_effects
+            .values()
+            .filter(|e| e.display_targets.contains(&DisplayTarget::EffectsA) && e.is_displayed())
     }
 
     /// Get effects destined for Effects B overlay
     pub fn effects_b(&self) -> impl Iterator<Item = &ActiveEffect> {
-        self.active_effects.values().filter(|e| {
-            e.display_targets.contains(&DisplayTarget::EffectsB) && e.removed_at.is_none() && !e.timer_expired
-        })
+        self.active_effects
+            .values()
+            .filter(|e| e.display_targets.contains(&DisplayTarget::EffectsB) && e.is_displayed())
     }
 
     /// Get effects destined for Effects C overlay
     pub fn effects_c(&self) -> impl Iterator<Item = &ActiveEffect> {
-        self.active_effects.values().filter(|e| {
-            e.display_targets.contains(&DisplayTarget::EffectsC) && e.removed_at.is_none() && !e.timer_expired
-        })
+        self.active_effects
+            .values()
+            .filter(|e| e.display_targets.contains(&DisplayTarget::EffectsC) && e.is_displayed())
     }
 
     /// Definitions flagged for uptime tracking on the given overlay target.
@@ -766,7 +766,7 @@ impl EffectTracker {
     /// their placeholder on the last-used variant.
     pub fn remember_uptime_icons(&mut self) {
         for effect in self.active_effects.values() {
-            if effect.removed_at.is_some()
+            if effect.is_removed()
                 || !self
                     .definitions
                     .effects
@@ -810,26 +810,23 @@ impl EffectTracker {
 
     /// Get effects destined for cooldown tracker
     pub fn cooldown_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
-        self.active_effects.values().filter(|e| {
-            e.display_targets.contains(&DisplayTarget::Cooldowns) && e.removed_at.is_none() && !e.timer_expired
-        })
+        self.active_effects
+            .values()
+            .filter(|e| e.display_targets.contains(&DisplayTarget::Cooldowns) && e.is_displayed())
     }
 
     /// Get effects destined for cooldown tracker B
     pub fn cooldown_b_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
-        self.active_effects.values().filter(|e| {
-            e.display_targets.contains(&DisplayTarget::CooldownsB) && e.removed_at.is_none() && !e.timer_expired
-        })
+        self.active_effects
+            .values()
+            .filter(|e| e.display_targets.contains(&DisplayTarget::CooldownsB) && e.is_displayed())
     }
 
     /// Get effects destined for DOT tracker, grouped by target entity
     pub fn dot_tracker_effects(&self) -> std::collections::HashMap<i64, Vec<&ActiveEffect>> {
         let mut by_target: std::collections::HashMap<i64, Vec<&ActiveEffect>> = std::collections::HashMap::new();
         for effect in self.active_effects.values() {
-            if effect.removed_at.is_none()
-                && !effect.timer_expired
-                && effect.display_targets.contains(&DisplayTarget::DotTracker)
-            {
+            if effect.is_displayed() && effect.display_targets.contains(&DisplayTarget::DotTracker) {
                 by_target.entry(effect.target_entity_id).or_default().push(effect);
             }
         }
@@ -841,10 +838,7 @@ impl EffectTracker {
     pub fn boss_health_effects_by_target_id(&self) -> std::collections::HashMap<i64, Vec<&ActiveEffect>> {
         let mut by_target: std::collections::HashMap<i64, Vec<&ActiveEffect>> = std::collections::HashMap::new();
         for effect in self.active_effects.values() {
-            if effect.removed_at.is_none()
-                && !effect.timer_expired
-                && effect.display_targets.contains(&DisplayTarget::BossHealth)
-            {
+            if effect.is_displayed() && effect.display_targets.contains(&DisplayTarget::BossHealth) {
                 by_target.entry(effect.target_entity_id).or_default().push(effect);
             }
         }
@@ -904,8 +898,8 @@ impl EffectTracker {
             // Instead of immediately removing, mark as timer_expired so the effect stays
             // in active_effects and can be revived by refresh_abilities.
             // After the grace period, hard-remove for GC.
-            if effect.removed_at.is_none() && effect.has_duration_expired(interp_time) {
-                effect.timer_expired = true;
+            if !effect.is_removed() && effect.has_duration_expired(interp_time) {
+                effect.mark_timer_expired();
 
                 // After grace period, hard-remove (GC on next retain pass)
                 if let Some(expires_at) = effect.expires_at {
@@ -920,9 +914,7 @@ impl EffectTracker {
             // silent discard). The single owner of expiration audio: the
             // effect may be dropped below before any audio poll could see it.
             let remaining_total = effect.remaining_secs(interp_time).unwrap_or(0.0);
-            if effect.on_end_alert_fired
-                || !(effect.has_base_duration_ended(remaining_total) || effect.removed_at.is_some())
-            {
+            if effect.on_end_alert_fired || !(effect.has_base_duration_ended(remaining_total) || effect.is_removed()) {
                 continue;
             }
             effect.on_end_alert_fired = true;
@@ -961,7 +953,7 @@ impl EffectTracker {
         // countdown to fire in the last N seconds before the cooldown becomes
         // ready, then disappear — not during the ready-state tail.
         for effect in self.active_effects.values() {
-            if effect.removed_at.is_some() || effect.timer_expired {
+            if !effect.is_displayed() {
                 continue;
             }
             let Some(def) = self.definitions.effects.get(&effect.definition_id) else {
@@ -996,7 +988,7 @@ impl EffectTracker {
         }
 
         // Remove effects that have been marked removed (immediate, no fade delay)
-        self.active_effects.retain(|_, effect| effect.removed_at.is_none());
+        self.active_effects.retain(|_, effect| !effect.is_removed());
     }
 
     /// Handle effect application signal
@@ -1093,7 +1085,7 @@ impl EffectTracker {
             if def.single_instance_per_target
                 && let Some(existing) =
                     Self::find_single_instance_effect(&mut self.active_effects, &single_instance_ids, target_id)
-                && existing.removed_at.is_none()
+                && !existing.is_removed()
             {
                 existing.refresh(timestamp, duration);
                 if let Some(c) = charges {
@@ -1116,7 +1108,7 @@ impl EffectTracker {
 
             if let Some(existing) = self.active_effects.get_mut(&key) {
                 if def.display_targets.contains(&DisplayTarget::DotTracker) {
-                    if existing.removed_at.is_some() {
+                    if existing.is_removed() {
                         // EffectRemoved arrived before EffectApplied (reverse ordering).
                         // Revive the effect — EffectApplied is authoritative for new applications.
                         existing.refresh(timestamp, duration);
@@ -1401,7 +1393,7 @@ impl EffectTracker {
             if r.def.single_instance_per_target {
                 let group_ids: Vec<&str> = single_instance_ids.iter().map(String::as_str).collect();
                 let existing = Self::find_single_instance_effect(&mut self.active_effects, &group_ids, target_id);
-                if let Some(effect) = existing.filter(|e| e.removed_at.is_none()) {
+                if let Some(effect) = existing.filter(|e| !e.is_removed()) {
                     if let Some(min_stacks) = r.min_stacks
                         && effect.stacks < min_stacks
                     {
@@ -1447,7 +1439,7 @@ impl EffectTracker {
                 // is gone, refresh abilities cannot bring it back.
                 // (timer_expired effects CAN still be refreshed — that's the grace period
                 // for when our duration estimate expires before the in-game effect.)
-                if effect.removed_at.is_some() {
+                if effect.is_removed() {
                     continue;
                 }
 
@@ -1709,7 +1701,7 @@ impl EffectTracker {
         for (def_id, scope, duration) in &refreshable_def_ids {
             let key = EffectKey::for_scope(def_id, *scope, source_id, target_id);
             if let Some(effect) = self.active_effects.get_mut(&key)
-                && effect.removed_at.is_none()
+                && !effect.is_removed()
             {
                 effect.refresh(timestamp, *duration);
             }
@@ -2417,7 +2409,7 @@ impl EffectTracker {
         for (key, effect) in &self.active_effects {
             // timer_expired is an interpolated estimate — a log event can still
             // prove the effect alive (checked per-hit below against log time).
-            if effect.removed_at.is_some() {
+            if effect.is_removed() {
                 continue;
             }
             let Some(def) = self.definitions.effects.get(&key.definition_id) else {
@@ -2474,7 +2466,7 @@ impl EffectTracker {
             };
             // Removed by an earlier hit in this batch (cancel), or genuinely
             // expired in log time before this hit — nothing to modify.
-            if effect.removed_at.is_some() || (effect.timer_expired && effect.expires_at.is_some_and(|e| e < adj.at)) {
+            if effect.is_removed() || (effect.is_timer_expired() && effect.expires_at.is_some_and(|e| e < adj.at)) {
                 continue;
             }
             let modifier_count = self
@@ -2542,7 +2534,7 @@ impl EffectTracker {
                 // Revive an interpolation-expired effect: the log proves it was
                 // still active at `adj.at`.
                 if final_expires > adj.at {
-                    effect.timer_expired = false;
+                    effect.revive();
                 }
             }
         }
