@@ -3,10 +3,10 @@
 //! CRUD for boss counter definitions.
 //! Uses CounterDefinition DSL type directly.
 
-use crate::components::editor_sort::{ENCOUNTER_SORT_AZ, SortToggle, apply_rank, use_stable_rank};
 use dioxus::prelude::*;
 
 use crate::api;
+use crate::components::def_list::{ColSort, Column, HideDisabled, ListCount, ListHead, sort_by_column};
 use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
 use crate::components::editor_drawer::use_drawer_guard;
 use crate::types::{BossWithPath, CounterDefinition, EncounterItem, EntityFilter, Trigger};
@@ -41,6 +41,49 @@ fn default_counter(name: String) -> CounterDefinition {
     }
 }
 
+/// Column names, in the order of the rows' grid
+const COLUMNS: [Column; 5] = [
+    Column::new("Name", "", "Sort by name"),
+    Column::new("Counts on", "col-dim", "What raises the counter"),
+    Column::new("Decrements on", "col-dim col-drop-1", "What lowers the counter"),
+    Column::new(
+        "Resets on",
+        "col-dim col-drop-2",
+        "What returns the counter to its initial value",
+    ),
+    Column::BLANK,
+];
+
+/// What raises the counter
+fn counts_on(c: &CounterDefinition) -> &'static str {
+    if c.track_effect_stacks.is_some() {
+        "Effect Stacks"
+    } else {
+        c.increment_on.label()
+    }
+}
+
+/// What lowers the counter, if anything does
+fn decrements_on(c: &CounterDefinition) -> Option<&'static str> {
+    match &c.decrement_on {
+        Some(t) => Some(t.label()),
+        // Deprecated flag: the "counts on" trigger lowers it instead
+        None => c.decrement.then_some("Counts down"),
+    }
+}
+
+fn sort_text(col: usize, c: &CounterDefinition) -> String {
+    match col {
+        1 => counts_on(c).to_string(),
+        2 => decrements_on(c).unwrap_or_default().to_string(),
+        3 => c.reset_on.label().to_string(),
+        _ => c.name.clone(),
+    }
+}
+
+/// Column the counters list is sorted by (session-wide)
+static COUNTER_SORT: GlobalSignal<ColSort> = Signal::global(|| None);
+
 #[component]
 pub fn CountersTab(
     boss_with_path: BossWithPath,
@@ -54,11 +97,6 @@ pub fn CountersTab(
     let guard = use_drawer_guard();
     // Extract counters and badge IDs from BossWithPath
     let counters = boss_with_path.boss.counters.clone();
-    // A–Z when toggled; renaming leaves the row in place
-    let rank = use_stable_rank(
-        counters.iter().map(|x| (x.id.as_str(), x.name.as_str())),
-        ENCOUNTER_SORT_AZ(),
-    );
     let builtin_counter_ids = boss_with_path.builtin_counter_ids.clone();
     let modified_counter_ids = boss_with_path.modified_counter_ids.clone();
 
@@ -70,7 +108,6 @@ pub fn CountersTab(
     } else {
         counters.clone()
     };
-    apply_rank(&mut visible_counters, &rank.read(), |x| &x.id);
     let origin_of = |id: &str| {
         Origin::of(
             builtin_counter_ids.iter().any(|b| b == id),
@@ -80,25 +117,16 @@ pub fn CountersTab(
     let origin_counts = origin_counts(counters.iter().map(|x| origin_of(&x.id)));
     let origin_filter = ENCOUNTER_ORIGIN();
     visible_counters.retain(|x| origin_filter.is_none_or(|o| origin_of(&x.id) == o));
+    sort_by_column(&mut visible_counters, COUNTER_SORT(), sort_text);
 
     rsx! {
-        div { class: "counters-tab",
+        div { class: "def-tab",
             // Header
             div { class: "flex items-center justify-between mb-sm editor-tab-header",
                 div { class: "flex items-center gap-sm",
-                    span { class: "text-sm text-secondary", "{counters.len()} counters" }
-                    if disabled_count > 0 {
-                        label { class: "flex items-center gap-xs text-xs text-muted cursor-pointer",
-                            input {
-                                r#type: "checkbox",
-                                checked: hide_disabled_counters(),
-                                onchange: move |e| hide_disabled_counters.set(e.checked()),
-                            }
-                            "Hide disabled ({disabled_count})"
-                        }
-                    }
-                    SortToggle { az: ENCOUNTER_SORT_AZ.signal() }
+                    ListCount { shown: visible_counters.len(), total: counters.len(), noun: "counters" }
                     OriginFilter { selected: origin_filter, counts: origin_counts, kind: "counters", on_pick: move |o| *ENCOUNTER_ORIGIN.write() = o }
+                    HideDisabled { hidden: hide_disabled_counters, count: disabled_count, noun: "counters" }
                 }
                 {
                     let bwp = boss_with_path.clone();
@@ -141,31 +169,37 @@ pub fn CountersTab(
                     div { class: "empty-state text-sm", "No counters match the filters" }
                 }
             } else {
-                for counter in visible_counters {
-                    {
-                        let counter_key = counter.id.clone();
-                        let is_expanded = expanded_counter() == Some(counter_key.clone());
-                        let counters_for_row = counters.clone();
-                        let counter_is_builtin = builtin_counter_ids.contains(&counter.id);
-                        let counter_is_modified = modified_counter_ids.contains(&counter.id);
+                // The column names sit outside the scrolling rows
+                div { class: "def-table",
+                    ListHead { cols: "counter-cols", columns: &COLUMNS, sort: COUNTER_SORT.signal() }
+                    div { class: "def-list",
+                        for counter in visible_counters {
+                            {
+                                let counter_key = counter.id.clone();
+                                let is_expanded = expanded_counter() == Some(counter_key.clone());
+                                let counters_for_row = counters.clone();
+                                let counter_is_builtin = builtin_counter_ids.contains(&counter.id);
+                                let counter_is_modified = modified_counter_ids.contains(&counter.id);
 
-                        rsx! {
-                            CounterRow {
-                                key: "{counter_key}",
-                                counter: counter.clone(),
-                                is_builtin: counter_is_builtin,
-                                is_modified: counter_is_modified,
-                                boss_with_path: boss_with_path.clone(),
-                                expanded: is_expanded,
-                                encounter_data: encounter_data.clone(),
-                                on_toggle: move |_| {
-                                    guard.switch(expanded_counter, if is_expanded { None } else { Some(counter_key.clone()) });
-                                },
-                                on_change: on_change,
-                                on_refetch: on_refetch,
-                                on_status: on_status,
-                                on_collapse: move |_| expanded_counter.set(None),
-                                all_counters: counters_for_row,
+                                rsx! {
+                                    CounterRow {
+                                        key: "{counter_key}",
+                                        counter: counter.clone(),
+                                        is_builtin: counter_is_builtin,
+                                        is_modified: counter_is_modified,
+                                        boss_with_path: boss_with_path.clone(),
+                                        expanded: is_expanded,
+                                        encounter_data: encounter_data.clone(),
+                                        on_toggle: move |_| {
+                                            guard.switch(expanded_counter, if is_expanded { None } else { Some(counter_key.clone()) });
+                                        },
+                                        on_change: on_change,
+                                        on_refetch: on_refetch,
+                                        on_status: on_status,
+                                        on_collapse: move |_| expanded_counter.set(None),
+                                        all_counters: counters_for_row,
+                                    }
+                                }
                             }
                         }
                     }
@@ -195,34 +229,29 @@ fn CounterRow(
     on_collapse: EventHandler<()>,
 ) -> Element {
     let mut is_dirty = use_signal(|| false);
-    let trigger_label = if counter.track_effect_stacks.is_some() {
-        "Effect Stacks"
-    } else {
-        counter.increment_on.label()
-    };
 
     rsx! {
         div { class: "list-item", class: if expanded { "expanded" }, class: if !counter.enabled { "item-disabled" },
             // Header row
             div {
-                class: "list-item-header",
+                class: "list-item-header def-row counter-cols",
                 onclick: move |_| on_toggle.call(()),
 
-                div { class: "row-col-name-id",
-                    span { class: "font-medium text-primary truncate", "{counter.name}" }
+                span { class: "col-name", title: "{counter.id}",
+                    span { class: "def-name truncate", "{counter.name}" }
                     if expanded && is_dirty() {
                         span { class: "unsaved-indicator", title: "Unsaved changes" }
                     }
-                    span { class: "text-xs text-mono text-muted", title: "{counter.id}", "{counter.id}" }
                 }
-                span { class: "row-col-tags",
-                    if counter.decrement_on.is_some() {
-                        span { class: "tag tag-info", "↓ Decrement" }
-                    } else if counter.decrement {
-                        span { class: "tag tag-warning", "Decrement" }
+                span { class: "col-dim truncate", "{counts_on(&counter)}" }
+                span { class: "col-dim col-drop-1 truncate",
+                    if let Some(down) = decrements_on(&counter) {
+                        "{down}"
+                    } else {
+                        span { class: "text-muted", "—" }
                     }
-                    span { class: "tag", "{trigger_label}" }
                 }
+                span { class: "col-dim col-drop-2 truncate", "{counter.reset_on.label()}" }
                 OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "counter" }
             }
 

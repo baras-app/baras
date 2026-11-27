@@ -3,10 +3,10 @@
 //! CRUD for boss phase definitions.
 //! Uses PhaseDefinition DSL type directly.
 
-use crate::components::editor_sort::{ENCOUNTER_SORT_AZ, SortToggle, apply_rank, use_stable_rank};
 use dioxus::prelude::*;
 
 use crate::api;
+use crate::components::def_list::{ColSort, Column, HideDisabled, ListCount, ListHead, sort_by_column};
 use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
 use crate::components::editor_drawer::use_drawer_guard;
 use crate::types::{BossWithPath, EncounterItem, PhaseDefinition, Trigger};
@@ -36,6 +36,30 @@ fn default_phase(name: String) -> PhaseDefinition {
     }
 }
 
+/// Column names, in the order of the rows' grid
+const COLUMNS: [Column; 4] = [
+    Column::new("Name", "", "Sort by name"),
+    Column::new("Starts on", "col-dim", "The game event that starts the phase"),
+    Column::new("Ends on", "col-dim col-drop-2", "The game event that ends the phase"),
+    Column::BLANK,
+];
+
+/// What a phase ends on, when it has a trigger of its own
+fn end_label(p: &PhaseDefinition) -> Option<&'static str> {
+    p.end_trigger.as_ref().map(|t| t.label())
+}
+
+fn sort_text(col: usize, p: &PhaseDefinition) -> String {
+    match col {
+        1 => p.start_trigger.label().to_string(),
+        2 => end_label(p).unwrap_or_default().to_string(),
+        _ => p.name.clone(),
+    }
+}
+
+/// Column the phases list is sorted by (session-wide)
+static PHASE_SORT: GlobalSignal<ColSort> = Signal::global(|| None);
+
 #[component]
 pub fn PhasesTab(
     boss_with_path: BossWithPath,
@@ -49,11 +73,6 @@ pub fn PhasesTab(
     let guard = use_drawer_guard();
     // Extract phases and badge IDs from BossWithPath
     let phases = boss_with_path.boss.phases.clone();
-    // A–Z when toggled; renaming leaves the row in place
-    let rank = use_stable_rank(
-        phases.iter().map(|x| (x.id.as_str(), x.name.as_str())),
-        ENCOUNTER_SORT_AZ(),
-    );
     let builtin_phase_ids = boss_with_path.builtin_phase_ids.clone();
     let modified_phase_ids = boss_with_path.modified_phase_ids.clone();
 
@@ -65,7 +84,6 @@ pub fn PhasesTab(
     } else {
         phases.clone()
     };
-    apply_rank(&mut visible_phases, &rank.read(), |x| &x.id);
     let origin_of = |id: &str| {
         Origin::of(
             builtin_phase_ids.iter().any(|b| b == id),
@@ -75,25 +93,16 @@ pub fn PhasesTab(
     let origin_counts = origin_counts(phases.iter().map(|x| origin_of(&x.id)));
     let origin_filter = ENCOUNTER_ORIGIN();
     visible_phases.retain(|x| origin_filter.is_none_or(|o| origin_of(&x.id) == o));
+    sort_by_column(&mut visible_phases, PHASE_SORT(), sort_text);
 
     rsx! {
-        div { class: "phases-tab",
+        div { class: "def-tab",
             // Header
             div { class: "flex items-center justify-between mb-sm editor-tab-header",
                 div { class: "flex items-center gap-sm",
-                    span { class: "text-sm text-secondary", "{phases.len()} phases" }
-                    if disabled_count > 0 {
-                        label { class: "flex items-center gap-xs text-xs text-muted cursor-pointer",
-                            input {
-                                r#type: "checkbox",
-                                checked: hide_disabled_phases(),
-                                onchange: move |e| hide_disabled_phases.set(e.checked()),
-                            }
-                            "Hide disabled ({disabled_count})"
-                        }
-                    }
-                    SortToggle { az: ENCOUNTER_SORT_AZ.signal() }
+                    ListCount { shown: visible_phases.len(), total: phases.len(), noun: "phases" }
                     OriginFilter { selected: origin_filter, counts: origin_counts, kind: "phases", on_pick: move |o| *ENCOUNTER_ORIGIN.write() = o }
+                    HideDisabled { hidden: hide_disabled_phases, count: disabled_count, noun: "phases" }
                 }
                 {
                     let bwp = boss_with_path.clone();
@@ -136,31 +145,37 @@ pub fn PhasesTab(
                     div { class: "empty-state text-sm", "No phases match the filters" }
                 }
             } else {
-                for phase in visible_phases {
-                    {
-                        let phase_key = phase.id.clone();
-                        let is_expanded = expanded_phase() == Some(phase_key.clone());
-                        let phases_for_row = phases.clone();
-                        let phase_is_builtin = builtin_phase_ids.contains(&phase.id);
-                        let phase_is_modified = modified_phase_ids.contains(&phase.id);
+                // The column names sit outside the scrolling rows
+                div { class: "def-table",
+                    ListHead { cols: "phase-cols", columns: &COLUMNS, sort: PHASE_SORT.signal() }
+                    div { class: "def-list",
+                        for phase in visible_phases {
+                            {
+                                let phase_key = phase.id.clone();
+                                let is_expanded = expanded_phase() == Some(phase_key.clone());
+                                let phases_for_row = phases.clone();
+                                let phase_is_builtin = builtin_phase_ids.contains(&phase.id);
+                                let phase_is_modified = modified_phase_ids.contains(&phase.id);
 
-                        rsx! {
-                            PhaseRow {
-                                key: "{phase_key}",
-                                phase: phase.clone(),
-                                all_phases: phases_for_row,
-                                is_builtin: phase_is_builtin,
-                                is_modified: phase_is_modified,
-                                boss_with_path: boss_with_path.clone(),
-                                expanded: is_expanded,
-                                encounter_data: encounter_data.clone(),
-                                on_toggle: move |_| {
-                                    guard.switch(expanded_phase, if is_expanded { None } else { Some(phase_key.clone()) });
-                                },
-                                on_change: on_change,
-                                on_refetch: on_refetch,
-                                on_status: on_status,
-                                on_collapse: move |_| expanded_phase.set(None),
+                                rsx! {
+                                    PhaseRow {
+                                        key: "{phase_key}",
+                                        phase: phase.clone(),
+                                        all_phases: phases_for_row,
+                                        is_builtin: phase_is_builtin,
+                                        is_modified: phase_is_modified,
+                                        boss_with_path: boss_with_path.clone(),
+                                        expanded: is_expanded,
+                                        encounter_data: encounter_data.clone(),
+                                        on_toggle: move |_| {
+                                            guard.switch(expanded_phase, if is_expanded { None } else { Some(phase_key.clone()) });
+                                        },
+                                        on_change: on_change,
+                                        on_refetch: on_refetch,
+                                        on_status: on_status,
+                                        on_collapse: move |_| expanded_phase.set(None),
+                                    }
+                                }
                             }
                         }
                     }
@@ -190,23 +205,28 @@ fn PhaseRow(
     on_collapse: EventHandler<()>,
 ) -> Element {
     let mut is_dirty = use_signal(|| false);
-    let trigger_label = phase.start_trigger.label();
 
     rsx! {
         div { class: "list-item", class: if expanded { "expanded" }, class: if !phase.enabled { "item-disabled" },
             // Header row
             div {
-                class: "list-item-header",
+                class: "list-item-header def-row phase-cols",
                 onclick: move |_| on_toggle.call(()),
 
-                div { class: "row-col-name-id",
-                    span { class: "font-medium text-primary truncate", "{phase.name}" }
+                span { class: "col-name", title: "{phase.id}",
+                    span { class: "def-name truncate", "{phase.name}" }
                     if expanded && is_dirty() {
                         span { class: "unsaved-indicator", title: "Unsaved changes" }
                     }
-                    span { class: "text-xs text-mono text-muted", title: "{phase.id}", "{phase.id}" }
                 }
-                span { class: "row-col-tags", span { class: "tag", "{trigger_label}" } }
+                span { class: "col-dim truncate", "{phase.start_trigger.label()}" }
+                span { class: "col-dim col-drop-2 truncate",
+                    if let Some(end) = end_label(&phase) {
+                        "{end}"
+                    } else {
+                        span { class: "text-muted", title: "Ends when another phase starts", "Next phase" }
+                    }
+                }
                 OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "phase" }
             }
 

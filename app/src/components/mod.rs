@@ -13,6 +13,7 @@ pub mod contributors_modal;
 pub mod data_explorer;
 pub mod death_recap_drawer;
 mod death_recap_effects;
+pub mod def_list;
 pub mod discipline_selector;
 pub mod dt_summary;
 pub mod echarts;

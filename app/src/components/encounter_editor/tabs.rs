@@ -275,7 +275,7 @@ pub fn BossTabs(
                 EmptyDrawer { hint }
             }
             // Tab content
-            div { class: "p-sm",
+            div { class: "boss-tab-body",
                 match active_tab_enum() {
                     BossTab::Timers => rsx! {
                         TimersTab {
