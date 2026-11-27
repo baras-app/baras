@@ -84,13 +84,18 @@ fn use_replay_maps(ctx: ExplorerCtx) {
         mut replay_maps,
         ..
     } = ctx;
+    // What the last run handled. The encounter list can arrive after a restored
+    // selection, so "is a boss fight" is part of it.
+    let mut handled = use_signal(|| None::<(Option<u32>, bool)>);
     use_effect(move || {
         let idx = selected_encounter();
-        if replay_maps.peek().0 == idx {
+        let is_boss = ctx.is_operation_boss(idx);
+        if *handled.peek() == Some((idx, is_boss)) {
             return;
         }
+        handled.set(Some((idx, is_boss)));
         replay_maps.set((idx, Vec::new()));
-        if let Some(encounter) = idx.filter(|_| ctx.is_operation_boss(idx)) {
+        if let Some(encounter) = idx.filter(|_| is_boss) {
             spawn(async move {
                 let maps = api::get_replay_maps(encounter).await;
                 if *selected_encounter.peek() == idx {
