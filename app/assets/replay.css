@@ -65,6 +65,14 @@
   touch-action: none;
 }
 
+/* The game's maps are drawn for a dark backdrop: the canvas keeps the dark theme's colours in light mode */
+:root[data-theme="light"] .replay-canvas {
+  --bg-dark: #1a1a1f;
+  --border-light: rgba(255, 255, 255, 0.1);
+  --text-secondary: #ccc;
+  --text-muted: #888;
+}
+
 /* ─── Controls ───────────────────────────────────────────────────────────── */
 
 .replay-controls {
