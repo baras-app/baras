@@ -48,10 +48,17 @@
   min-height: 0;
 }
 
-.replay-canvas {
+/* Holds the canvas and whatever floats over it */
+.replay-canvas-wrap {
+  position: relative;
   flex: 1;
-  width: 100%;
   min-height: 0;
+}
+
+.replay-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
   border: 1px solid var(--border-light);
   border-radius: 4px;
   cursor: grab;
@@ -371,14 +378,6 @@
   padding: 0 4px;
 }
 
-.replay-mark-cast {
-  position: absolute;
-  bottom: 0;
-  width: 1px;
-  height: 7px;
-  background: var(--swtor-orange);
-  opacity: 0.8;
-}
 
 .replay-mark-death {
   position: absolute;
@@ -402,4 +401,71 @@
   margin-left: -1px;
   background: var(--text-primary);
   pointer-events: none;
+}
+
+/* ─── Focus strip over the map ───────────────────────────────────────────── */
+
+/* Never takes clicks: the map under it still drags and picks */
+.replay-focus {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: calc(100% - 24px);
+  padding: 6px 10px;
+  border: 1px solid var(--swtor-gold);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--bg-dark) 88%, transparent);
+  font-size: 0.85em;
+  pointer-events: none;
+}
+
+.replay-focus.dead {
+  filter: grayscale(1);
+}
+
+.replay-focus-who,
+.replay-focus-doing,
+.replay-focus-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.replay-focus-doing {
+  gap: 12px;
+  color: var(--text-secondary);
+}
+
+.replay-focus .class-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.replay-focus-name {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-focus-doing .replay-focus-name {
+  font-weight: 400;
+}
+
+.replay-focus-hp {
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.replay-focus-value {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
 }

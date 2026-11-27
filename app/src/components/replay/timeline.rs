@@ -1,5 +1,4 @@
-//! The replay's scrubber: phases as bands, boss casts and deaths as marks,
-//! and a playhead. Click or drag to seek; click a death to land before it.
+//! The replay's scrubber: phases as bands, deaths as marks and a playhead. Click or drag to seek; click a death to land before it.
 
 use dioxus::prelude::*;
 
@@ -38,24 +37,18 @@ pub(super) fn Timeline() -> Element {
             player.seek(t);
         }
     };
-    // Fixed for the fight: (time, entity id, name) per player death, (time, name) per boss cast
-    let marks = use_hook(|| {
-        let data = &state.loaded.data;
-        let deaths: Vec<(f32, i64, String)> = data
+    // Fixed for the fight: (time, entity id, name) per player death
+    let deaths = use_hook(|| {
+        let deaths: Vec<(f32, i64, String)> = state
+            .loaded
+            .data
             .entities
             .iter()
             .filter(|e| e.kind == ReplayEntityKind::Player)
             .flat_map(|e| e.dead.iter().map(|(at, _)| (*at, e.id, e.name.clone())))
             .collect();
-        let casts: Vec<(f32, String)> = data
-            .casts
-            .iter()
-            .filter(|c| data.entities.iter().any(|e| e.id == c.entity_id && e.is_boss))
-            .map(|c| (c.start, c.name.clone()))
-            .collect();
-        std::rc::Rc::new((deaths, casts))
+        std::rc::Rc::new(deaths)
     });
-    let (deaths, casts) = (&marks.0, &marks.1);
 
     rsx! {
         div {
@@ -83,14 +76,6 @@ pub(super) fn Timeline() -> Element {
                     style: "left: {pct(phase.start_secs)}%; width: {pct(phase.end_secs) - pct(phase.start_secs)}%",
                     title: "{phase.phase_name} ({mmss(phase.start_secs)} to {mmss(phase.end_secs)})",
                     span { "{phase.phase_name}" }
-                }
-            }
-            for (i, (at, name)) in casts.iter().enumerate() {
-                div {
-                    key: "c{i}",
-                    class: "replay-mark-cast",
-                    style: "left: {pct(*at)}%",
-                    title: "{name} at {mmss(*at)}",
                 }
             }
             for (i, (at, id, name)) in deaths.iter().cloned().enumerate() {
