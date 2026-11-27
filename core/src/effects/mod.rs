@@ -27,6 +27,7 @@
 
 mod active;
 mod alacrity;
+mod alerts;
 mod definition;
 mod modifier_match;
 pub mod tracker;

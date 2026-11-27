@@ -21,16 +21,8 @@ use crate::signal_processor::{GameSignal, SignalHandler};
 use crate::timers::FiredAlert;
 
 use super::alacrity::AlacrityBuffTracker;
+use super::alerts;
 use super::{ActiveEffect, AlertTrigger, DisplayTarget, EffectDefinition, EffectKey, RefreshTrigger};
-
-fn format_effect_alert(text: &str, source_name: IStr, target_name: IStr, stacks: u8) -> String {
-    crate::dsl::format_placeholders(
-        text,
-        crate::context::resolve(source_name),
-        crate::context::resolve(target_name),
-        Some(stacks),
-    )
-}
 
 /// Grace period (ms) after the app's duration timer expires before hard-removing
 /// an effect from the tracker. During this window, `refresh_abilities` can still
@@ -532,36 +524,6 @@ impl EffectTracker {
         std::mem::take(&mut self.fired_alerts)
     }
 
-    /// Build a `FiredAlert` for an instant alert (no active effect created).
-    ///
-    /// If `alert_text` is set, the text overlay fires with that text.
-    /// If `alert_text` is `None`, only audio fires (no text on screen) — the
-    /// `text` field is still populated (with the definition name) for the audio
-    /// TTS fallback, but `alert_text_enabled` is `false` so nothing is shown.
-    fn build_instant_alert(
-        def: &EffectDefinition,
-        timestamp: NaiveDateTime,
-        source_name: IStr,
-        target_name: IStr,
-        stacks: u8,
-    ) -> FiredAlert {
-        let has_text = def.alert_text.is_some();
-        let raw_text = def.alert_text.as_deref().unwrap_or(&def.name);
-        let text = format_effect_alert(raw_text, source_name, target_name, stacks);
-        FiredAlert {
-            id: def.id.clone(),
-            name: def.name.clone(),
-            text,
-            color: def.color,
-            timestamp,
-            alert_text_enabled: has_text,
-            audio_enabled: def.audio.enabled,
-            audio_file: def.audio.file.clone(),
-            icon_ability_id: def.icon_ability_id,
-            remaining_secs: None,
-        }
-    }
-
     /// Set the player's alacrity percentage for duration calculations
     pub fn set_player_context(&mut self, player_id: i64, discipline_id: i64) {
         self.local_player_id = Some(player_id);
@@ -988,18 +950,11 @@ impl EffectTracker {
                 && def.alert_on == AlertTrigger::OnExpire
                 && let Some(alert_text) = &def.alert_text
             {
-                let text = format_effect_alert(alert_text, src_name, tgt_name, stacks);
+                let text = alerts::format_text(alert_text, src_name, tgt_name, stacks);
                 self.fired_alerts.push(FiredAlert {
-                    id: def_id,
-                    name: def.name.clone(),
-                    text,
-                    color: def.color,
-                    timestamp: current_time,
-                    alert_text_enabled: true,
                     audio_enabled,
                     audio_file,
-                    icon_ability_id: def.icon_ability_id,
-                    remaining_secs: None,
+                    ..alerts::text_alert(def, text, current_time)
                 });
             }
         }
@@ -1040,19 +995,11 @@ impl EffectTracker {
             }
 
             let raw_name = def.alert_text.as_deref().unwrap_or(&def.name);
-            let formatted = format_effect_alert(raw_name, effect.source_name, effect.target_name, effect.stacks);
+            let formatted = alerts::format_text(raw_name, effect.source_name, effect.target_name, effect.stacks);
             let text = format!("{} ({:.1})", formatted, remaining_base);
             self.fired_alerts.push(FiredAlert {
-                id: def.id.clone(),
-                name: def.name.clone(),
-                text,
-                color: def.color,
-                timestamp: current_time,
-                alert_text_enabled: true,
-                audio_enabled: false,
-                audio_file: None,
-                icon_ability_id: def.icon_ability_id,
                 remaining_secs: Some(remaining_base),
+                ..alerts::text_alert(def, text, current_time)
             });
         }
 
@@ -1132,7 +1079,7 @@ impl EffectTracker {
         for def in matching_defs {
             // Instant alerts: fire and skip — no ActiveEffect created
             if def.is_alert {
-                pending_alerts.push(Self::build_instant_alert(
+                pending_alerts.push(alerts::instant(
                     def,
                     timestamp,
                     source_name,
@@ -1217,22 +1164,7 @@ impl EffectTracker {
                 should_register |= def.display_targets.contains(&DisplayTarget::RaidFrames);
 
                 // Collect alert for effect refresh if configured
-                if def.alert_on == AlertTrigger::OnApply
-                    && let Some(text) = &def.alert_text
-                {
-                    pending_alerts.push(FiredAlert {
-                        id: def.id.clone(),
-                        name: def.name.clone(),
-                        text: text.clone(),
-                        color: def.color,
-                        timestamp,
-                        alert_text_enabled: true,
-                        audio_enabled: false,
-                        audio_file: None,
-                        icon_ability_id: def.icon_ability_id,
-                        remaining_secs: None,
-                    });
-                }
+                pending_alerts.extend(alerts::on_apply(def, timestamp));
             } else {
                 // A logged application is authoritative: drop any deferred refresh for
                 // this cast so a bystander's tick can't claim it afterwards.
@@ -1257,22 +1189,7 @@ impl EffectTracker {
                 should_register |= def.display_targets.contains(&DisplayTarget::RaidFrames);
 
                 // Collect alert for effect start if configured
-                if def.alert_on == AlertTrigger::OnApply
-                    && let Some(text) = &def.alert_text
-                {
-                    pending_alerts.push(FiredAlert {
-                        id: def.id.clone(),
-                        name: def.name.clone(),
-                        text: text.clone(),
-                        color: def.color,
-                        timestamp,
-                        alert_text_enabled: true,
-                        audio_enabled: false,
-                        audio_file: None,
-                        icon_ability_id: def.icon_ability_id,
-                        remaining_secs: None,
-                    });
-                }
+                pending_alerts.extend(alerts::on_apply(def, timestamp));
             }
         }
 
@@ -1884,7 +1801,7 @@ impl EffectTracker {
             // Instant alerts: fire and skip — no ActiveEffect created
             if def.is_alert {
                 self.fired_alerts
-                    .push(Self::build_instant_alert(def, timestamp, source_name, target_name, 1));
+                    .push(alerts::instant(def, timestamp, source_name, target_name, 1));
                 continue;
             }
 
@@ -1929,22 +1846,7 @@ impl EffectTracker {
                 }
 
                 // Fire OnApply alert on refresh
-                if def.alert_on == AlertTrigger::OnApply
-                    && let Some(text) = &def.alert_text
-                {
-                    self.fired_alerts.push(FiredAlert {
-                        id: def.id.clone(),
-                        name: def.name.clone(),
-                        text: text.clone(),
-                        color: def.color,
-                        timestamp,
-                        alert_text_enabled: true,
-                        audio_enabled: false,
-                        audio_file: None,
-                        icon_ability_id: def.icon_ability_id,
-                        remaining_secs: None,
-                    });
-                }
+                self.fired_alerts.extend(alerts::on_apply(def, timestamp));
             } else {
                 // Tracked on the caster (keying, death cleanup); only the
                 // displayed name is the target resolved at cast time
@@ -1959,22 +1861,7 @@ impl EffectTracker {
                 self.active_effects.insert(key, effect);
 
                 // Fire OnApply alert for new effect
-                if def.alert_on == AlertTrigger::OnApply
-                    && let Some(text) = &def.alert_text
-                {
-                    self.fired_alerts.push(FiredAlert {
-                        id: def.id.clone(),
-                        name: def.name.clone(),
-                        text: text.clone(),
-                        color: def.color,
-                        timestamp,
-                        alert_text_enabled: true,
-                        audio_enabled: false,
-                        audio_file: None,
-                        icon_ability_id: def.icon_ability_id,
-                        remaining_secs: None,
-                    });
-                }
+                self.fired_alerts.extend(alerts::on_apply(def, timestamp));
             }
         }
     }
@@ -2032,7 +1919,7 @@ impl EffectTracker {
             // Instant alerts: fire and skip — no ActiveEffect created
             if def.is_alert {
                 self.fired_alerts
-                    .push(Self::build_instant_alert(def, timestamp, source_name, target_name, 1));
+                    .push(alerts::instant(def, timestamp, source_name, target_name, 1));
                 continue;
             }
 
@@ -2050,22 +1937,7 @@ impl EffectTracker {
                 existing.refresh(timestamp, duration);
 
                 // Fire OnApply alert on refresh
-                if def.alert_on == AlertTrigger::OnApply
-                    && let Some(text) = &def.alert_text
-                {
-                    self.fired_alerts.push(FiredAlert {
-                        id: def.id.clone(),
-                        name: def.name.clone(),
-                        text: text.clone(),
-                        color: def.color,
-                        timestamp,
-                        alert_text_enabled: true,
-                        audio_enabled: false,
-                        audio_file: None,
-                        icon_ability_id: def.icon_ability_id,
-                        remaining_secs: None,
-                    });
-                }
+                self.fired_alerts.extend(alerts::on_apply(def, timestamp));
             } else {
                 let effect = ActiveEffect::from_definition(
                     def,
@@ -2078,22 +1950,7 @@ impl EffectTracker {
                 self.active_effects.insert(key, effect);
 
                 // Fire OnApply alert for new effect
-                if def.alert_on == AlertTrigger::OnApply
-                    && let Some(text) = &def.alert_text
-                {
-                    self.fired_alerts.push(FiredAlert {
-                        id: def.id.clone(),
-                        name: def.name.clone(),
-                        text: text.clone(),
-                        color: def.color,
-                        timestamp,
-                        alert_text_enabled: true,
-                        audio_enabled: false,
-                        audio_file: None,
-                        icon_ability_id: def.icon_ability_id,
-                        remaining_secs: None,
-                    });
-                }
+                self.fired_alerts.extend(alerts::on_apply(def, timestamp));
             }
         }
     }
@@ -2189,7 +2046,7 @@ impl EffectTracker {
                 // Instant alerts: fire and skip — no ActiveEffect created
                 if def.is_alert {
                     self.fired_alerts
-                        .push(Self::build_instant_alert(def, timestamp, source_name, target_name, 1));
+                        .push(alerts::instant(def, timestamp, source_name, target_name, 1));
                     continue;
                 }
 
@@ -2206,22 +2063,7 @@ impl EffectTracker {
                 self.active_effects.insert(key, effect);
 
                 // Fire OnApply alert for new EffectRemoved-triggered effect
-                if def.alert_on == AlertTrigger::OnApply
-                    && let Some(text) = &def.alert_text
-                {
-                    self.fired_alerts.push(FiredAlert {
-                        id: def.id.clone(),
-                        name: def.name.clone(),
-                        text: text.clone(),
-                        color: def.color,
-                        timestamp,
-                        alert_text_enabled: true,
-                        audio_enabled: false,
-                        audio_file: None,
-                        icon_ability_id: def.icon_ability_id,
-                        remaining_secs: None,
-                    });
-                }
+                self.fired_alerts.extend(alerts::on_apply(def, timestamp));
             }
         }
     }
