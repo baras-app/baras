@@ -296,3 +296,16 @@
   outline: 2px solid var(--swtor-gold);
   outline-offset: -1px;
 }
+
+/* Compact card: the cast is named on a plain line, no bar */
+.replay-cast.compact {
+  background: none;
+}
+
+.replay-cast.compact.interrupted .replay-cast-name {
+  color: var(--color-error);
+}
+
+.replay-cast-last {
+  color: var(--text-secondary);
+}

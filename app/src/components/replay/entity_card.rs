@@ -92,6 +92,19 @@ pub(super) fn EntityCard(index: usize) -> Element {
         .map
         .filter(|_| elsewhere)
         .and_then(|on| maps.read().get(on).map(map_label));
+    // Compact: health, target and cast only; the highlighted card stays full
+    let is_compact = (state.compact)() && !selected;
+    let hp_text = if view.dead {
+        "Dead".to_string()
+    } else if view.max_hp > 0 {
+        format!(
+            "{} / {} ({pct:.0}%)",
+            formatting::format_thousands(view.hp),
+            formatting::format_thousands(view.max_hp)
+        )
+    } else {
+        "HP unavailable".to_string()
+    };
     let european = state.european;
     let compact = move |v: f32| formatting::format_compact(v as i64, european);
     let toggle = {
@@ -120,20 +133,14 @@ pub(super) fn EntityCard(index: usize) -> Element {
                 }
                 span { class: "replay-card-tag", "{tag}" }
             }
-            div { class: "replay-hp",
+            div { class: "replay-hp", title: "{hp_text}",
                 div { class: "replay-hp-fill", style: "width: {pct:.1}%" }
             }
-            div { class: "replay-card-line",
-                if view.dead {
-                    "Dead"
-                } else if view.max_hp > 0 {
-                    "{formatting::format_thousands(view.hp)} / {formatting::format_thousands(view.max_hp)} ({pct:.0}%)"
-                } else {
-                    "HP unavailable"
-                }
+            if !is_compact {
+                div { class: "replay-card-line", "{hp_text}" }
+                {icon_row("Buffs", &view.buffs, view.more_buffs)}
+                {icon_row("Debuffs", &view.debuffs, view.more_debuffs)}
             }
-            {icon_row("Buffs", &view.buffs, view.more_buffs)}
-            {icon_row("Debuffs", &view.debuffs, view.more_debuffs)}
             div { class: "replay-card-line",
                 if let Some(label) = elsewhere_label {
                     "On {label}"
@@ -158,12 +165,24 @@ pub(super) fn EntityCard(index: usize) -> Element {
                     "No target"
                 }
             }
-            div { class: "replay-cast", class: if view.cast.as_ref().is_some_and(|c| c.interrupted) { "interrupted" },
+            div {
+                class: "replay-cast",
+                class: if is_compact { "compact" },
+                class: if view.cast.as_ref().is_some_and(|c| c.interrupted) { "interrupted" },
                 if let Some(cast) = &view.cast {
-                    div { class: "replay-cast-fill", style: "width: {cast.pct}%" }
+                    // Compact cards name the cast without a progress bar
+                    if !is_compact {
+                        div { class: "replay-cast-fill", style: "width: {cast.pct}%" }
+                    }
                     span { class: "replay-cast-name",
                         AbilityIcon { ability_id: cast.ability_id, size: 14 }
                         if cast.interrupted { "{cast.name} (interrupted)" } else { "{cast.name}" }
+                    }
+                } else if let Some((ability_id, name)) = &view.last_ability {
+                    // Nothing in progress: the last ability used, with no bar
+                    span { class: "replay-cast-name replay-cast-last",
+                        AbilityIcon { ability_id: *ability_id, size: 14 }
+                        "{name}"
                     }
                 }
             }

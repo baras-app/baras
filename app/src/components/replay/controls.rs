@@ -35,6 +35,7 @@ pub(super) fn Controls() -> Element {
     let duration = state.loaded.data.duration_secs;
     let mut speed = use_signal(|| 1.0f64);
     let mut scale = state.scale;
+    let mut compact_cards = state.compact;
     let mut show_dps = use_signal(|| false);
     let mut show_hps = use_signal(|| false);
     let with_player = move |f: &dyn Fn(&super::Player)| {
@@ -101,6 +102,23 @@ pub(super) fn Controls() -> Element {
                         }
                     },
                 }
+            }
+            button {
+                class: "btn btn-small",
+                title: "Back to the default zoom, recentred",
+                onclick: move |_| {
+                    scale.set(1.0);
+                    with_player(&|p| p.reset_view());
+                },
+                "Reset view"
+            }
+            label { class: "replay-option", title: "Cards show only health, target and cast; the selected card stays full",
+                input {
+                    r#type: "checkbox",
+                    checked: compact_cards(),
+                    onchange: move |e| compact_cards.set(e.checked()),
+                }
+                "Compact cards"
             }
             label { class: "replay-option",
                 input { r#type: "checkbox", checked: show_dps(), onchange: move |e| show_dps.set(e.checked()) }

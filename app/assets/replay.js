@@ -555,6 +555,12 @@ window.BarasReplay = (() => {
       setScale(x) {
         zoomTo(x, null);
       },
+      // Default zoom, recentred
+      resetView() {
+        scale = 1;
+        pan = { x: 0, y: 0 };
+        requestDraw();
+      },
       setHighlight(id) {
         highlight = id;
         requestDraw();

@@ -28,6 +28,8 @@ pub struct CardView {
     /// Index of the targeted entity in the replay data
     pub target: Option<usize>,
     pub cast: Option<CastView>,
+    /// Ability last used (id, name), shown while nothing is being cast
+    pub last_ability: Option<(i64, String)>,
     pub buffs: Vec<IconView>,
     pub debuffs: Vec<IconView>,
     /// Buffs and debuffs past the icon limit

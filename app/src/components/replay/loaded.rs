@@ -26,6 +26,7 @@ pub struct Loaded {
     /// Entity id → index in `data.entities`
     index_of: HashMap<i64, usize>,
     casts_of: HashMap<i64, Vec<usize>>,
+    activations_of: HashMap<i64, Vec<usize>>,
     effects_on: HashMap<i64, Vec<usize>>,
 }
 
@@ -48,6 +49,10 @@ impl Loaded {
         for (i, cast) in data.casts.iter().enumerate() {
             casts_of.entry(cast.entity_id).or_default().push(i);
         }
+        let mut activations_of: HashMap<i64, Vec<usize>> = HashMap::new();
+        for (i, activation) in data.activations.iter().enumerate() {
+            activations_of.entry(activation.entity_id).or_default().push(i);
+        }
         let mut effects_on: HashMap<i64, Vec<usize>> = HashMap::new();
         for (i, effect) in data.effects.iter().enumerate() {
             effects_on.entry(effect.target_id).or_default().push(i);
@@ -69,6 +74,7 @@ impl Loaded {
             numbers,
             index_of,
             casts_of,
+            activations_of,
             effects_on,
         }
     }
@@ -191,6 +197,16 @@ impl Loaded {
                     interrupted: cast.interrupted && t >= cast.end,
                 });
             }
+        }
+
+        if view.cast.is_none()
+            && let Some(uses) = self.activations_of.get(&e.id)
+            && let Some(last) = uses
+                .partition_point(|a| self.data.activations[*a].t <= t)
+                .checked_sub(1)
+        {
+            let used = &self.data.activations[uses[last]];
+            view.last_ability = Some((used.ability_id, used.name.clone()));
         }
 
         for effect in self

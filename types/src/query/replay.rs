@@ -7,6 +7,9 @@ use serde::{Deserialize, Serialize};
 pub struct ReplayData {
     pub duration_secs: f32,
     pub entities: Vec<ReplayEntity>,
+    /// Every ability use, timed or instant, in time order
+    #[serde(default)]
+    pub activations: Vec<ReplayActivation>,
     pub casts: Vec<ReplayCast>,
     pub effects: Vec<ReplayEffect>,
 }
@@ -77,4 +80,12 @@ pub struct ReplayEffect {
     pub start: f32,
     pub end: f32,
     pub is_debuff: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ReplayActivation {
+    pub entity_id: i64,
+    pub ability_id: i64,
+    pub name: String,
+    pub t: f32,
 }
