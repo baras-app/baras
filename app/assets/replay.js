@@ -41,6 +41,8 @@ window.BarasReplay = (() => {
   const FOCUS_MIN_SIZE = 60;
   const FOCUS_MAX_SHARE = 0.7;
   const FOCUS_MIN_SAMPLES = 20;
+  // Pages up to this many metres across are never framed
+  const FOCUS_MIN_PAGE = 250;
   const TICK_MS = 100;
   const PICK_PX = 18;
   const GRID_STEPS = [1, 2, 5, 10, 20, 50, 100, 200, 500];
@@ -223,8 +225,12 @@ window.BarasReplay = (() => {
     }
 
     // The part of a map page the fight actually used (players and bosses),
-    // with room around it, or null when that is most of the page anyway
+    // with room around it, or null when the page is room-sized or mostly used
     function fightArea(m) {
+      const [px0, px1] = [Math.min(m.min_x, m.max_x), Math.max(m.min_x, m.max_x)];
+      const [py0, py1] = [Math.min(m.min_y, m.max_y), Math.max(m.min_y, m.max_y)];
+      // A page this small is already scoped to one room: show all of it
+      if (Math.max(px1 - px0, py1 - py0) <= FOCUS_MIN_PAGE) return null;
       const xs = [];
       const ys = [];
       const page = { ...m, phases: null };
@@ -248,8 +254,6 @@ window.BarasReplay = (() => {
         const mid = (a + b) / 2;
         return [Math.max(lo, mid - half), Math.min(hi, mid + half)];
       };
-      const [px0, px1] = [Math.min(m.min_x, m.max_x), Math.max(m.min_x, m.max_x)];
-      const [py0, py1] = [Math.min(m.min_y, m.max_y), Math.max(m.min_y, m.max_y)];
       const [x0, x1] = span(xs, px0, px1);
       const [y0, y1] = span(ys, py0, py1);
       // One scale for both axes: the larger need decides
