@@ -14,12 +14,17 @@ const INTERRUPT_LINGER_SECS: f32 = 0.6;
 const RATE_WINDOW_SECS: usize = 10;
 /// Buff or debuff icons per card row
 const MAX_ICONS: usize = 12;
+/// An entity this far past a map's edge (as a share of its size) is still drawn
+const EDGE_MARGIN: f32 = 0.25;
+/// A map entry is offered when it covers at least 1/N of the players' samples
+const MAP_SHARE_DIVISOR: usize = 20;
 
 pub struct Loaded {
     pub data: ReplayData,
     /// Number shown on players who share a discipline with another
     pub numbers: HashMap<i64, u8>,
-    names: HashMap<i64, String>,
+    /// Entity id → index in `data.entities`
+    index_of: HashMap<i64, usize>,
     casts_of: HashMap<i64, Vec<usize>>,
     effects_on: HashMap<i64, Vec<usize>>,
 }
@@ -38,7 +43,7 @@ fn rate(series: &[u32], t: f32) -> f32 {
 
 impl Loaded {
     pub fn new(data: ReplayData) -> Self {
-        let names = data.entities.iter().map(|e| (e.id, e.name.clone())).collect();
+        let index_of = data.entities.iter().enumerate().map(|(i, e)| (e.id, i)).collect();
         let mut casts_of: HashMap<i64, Vec<usize>> = HashMap::new();
         for (i, cast) in data.casts.iter().enumerate() {
             casts_of.entry(cast.entity_id).or_default().push(i);
@@ -62,7 +67,7 @@ impl Loaded {
         Self {
             data,
             numbers,
-            names,
+            index_of,
             casts_of,
             effects_on,
         }
@@ -81,30 +86,77 @@ impl Loaded {
         !gone && !e.dead.iter().any(|(from, to)| t >= *from && t < *to)
     }
 
-    /// Map entry the entity is on at `t`: the first whose bounds, z range and
-    /// phases contain it (same rule as the canvas)
-    fn map_at(&self, e: &ReplayEntity, t: f32, maps: &[MapDefinition], phases: &[PhaseSegment]) -> Option<usize> {
-        let i = index_at(&e.track.t, t).or_else(|| (!e.track.t.is_empty()).then_some(0))?;
-        let (x, y, z) = (e.track.x[i], e.track.y[i], e.track.z[i]);
-        let phase = phases.iter().find(|p| t >= p.start_secs && t < p.end_secs);
-        maps.iter().position(|m| {
-            let b = &m.bounds;
-            let (x0, x1) = (b.min_x.min(b.max_x), b.min_x.max(b.max_x));
-            let (y0, y1) = (b.min_y.min(b.max_y), b.min_y.max(b.max_y));
-            (x0..=x1).contains(&x)
-                && (y0..=y1).contains(&y)
-                && m.min_z.is_none_or(|min| z >= min)
-                && m.max_z.is_none_or(|max| z <= max)
-                && (m.phases.is_empty() || phase.is_some_and(|p| m.phases.contains(&p.phase_id)))
-        })
+    /// Whether a map entry covers a position in a phase (same rule as the canvas)
+    fn covers(map: &MapDefinition, (x, y, z): (f32, f32, f32), phase: Option<&PhaseSegment>) -> bool {
+        let b = &map.bounds;
+        (b.min_x.min(b.max_x)..=b.min_x.max(b.max_x)).contains(&x)
+            && (b.min_y.min(b.max_y)..=b.min_y.max(b.max_y)).contains(&y)
+            && map.min_z.is_none_or(|min| z >= min)
+            && map.max_z.is_none_or(|max| z <= max)
+            && (map.phases.is_empty() || phase.is_some_and(|p| map.phases.contains(&p.phase_id)))
+    }
+
+    /// Whether a position is on a map's floor and on or just past its image:
+    /// what the canvas still draws (same rule and margin as `mapNear` there)
+    fn is_near(map: &MapDefinition, at: (f32, f32, f32), phase: Option<&PhaseSegment>) -> bool {
+        let b = &map.bounds;
+        let (dx, dy) = (
+            (b.max_x - b.min_x).abs() * EDGE_MARGIN,
+            (b.max_y - b.min_y).abs() * EDGE_MARGIN,
+        );
+        let grown = MapDefinition {
+            bounds: baras_types::MapRect {
+                min_x: b.min_x.min(b.max_x) - dx,
+                max_x: b.min_x.max(b.max_x) + dx,
+                min_y: b.min_y.min(b.max_y) - dy,
+                max_y: b.min_y.max(b.max_y) + dy,
+            },
+            ..map.clone()
+        };
+        Self::covers(&grown, at, phase)
+    }
+
+    /// The entries this fight needs. An area lists every room of the instance
+    /// and pages that span all of it: each place the players stood counts for
+    /// the smallest entry covering it, and entries left with too little are
+    /// dropped. The whole-instance page stays only if a real share of the
+    /// fight happened outside every room page.
+    pub fn maps_in_use(&self, maps: &[MapDefinition]) -> Vec<MapDefinition> {
+        let mut counts = vec![0usize; maps.len()];
+        let mut total = 0usize;
+        // Phase limits are checked during playback, not here
+        let unphased: Vec<MapDefinition> = maps
+            .iter()
+            .map(|m| MapDefinition {
+                phases: Vec::new(),
+                ..m.clone()
+            })
+            .collect();
+        for e in self.data.entities.iter().filter(|e| e.kind == ReplayEntityKind::Player) {
+            let t = &e.track;
+            for i in 0..t.t.len() {
+                total += 1;
+                let at = (t.x[i], t.y[i], t.z[i]);
+                if let Some(m) = unphased.iter().position(|m| Self::covers(m, at, None)) {
+                    counts[m] += 1;
+                }
+            }
+        }
+        maps.iter()
+            .zip(counts)
+            .filter(|(_, n)| *n * MAP_SHARE_DIVISOR >= total.max(1))
+            .map(|(m, _)| m.clone())
+            .collect()
     }
 
     pub fn card(
         &self,
         e: &ReplayEntity,
         t: f32,
-        with_rates: bool,
+        // The highlighted entity: its own card shows rates, every card marks its effects
+        highlight: Option<i64>,
         maps: &[MapDefinition],
+        shown_map: Option<usize>,
         phases: &[PhaseSegment],
     ) -> CardView {
         let mut view = CardView {
@@ -121,7 +173,7 @@ impl Loaded {
             .targets
             .get(e.targets.partition_point(|(at, _)| *at <= t).wrapping_sub(1))
             .and_then(|(_, id)| *id)
-            .and_then(|id| self.names.get(&id).cloned());
+            .and_then(|id| self.index_of.get(&id).copied());
 
         if let Some(casts) = self.casts_of.get(&e.id) {
             let last = casts.partition_point(|c| self.data.casts[*c].start <= t).checked_sub(1);
@@ -156,8 +208,10 @@ impl Loaded {
             } else {
                 (&mut view.buffs, &mut view.more_buffs)
             };
+            let from_highlight = highlight == Some(effect.source_id);
             // One icon per effect, whoever applied it
-            if row.iter().any(|icon| icon.effect_id == effect.effect_id) {
+            if let Some(icon) = row.iter_mut().find(|icon| icon.effect_id == effect.effect_id) {
+                icon.from_highlight |= from_highlight;
                 continue;
             }
             if row.len() == MAX_ICONS {
@@ -168,14 +222,22 @@ impl Loaded {
                 effect_id: effect.effect_id,
                 ability_id: effect.ability_id,
                 name: effect.name.clone(),
+                from_highlight,
             });
         }
 
-        if with_rates {
+        if highlight == Some(e.id) {
             view.rates = Some((rate(&e.damage, t), rate(&e.healing, t)));
         }
-        if !maps.is_empty() {
-            view.map = self.map_at(e, t, maps, phases);
+        if !maps.is_empty()
+            && let Some(i) = index_at(&e.track.t, t).or_else(|| (!e.track.t.is_empty()).then_some(0))
+        {
+            let at = (e.track.x[i], e.track.y[i], e.track.z[i]);
+            let phase = phases.iter().find(|p| t >= p.start_secs && t < p.end_secs);
+            view.off_map = shown_map
+                .and_then(|s| maps.get(s))
+                .is_some_and(|m| !Self::is_near(m, at, phase));
+            view.map = maps.iter().position(|m| Self::covers(m, at, phase));
         }
         view
     }

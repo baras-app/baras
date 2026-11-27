@@ -105,25 +105,30 @@ countdown_voice = "Amy"
 
 ### Maps
 
-Replay maps of the fight, one `[[boss.maps]]` entry per floor or room. An entity is on the first entry whose
-bounds, z range and phases contain it, so order matters. The Replay tab follows the entry holding most of the raid.
+The Replay tab draws a fight on the game's own map pages. Every operation's pages and the world area each one
+covers are extracted from the game client by `just extract-maps` into `definitions/maps/` (`pages.toml` plus one
+image per page), so a boss normally needs nothing here.
+
+A boss can list its own maps instead, which then replace the area's pages for that boss:
 
 ```toml
 [[boss.maps]]
-image = "dp_tyrans.png"   # file name under definitions/maps/
-min_x = -200.0            # world area the whole image covers
-max_x = -110.0
-min_y = -130.0
-max_y = -40.0
+image = "the_dread_fortress__map_brontes.webp"   # file name under definitions/maps/
+label = "brontes"         # optional: name on the map tabs
+min_x = -86.0             # world area the whole image covers
+max_x = 51.9
+min_y = -857.8
+max_y = -719.9
 rotation = 0.0            # optional: degrees the image is turned
-view = { min_x = -190.0, max_x = -120.0, min_y = -120.0, max_y = -55.0 }  # optional: open zoomed to this area
-min_z = -10.0             # optional: floor, for stacked layouts
-max_z = 5.0
+view = { min_x = -60.0, max_x = 30.0, min_y = -840.0, max_y = -750.0 }  # optional: open zoomed to this area
+min_z = 3.0               # optional: floor, for stacked layouts
+max_z = 62.0
 phases = ["p2"]           # optional: limit the entry to these phases
 ```
 
 `min_x` is the image's left edge and `min_y` its top edge; give a `min` above its `max` when the game axis runs
-the other way. A `maps` list in a `_custom.toml` replaces the bundled list whole.
+the other way. Entries may overlap and are listed smallest first: the replay shows the one holding most of the
+raid and follows the raid when it moves. A `maps` list in a `_custom.toml` replaces the bundled list whole.
 
 ### Challenges
 

@@ -38,6 +38,8 @@ extern "C" {
     fn on_tick(this: &Handle, cb: &Closure<dyn FnMut(f64, bool)>);
     #[wasm_bindgen(method, js_name = onPick)]
     fn on_pick(this: &Handle, cb: &Closure<dyn FnMut(JsValue)>);
+    #[wasm_bindgen(method, js_name = onScale)]
+    fn on_scale(this: &Handle, cb: &Closure<dyn FnMut(f64)>);
     #[wasm_bindgen(method, js_name = onMapChange)]
     fn on_map_change(this: &Handle, cb: &Closure<dyn FnMut(f64)>);
     #[wasm_bindgen(method)]
@@ -57,6 +59,7 @@ pub struct Player {
     _tick: Closure<dyn FnMut(f64, bool)>,
     _pick: Closure<dyn FnMut(JsValue)>,
     _map: Closure<dyn FnMut(f64)>,
+    _scale: Closure<dyn FnMut(f64)>,
 }
 
 /// Maps and flattened structs become plain objects, which is what the script reads
@@ -77,6 +80,7 @@ impl Player {
         mut playing: Signal<bool>,
         on_pick: impl FnMut(Option<i64>) + 'static,
         mut shown_map: Signal<Option<usize>>,
+        mut scale: Signal<f64>,
     ) -> Option<Self> {
         let canvas = web_sys::window()?.document()?.get_element_by_id(element_id)?;
         let handle = create(&canvas, &to_js(data), &to_js(meta)).ok()?;
@@ -91,12 +95,15 @@ impl Player {
         let map = Closure::<dyn FnMut(f64)>::new(move |index: f64| shown_map.set(Some(index as usize)));
         handle.on_tick(&tick);
         handle.on_pick(&pick);
+        let zoom = Closure::<dyn FnMut(f64)>::new(move |value: f64| scale.set(value));
         handle.on_map_change(&map);
+        handle.on_scale(&zoom);
         Some(Self {
             handle,
             _tick: tick,
             _pick: pick,
             _map: map,
+            _scale: zoom,
         })
     }
 

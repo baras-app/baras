@@ -1,7 +1,23 @@
 /* Replay tab: canvas between a players column and an enemies column. */
 
+/* Cards and canvas need room: below this the stage is replaced by a note */
+.replay-too-narrow {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .replay-layout {
+    display: none;
+  }
+
+  .replay-too-narrow {
+    display: block;
+  }
+}
+
 .replay-layout {
   display: grid;
+  min-width: 860px;
   grid-template-columns: minmax(200px, 260px) minmax(0, 1fr) minmax(200px, 260px);
   gap: 10px;
   height: 100%;
@@ -102,6 +118,7 @@
 /* ─── Cards ──────────────────────────────────────────────────────────────── */
 
 .replay-card {
+  text-align: left;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -241,4 +258,41 @@
   display: flex;
   gap: 6px;
   margin-top: 6px;
+}
+
+.replay-card .class-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* Target line: label, the target's icon, its name */
+.replay-card-target {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.replay-card-target .class-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.replay-card-target-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* An effect applied by the highlighted entity */
+.replay-effect {
+  display: inline-flex;
+  border-radius: 3px;
+}
+
+.replay-effect.from-highlight {
+  outline: 2px solid var(--swtor-gold);
+  outline-offset: -1px;
 }

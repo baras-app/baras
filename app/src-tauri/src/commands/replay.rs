@@ -55,13 +55,39 @@ pub async fn get_replay_maps(
         .flatten()
         .find_map(|dir| build_area_index(&dir).ok()?.remove(&area_id))
         .map(|entry| entry.file_path);
-    let Some(file) = file else { return Ok(Vec::new()) };
-    let bosses = load_bosses_with_custom(&file, user_dir.as_deref())?;
-    Ok(bosses
+    // The boss's own maps win; otherwise every page the game has for the area
+    let own = match file {
+        Some(file) => load_bosses_with_custom(&file, user_dir.as_deref())?
+            .into_iter()
+            .find(|b| b.name == boss_name && !b.maps.is_empty())
+            .map(|b| b.maps),
+        None => None,
+    };
+    Ok(own.unwrap_or_else(|| area_pages(&app_handle, area_id)))
+}
+
+/// `pages.toml`: the game's map pages per area, written by `just extract-maps`
+#[derive(serde::Deserialize)]
+struct MapIndex {
+    #[serde(default)]
+    area: Vec<AreaPages>,
+}
+
+#[derive(serde::Deserialize)]
+struct AreaPages {
+    id: i64,
+    #[serde(default)]
+    maps: Vec<MapDefinition>,
+}
+
+fn area_pages(app_handle: &AppHandle, area_id: i64) -> Vec<MapDefinition> {
+    map_dirs(app_handle)
         .into_iter()
-        .find(|b| b.name == boss_name && !b.maps.is_empty())
-        .map(|b| b.maps)
-        .unwrap_or_default())
+        .filter_map(|dir| std::fs::read_to_string(dir.join("pages.toml")).ok())
+        .filter_map(|text| toml::from_str::<MapIndex>(&text).ok())
+        .find_map(|index| index.area.into_iter().find(|a| a.id == area_id))
+        .map(|a| a.maps)
+        .unwrap_or_default()
 }
 
 /// A map image as a data URL. `image` is a bare file name: anything that

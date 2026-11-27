@@ -146,6 +146,18 @@ sync-defs:
 build-validate-windows:
   cross build --release -p baras-validate --target x86_64-pc-windows-gnu
 
+# Extract every operation's replay maps (images + world bounds) from the game client into core/definitions/maps (env: SWTOR_EXTRACTOR, SWTOR_ASSETS; needs ImageMagick)
+extract-maps:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  EXTRACTOR="${SWTOR_EXTRACTOR:-$HOME/dedicatedabilitydataswtorsextractor}"
+  ASSETS="${SWTOR_ASSETS:-$HOME/.local/share/Steam/steamapps/common/Star Wars - The Old Republic/Assets}"
+  PY="$EXTRACTOR/.venv/bin/python"
+  [[ -x "$PY" ]] || { echo "No venv at $EXTRACTOR/.venv (python -m venv .venv && .venv/bin/pip install zstandard)"; exit 1; }
+  [[ -d "$ASSETS" ]] || { echo "Assets folder not found: $ASSETS"; exit 1; }
+  command -v magick >/dev/null || { echo "ImageMagick (magick) not found"; exit 1; }
+  "$PY" "{{justfile_directory()}}/scripts/extract_maps.py" --assets "$ASSETS" --extractor "$EXTRACTOR"
+
 # Run the SWTOR ability extractor and copy ability_data.csv + effect_data.csv into core/data (env: SWTOR_EXTRACTOR, SWTOR_ASSETS; args pass to main.py, e.g. --no-npc)
 extract-abilities *args:
   #!/usr/bin/env bash

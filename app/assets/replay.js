@@ -11,6 +11,30 @@ window.BarasReplay = (() => {
   const SNAP_HEIGHT = 4;
   // An NPC stays drawn this long after its last log line
   const NPC_LINGER_SECS = 2;
+  // Share of the living raid a map must hold to be switched to, and to be kept
+  const ENTER_SHARE = 0.75;
+  const STAY_SHARE = 0.5;
+  // Following moves in only to a map this many times smaller, and out to one
+  // at most this many times larger when a closer fit exists
+  const TIGHTER = 2;
+  const WIDER = 3;
+  // Share of the whole fight's positions that makes a map the fight's home
+  const HOME_SHARE = 0.9;
+  // …unless it is more than this many times wider than the area the fight used
+  const HOME_MAX_SIZE = 3;
+  // An entity this far past a map's edge (as a share of its size) is still drawn
+  const EDGE_MARGIN = 0.25;
+  // Playback seconds a different map must stay the best before it is shown
+  const MAP_HOLD_SECS = 1;
+  // Zoom range: from the whole map at half size to a few metres across
+  const MIN_SCALE = 0.5;
+  const MAX_SCALE = 60;
+  // Zoom per wheel pixel (one notch is about 100): roughly 15% a notch
+  const WHEEL_ZOOM = 0.0015;
+  // Dot size follows zoom^power, kept between these factors of the base size
+  const DOT_ZOOM_POWER = 0.45;
+  const DOT_MIN_ZOOM = 0.8;
+  const DOT_MAX_ZOOM = 3;
   const TICK_MS = 100;
   const PICK_PX = 18;
   const GRID_STEPS = [1, 2, 5, 10, 20, 50, 100, 200, 500];
@@ -36,24 +60,33 @@ window.BarasReplay = (() => {
     return e.dead.some(([from, to]) => t >= from && t < to);
   }
 
-  // Which map entry a world position is on at a phase, or -1
-  function mapIndexAt(maps, x, y, z, phase) {
-    for (let i = 0; i < maps.length; i++) {
-      const m = maps[i];
-      const [x0, x1] = m.min_x < m.max_x ? [m.min_x, m.max_x] : [m.max_x, m.min_x];
-      const [y0, y1] = m.min_y < m.max_y ? [m.min_y, m.max_y] : [m.max_y, m.min_y];
-      if (x < x0 || x > x1 || y < y0 || y > y1) continue;
-      if (m.min_z != null && z < m.min_z) continue;
-      if (m.max_z != null && z > m.max_z) continue;
-      if (m.phases && m.phases.length && !m.phases.includes(phase)) continue;
-      return i;
-    }
-    return -1;
+  // Whether a map entry covers a world position at a phase
+  function mapContains(m, x, y, z, phase) {
+    const [x0, x1] = m.min_x < m.max_x ? [m.min_x, m.max_x] : [m.max_x, m.min_x];
+    const [y0, y1] = m.min_y < m.max_y ? [m.min_y, m.max_y] : [m.max_y, m.min_y];
+    if (x < x0 || x > x1 || y < y0 || y > y1) return false;
+    if (m.min_z != null && z < m.min_z) return false;
+    if (m.max_z != null && z > m.max_z) return false;
+    return !(m.phases && m.phases.length) || m.phases.includes(phase);
+  }
+
+  // Whether a position is on a map's floor and on or just past its image
+  function mapNear(m, x, y, z, phase) {
+    const dx = Math.abs(m.max_x - m.min_x) * EDGE_MARGIN;
+    const dy = Math.abs(m.max_y - m.min_y) * EDGE_MARGIN;
+    const grown = {
+      ...m,
+      min_x: Math.min(m.min_x, m.max_x) - dx,
+      max_x: Math.max(m.min_x, m.max_x) + dx,
+      min_y: Math.min(m.min_y, m.max_y) - dy,
+      max_y: Math.max(m.min_y, m.max_y) + dy,
+    };
+    return mapContains(grown, x, y, z, phase);
   }
 
   // Position, facing and presence of an entity at t; null when it is not there.
-  // `mapOf(x, y, z)` says which map entry a position is on, when there are maps.
-  function stateAt(e, t, duration, mapOf) {
+  // `onShown(x, y, z)` says whether the map on screen covers a position.
+  function stateAt(e, t, duration, onShown) {
     const tr = e.track;
     const n = tr.t.length;
     if (n === 0) return null;
@@ -74,8 +107,8 @@ window.BarasReplay = (() => {
     const gap = tr.t[j] - tr.t[i];
     if (Math.hypot(tr.x[j] - s.x, tr.y[j] - s.y) > SNAP_DIST) return s;
     if (Math.abs(tr.z[j] - s.z) > SNAP_HEIGHT) return s;
-    // Never glide from one map entry onto another
-    if (mapOf && mapOf(s.x, s.y, s.z) !== mapOf(tr.x[j], tr.y[j], tr.z[j])) return s;
+    // Never glide onto or off the map on screen
+    if (onShown && onShown(s.x, s.y, s.z) !== onShown(tr.x[j], tr.y[j], tr.z[j])) return s;
     // A long silence: stand still, then move over the last half second
     const start = gap > HOLD_GAP_SECS ? tr.t[j] - EASE_SECS : tr.t[i];
     if (t <= start) return s;
@@ -134,6 +167,7 @@ window.BarasReplay = (() => {
     let tickCb = null;
     let pickCb = null;
     let mapCb = null;
+    let scaleCb = null;
     let destroyed = false;
     let colors = {};
     // Maps: entries, their images, phase spans, the pinned entry (null = follow the raid)
@@ -142,6 +176,12 @@ window.BarasReplay = (() => {
     let phases = [];
     let pinned = null;
     let shownMap = -1;
+    // Auto-follow: the map waiting to be shown and since when; a seek settles at once
+    let pendingMap = -1;
+    let pendingAt = 0;
+    let settleMap = true;
+    // Entry the fight mostly happens on, or -1 when no single entry covers it
+    let homeMap = -1;
     // Screen positions of what was last drawn, for picking
     let drawn = [];
 
@@ -172,6 +212,44 @@ window.BarasReplay = (() => {
     function phaseAt(t) {
       for (const p of phases) if (t >= p.start_secs && t < p.end_secs) return p.phase_id;
       return null;
+    }
+
+    // Which map to show while following the raid. Entries overlap (a room, the
+    // hall around it, the whole instance) and are listed smallest first.
+    function followRaid(states, phase) {
+      const counts = new Array(maps.length).fill(0);
+      let alive = 0;
+      entities.forEach((e, i) => {
+        const s = states[i];
+        if (e.kind !== "Player" || !s || s.dead) return;
+        alive++;
+        for (let m = 0; m < maps.length; m++) if (mapContains(maps[m], s.x, s.y, s.z, phase)) counts[m]++;
+      });
+      const current = Math.max(shownMap, 0);
+      if (!alive) return current;
+      const holds = (m, share) => counts[m] >= alive * share;
+      // The fight's home page stays while the raid is mostly on it
+      if (homeMap >= 0 && (holds(homeMap, ENTER_SHARE) || (shownMap === homeMap && holds(homeMap, STAY_SHARE)))) {
+        return homeMap;
+      }
+      const size = (m) => Math.max(Math.abs(maps[m].max_x - maps[m].min_x), Math.abs(maps[m].max_y - maps[m].min_y));
+      const room = counts.findIndex((n, m) => holds(m, ENTER_SHARE));
+      if (shownMap < 0) return room >= 0 ? room : current;
+      if (holds(current, STAY_SHARE)) {
+        // Still here: only move in to a much tighter map
+        return room >= 0 && size(room) * TIGHTER <= size(current) ? room : current;
+      }
+      // The raid left this map. Prefer a map of a similar scale over jumping
+      // out to the whole instance.
+      if (room >= 0 && size(room) <= size(current) * WIDER) return room;
+      let similar = -1;
+      for (let m = 0; m < maps.length; m++) {
+        if (size(m) <= size(current) * WIDER && holds(m, STAY_SHARE) && (similar < 0 || counts[m] > counts[similar])) {
+          similar = m;
+        }
+      }
+      if (similar >= 0) return similar;
+      return room >= 0 ? room : current;
     }
 
     // The world rectangle on screen and how it maps to pixels. World y runs
@@ -246,17 +324,19 @@ window.BarasReplay = (() => {
       const x = v.sx(s.x);
       const y = v.sy(s.y);
       const npc = e.kind === "Npc";
-      const r = npc ? (e.is_boss ? 13 : 8) : 12;
+      // Dots grow as the map is zoomed in, but far slower than the map does
+      const zoom = Math.max(DOT_MIN_ZOOM, Math.min(DOT_MAX_ZOOM, Math.pow(scale, DOT_ZOOM_POWER)));
+      const r = (npc ? (e.is_boss ? 13 : 8) : 12) * zoom;
       ctx.globalAlpha = s.dead ? 0.35 : 1;
 
       // Facing arc: world direction (-sin f, -cos f)
       const f = (s.facing * Math.PI) / 180;
       const dir = Math.atan2((v.flipY ? 1 : -1) * Math.cos(f), (v.flipX ? 1 : -1) * Math.sin(f));
       ctx.strokeStyle = npc ? colors.npc : colors.player;
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 3 * zoom;
       ctx.lineCap = "round";
       ctx.beginPath();
-      ctx.arc(x, y, r + 5, dir - Math.PI / 4, dir + Math.PI / 4);
+      ctx.arc(x, y, r + 5 * zoom, dir - Math.PI / 4, dir + Math.PI / 4);
       ctx.stroke();
 
       const img = icons.get(e.id);
@@ -288,10 +368,10 @@ window.BarasReplay = (() => {
       if (number) {
         ctx.fillStyle = colors.bg;
         ctx.beginPath();
-        ctx.arc(x + r * 0.8, y - r * 0.8, 6.5, 0, TAU);
+        ctx.arc(x + r * 0.8, y - r * 0.8, 6.5 * zoom, 0, TAU);
         ctx.fill();
         ctx.fillStyle = colors.text;
-        ctx.font = "bold 10px sans-serif";
+        ctx.font = `bold ${Math.round(10 * zoom)}px sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(String(number), x + r * 0.8, y - r * 0.8 + 0.5);
@@ -301,7 +381,7 @@ window.BarasReplay = (() => {
         ctx.fillStyle = colors.text;
         ctx.font = "11px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(e.name, x, y + r + 17);
+        ctx.fillText(e.name, x, y + r + 5 * zoom + 12);
       }
       ctx.globalAlpha = 1;
       drawn.push({ id: e.id, x, y, r });
@@ -318,27 +398,30 @@ window.BarasReplay = (() => {
       ctx.fillRect(0, 0, w, h);
 
       const phase = maps.length ? phaseAt(time) : null;
-      const mapOf = maps.length ? (x, y, z) => mapIndexAt(maps, x, y, z, phase) : null;
-      const states = entities.map((e) => stateAt(e, time, duration, mapOf));
-      // Which map each entity is on; the shown one follows the living players
-      let onMap = null;
-      if (mapOf) {
-        onMap = states.map((s) => (s ? mapOf(s.x, s.y, s.z) : -1));
+      let states = entities.map((e) => stateAt(e, time, duration, null));
+      if (maps.length) {
         let next = pinned;
         if (next == null) {
-          const counts = new Array(maps.length).fill(0);
-          entities.forEach((e, i) => {
-            if (e.kind === "Player" && states[i] && !states[i].dead && onMap[i] >= 0) counts[onMap[i]]++;
-          });
-          const best = Math.max(...counts);
-          // Ties and an empty raid keep the current map
-          next = best > 0 && counts[shownMap] !== best ? counts.indexOf(best) : Math.max(shownMap, 0);
+          next = followRaid(states, phase);
+          // A few players through a doorway must not flip the map: a change
+          // has to hold for a moment, except right after a seek
+          if (next !== shownMap && shownMap >= 0 && !settleMap) {
+            if (next !== pendingMap) {
+              pendingMap = next;
+              pendingAt = time;
+            }
+            if (Math.abs(time - pendingAt) < MAP_HOLD_SECS) next = shownMap;
+          }
         }
+        settleMap = false;
         if (next !== shownMap) {
+          pendingMap = -1;
           shownMap = next;
           pan = { x: 0, y: 0 };
           if (mapCb) mapCb(shownMap);
         }
+        const onShown = (x, y, z) => mapNear(maps[shownMap], x, y, z, phase);
+        states = entities.map((e) => stateAt(e, time, duration, onShown));
       }
 
       const v = viewport(w, h);
@@ -346,7 +429,8 @@ window.BarasReplay = (() => {
       else drawGrid(v, w, h);
 
       drawn = [];
-      const visible = (i) => states[i] && (!onMap || onMap[i] === shownMap);
+      const visible = (i) =>
+        states[i] && (!maps.length || mapNear(maps[shownMap], states[i].x, states[i].y, states[i].z, phase));
       // NPCs under players, the highlighted entity on top
       for (const pass of ["Npc", "Companion", "Player"]) {
         entities.forEach((e, i) => {
@@ -417,6 +501,24 @@ window.BarasReplay = (() => {
       }
       pickCb(best ? best.id : null);
     }
+    // Zoom keeping one screen point fixed: the cursor, or the centre
+    function zoomTo(next, at) {
+      next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, next));
+      const rect = canvas.getBoundingClientRect();
+      const ax = at ? at.x - rect.width / 2 : 0;
+      const ay = at ? at.y - rect.height / 2 : 0;
+      const ratio = next / scale;
+      pan = { x: ax - (ax - pan.x) * ratio, y: ay - (ay - pan.y) * ratio };
+      scale = next;
+      requestDraw();
+    }
+    function onWheel(ev) {
+      ev.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      zoomTo(scale * Math.exp(-ev.deltaY * WHEEL_ZOOM), { x: ev.clientX - rect.left, y: ev.clientY - rect.top });
+      if (scaleCb) scaleCb(scale);
+    }
+    canvas.addEventListener("wheel", onWheel, { passive: false });
     canvas.addEventListener("pointerdown", onDown);
     canvas.addEventListener("pointermove", onMove);
     canvas.addEventListener("pointerup", onUp);
@@ -443,6 +545,7 @@ window.BarasReplay = (() => {
       },
       seek(secs) {
         time = Math.max(0, Math.min(duration, secs));
+        settleMap = true;
         tick(true);
         requestDraw();
       },
@@ -450,8 +553,7 @@ window.BarasReplay = (() => {
         speed = x;
       },
       setScale(x) {
-        scale = x;
-        requestDraw();
+        zoomTo(x, null);
       },
       setHighlight(id) {
         highlight = id;
@@ -469,6 +571,24 @@ window.BarasReplay = (() => {
           return img;
         });
         if (shownMap >= maps.length) shownMap = -1;
+        // Home: the smallest entry covering nearly all of where the players stood
+        let total = 0;
+        const covered = new Array(maps.length).fill(0);
+        for (const e of entities) {
+          if (e.kind !== "Player") continue;
+          const tr = e.track;
+          for (let i = 0; i < tr.t.length; i++) {
+            total++;
+            for (let m = 0; m < maps.length; m++) {
+              if (mapContains({ ...maps[m], phases: null }, tr.x[i], tr.y[i], tr.z[i], null)) covered[m]++;
+            }
+          }
+        }
+        // A page far wider than the fight itself (the whole instance) is no home
+        const reach = Math.max(fit.w, fit.h) * HOME_MAX_SIZE;
+        const size = (m) => Math.max(Math.abs(m.max_x - m.min_x), Math.abs(m.max_y - m.min_y));
+        homeMap = covered.findIndex((n, m) => total > 0 && n >= total * HOME_SHARE && size(maps[m]) <= reach);
+        settleMap = true;
         requestDraw();
       },
       // Pin a map entry, or null to follow the raid
@@ -482,6 +602,10 @@ window.BarasReplay = (() => {
       onPick(cb) {
         pickCb = cb;
       },
+      // Called when the wheel changed the zoom, so the slider can follow
+      onScale(cb) {
+        scaleCb = cb;
+      },
       onMapChange(cb) {
         mapCb = cb;
       },
@@ -490,6 +614,7 @@ window.BarasReplay = (() => {
         playing = false;
         cancelAnimationFrame(raf);
         observer.disconnect();
+        canvas.removeEventListener("wheel", onWheel);
         canvas.removeEventListener("pointerdown", onDown);
         canvas.removeEventListener("pointermove", onMove);
         canvas.removeEventListener("pointerup", onUp);
@@ -497,5 +622,5 @@ window.BarasReplay = (() => {
     };
   }
 
-  return { create, mapIndexAt };
+  return { create };
 })();

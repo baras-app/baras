@@ -8,6 +8,19 @@ use super::ReplayState;
 
 const SPEEDS: [f64; 4] = [0.5, 1.0, 2.0, 4.0];
 
+/// Zoom range, matching the canvas. The slider is logarithmic so each step
+/// zooms by the same factor.
+const MIN_SCALE: f64 = 0.5;
+const MAX_SCALE: f64 = 60.0;
+
+fn slider_to_scale(position: f64) -> f64 {
+    MIN_SCALE * (MAX_SCALE / MIN_SCALE).powf(position / 100.0)
+}
+
+fn scale_to_slider(scale: f64) -> f64 {
+    ((scale / MIN_SCALE).ln() / (MAX_SCALE / MIN_SCALE).ln() * 100.0).clamp(0.0, 100.0)
+}
+
 /// A combat time as mm:ss.s
 fn clock(secs: f32) -> String {
     format!("{:02}:{:04.1}", (secs / 60.0) as u32, secs % 60.0)
@@ -21,7 +34,7 @@ pub(super) fn Controls() -> Element {
     } = state.clone();
     let duration = state.loaded.data.duration_secs;
     let mut speed = use_signal(|| 1.0f64);
-    let mut scale = use_signal(|| 1.0f64);
+    let mut scale = state.scale;
     let mut show_dps = use_signal(|| false);
     let mut show_hps = use_signal(|| false);
     let with_player = move |f: &dyn Fn(&super::Player)| {
@@ -72,18 +85,19 @@ pub(super) fn Controls() -> Element {
                 },
             }
             span { class: "replay-clock", "{clock(duration)}" }
-            label { class: "replay-option", title: "Zoom",
+            label { class: "replay-option", title: "Zoom (or use the mouse wheel over the map)",
                 "Scale"
                 input {
                     r#type: "range",
-                    min: "0.5",
-                    max: "4",
-                    step: "0.1",
-                    value: "{scale()}",
+                    min: "0",
+                    max: "100",
+                    step: "1",
+                    value: "{scale_to_slider(scale())}",
                     oninput: move |e| {
                         if let Ok(v) = e.value().parse::<f64>() {
-                            scale.set(v);
-                            with_player(&|p| p.set_scale(v));
+                            let next = slider_to_scale(v);
+                            scale.set(next);
+                            with_player(&|p| p.set_scale(next));
                         }
                     },
                 }

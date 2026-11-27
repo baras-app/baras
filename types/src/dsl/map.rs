@@ -12,12 +12,15 @@ pub struct MapRect {
 }
 
 /// One map image and the world area it covers. A boss lists several when the
-/// fight spans floors or teleports; an entity is on the first entry whose
-/// bounds, z range and phases contain it.
+/// fight spans floors or teleports. Entries may overlap: the replay shows the
+/// one containing most of the raid, the earliest on a tie.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct MapDefinition {
     /// File name under a `maps/` definitions directory
     pub image: String,
+    /// Name on the map tabs and cards; the image's file name when absent
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
     /// World area the whole image covers
     #[serde(flatten)]
     pub bounds: MapRect,

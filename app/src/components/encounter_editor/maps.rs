@@ -130,6 +130,12 @@ pub fn MapsTab(
                         placeholder: "file.png",
                         on_input: move |v: String| edit(index, &|m| m.image = v.trim().to_string()),
                     }
+                    TextField {
+                        label: "Label",
+                        help: "Name on the map tabs. Blank uses the image's file name.",
+                        value: map.label.clone().unwrap_or_default(),
+                        on_input: move |v: String| edit(index, &|m| m.label = (!v.trim().is_empty()).then(|| v.clone())),
+                    }
                     RectFields {
                         rect: map.bounds,
                         on_change: move |rect| edit(index, &|m| m.bounds = rect),

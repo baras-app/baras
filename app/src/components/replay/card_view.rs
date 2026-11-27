@@ -6,6 +6,8 @@ pub struct IconView {
     pub effect_id: i64,
     pub ability_id: i64,
     pub name: String,
+    /// Applied by the highlighted entity
+    pub from_highlight: bool,
 }
 
 #[derive(Clone, PartialEq)]
@@ -23,7 +25,8 @@ pub struct CardView {
     pub hp: i32,
     pub max_hp: i32,
     pub dead: bool,
-    pub target: Option<String>,
+    /// Index of the targeted entity in the replay data
+    pub target: Option<usize>,
     pub cast: Option<CastView>,
     pub buffs: Vec<IconView>,
     pub debuffs: Vec<IconView>,
@@ -32,6 +35,8 @@ pub struct CardView {
     pub more_debuffs: usize,
     /// Damage and healing per second over the last seconds, when asked for
     pub rates: Option<(f32, f32)>,
-    /// Map entry the entity is on, when the boss has maps
+    /// With maps: the entity is not on the one shown, so not on the canvas
+    pub off_map: bool,
+    /// First map entry covering the entity, to say where it is instead
     pub map: Option<usize>,
 }
