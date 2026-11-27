@@ -2,11 +2,8 @@
 //!
 //! CRUD operations for effect definitions displayed in the effect editor UI.
 //!
-//! Architecture (delta-based):
-//! - Bundled effect definitions are read from app resources (read-only)
-//! - User overrides stored in single file: ~/.config/baras/definitions/effects.toml
-//! - User effects with matching IDs completely replace bundled effects
-//! - Version field enforces DSL compatibility - mismatched versions cause user file deletion
+//! Bundled definitions are read-only; user edits live in `definitions/effects.toml`
+//! as sparse overrides of bundled effects or full custom definitions (`UserEffects`).
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -14,11 +11,14 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Manager, State};
 
 use baras_core::dsl::{AudioConfig, Trigger};
-use baras_core::effects::{AlertTrigger, DefinitionConfig, DisplayTarget, EFFECTS_DSL_VERSION, EffectDefinition};
+use baras_core::effects::{
+    AlertTrigger, DefinitionConfig, DefinitionSet, DisplayTarget, EFFECTS_DSL_VERSION, EffectDefinition, UserEffects,
+    eq_ignoring_toggles,
+};
 use baras_core::game_data::{Discipline, DisciplineFilter};
 use baras_types::{RefreshAbility, RefreshScope};
 
-use crate::service::ServiceHandle;
+use crate::service::{ServiceHandle, load_bundled_effects};
 use tracing::warn;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -242,133 +242,34 @@ impl EffectListItem {
 // Helper Functions
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Get the user effects config file path
-fn get_user_effects_path() -> Option<PathBuf> {
-    baras_core::paths::config_dir().map(|p| p.join("definitions").join("effects.toml"))
-}
+const NO_TRIGGER_ERR: &str = "Effect must have at least one effect ID, ability, or refresh ability to match against. \
+    Without these, the effect will never trigger.";
 
-/// Get the bundled effects directory
-fn get_bundled_effects_dir(app_handle: &AppHandle) -> Option<PathBuf> {
-    app_handle
-        .path()
-        .resolve("definitions/effects", tauri::path::BaseDirectory::Resource)
-        .ok()
-}
-
-/// Load bundled effect definitions from app resources
-fn load_bundled_effects(app_handle: &AppHandle) -> HashMap<String, EffectDefinition> {
-    let mut effects = HashMap::new();
-
-    let Some(bundled_dir) = get_bundled_effects_dir(app_handle).filter(|p| p.exists()) else {
-        return effects;
-    };
-
-    let Ok(entries) = std::fs::read_dir(&bundled_dir) else {
-        return effects;
-    };
-
-    let files: Vec<_> = entries
-        .flatten()
-        .map(|e| e.path())
-        .filter(|p| {
-            p.extension().is_some_and(|ext| ext == "toml") && p.file_name().is_none_or(|n| n != "custom.toml") // Skip template
-        })
-        .collect();
-
-    for path in files {
-        if let Ok(contents) = std::fs::read_to_string(&path)
-            && let Ok(config) = toml::from_str::<DefinitionConfig>(&contents)
-        {
-            for effect in config.effects {
-                effects.insert(effect.id.clone(), effect);
-            }
-        }
-    }
-
-    effects
-}
-
-/// Load user effect overrides from single config file
-pub(crate) fn load_user_effects_file() -> Option<(u32, Vec<EffectDefinition>)> {
-    let path = get_user_effects_path()?;
-    if !path.exists() {
-        return None;
-    }
-
-    let contents = std::fs::read_to_string(&path).ok()?;
-    let config = toml::from_str::<DefinitionConfig>(&contents).ok()?;
-
-    Some((config.version, config.effects))
-}
-
-/// Save user effects to the config file
-pub(crate) fn save_user_effects(effects: &[EffectDefinition]) -> Result<(), String> {
-    let path = get_user_effects_path().ok_or("Cannot determine user effects path")?;
-
-    let config = DefinitionConfig {
-        version: EFFECTS_DSL_VERSION,
-        effects: effects.to_vec(),
-    };
-
-    let content = toml::to_string_pretty(&config).map_err(|e| format!("Failed to serialize effect config: {}", e))?;
-
-    // Ensure parent directory exists
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory {:?}: {}", parent, e))?;
-    }
-
-    std::fs::write(&path, content).map_err(|e| format!("Failed to write {:?}: {}", path, e))?;
-
-    Ok(())
-}
-
-/// Load merged effects (bundled + user overrides) for UI display
-/// Returns (effect, is_user_override, is_bundled)
-fn load_all_effects(app_handle: &AppHandle) -> Vec<(EffectDefinition, bool, bool)> {
-    // Load bundled effects
+/// Bundled definitions and the user's entries (v1 files are migrated here)
+fn load_effects(app_handle: &AppHandle) -> (DefinitionSet, UserEffects) {
     let bundled = load_bundled_effects(app_handle);
-
-    // Track which IDs are bundled
-    let bundled_ids: std::collections::HashSet<_> = bundled.keys().cloned().collect();
-
-    // Load user overrides (if version matches)
-    let user_effects: HashMap<String, EffectDefinition> = if let Some((version, effects)) = load_user_effects_file() {
-        if version == EFFECTS_DSL_VERSION {
-            effects.into_iter().map(|e| (e.id.clone(), e)).collect()
-        } else {
-            // Version mismatch - back the file up, as the service loader does
-            if let Some(path) = get_user_effects_path() {
-                warn!(
-                    file_version = version,
-                    expected_version = EFFECTS_DSL_VERSION,
-                    "User effects version mismatch, backing up file"
-                );
-                let _ = std::fs::rename(&path, path.with_extension("toml.bak"));
-            }
-            HashMap::new()
-        }
-    } else {
-        HashMap::new()
-    };
-
-    // Track which IDs are user overrides
-    let user_ids: std::collections::HashSet<_> = user_effects.keys().cloned().collect();
-
-    // Merge: start with bundled, overlay with user
-    let mut merged: HashMap<String, EffectDefinition> = bundled;
-    for (id, effect) in user_effects {
-        merged.insert(id, effect);
-    }
-
-    // Convert to list with is_user_override and is_bundled flags
-    merged
-        .into_iter()
-        .map(|(id, effect)| {
-            let is_user = user_ids.contains(&id);
-            let is_bundled = bundled_ids.contains(&id);
-            (effect, is_user, is_bundled)
+    let user = UserEffects::default_path()
+        .map(|p| UserEffects::load(&p, &bundled))
+        .transpose()
+        .unwrap_or_else(|e| {
+            warn!(error = %e, "Failed to load user effects");
+            None
         })
-        .collect()
+        .unwrap_or_default();
+    (bundled, user)
+}
+
+fn save_user_effects(user: &UserEffects) -> Result<(), String> {
+    let path = UserEffects::default_path().ok_or("Cannot determine user effects path")?;
+    user.save(&path).map_err(|e| e.to_string())
+}
+
+/// A bundled effect only counts as overridden when it differs beyond the toggles
+fn list_item(def: &EffectDefinition, bundled: &DefinitionSet) -> EffectListItem {
+    match bundled.get(&def.id) {
+        Some(b) => EffectListItem::from_definition(def, !eq_ignoring_toggles(def, b), true),
+        None => EffectListItem::from_definition(def, true, false),
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -378,46 +279,26 @@ fn load_all_effects(app_handle: &AppHandle) -> Vec<(EffectDefinition, bool, bool
 /// Get all effect definitions as a flat list
 #[tauri::command]
 pub async fn get_effect_definitions(app_handle: AppHandle) -> Result<Vec<EffectListItem>, String> {
-    let effects = load_all_effects(&app_handle);
-
-    let items: Vec<_> = effects
-        .iter()
-        .map(|(effect, is_user, is_bundled)| EffectListItem::from_definition(effect, *is_user, *is_bundled))
-        .collect();
-
-    Ok(items)
+    let (bundled, user) = load_effects(&app_handle);
+    Ok(user.apply(&bundled).iter().map(|e| list_item(e, &bundled)).collect())
 }
 
-/// Update an existing effect (always saved to user file)
+/// Update an existing effect (bundled effects store only the changed fields)
 #[tauri::command]
-pub async fn update_effect_definition(service: State<'_, ServiceHandle>, effect: EffectListItem) -> Result<(), String> {
-    // Validate effect has at least one way to match
+pub async fn update_effect_definition(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    effect: EffectListItem,
+) -> Result<(), String> {
     if !effect.has_valid_trigger() {
-        return Err(
-            "Effect must have at least one effect ID, ability, or refresh ability to match against. \
-            Without these, the effect will never trigger."
-                .to_string(),
-        );
+        return Err(NO_TRIGGER_ERR.to_string());
     }
 
-    // Load current user effects
-    let mut user_effects: Vec<EffectDefinition> = load_user_effects_file()
-        .filter(|(v, _)| *v == EFFECTS_DSL_VERSION)
-        .map(|(_, e)| e)
-        .unwrap_or_default();
+    let (bundled, mut user) = load_effects(&app_handle);
+    user.upsert(&effect.to_definition(), bundled.get(&effect.id));
+    save_user_effects(&user)?;
 
-    // Update or add the effect
-    if let Some(existing) = user_effects.iter_mut().find(|e| e.id == effect.id) {
-        *existing = effect.to_definition();
-    } else {
-        user_effects.push(effect.to_definition());
-    }
-
-    save_user_effects(&user_effects)?;
-
-    // Reload definitions in the running service
     let _ = service.reload_effect_definitions().await;
-
     Ok(())
 }
 
@@ -428,41 +309,24 @@ pub async fn create_effect_definition(
     service: State<'_, ServiceHandle>,
     mut effect: EffectListItem,
 ) -> Result<EffectListItem, String> {
-    // Validate effect has at least one way to match
     if !effect.has_valid_trigger() {
-        return Err(
-            "Effect must have at least one effect ID, ability, or refresh ability to match against. \
-            Without these, the effect will never trigger."
-                .to_string(),
-        );
+        return Err(NO_TRIGGER_ERR.to_string());
     }
 
-    // Generate ID from name if not provided
     if effect.id.is_empty() {
         effect.id = generate_effect_id(&effect.name);
     }
 
-    // Check for duplicate ID across all effects
-    let all_effects = load_all_effects(&app_handle);
-    if all_effects.iter().any(|(e, _, _)| e.id == effect.id) {
+    let (bundled, mut user) = load_effects(&app_handle);
+    if bundled.get(&effect.id).is_some() || user.contains(&effect.id) {
         return Err(format!("Effect with ID '{}' already exists", effect.id));
     }
 
-    // Load current user effects and add the new one
-    let mut user_effects: Vec<EffectDefinition> = load_user_effects_file()
-        .filter(|(v, _)| *v == EFFECTS_DSL_VERSION)
-        .map(|(_, e)| e)
-        .unwrap_or_default();
-
-    user_effects.push(effect.to_definition());
-    save_user_effects(&user_effects)?;
-
-    // Mark as user override
+    user.upsert(&effect.to_definition(), None);
+    save_user_effects(&user)?;
     effect.is_user_override = true;
 
-    // Reload definitions in the running service
     let _ = service.reload_effect_definitions().await;
-
     Ok(effect)
 }
 
@@ -475,35 +339,13 @@ pub async fn delete_effect_definition(
     service: State<'_, ServiceHandle>,
     effect_id: String,
 ) -> Result<(), String> {
-    // Load bundled to check if this is an override
-    let bundled = load_bundled_effects(&app_handle);
-    let is_bundled = bundled.contains_key(&effect_id);
-
-    // Load current user effects
-    let mut user_effects: Vec<EffectDefinition> = load_user_effects_file()
-        .filter(|(v, _)| *v == EFFECTS_DSL_VERSION)
-        .map(|(_, e)| e)
-        .unwrap_or_default();
-
-    let original_len = user_effects.len();
-    user_effects.retain(|e| e.id != effect_id);
-
-    if user_effects.len() == original_len && !is_bundled {
+    let (bundled, mut user) = load_effects(&app_handle);
+    if !user.remove(&effect_id) && bundled.get(&effect_id).is_none() {
         return Err(format!("Effect '{}' not found", effect_id));
     }
+    save_user_effects(&user)?;
 
-    // Save updated user effects (or remove file if empty)
-    if user_effects.is_empty() {
-        if let Some(path) = get_user_effects_path() {
-            let _ = std::fs::remove_file(path);
-        }
-    } else {
-        save_user_effects(&user_effects)?;
-    }
-
-    // Reload definitions in the running service
     let _ = service.reload_effect_definitions().await;
-
     Ok(())
 }
 
@@ -514,37 +356,22 @@ pub async fn duplicate_effect_definition(
     service: State<'_, ServiceHandle>,
     effect_id: String,
 ) -> Result<EffectListItem, String> {
-    let all_effects = load_all_effects(&app_handle);
-
-    // Find the effect to duplicate
-    let source = all_effects
-        .iter()
-        .find(|(e, _, _)| e.id == effect_id)
+    let (bundled, mut user) = load_effects(&app_handle);
+    let merged = user.apply(&bundled);
+    let source = merged
+        .get(&effect_id)
         .ok_or_else(|| format!("Effect '{}' not found", effect_id))?;
 
-    // Generate unique ID
-    let mut new_effect = source.0.clone();
-    let mut suffix = 1;
-    loop {
-        let new_id = format!("{}_copy{}", effect_id, suffix);
-        if !all_effects.iter().any(|(e, _, _)| e.id == new_id) {
-            new_effect.id = new_id;
-            new_effect.name = format!("{} (Copy)", source.0.name);
-            break;
-        }
-        suffix += 1;
-    }
+    let mut new_effect = source.clone();
+    new_effect.id = (1..)
+        .map(|n| format!("{}_copy{}", effect_id, n))
+        .find(|id| merged.get(id).is_none())
+        .expect("unbounded suffix search");
+    new_effect.name = format!("{} (Copy)", source.name);
 
-    // Load current user effects and add the duplicate
-    let mut user_effects: Vec<EffectDefinition> = load_user_effects_file()
-        .filter(|(v, _)| *v == EFFECTS_DSL_VERSION)
-        .map(|(_, e)| e)
-        .unwrap_or_default();
+    user.upsert(&new_effect, None);
+    save_user_effects(&user)?;
 
-    user_effects.push(new_effect.clone());
-    save_user_effects(&user_effects)?;
-
-    // Reload definitions in the running service
     let _ = service.reload_effect_definitions().await;
 
     // Duplicated effect is always user-created (not bundled)
@@ -576,32 +403,41 @@ pub struct EffectImportPreview {
 // Export/Import Commands
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Export user effect overrides as TOML.
+/// Export user effects as full (merged) definitions.
 /// If `effect_id` is provided, exports only that single effect; otherwise exports all.
 #[tauri::command]
-pub async fn export_effects_toml(effect_id: Option<String>) -> Result<String, String> {
-    let mut effects = load_user_effects_file()
-        .filter(|(v, _)| *v == EFFECTS_DSL_VERSION)
-        .map(|(_, effects)| effects)
-        .ok_or("No custom effect definitions to export")?;
-
-    if effects.is_empty() {
-        return Err("No custom effect definitions to export".to_string());
-    }
-
+pub async fn export_effects_toml(app_handle: AppHandle, effect_id: Option<String>) -> Result<String, String> {
+    let (bundled, user) = load_effects(&app_handle);
+    let mut effects = user.resolve(&bundled);
     if let Some(ref id) = effect_id {
         effects.retain(|e| e.id == *id);
-        if effects.is_empty() {
-            return Err(format!("Effect '{}' not found in user definitions", id));
-        }
+    }
+    if effects.is_empty() {
+        return Err(match effect_id {
+            Some(id) => format!("Effect '{}' not found in user definitions", id),
+            None => "No custom effect definitions to export".to_string(),
+        });
     }
 
     let config = DefinitionConfig {
         version: EFFECTS_DSL_VERSION,
         effects,
     };
-
     toml::to_string_pretty(&config).map_err(|e| format!("Failed to serialize effects: {}", e))
+}
+
+/// Exports hold full definitions in every version so far, so any known version imports
+fn version_error(version: u32) -> Option<String> {
+    (!(1..=EFFECTS_DSL_VERSION).contains(&version)).then(|| {
+        format!(
+            "Version mismatch: file has version {}, expected 1–{}",
+            version, EFFECTS_DSL_VERSION
+        )
+    })
+}
+
+fn parse_import(toml_content: &str) -> Result<DefinitionConfig, String> {
+    toml::from_str(toml_content).map_err(|e| format!("Failed to parse TOML: {}", e))
 }
 
 /// Preview effects import — parse TOML and diff against existing
@@ -610,44 +446,32 @@ pub async fn preview_import_effects(
     app_handle: AppHandle,
     toml_content: String,
 ) -> Result<EffectImportPreview, String> {
-    let config: DefinitionConfig = toml::from_str(&toml_content).map_err(|e| format!("Failed to parse TOML: {}", e))?;
-
-    let mut errors = Vec::new();
-
-    if config.version != EFFECTS_DSL_VERSION {
-        errors.push(format!(
-            "Version mismatch: file has version {}, expected {}",
-            config.version, EFFECTS_DSL_VERSION
-        ));
-    }
+    let config = parse_import(&toml_content)?;
+    let mut errors: Vec<String> = version_error(config.version).into_iter().collect();
 
     if config.effects.is_empty() {
         errors.push("No effects found in file".to_string());
     }
 
-    // Load current merged effects for diff
-    let current_effects = load_all_effects(&app_handle);
-    let current_ids: std::collections::HashSet<String> = current_effects.iter().map(|(e, _, _)| e.id.clone()).collect();
-    let imported_ids: std::collections::HashSet<String> = config.effects.iter().map(|e| e.id.clone()).collect();
+    let (bundled, user) = load_effects(&app_handle);
+    let current = user.apply(&bundled);
+    let imported_ids: std::collections::HashSet<&str> = config.effects.iter().map(|e| e.id.as_str()).collect();
 
-    let mut effects_to_replace = Vec::new();
-    let mut effects_to_add = Vec::new();
-
+    let (mut effects_to_replace, mut effects_to_add) = (Vec::new(), Vec::new());
     for effect in &config.effects {
         let diff = EffectImportDiff {
             id: effect.id.clone(),
             name: effect.name.clone(),
             display_targets: effect.display_targets.clone(),
         };
-
-        if current_ids.contains(&effect.id) {
+        if current.get(&effect.id).is_some() {
             effects_to_replace.push(diff);
         } else {
             effects_to_add.push(diff);
         }
     }
 
-    let effects_unchanged = current_ids.iter().filter(|id| !imported_ids.contains(*id)).count();
+    let effects_unchanged = current.iter().filter(|e| !imported_ids.contains(e.id.as_str())).count();
 
     Ok(EffectImportPreview {
         effects_to_replace,
@@ -659,33 +483,23 @@ pub async fn preview_import_effects(
 
 /// Import effects from TOML, merging into user file
 #[tauri::command]
-pub async fn import_effects_toml(service: State<'_, ServiceHandle>, toml_content: String) -> Result<(), String> {
-    let config: DefinitionConfig = toml::from_str(&toml_content).map_err(|e| format!("Failed to parse TOML: {}", e))?;
-
-    if config.version != EFFECTS_DSL_VERSION {
-        return Err(format!(
-            "Version mismatch: file has version {}, expected {}",
-            config.version, EFFECTS_DSL_VERSION
-        ));
+pub async fn import_effects_toml(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    toml_content: String,
+) -> Result<(), String> {
+    let config = parse_import(&toml_content)?;
+    if let Some(e) = version_error(config.version) {
+        return Err(e);
     }
 
-    // Load current user effects and merge
-    let mut user_effects: Vec<EffectDefinition> = load_user_effects_file()
-        .filter(|(v, _)| *v == EFFECTS_DSL_VERSION)
-        .map(|(_, e)| e)
-        .unwrap_or_default();
-
-    for imported in config.effects {
-        if let Some(existing) = user_effects.iter_mut().find(|e| e.id == imported.id) {
-            *existing = imported;
-        } else {
-            user_effects.push(imported);
-        }
+    let (bundled, mut user) = load_effects(&app_handle);
+    for imported in &config.effects {
+        user.upsert(imported, bundled.get(&imported.id));
     }
+    save_user_effects(&user)?;
 
-    save_user_effects(&user_effects)?;
     let _ = service.reload_effect_definitions().await;
-
     Ok(())
 }
 

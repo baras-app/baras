@@ -8,4 +8,5 @@ test-log-files/operations
 test-log-files/50mb/*.txt
 design/*
 test-log-files/large/*.txt
-.vscode/
+.vscode
+docs/superpowers/

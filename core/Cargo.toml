@@ -30,7 +30,7 @@ phf = { version = "0.14", features = ["macros"] }
 dirs = "7"
 zstd = "0.13"  # Same major as parquet, so only one copy is built
 encoding_rs = "0.8"
-toml = "1"
+toml = { version = "1", features = ["preserve_order"] }
 arrow = { version = "59", default-features = false, features = ["ipc"] }
 parquet = { version = "59", default-features = false, features = ["arrow", "lz4"] }
 datafusion = { version = "55", default-features = false, optional = true, features = [

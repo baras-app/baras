@@ -3,13 +3,28 @@
 use super::{CombatService, OverlayUpdate};
 use crate::state::SharedState;
 use baras_core::context::{AppConfigExt, ParsingSession, resolve};
-use baras_core::{BossEncounterDefinition, DefinitionConfig, DefinitionSet, EFFECTS_DSL_VERSION};
+use baras_core::effects::UserEffects;
+use baras_core::{BossEncounterDefinition, DefinitionSet};
 use baras_overlay::NotesData;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Emitter, Manager};
 use tracing::{debug, error, info, warn};
+
+/// Bundled effect definitions from app resources (`definitions/effects`)
+pub(crate) fn load_bundled_effects(app_handle: &AppHandle) -> DefinitionSet {
+    let mut set = DefinitionSet::new();
+    if let Some(dir) = app_handle
+        .path()
+        .resolve("definitions/effects", tauri::path::BaseDirectory::Resource)
+        .ok()
+        .filter(|p| p.exists())
+    {
+        set.add_from_dir(&dir);
+    }
+    set
+}
 
 impl CombatService {
     /// Build area index from encounter definition files (lightweight - only reads headers)
@@ -320,11 +335,6 @@ impl CombatService {
         }
     }
 
-    /// Get the user effects config file path
-    fn get_user_effects_path() -> Option<PathBuf> {
-        baras_core::paths::config_dir().map(|p| p.join("definitions").join("effects.toml"))
-    }
-
     /// Clean up old user effects directory structure (pre-delta architecture)
     fn cleanup_old_effects_dir() {
         let Some(old_dir) = baras_core::paths::config_dir().map(|p| p.join("definitions").join("effects")) else {
@@ -339,70 +349,21 @@ impl CombatService {
         }
     }
 
-    /// Load effect definitions from bundled resources and user config file.
-    ///
-    /// Architecture (delta-based):
-    /// 1. Load bundled definitions from app resources (base layer)
-    /// 2. Load user overrides from single file: ~/.config/baras/definitions/effects.toml
-    /// 3. User effects with matching IDs replace bundled effects entirely
-    ///
-    /// Version checking:
-    /// - User file must have `version = N` matching EFFECTS_DSL_VERSION
-    /// - Mismatched versions cause user file to be deleted (breaking DSL change)
+    /// Bundled definitions with the user's overrides (`definitions/effects.toml`) applied
     pub(super) fn load_effect_definitions(app_handle: &AppHandle) -> DefinitionSet {
         // Clean up old directory structure on first run after update
         Self::cleanup_old_effects_dir();
 
-        let mut set = DefinitionSet::new();
-
-        // 1. Load bundled definitions from app resources
-        if let Some(bundled_dir) = app_handle
-            .path()
-            .resolve("definitions/effects", tauri::path::BaseDirectory::Resource)
-            .ok()
-            .filter(|p| p.exists())
-        {
-            set.add_from_dir(&bundled_dir);
-        }
-
-        // 2. Load user overrides from single config file
-        if let Some(user_path) = Self::get_user_effects_path()
-            && user_path.exists()
-        {
-            Self::load_user_effects(&mut set, &user_path);
-        }
-
-        set
-    }
-
-    /// Load user effect overrides from single config file
-    fn load_user_effects(set: &mut DefinitionSet, path: &std::path::Path) {
-        let Ok(contents) = std::fs::read_to_string(path) else {
-            error!(path = ?path, "Failed to read user effects file");
-            return;
+        let bundled = load_bundled_effects(app_handle);
+        let Some(path) = UserEffects::default_path() else {
+            return bundled;
         };
-
-        let Ok(config) = toml::from_str::<DefinitionConfig>(&contents) else {
-            error!(path = ?path, "Failed to parse user effects file, backing up");
-            let _ = std::fs::rename(path, path.with_extension("toml.bak"));
-            return;
-        };
-
-        // Version check - backup file if version mismatch
-        if config.version != EFFECTS_DSL_VERSION {
-            warn!(
-                file_version = config.version,
-                expected_version = EFFECTS_DSL_VERSION,
-                path = ?path,
-                "User effects version mismatch, backing up file"
-            );
-            let _ = std::fs::rename(path, path.with_extension("toml.bak"));
-            return;
-        }
-
-        if !config.effects.is_empty() {
-            debug!(count = config.effects.len(), path = ?path, "Loading user effect overrides");
-            set.add_definitions(config.effects, true); // Overwrite bundled
+        match UserEffects::load(&path, &bundled) {
+            Ok(user) => user.apply(&bundled),
+            Err(e) => {
+                error!(error = %e, "Failed to load user effects");
+                bundled
+            }
         }
     }
 }

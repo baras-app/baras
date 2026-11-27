@@ -38,6 +38,7 @@ mod log_names;
 mod modifier_adjust;
 mod modifier_match;
 pub mod tracker;
+mod user_overrides;
 
 #[cfg(test)]
 mod tracker_tests;
@@ -52,3 +53,4 @@ pub use definition::{
 pub use definition_set::DefinitionSet;
 pub use lifecycle::Lifecycle;
 pub use tracker::{EffectTracker, NewTargetInfo};
+pub use user_overrides::{UserEffects, UserEffectsError, eq_ignoring_toggles};

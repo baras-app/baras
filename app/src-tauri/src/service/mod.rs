@@ -29,6 +29,7 @@ use crate::state::SharedState;
 pub use crate::state::{RaidSlotRegistry, RegisteredPlayer};
 pub use combat_data::CombatData;
 use combat_data::calculate_combat_data;
+pub(crate) use definitions::load_bundled_effects;
 pub use handler::*;
 pub use info::{AreaVisitInfo, LogFileInfo, SessionInfo};
 use operation_timer::OP_EXIT_TIMEOUT_SECS;
