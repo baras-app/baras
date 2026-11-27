@@ -67,6 +67,7 @@ impl SignalHandler for EffectTracker {
             GameSignal::EffectRemoved {
                 effect_id,
                 effect_name,
+                action_name,
                 source_id,
                 source_entity_type,
                 source_name,
@@ -76,10 +77,12 @@ impl SignalHandler for EffectTracker {
                 target_name,
                 target_npc_id,
                 timestamp,
+                ..
             } => {
                 self.handle_effect_removed(
                     *effect_id,
                     *effect_name,
+                    *action_name,
                     *source_id,
                     *source_entity_type,
                     *source_name,

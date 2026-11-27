@@ -23,12 +23,27 @@ impl EffectTracker {
             .unwrap_or_default()
     }
 
-    /// Whether a live effect still has audio to come (countdown, offset
-    /// warning or expiration sound): the service polls fast while true so
-    /// countdown windows aren't skipped.
+    /// Whether a live effect has audio due within the next slow poll (countdown,
+    /// offset warning or expiration sound): the service polls fast while true so
+    /// countdown windows aren't skipped, and idles otherwise.
     pub fn has_pending_audio(&self) -> bool {
-        self.active_effects()
-            .any(|e| e.audio_enabled && !e.is_removed() && (!e.audio_played || e.countdown_start > 0))
+        // Covers the 500ms idle poll with margin
+        const LEAD_SECS: f32 = 1.0;
+        let Some(now) = self.interpolated_game_time() else {
+            return false;
+        };
+        self.active_effects().any(|e| {
+            if !e.audio_enabled || e.is_removed() {
+                return false;
+            }
+            let Some(total) = e.remaining_secs(now) else {
+                return false;
+            };
+            let remaining = e.remaining_base_secs(total);
+            let offset = if e.audio_played { 0 } else { e.audio_offset };
+            let lead = offset.max(e.countdown_start.min(10)) as f32 + LEAD_SECS;
+            remaining <= lead && (remaining > 0.0 || !e.audio_played)
+        })
     }
 
     /// Audio due at `now`; marks what it returns as played.

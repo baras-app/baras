@@ -1324,6 +1324,8 @@ impl EventProcessor {
                 out.push(GameSignal::EffectRemoved {
                     effect_id: event.effect.effect_id,
                     effect_name: event.effect.effect_name,
+                    action_id: event.action.action_id,
+                    action_name: event.action.name,
                     source_id: event.source_entity.log_id,
                     source_entity_type: event.source_entity.entity_type,
                     source_name: event.source_entity.name,

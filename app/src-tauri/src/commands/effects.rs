@@ -19,7 +19,6 @@ use baras_core::game_data::{Discipline, DisciplineFilter};
 use baras_types::{RefreshAbility, RefreshScope};
 
 use crate::service::{ServiceHandle, load_bundled_effects};
-use tracing::warn;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types for Frontend
@@ -249,18 +248,15 @@ impl EffectListItem {
 const NO_TRIGGER_ERR: &str = "Effect must have at least one effect ID, ability, or refresh ability to match against. \
     Without these, the effect will never trigger.";
 
-/// Bundled definitions and the user's entries (v1 files are migrated here)
-fn load_effects(app_handle: &AppHandle) -> (DefinitionSet, UserEffects) {
+/// Bundled definitions and the user's entries (v1 files are migrated here).
+/// A load failure is an error, never an empty set: saving over it would wipe the file.
+fn load_effects(app_handle: &AppHandle) -> Result<(DefinitionSet, UserEffects), String> {
     let bundled = load_bundled_effects(app_handle);
-    let user = UserEffects::default_path()
-        .map(|p| UserEffects::load(&p, &bundled))
-        .transpose()
-        .unwrap_or_else(|e| {
-            warn!(error = %e, "Failed to load user effects");
-            None
-        })
-        .unwrap_or_default();
-    (bundled, user)
+    let user = match UserEffects::default_path() {
+        Some(p) => UserEffects::load(&p, &bundled).map_err(|e| e.to_string())?,
+        None => UserEffects::default(),
+    };
+    Ok((bundled, user))
 }
 
 fn save_user_effects(user: &UserEffects) -> Result<(), String> {
@@ -283,7 +279,7 @@ fn list_item(def: &EffectDefinition, bundled: &DefinitionSet) -> EffectListItem 
 /// Get all effect definitions as a flat list
 #[tauri::command]
 pub async fn get_effect_definitions(app_handle: AppHandle) -> Result<Vec<EffectListItem>, String> {
-    let (bundled, user) = load_effects(&app_handle);
+    let (bundled, user) = load_effects(&app_handle)?;
     Ok(user.apply(&bundled).iter().map(|e| list_item(e, &bundled)).collect())
 }
 
@@ -298,7 +294,7 @@ pub async fn update_effect_definition(
         return Err(NO_TRIGGER_ERR.to_string());
     }
 
-    let (bundled, mut user) = load_effects(&app_handle);
+    let (bundled, mut user) = load_effects(&app_handle)?;
     user.upsert(&effect.to_definition(), bundled.get(&effect.id));
     save_user_effects(&user)?;
 
@@ -315,7 +311,7 @@ pub async fn set_effect_toggles(
     enabled: Option<bool>,
     audio: Option<bool>,
 ) -> Result<(), String> {
-    let (bundled, mut user) = load_effects(&app_handle);
+    let (bundled, mut user) = load_effects(&app_handle)?;
     let merged = user.apply(&bundled);
     for id in &effect_ids {
         let Some(mut def) = merged.get(id).cloned() else {
@@ -350,7 +346,7 @@ pub async fn create_effect_definition(
         effect.id = generate_effect_id(&effect.name);
     }
 
-    let (bundled, mut user) = load_effects(&app_handle);
+    let (bundled, mut user) = load_effects(&app_handle)?;
     if bundled.get(&effect.id).is_some() || user.contains(&effect.id) {
         return Err(format!("Effect with ID '{}' already exists", effect.id));
     }
@@ -372,7 +368,7 @@ pub async fn delete_effect_definition(
     service: State<'_, ServiceHandle>,
     effect_id: String,
 ) -> Result<(), String> {
-    let (bundled, mut user) = load_effects(&app_handle);
+    let (bundled, mut user) = load_effects(&app_handle)?;
     if !user.remove(&effect_id) && bundled.get(&effect_id).is_none() {
         return Err(format!("Effect '{}' not found", effect_id));
     }
@@ -411,11 +407,16 @@ pub struct EffectImportPreview {
 /// If `effect_id` is provided, exports only that single effect; otherwise exports all.
 #[tauri::command]
 pub async fn export_effects_toml(app_handle: AppHandle, effect_ids: Option<Vec<String>>) -> Result<String, String> {
-    let (bundled, user) = load_effects(&app_handle);
-    // No ids: the user's own definitions. With ids: those effects as they
+    let (bundled, user) = load_effects(&app_handle)?;
+    // No ids: the user's own definitions, minus toggle-only overrides (the list
+    // shows those built-ins as unmodified). With ids: those effects as they
     // stand, built-ins included
     let effects: Vec<EffectDefinition> = match &effect_ids {
-        None => user.resolve(&bundled),
+        None => user
+            .resolve(&bundled)
+            .into_iter()
+            .filter(|def| bundled.get(&def.id).is_none_or(|b| !eq_ignoring_toggles(def, b)))
+            .collect(),
         Some(ids) => {
             let merged = user.apply(&bundled);
             ids.iter().filter_map(|id| merged.get(id).cloned()).collect()
@@ -462,7 +463,7 @@ pub async fn preview_import_effects(
         errors.push("No effects found in file".to_string());
     }
 
-    let (bundled, user) = load_effects(&app_handle);
+    let (bundled, user) = load_effects(&app_handle)?;
     let current = user.apply(&bundled);
     let imported_ids: std::collections::HashSet<&str> = config.effects.iter().map(|e| e.id.as_str()).collect();
 
@@ -502,7 +503,7 @@ pub async fn import_effects_toml(
         return Err(e);
     }
 
-    let (bundled, mut user) = load_effects(&app_handle);
+    let (bundled, mut user) = load_effects(&app_handle)?;
     for imported in &config.effects {
         user.upsert(imported, bundled.get(&imported.id));
     }

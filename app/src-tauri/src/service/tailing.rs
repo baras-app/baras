@@ -599,15 +599,23 @@ impl CombatService {
             session_guard.set_effect_latency(config.latency_ms);
         }
 
-        // Alerts at or before the last event already processed (e.g. a recovered
-        // stale encounter) must not replay. Game time, read before the tail task
-        // starts: comparing against the OS clock breaks when the game's clock
-        // differs (e.g. a Wine/Proton timezone mismatch).
-        let stale_alert_cutoff = session
-            .read()
-            .await
-            .last_event_time
-            .unwrap_or(chrono::NaiveDateTime::MIN);
+        // Alerts at or before the file's last line at open (e.g. an encounter the
+        // worker rewound for replay) must not fire. Game time, read before the
+        // tail task starts: comparing against the OS clock breaks when the game's
+        // clock differs (e.g. a Wine/Proton timezone mismatch). The worker path
+        // processes no events in-session, so fall back to the file's last line.
+        let stale_alert_cutoff = {
+            let session_guard = session.read().await;
+            session_guard
+                .last_event_time
+                .or_else(|| {
+                    let session_date = session_guard.game_session_date.unwrap_or_default();
+                    baras_core::context::extract_last_event_time(&path, session_date)
+                        .ok()
+                        .flatten()
+                })
+                .unwrap_or(chrono::NaiveDateTime::MIN)
+        };
 
         // Spawn the tail task to watch for new lines
         // The tail loop is "immortal" - it only exits via task abort or initialization failure
