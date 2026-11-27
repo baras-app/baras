@@ -14,6 +14,7 @@ use crate::types::{
 };
 
 use super::InlineNameCreator;
+use super::log_limits::LogLimitsHelp;
 use super::tabs::EncounterData;
 use super::timer_row::{self, TimerRow};
 
@@ -113,6 +114,7 @@ pub fn TimersTab(
                     HideDisabled { hidden: hide_disabled_timers, count: disabled_count, noun: "timers" }
                 }
                 div { class: "flex items-center gap-sm",
+                    LogLimitsHelp {}
                     if !timers.is_empty() {
                         button {
                             class: "btn btn-sm",
