@@ -1767,7 +1767,7 @@ impl EffectTracker {
                             continue;
                         }
                         effect.modifier_last_proc[mod_idx] = Some(timestamp);
-                        effect.apply_modifier(&adj, duration, false);
+                        effect.apply_modifier(&adj, duration, true);
                         if adj.cancel {
                             break;
                         }
