@@ -3,85 +3,23 @@
 use crate::state::MutexExt;
 use crate::state::SharedState;
 use baras_core::context::resolve;
+use baras_core::effects::EffectAudio;
 use baras_core::{ActiveEffect, DisplayTarget};
 use baras_overlay::{CooldownData, CooldownEntry, DotEntry, DotTarget, DotTrackerData, EffectABEntry, EffectsABData};
 use std::sync::Arc;
 
-/// Result of processing effect audio
-pub(super) struct EffectAudioResult {
-    /// Countdown announcements: (effect_name, seconds, voice_pack)
-    pub(super) countdowns: Vec<(String, u8, String)>,
-    /// Alert sounds to play
-    pub(super) alerts: Vec<EffectAlert>,
-}
-
-pub(super) struct EffectAlert {
-    pub(super) name: String,
-    pub(super) file: Option<String>,
-}
-
-/// Process effect audio (countdowns and alerts)
-pub(super) async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -> EffectAudioResult {
-    let mut countdowns = Vec::new();
-    let mut alerts = Vec::new();
-
-    // Get session (same pattern as build_effects_overlay_data)
+/// Effect audio due on this poll (Live mode only)
+pub(super) async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -> Vec<EffectAudio> {
     let session_guard = shared.session.read().await;
     let Some(session_arc) = session_guard.as_ref() else {
-        return EffectAudioResult { countdowns, alerts };
+        return Vec::new();
     };
     let session = session_arc.read().await;
-
-    // Get effect tracker (Live mode only)
     let Some(effect_tracker) = session.effect_tracker() else {
-        return EffectAudioResult { countdowns, alerts };
+        return Vec::new();
     };
     let mut tracker = effect_tracker.locked();
-
-    // Note: On-end text alerts are handled by tick() -> fired_alerts -> take_fired_alerts(),
-    // consumed in build_timer_data_with_audio(). We don't poll check_expiration_alert() here
-    // because the window check races with signal-based refreshes, causing
-    // false "effect ended" alerts when an effect is refreshed just before its timer expires.
-
-    // Compute interpolated game time once for all effects
-    let interp_time = tracker.interpolated_game_time();
-
-    for effect in tracker.active_effects_mut() {
-        // Skip audio checks for effects without audio enabled
-        if !effect.audio_enabled {
-            continue;
-        }
-
-        // Compute remaining times from interpolated game time
-        let remaining_total = interp_time.and_then(|t| effect.remaining_secs(t)).unwrap_or(0.0);
-        let remaining_base = effect.remaining_base_secs(remaining_total);
-
-        // Check for countdown (uses interpolated game time)
-        // Only for non-removed effects
-        if effect.removed_at.is_none()
-            && let Some(seconds) = effect.check_countdown(remaining_base)
-        {
-            countdowns.push((effect.display_text.clone(), seconds, effect.countdown_voice.clone()));
-        }
-
-        // Check for audio offset trigger (early warning sound, offset > 0)
-        if effect.check_audio_offset(remaining_base) {
-            alerts.push(EffectAlert {
-                name: effect.display_text.clone(),
-                file: effect.audio_file.clone(),
-            });
-        }
-
-        // Check for expiration audio (offset == 0, fire when effect expires)
-        if effect.check_expiration_audio(remaining_base) {
-            alerts.push(EffectAlert {
-                name: effect.display_text.clone(),
-                file: effect.audio_file.clone(),
-            });
-        }
-    }
-
-    EffectAudioResult { countdowns, alerts }
+    tracker.take_audio()
 }
 
 /// Calculate remaining time for an effect in seconds

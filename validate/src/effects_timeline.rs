@@ -5,6 +5,8 @@
 //! event, and writes one line per observable change. Only the tracker's public
 //! outputs are read, so the timeline stays comparable across internal
 //! refactors: an unchanged timeline means unchanged behavior on that log.
+//! Audio is polled right after each tick, so the tick/audio race in live
+//! mode is replayed in one fixed order.
 
 use std::collections::BTreeMap;
 use std::fs::File;
@@ -18,7 +20,7 @@ use encoding_rs::WINDOWS_1252;
 use baras_core::boss::{build_area_index, load_bosses_from_file};
 use baras_core::combat_log::LogParser;
 use baras_core::context::{DefinitionLoader, ParsingSession, parse_log_filename, resolve};
-use baras_core::effects::{DefinitionSet, EffectDefinition};
+use baras_core::effects::{DefinitionSet, EffectAudio, EffectDefinition};
 
 /// (definition id, source id, target id)
 type Key = (String, i64, i64);
@@ -114,6 +116,15 @@ pub fn run(log: &Path, definitions_root: Option<&Path>, out: &Path) -> Result<()
             }
         }
         countdowns_prev = countdowns;
+
+        // Live runs tick() and the audio poll on separate loops; replay
+        // fixes the order (tick first) so runs are comparable.
+        for audio in t.take_audio_at(ts) {
+            lines_out.push(match audio {
+                EffectAudio::Countdown { name, seconds, .. } => format!("AUDIO_COUNTDOWN {name:?} {seconds}"),
+                EffectAudio::Sound { name, file } => format!("AUDIO_SOUND {name:?} file={file:?}"),
+            });
+        }
 
         for target in t.take_new_targets() {
             lines_out.push(format!("REGISTER {} {}", resolve(target.name), target.entity_id));

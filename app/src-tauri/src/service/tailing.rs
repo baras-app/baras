@@ -10,6 +10,7 @@ use super::timer_data::build_timer_data_with_audio;
 use super::{CombatService, MetricsTrigger, OverlayUpdate, ServiceCommand, SessionEvent, history};
 use crate::audio::AudioEvent;
 use baras_core::context::ParsingSession;
+use baras_core::effects::EffectAudio;
 use baras_core::encounter::PhaseType;
 use baras_core::game_data::{Difficulty, Discipline};
 use baras_core::{DisplayTarget, Reader};
@@ -837,19 +838,19 @@ impl CombatService {
                 // Note: On-end text alerts are handled via tick() -> fired_alerts,
                 // consumed in build_timer_data_with_audio() below.
                 if shared.is_live_tailing.load(Ordering::SeqCst) {
-                    let effect_audio = process_effect_audio(&shared).await;
-                    for (name, seconds, voice_pack) in effect_audio.countdowns {
-                        let _ = audio_tx.try_send(AudioEvent::Countdown {
-                            timer_name: name,
-                            seconds,
-                            voice_pack,
-                        });
-                    }
-                    for alert in effect_audio.alerts {
-                        let _ = audio_tx.try_send(AudioEvent::Alert {
-                            text: alert.name,
-                            custom_sound: alert.file,
-                        });
+                    for audio in process_effect_audio(&shared).await {
+                        let event = match audio {
+                            EffectAudio::Countdown { name, seconds, voice } => AudioEvent::Countdown {
+                                timer_name: name,
+                                seconds,
+                                voice_pack: voice,
+                            },
+                            EffectAudio::Sound { name, file } => AudioEvent::Alert {
+                                text: name,
+                                custom_sound: file,
+                            },
+                        };
+                        let _ = audio_tx.try_send(event);
                     }
                 }
 
