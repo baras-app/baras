@@ -11,6 +11,7 @@
 //! - `effects` - Effect definition CRUD for the effect editor UI
 //! - `game_data` - Static game-data lookups (mirror abilities)
 //! - `parsely` - Parsely.io log upload
+//! - `replay` - Boss maps and map images for the Replay tab
 //! - `url` - URL opening with portal support for Linux
 //! - `characters` - Character roster and store edits
 
@@ -21,6 +22,7 @@ mod game_data;
 mod overlay;
 mod parsely;
 mod query;
+mod replay;
 mod service;
 mod stream_overlay;
 mod url;
@@ -33,6 +35,7 @@ pub use game_data::*;
 pub use overlay::*;
 pub use parsely::*;
 pub use query::*;
+pub use replay::*;
 pub use service::*;
 pub use stream_overlay::*;
 pub use url::*;

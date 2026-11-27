@@ -1503,6 +1503,16 @@ pub async fn query_replay(encounter_idx: Option<u32>) -> Option<ReplayData> {
     from_js(invoke_query("query_replay", obj.into()).await)
 }
 
+/// Replay maps of the boss fought in an encounter; empty when it has none.
+pub async fn get_replay_maps(encounter_idx: u32) -> Vec<baras_types::MapDefinition> {
+    from_js(invoke("get_replay_maps", build_args("encounterIdx", &encounter_idx)).await).unwrap_or_default()
+}
+
+/// A replay map image as a data URL; None when the file is missing.
+pub async fn get_replay_map_image(image: &str) -> Option<String> {
+    from_js(invoke("get_replay_map_image", build_args("image", image)).await)
+}
+
 /// Uptime of each standard raid debuff on every enemy.
 pub async fn query_raid_debuffs(
     encounter_idx: Option<u32>,

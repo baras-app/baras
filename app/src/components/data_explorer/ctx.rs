@@ -107,6 +107,8 @@ pub(super) struct ExplorerCtx {
     pub preloaded_detail: Signal<Option<(Option<u32>, ViewMode, TimeRange)>>,
     pub death_target_filter: Signal<Option<String>>,
     pub recap_death: Signal<Option<PlayerDeath>>,
+    /// Replay maps of the selected encounter's boss, with the encounter they are for
+    pub replay_maps: Signal<(Option<u32>, Vec<baras_types::MapDefinition>)>,
     pub dt_summary: Signal<Option<DamageTakenSummary>>,
     pub overview_table_data: Memo<OverviewTableData>,
     pub filtered_history: Memo<Vec<EncounterSummary>>,
@@ -223,6 +225,7 @@ pub(super) fn use_explorer_ctx(state: Signal<UiSessionState>) -> ExplorerCtx {
 
     // Death whose recap modal is open (None = closed)
     let recap_death = use_signal(|| None::<PlayerDeath>);
+    let replay_maps = use_signal(|| (None, Vec::new()));
 
     // DamageTaken summary (shown above the ability table for a selected source)
     let dt_summary: Signal<Option<DamageTakenSummary>> = use_signal(|| None);
@@ -346,6 +349,7 @@ pub(super) fn use_explorer_ctx(state: Signal<UiSessionState>) -> ExplorerCtx {
         preloaded_detail,
         death_target_filter,
         recap_death,
+        replay_maps,
         dt_summary,
         overview_table_data,
         filtered_history,
@@ -372,6 +376,23 @@ impl ExplorerCtx {
     /// over the wrong duration. Subscribes the calling effect.
     pub(super) fn timeline_ready(self, idx: Option<u32>) -> bool {
         matches!(*self.timeline_state.read(), LoadState::Loaded) && *self.shown_encounter.read() == idx
+    }
+
+    /// Whether `idx` is an operation boss fight: the only fights Replay plays
+    pub(super) fn is_operation_boss(self, idx: Option<u32>) -> bool {
+        idx.is_some_and(|idx| {
+            self.encounters
+                .read()
+                .iter()
+                .any(|e| e.encounter_id == idx as u64 && e.boss_name.is_some() && e.encounter_type == "Raid")
+        })
+    }
+
+    /// Whether the Replay tab is offered for `idx`. Release builds need a map
+    /// for the boss; debug builds also play on a bare grid.
+    pub(super) fn replay_available(self, idx: Option<u32>) -> bool {
+        let maps = self.replay_maps.read();
+        self.is_operation_boss(idx) && (cfg!(debug_assertions) || (maps.0 == idx && !maps.1.is_empty()))
     }
 
     // Filter by source when selected

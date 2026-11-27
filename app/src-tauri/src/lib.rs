@@ -386,6 +386,8 @@ pub fn run() {
             commands::query_effect_uptime_by_target,
             commands::query_raid_debuffs,
             commands::query_replay,
+            commands::get_replay_maps,
+            commands::get_replay_map_image,
             commands::query_threat_report,
             commands::query_hps_over_time,
             commands::query_ehps_over_time,

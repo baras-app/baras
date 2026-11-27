@@ -77,17 +77,10 @@ pub(super) fn view_tab_bar(ctx: ExplorerCtx) -> Element {
         mut view_mode,
         mut overview_fullscreen,
         mut death_target_filter,
-        encounters,
         selected_encounter,
         ..
     } = ctx;
-    // Replay needs positions on a known layout: operation boss fights only
-    let replay_available = selected_encounter().is_some_and(|idx| {
-        encounters
-            .read()
-            .iter()
-            .any(|e| e.encounter_id == idx as u64 && e.boss_name.is_some() && e.encounter_type == "Raid")
-    });
+    let replay_available = ctx.replay_available(selected_encounter());
     let tabs = VIEW_TABS
         .into_iter()
         .chain(replay_available.then_some((ViewMode::Replay, "Replay")));

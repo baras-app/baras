@@ -195,6 +195,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                             key: "{shown_encounter():?}",
                             encounter_idx: shown_encounter(),
                             phases: ctx.timeline.read().as_ref().map(|t| t.phases.clone()).unwrap_or_default(),
+                            maps: ctx.replay_maps.read().1.clone(),
                             european: eu,
                         }
                     }

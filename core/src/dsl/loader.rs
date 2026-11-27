@@ -387,6 +387,11 @@ pub fn merge_boss_definition(base: &mut BossEncounterDefinition, custom: BossEnc
     // Merge entities by name (entities use name as ID)
     merge_by_id(&mut base.entities, custom.entities, |e| &e.name);
 
+    // Map order decides which entry an entity is on, so a custom list replaces the whole list
+    if !custom.maps.is_empty() {
+        base.maps = custom.maps;
+    }
+
     // Merge boss-level fields
     if custom.notes.is_some() {
         base.notes = custom.notes;

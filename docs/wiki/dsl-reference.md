@@ -103,6 +103,28 @@ countdown_start = 5
 countdown_voice = "Amy"
 ```
 
+### Maps
+
+Replay maps of the fight, one `[[boss.maps]]` entry per floor or room. An entity is on the first entry whose
+bounds, z range and phases contain it, so order matters. The Replay tab follows the entry holding most of the raid.
+
+```toml
+[[boss.maps]]
+image = "dp_tyrans.png"   # file name under definitions/maps/
+min_x = -200.0            # world area the whole image covers
+max_x = -110.0
+min_y = -130.0
+max_y = -40.0
+rotation = 0.0            # optional: degrees the image is turned
+view = { min_x = -190.0, max_x = -120.0, min_y = -120.0, max_y = -55.0 }  # optional: open zoomed to this area
+min_z = -10.0             # optional: floor, for stacked layouts
+max_z = 5.0
+phases = ["p2"]           # optional: limit the entry to these phases
+```
+
+`min_x` is the image's left edge and `min_y` its top edge; give a `min` above its `max` when the game axis runs
+the other way. A `maps` list in a `_custom.toml` replaces the bundled list whole.
+
 ### Challenges
 
 ```toml

@@ -6,6 +6,7 @@ mod card_view;
 mod controls;
 mod entity_card;
 mod loaded;
+mod map_tabs;
 
 use std::rc::Rc;
 
@@ -20,6 +21,7 @@ use canvas::{DotMeta, Player};
 use controls::Controls;
 use entity_card::EntityCard;
 use loaded::Loaded;
+use map_tabs::MapTabs;
 
 const CANVAS_ID: &str = "replay-canvas";
 
@@ -34,6 +36,8 @@ struct ReplayState {
     maps: Signal<Vec<MapDefinition>>,
     /// Map entry on the canvas right now
     shown_map: Signal<Option<usize>>,
+    /// Map entry the user pinned; None follows the raid
+    pinned_map: Signal<Option<usize>>,
     phases: Rc<Vec<PhaseSegment>>,
     european: bool,
 }
@@ -58,7 +62,12 @@ impl PartialEq for LoadedProp {
 }
 
 #[component]
-pub fn ReplayView(encounter_idx: Option<u32>, phases: Vec<PhaseSegment>, european: bool) -> Element {
+pub fn ReplayView(
+    encounter_idx: Option<u32>,
+    phases: Vec<PhaseSegment>,
+    maps: Vec<MapDefinition>,
+    european: bool,
+) -> Element {
     let mut fight = use_resource(use_reactive!(|encounter_idx| async move {
         api::query_replay(encounter_idx)
             .await
@@ -67,7 +76,7 @@ pub fn ReplayView(encounter_idx: Option<u32>, phases: Vec<PhaseSegment>, europea
     let loaded = fight.read();
     match loaded.as_ref() {
         Some(Some(loaded)) => rsx! {
-            ReplayStage { loaded: loaded.clone(), phases, european }
+            ReplayStage { loaded: loaded.clone(), phases, maps, european }
         },
         Some(None) => rsx! { LoadFailed { on_retry: move |_| fight.restart() } },
         None => loading(),
@@ -75,7 +84,7 @@ pub fn ReplayView(encounter_idx: Option<u32>, phases: Vec<PhaseSegment>, europea
 }
 
 #[component]
-fn ReplayStage(loaded: LoadedProp, phases: Vec<PhaseSegment>, european: bool) -> Element {
+fn ReplayStage(loaded: LoadedProp, phases: Vec<PhaseSegment>, maps: Vec<MapDefinition>, european: bool) -> Element {
     let state = use_hook(|| ReplayState {
         loaded: loaded.0.clone(),
         time: Signal::new(0.0),
@@ -84,6 +93,7 @@ fn ReplayStage(loaded: LoadedProp, phases: Vec<PhaseSegment>, european: bool) ->
         player: Signal::new(None),
         maps: Signal::new(Vec::new()),
         shown_map: Signal::new(None),
+        pinned_map: Signal::new(None),
         phases: Rc::new(phases),
         european,
     });
@@ -130,6 +140,25 @@ fn ReplayStage(loaded: LoadedProp, phases: Vec<PhaseSegment>, european: bool) ->
             player.set_highlight(id);
         }
     });
+    // Maps arrive after the fight (and change with the boss definition): hand
+    // them to the canvas, then each image as it loads
+    let mut state_maps = state.maps;
+    let map_phases = state.phases.clone();
+    use_effect(use_reactive!(|maps| {
+        let Some(player) = player.read().clone() else { return };
+        state_maps.set(maps.clone());
+        let mut urls: Vec<Option<String>> = vec![None; maps.len()];
+        player.set_maps(&maps, &urls, &map_phases);
+        let phases = map_phases.clone();
+        spawn(async move {
+            for (i, map) in maps.iter().enumerate() {
+                urls[i] = api::get_replay_map_image(&map.image).await;
+                if urls[i].is_some() {
+                    player.set_maps(&maps, &urls, &phases);
+                }
+            }
+        });
+    }));
     use_drop(move || {
         if let Some(player) = player.peek().as_ref() {
             player.destroy();
@@ -167,6 +196,7 @@ fn ReplayStage(loaded: LoadedProp, phases: Vec<PhaseSegment>, european: bool) ->
                 }
             }
             div { class: "replay-stage",
+                MapTabs {}
                 canvas { id: CANVAS_ID, class: "replay-canvas" }
                 Controls {}
             }

@@ -402,6 +402,8 @@ pub struct BossEncounterDefinition {
     pub difficulties: Vec<String>,
     #[serde(default)]
     pub entities: Vec<EntityDefinition>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub maps: Vec<baras_types::MapDefinition>,
     #[serde(default)]
     pub phases: Vec<PhaseDefinition>,
     #[serde(default)]
