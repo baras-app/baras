@@ -3,6 +3,8 @@
 ref-files
 CLAUDE.local.md
 scripts/*
+!scripts/check_css_classes.py
+!scripts/css_class_allowlist.txt
 orbs-conversion/
 test-log-files/operations
 test-log-files/50mb/*.txt
