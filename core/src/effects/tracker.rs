@@ -107,6 +107,34 @@ impl DefinitionSet {
         duplicates
     }
 
+    /// Load every bundled `*.toml` in `dir` (skipping the `custom.toml` template),
+    /// keeping the first definition on duplicate IDs. Unreadable files are skipped.
+    pub fn add_from_dir(&mut self, dir: &std::path::Path) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            tracing::debug!(path = ?dir, "Failed to read effects directory");
+            return;
+        };
+        // Sorted so first-wins duplicate resolution is deterministic
+        let mut files: Vec<_> = entries
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| {
+                p.extension().is_some_and(|ext| ext == "toml") && p.file_name().is_none_or(|n| n != "custom.toml")
+            })
+            .collect();
+        files.sort();
+
+        for path in files {
+            if let Ok(contents) = std::fs::read_to_string(&path)
+                && let Ok(config) = toml::from_str::<super::DefinitionConfig>(&contents)
+            {
+                let count = config.effects.len();
+                self.add_definitions(config.effects, false);
+                tracing::debug!(file = ?path.file_name().unwrap_or_default(), count, "Loaded effect definitions");
+            }
+        }
+    }
+
     fn add_to_indexes(&mut self, def: &EffectDefinition) {
         use crate::dsl::Trigger;
         use baras_types::{AbilitySelector, EffectSelector};
