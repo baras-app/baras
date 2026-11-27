@@ -4745,9 +4745,20 @@ a.contributor-name:hover {
   max-width: 22em;
 }
 
-.effect-filter-bar select {
+.effect-editor-panel .effect-filter-bar select {
+  flex: 0 1 auto;
   min-width: 0;
-  max-width: 14em;
+  max-width: 16em;
+}
+
+/* Narrowing the list, like a picked multi-select */
+.effect-editor-panel .effect-filter-bar select.active {
+  border-color: var(--swtor-blue-bright);
+  color: var(--swtor-blue-bright);
+}
+
+.effect-filter-bar .history-toggle {
+  white-space: nowrap;
 }
 
 /* Encounter editor tab header: groups wrap onto new lines instead of
@@ -4772,10 +4783,9 @@ a.contributor-name:hover {
   background: var(--blue-alpha-10);
 }
 
-.filter-pills .seg.origin-seg .origin-badge {
-  width: 15px;
-  height: 15px;
-  font-size: 10px;
+/* Built-in has no dot in the rows, so none in its filter segment */
+.filter-pills .seg.origin-seg .origin-badge.builtin {
+  display: none;
 }
 
 
@@ -4794,6 +4804,12 @@ a.contributor-name:hover {
   color: var(--swtor-blue);
 }
 
+/* The list's count, opening the bulk menu; lit while filters narrow the list */
+.bulk-trigger.filtered {
+  color: var(--swtor-blue-bright);
+  border-color: var(--swtor-blue-bright);
+}
+
 .effect-count {
   color: var(--text-muted);
   font-size: 0.85em;
@@ -4805,9 +4821,203 @@ a.contributor-name:hover {
   margin-bottom: 0.75em;
 }
 
+/* Column names above, rows scrolling below */
+.effect-defs {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* Columns drop by the table's own width: the drawer narrows it, not the window */
+  container-type: inline-size;
+}
+
 .effect-list {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+/* ─── Effect rows: one grid shared by the column header and every row ────────── */
+/* icon | name | discipline | source → target | overlays | origin | toggles */
+.effect-row,
+.list-item-header.effect-row {
+  display: grid;
+  /* px, not em: the header's font is smaller than a row's */
+  grid-template-columns:
+    22px minmax(128px, 2.2fr) minmax(84px, 1.1fr) minmax(104px, 1fr)
+    minmax(96px, 1.6fr) 8px 56px;
+  align-items: center;
+  column-gap: var(--space-md);
+  text-align: left;
+}
+
+.effect-row > * {
+  min-width: 0;
+}
+
+.effect-row .col-name {
+  display: flex;
+  align-items: center;
+}
+
+.effect-row .col-discipline,
+.effect-row .col-who {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+.effect-row .col-discipline {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.discipline-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.effect-row .col-discipline > .truncate {
+  margin-left: 2px;
+}
+
+.effect-row .col-overlays {
+  display: flex;
+  gap: var(--space-xs);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.effect-row .col-overlays > .tag {
+  flex-shrink: 0;
+}
+
+.effect-row-toggles {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Audio off is the norm: its toggle only shows on the row under the pointer */
+.row-toggle-quiet {
+  opacity: 0;
+}
+
+.effect-row:hover .row-toggle-quiet {
+  opacity: 1;
+}
+
+/* Column names: a fixed strip above the scrolling rows, so no row can show
+   around it. The gutter, side border and padding match the rows' so the
+   columns line up */
+.effect-list-head {
+  flex-shrink: 0;
+  overflow-y: hidden;
+  scrollbar-gutter: stable;
+  margin-bottom: var(--space-xs);
+  padding: 6px var(--space-sm);
+  border: 1px solid transparent;
+  border-bottom: 2px solid var(--border-subtle);
+  background: var(--bg-deep);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Column names sort by their column; the sorted one is lit with its arrow */
+.effect-list-head .sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.effect-list-head .sortable:hover,
+.effect-list-head .sortable.active {
+  color: var(--text-primary);
+}
+
+.effect-list-head .sortable > i {
+  margin-left: 0.4em;
+}
+
+.effect-list-head .col-discipline,
+.effect-list-head .col-who {
+  display: block;
+  font-size: inherit;
+  color: inherit;
+}
+
+@container (max-width: 760px) {
+  .effect-row .col-who,
+  .effect-list-head .col-who {
+    display: none;
+  }
+
+  .effect-row,
+  .list-item-header.effect-row {
+    grid-template-columns: 22px minmax(128px, 2.2fr) minmax(84px, 1.1fr) minmax(96px, 1.6fr) 8px 56px;
+  }
+}
+
+@container (max-width: 560px) {
+  .effect-row .col-discipline,
+  .effect-list-head .col-discipline {
+    display: none;
+  }
+
+  .effect-row,
+  .list-item-header.effect-row {
+    grid-template-columns: 22px minmax(128px, 2.2fr) minmax(96px, 1.6fr) 8px 56px;
+  }
+}
+
+/* ─── Effect import preview modal ───────────────────────────────────────────────────── */
+.effect-import {
+  max-width: 600px;
+}
+
+.effect-import .modal-body {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.effect-import-error {
+  padding: 4px 12px;
+  color: var(--color-error);
+}
+
+.effect-import-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.effect-import-table th,
+.effect-import-table td {
+  padding: 3px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.effect-import-table th {
+  border-bottom-color: var(--border-medium);
+}
+
+.effect-import-table td:first-child {
+  width: 24px;
+  text-align: center;
+}
+
+.effect-import-table .tag + .tag {
+  margin-left: var(--space-xs);
+}
+
+.effect-import-summary {
+  margin-right: auto;
 }
 
 /* Effect Row */
@@ -5312,6 +5522,16 @@ a.contributor-name:hover {
   margin-left: auto;
 }
 
+/* The "more" menu sits at the drawer's right edge: its list opens leftward */
+.nav-menu-list.align-right {
+  left: auto;
+  right: 0;
+}
+
+.nav-menu-item.danger {
+  color: var(--color-error);
+}
+
 /* Notes: the textarea fills the drawer */
 .editor-drawer-body:has(> .notes-textarea) {
   display: flex;
@@ -5354,6 +5574,13 @@ a.contributor-name:hover {
 @container (min-width: 61.25rem) {
   .editor-drawer .edit-grid {
     grid-template-columns: minmax(0, 11fr) minmax(0, 9fr);
+  }
+}
+
+/* The effect form's cards are short: two columns fit a default-width drawer */
+@container (min-width: 46rem) {
+  .editor-drawer .edit-grid.effect-form-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 
@@ -5431,6 +5658,13 @@ a.contributor-name:hover {
   cursor: pointer;
   font-size: 0.9em;
   color: var(--text-secondary);
+}
+
+/* The unsaved pill runs down the strip like the title */
+.editor-drawer.collapsed .unsaved-indicator {
+  writing-mode: vertical-rl;
+  margin-left: 0;
+  padding: 0.55em 0.1em;
 }
 
 .editor-drawer.collapsed .editor-drawer-close {
@@ -6013,44 +6247,28 @@ a.contributor-name:hover {
   font-variant-numeric: tabular-nums;
 }
 
-/* Built-in is the norm: only Custom, Modified and New are marked, in a
-   column that keeps its width */
-.list-item-header .origin-badge.builtin {
-  visibility: hidden;
-}
-
-/* ─── Origin Badge (built-in / modified / custom / new) ──────────────────────── */
+/* ─── Origin dot (modified / custom / new) ───────────────────────────────────── */
+/* An unedited built-in is the norm and is left blank; the blank keeps the
+   dot's place so rows line up */
 .origin-badge {
-  width: 18px;
-  height: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 800;
-  border-radius: 3px;
+  display: inline-block;
+  box-sizing: border-box;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   flex-shrink: 0;
-  line-height: 1;
-}
-
-.origin-badge.builtin {
-  background: var(--swtor-blue-dim);
-  color: var(--swtor-blue-bright, #6ab0ff);
 }
 
 .origin-badge.modified {
-  background: rgba(155, 89, 182, 0.35);
-  color: var(--text-violet);
+  background: var(--text-violet);
 }
 
 .origin-badge.custom {
-  background: rgba(46, 204, 113, 0.2);
-  color: var(--color-success, #2ecc71);
+  background: var(--color-success, #2ecc71);
 }
 
 .origin-badge.new {
-  border: 1px dashed var(--color-success, #2ecc71);
-  color: var(--color-success, #2ecc71);
+  border: 1.5px dashed var(--color-success, #2ecc71);
 }
 
 .tag-muted {

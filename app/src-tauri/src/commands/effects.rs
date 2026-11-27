@@ -302,6 +302,35 @@ pub async fn update_effect_definition(
     Ok(())
 }
 
+/// Set the enabled and / or audio toggle on many effects: one save, one reload
+#[tauri::command]
+pub async fn set_effect_toggles(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    effect_ids: Vec<String>,
+    enabled: Option<bool>,
+    audio: Option<bool>,
+) -> Result<(), String> {
+    let (bundled, mut user) = load_effects(&app_handle);
+    let merged = user.apply(&bundled);
+    for id in &effect_ids {
+        let Some(mut def) = merged.get(id).cloned() else {
+            continue;
+        };
+        if let Some(v) = enabled {
+            def.enabled = v;
+        }
+        if let Some(v) = audio {
+            def.audio.enabled = v;
+        }
+        user.upsert(&def, bundled.get(id));
+    }
+    save_user_effects(&user)?;
+
+    let _ = service.reload_effect_definitions().await;
+    Ok(())
+}
+
 /// Create a new effect (saved to user file)
 #[tauri::command]
 pub async fn create_effect_definition(
@@ -349,35 +378,6 @@ pub async fn delete_effect_definition(
     Ok(())
 }
 
-/// Duplicate an effect with a new ID (always saved to user file)
-#[tauri::command]
-pub async fn duplicate_effect_definition(
-    app_handle: AppHandle,
-    service: State<'_, ServiceHandle>,
-    effect_id: String,
-) -> Result<EffectListItem, String> {
-    let (bundled, mut user) = load_effects(&app_handle);
-    let merged = user.apply(&bundled);
-    let source = merged
-        .get(&effect_id)
-        .ok_or_else(|| format!("Effect '{}' not found", effect_id))?;
-
-    let mut new_effect = source.clone();
-    new_effect.id = (1..)
-        .map(|n| format!("{}_copy{}", effect_id, n))
-        .find(|id| merged.get(id).is_none())
-        .expect("unbounded suffix search");
-    new_effect.name = format!("{} (Copy)", source.name);
-
-    user.upsert(&new_effect, None);
-    save_user_effects(&user)?;
-
-    let _ = service.reload_effect_definitions().await;
-
-    // Duplicated effect is always user-created (not bundled)
-    Ok(EffectListItem::from_definition(&new_effect, true, false))
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Export/Import Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -406,15 +406,20 @@ pub struct EffectImportPreview {
 /// Export user effects as full (merged) definitions.
 /// If `effect_id` is provided, exports only that single effect; otherwise exports all.
 #[tauri::command]
-pub async fn export_effects_toml(app_handle: AppHandle, effect_id: Option<String>) -> Result<String, String> {
+pub async fn export_effects_toml(app_handle: AppHandle, effect_ids: Option<Vec<String>>) -> Result<String, String> {
     let (bundled, user) = load_effects(&app_handle);
-    let mut effects = user.resolve(&bundled);
-    if let Some(ref id) = effect_id {
-        effects.retain(|e| e.id == *id);
-    }
+    // No ids: the user's own definitions. With ids: those effects as they
+    // stand, built-ins included
+    let effects: Vec<EffectDefinition> = match &effect_ids {
+        None => user.resolve(&bundled),
+        Some(ids) => {
+            let merged = user.apply(&bundled);
+            ids.iter().filter_map(|id| merged.get(id).cloned()).collect()
+        }
+    };
     if effects.is_empty() {
-        return Err(match effect_id {
-            Some(id) => format!("Effect '{}' not found in user definitions", id),
+        return Err(match effect_ids {
+            Some(_) => "No matching effect definitions to export".to_string(),
             None => "No custom effect definitions to export".to_string(),
         });
     }

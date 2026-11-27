@@ -1164,13 +1164,6 @@ pub async fn delete_effect_definition(effect_id: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Duplicate an effect
-pub async fn duplicate_effect_definition(effect_id: &str) -> Result<EffectListItem, String> {
-    let args = build_args("effectId", effect_id);
-    let result = try_invoke("duplicate_effect_definition", args).await?;
-    from_js(result).ok_or_else(|| "Failed to parse effect response".to_string())
-}
-
 /// Create a new effect
 /// Returns Ok(created effect) on success, Err(message) on failure (e.g., validation error)
 pub async fn create_effect_definition(effect: &EffectListItem) -> Result<EffectListItem, String> {
@@ -1187,16 +1180,25 @@ use crate::types::EffectImportPreview;
 
 /// Export user effect overrides as TOML string.
 /// If `effect_id` is provided, exports only that single effect; otherwise exports all.
-pub async fn export_effects_toml(effect_id: Option<&str>) -> Result<String, String> {
-    let obj = js_sys::Object::new();
-    match effect_id {
-        Some(id) => js_set(&obj, "effectId", &JsValue::from_str(id)),
-        None => js_set(&obj, "effectId", &JsValue::NULL),
-    }
-    let result = try_invoke("export_effects_toml", obj.into()).await?;
+pub async fn export_effects_toml(effect_ids: Option<&[String]>) -> Result<String, String> {
+    let result = try_invoke("export_effects_toml", build_args("effectIds", &effect_ids)).await?;
     result
         .as_string()
         .ok_or_else(|| "Failed to get export content".to_string())
+}
+
+/// Set the enabled and / or audio toggle on many effects at once
+pub async fn set_effect_toggles(
+    effect_ids: &[String],
+    enabled: Option<bool>,
+    audio: Option<bool>,
+) -> Result<(), String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "effectIds", &to_js(effect_ids));
+    js_set(&obj, "enabled", &to_js(&enabled));
+    js_set(&obj, "audio", &to_js(&audio));
+    try_invoke("set_effect_toggles", obj.into()).await?;
+    Ok(())
 }
 
 /// Preview effects import — parse TOML and diff against existing

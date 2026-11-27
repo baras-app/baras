@@ -53,16 +53,18 @@ impl Origin {
     }
 }
 
-/// One-letter origin marker; `kind` names the item in the tooltip ("timer")
+/// Origin dot for a list row; an unedited built-in is the norm and shows
+/// nothing (the blank keeps the column). `kind` names the item in the
+/// tooltip ("timer")
 #[component]
 pub fn OriginBadge(origin: Origin, kind: &'static str) -> Element {
-    let (letter, title) = match origin {
-        Origin::New => ("N", "New: not yet saved".to_string()),
-        Origin::Builtin => ("B", "Built-in: ships with the app".to_string()),
-        Origin::Modified => ("M", format!("Modified: built-in {kind} you have edited")),
-        Origin::Custom => ("C", "Custom: created by you".to_string()),
+    let title = match origin {
+        Origin::New => "New: not yet saved".to_string(),
+        Origin::Builtin => String::new(),
+        Origin::Modified => format!("Modified: built-in {kind} you have edited"),
+        Origin::Custom => "Custom: created by you".to_string(),
     };
-    rsx! { span { class: "origin-badge {origin.css_class()}", title: "{title}", "{letter}" } }
+    rsx! { span { class: "origin-badge {origin.css_class()}", title: "{title}" } }
 }
 
 /// Origins in filter order: the user's own first
@@ -103,7 +105,7 @@ pub fn OriginFilter(
                             title: "{n} {kind}",
                             onclick: move |_| on_pick.call((!lit).then_some(o)),
                             OriginBadge { origin: o, kind }
-                            " {o.label()}"
+                            "{o.label()}"
                         }
                     }
                 }
@@ -132,9 +134,11 @@ pub fn use_item_draft<T: Clone + PartialEq + 'static>(stored: T) -> (Signal<T>, 
     (draft, has_changes)
 }
 
-/// An edit form's buttons, for its drawer's header: Save, optional Duplicate, any extra buttons (`children`), then the removal
-/// action that fits the origin: none for an unedited built-in, Reset for an
-/// edited one, Delete for a custom one, Cancel for an unsaved draft.
+/// An edit form's buttons, for its drawer's header: Save, any extra buttons
+/// (`children`), then a "more" menu with Duplicate, the form's own entries
+/// (`menu`) and the removal that fits the origin: none for an unedited
+/// built-in, Reset for an edited one, Delete for a custom one. An unsaved
+/// draft gets Cancel instead of the menu.
 #[component]
 pub fn ItemActions(
     has_changes: bool,
@@ -142,13 +146,32 @@ pub fn ItemActions(
     on_save: EventHandler<()>,
     on_delete: EventHandler<()>,
     #[props(default)] on_duplicate: Option<EventHandler<()>>,
+    /// Extra `nav-menu-item` buttons for the "more" menu
+    #[props(default)]
+    menu: Option<Element>,
     #[props(default)] children: Element,
 ) -> Element {
+    let mut open = use_signal(|| false);
     let mut confirm = use_signal(|| false);
-    let (label, prompt, tone) = match origin {
-        Origin::Modified => ("Reset to Built-in", "Reset to built-in?", "btn-warning"),
-        _ => ("Delete", "Delete?", "btn-danger"),
+    // (icon, label, question, consequence, confirm button tone)
+    let removal = match origin {
+        Origin::Modified => Some((
+            "fa-rotate-left",
+            "Reset to built-in",
+            "Reset to built-in?",
+            "Your edits are dropped and the built-in definition comes back.",
+            "btn-warning",
+        )),
+        Origin::Custom => Some((
+            "fa-trash",
+            "Delete",
+            "Delete this entry?",
+            "This cannot be undone.",
+            "btn-danger",
+        )),
+        _ => None,
     };
+    let has_menu = on_duplicate.is_some() || menu.is_some() || removal.is_some();
 
     rsx! {
         span { class: "item-actions",
@@ -160,32 +183,60 @@ pub fn ItemActions(
                 onclick: move |_| on_save.call(()),
                 "Save"
             }
-            if let Some(dup) = on_duplicate {
-                button { class: "btn btn-primary btn-sm", onclick: move |_| dup.call(()), "Duplicate" }
-            }
             {children}
-            match origin {
-                Origin::Builtin => rsx! {},
-                Origin::New => rsx! {
-                    button { class: "btn btn-sm", onclick: move |_| on_delete.call(()), "Cancel" }
-                },
-                _ if confirm() => rsx! {
-                    span { class: "flex items-center gap-xs",
-                        "{prompt}"
-                        button {
-                            class: "btn {tone} btn-sm",
-                            onclick: move |_| {
-                                confirm.set(false);
-                                on_delete.call(());
-                            },
-                            "Yes"
-                        }
-                        button { class: "btn btn-sm", onclick: move |_| confirm.set(false), "No" }
+            if origin == Origin::New {
+                button { class: "btn btn-sm", onclick: move |_| on_delete.call(()), "Cancel" }
+            }
+            if has_menu {
+                div { class: "nav-menu",
+                    button {
+                        class: "btn btn-sm btn-ghost",
+                        title: "More actions",
+                        onclick: move |_| open.toggle(),
+                        i { class: "fa-solid fa-ellipsis" }
                     }
-                },
-                _ => rsx! {
-                    button { class: "btn {tone} btn-sm", onclick: move |_| confirm.set(true), "{label}" }
-                },
+                    if open() {
+                        div { class: "nav-menu-backdrop", onclick: move |_| open.set(false) }
+                        // Any pick closes the list
+                        div { class: "nav-menu-list align-right", onclick: move |_| open.set(false),
+                            if let Some(dup) = on_duplicate {
+                                button { class: "nav-menu-item", onclick: move |_| dup.call(()),
+                                    i { class: "fa-solid fa-copy" }
+                                    "Duplicate"
+                                }
+                            }
+                            if let Some(extra) = menu {
+                                {extra}
+                            }
+                            if let Some((icon, label, ..)) = removal {
+                                div { class: "nav-menu-divider" }
+                                button { class: "nav-menu-item danger", onclick: move |_| confirm.set(true),
+                                    i { class: "fa-solid {icon}" }
+                                    "{label}"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if confirm() && let Some((_, label, question, consequence, tone)) = removal {
+                div { class: "modal-overlay", onclick: move |_| confirm.set(false),
+                    div { class: "modal-content discard-prompt", onclick: move |e| e.stop_propagation(),
+                        div { class: "modal-header", h3 { "{question}" } }
+                        p { "{consequence}" }
+                        div { class: "modal-footer",
+                            button { class: "btn btn-sm", onclick: move |_| confirm.set(false), "Cancel" }
+                            button {
+                                class: "btn {tone} btn-sm",
+                                onclick: move |_| {
+                                    confirm.set(false);
+                                    on_delete.call(());
+                                },
+                                "{label}"
+                            }
+                        }
+                    }
+                }
             }
         }
     }

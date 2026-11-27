@@ -442,6 +442,16 @@ pub struct EffectsEditorState {
     pub sidebar_collapsed: bool,
 }
 
+/// Which effects the class filter lists: those tied to disciplines, the
+/// general ones (no discipline set, live on every class), or both
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum EffectScope {
+    #[default]
+    Both,
+    ClassOnly,
+    GeneralOnly,
+}
+
 /// Effects editor filter bar selection; empty / `None` = all
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct EffectFilters {
@@ -449,6 +459,9 @@ pub struct EffectFilters {
     pub origin: Option<String>,
     /// Display target labels, or the "no overlay" entry; any of them matches
     pub overlays: Vec<String>,
-    /// Discipline or role names, or the "unrestricted" entry; any of them matches
-    pub disciplines: Vec<String>,
+    /// Class pair label, "All classes" or "Unassigned"; `None` = the logged-in
+    /// character's class
+    pub class: Option<String>,
+    /// Class-specific effects, general ones, or both
+    pub scope: EffectScope,
 }

@@ -360,9 +360,9 @@ pub fn run() {
             // Effect editor commands
             commands::get_effect_definitions,
             commands::update_effect_definition,
+            commands::set_effect_toggles,
             commands::create_effect_definition,
             commands::delete_effect_definition,
-            commands::duplicate_effect_definition,
             commands::get_icon_preview,
             commands::get_mirror_abilities,
             // Effect export/import
