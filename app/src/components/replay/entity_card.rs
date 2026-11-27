@@ -25,7 +25,11 @@ fn icon_row(title: &'static str, icons: &[IconView], more: usize) -> Element {
             span { class: "replay-effects-title", "{title}" }
             div { class: "replay-effects-icons",
                 for icon in icons {
-                    span { key: "{icon.effect_id}", title: "{icon.name}",
+                    span {
+                        key: "{icon.effect_id}",
+                        class: "replay-effect",
+                        class: if icon.from_highlight { "from-highlight" },
+                        title: "{icon.name}",
                         AbilityIcon {
                             ability_id: icon.effect_id,
                             fallback_id: Some(icon.ability_id),
@@ -53,8 +57,14 @@ pub(super) fn EntityCard(index: usize) -> Element {
         let state = state.clone();
         move || {
             let entity = &state.loaded.data.entities[index];
-            let selected = highlight() == Some(id);
-            state.loaded.card(entity, time(), selected, &maps.read(), &state.phases)
+            state.loaded.card(
+                entity,
+                time(),
+                highlight(),
+                &maps.read(),
+                (state.shown_map)(),
+                &state.phases,
+            )
         }
     });
     let view = view();
@@ -77,7 +87,7 @@ pub(super) fn EntityCard(index: usize) -> Element {
         0.0
     };
     // On a map other than the one shown: not on the canvas
-    let elsewhere = !maps.read().is_empty() && (state.shown_map)().is_some_and(|shown| view.map != Some(shown));
+    let elsewhere = view.off_map;
     let elsewhere_label = view
         .map
         .filter(|_| elsewhere)
@@ -129,8 +139,21 @@ pub(super) fn EntityCard(index: usize) -> Element {
                     "On {label}"
                 } else if elsewhere {
                     "Off the map"
-                } else if let Some(target) = &view.target {
-                    "Target: {target}"
+                } else if let Some(target) = view.target.map(|i| &state.loaded.data.entities[i]) {
+                    span { class: "replay-card-target",
+                        "Target:"
+                        // The target's discipline icon, else its role
+                        if let Some(src) = target
+                            .class_icon
+                            .as_deref()
+                            .and_then(get_class_icon)
+                            .or_else(|| target.role_icon.as_deref().and_then(get_role_icon))
+                            .copied()
+                        {
+                            img { class: "class-icon", src, alt: "" }
+                        }
+                        span { class: "replay-card-target-name", "{target.name}" }
+                    }
                 } else {
                     "No target"
                 }
@@ -154,10 +177,12 @@ pub(super) fn EntityCard(index: usize) -> Element {
     }
 }
 
-/// A map entry's name on tabs and cards: its image file without the extension
+/// A map entry's name on tabs and cards: its label, else its image file without the extension
 pub(super) fn map_label(map: &baras_types::MapDefinition) -> String {
-    map.image
-        .rsplit_once('.')
-        .map_or(map.image.as_str(), |(stem, _)| stem)
-        .to_string()
+    map.label.clone().unwrap_or_else(|| {
+        map.image
+            .rsplit_once('.')
+            .map_or(map.image.as_str(), |(stem, _)| stem)
+            .to_string()
+    })
 }

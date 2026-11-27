@@ -38,6 +38,8 @@ struct ReplayState {
     shown_map: Signal<Option<usize>>,
     /// Map entry the user pinned; None follows the raid
     pinned_map: Signal<Option<usize>>,
+    /// Zoom, set by the slider or the mouse wheel
+    scale: Signal<f64>,
     phases: Rc<Vec<PhaseSegment>>,
     european: bool,
 }
@@ -94,6 +96,7 @@ fn ReplayStage(loaded: LoadedProp, phases: Vec<PhaseSegment>, maps: Vec<MapDefin
         maps: Signal::new(Vec::new()),
         shown_map: Signal::new(None),
         pinned_map: Signal::new(None),
+        scale: Signal::new(1.0),
         phases: Rc::new(phases),
         european,
     });
@@ -130,7 +133,16 @@ fn ReplayStage(loaded: LoadedProp, phases: Vec<PhaseSegment>, maps: Vec<MapDefin
                 scroll_to_card(id);
             }
         };
-        if let Some(mounted) = Player::mount(CANVAS_ID, data, &meta, time, playing, on_pick, shown_map) {
+        if let Some(mounted) = Player::mount(
+            CANVAS_ID,
+            data,
+            &meta,
+            time,
+            playing,
+            on_pick,
+            shown_map,
+            mount_state.scale,
+        ) {
             player.set(Some(Rc::new(mounted)));
         }
     });
@@ -144,8 +156,11 @@ fn ReplayStage(loaded: LoadedProp, phases: Vec<PhaseSegment>, maps: Vec<MapDefin
     // them to the canvas, then each image as it loads
     let mut state_maps = state.maps;
     let map_phases = state.phases.clone();
+    let map_loaded = state.loaded.clone();
     use_effect(use_reactive!(|maps| {
         let Some(player) = player.read().clone() else { return };
+        // An area lists every room of the instance: keep the ones this fight used
+        let maps = map_loaded.maps_in_use(&maps);
         state_maps.set(maps.clone());
         let mut urls: Vec<Option<String>> = vec![None; maps.len()];
         player.set_maps(&maps, &urls, &map_phases);
@@ -188,6 +203,8 @@ fn ReplayStage(loaded: LoadedProp, phases: Vec<PhaseSegment>, maps: Vec<MapDefin
         .filter(|(_, e)| e.kind != ReplayEntityKind::Npc);
 
     rsx! {
+        // Shown instead of the stage when the tab is too narrow for it (CSS)
+        div { class: "replay-too-narrow uptime-empty", "Widen the window to watch the replay" }
         div { class: "replay-layout",
             div { class: "replay-cards",
                 div { class: "replay-cards-title", "Players" }
