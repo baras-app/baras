@@ -98,10 +98,18 @@ impl EffectTracker {
                 if !self.source_ok(&ctx, def, source) {
                     return None;
                 }
-                // Self-buffs refreshed by an offensive cast: the effect lives on the
-                // caster, so retry the target filter against the caster (same
-                // condition as the self fallback key below).
-                let self_only = if self.target_ok(&ctx, def, target) {
+                // Which instance the cast refreshes:
+                // - Explicit self-buff (target filter `local_player`): it lives on
+                //   the caster, whoever the ability hit (enemy or ally).
+                // - Otherwise the hit target's own instance, if it passes the filter.
+                // - A friendly ability cast with an NPC targeted lands on the caster
+                //   (tab-target fallback): retry the filter against the caster.
+                let self_only = if def.target_filter().is_local_player() {
+                    if !self.target_ok(&ctx, def, source) {
+                        return None;
+                    }
+                    target_id != source_id
+                } else if self.target_ok(&ctx, def, target) {
                     false
                 } else if target_id != source_id
                     && target_entity_type != EntityType::Player
