@@ -9,7 +9,7 @@ impl EffectTracker {
         effect_id: i64,
         effect_name: IStr,
         action_id: i64,
-        _action_name: IStr,
+        action_name: IStr,
         source_id: i64,
         source_name: IStr,
         source_entity_type: EntityType,
@@ -68,19 +68,19 @@ impl EffectTracker {
             .collect();
 
         let is_from_local = local_player_id == Some(source_id);
+        let names = LogNames {
+            source: source_name,
+            target: target_name,
+            ability: action_name,
+            effect: effect_name,
+        };
         let mut should_register = false;
         let mut pending_alerts: Vec<FiredAlert> = Vec::new();
 
         for (def_id, def) in matching_defs {
             // Instant alerts: fire and skip — no ActiveEffect created
             if def.is_alert {
-                pending_alerts.push(alerts::instant(
-                    def,
-                    timestamp,
-                    source_name,
-                    target_name,
-                    charges.unwrap_or(1),
-                ));
+                pending_alerts.push(alerts::instant(def, timestamp, names, charges.unwrap_or(1)));
                 continue;
             }
 
@@ -159,13 +159,7 @@ impl EffectTracker {
                 should_register |= def.display_targets.contains(&DisplayTarget::RaidFrames);
 
                 // Collect alert for effect refresh if configured
-                pending_alerts.extend(alerts::on_apply(
-                    def,
-                    timestamp,
-                    source_name,
-                    target_name,
-                    charges.unwrap_or(1),
-                ));
+                pending_alerts.extend(alerts::on_apply(def, timestamp, names, charges.unwrap_or(1)));
             } else {
                 // A logged application is authoritative: drop any deferred refresh for
                 // this cast so a bystander's tick can't claim it afterwards.
@@ -176,8 +170,8 @@ impl EffectTracker {
                 let mut effect = ActiveEffect::from_definition(
                     def,
                     effect_id as u64,
-                    (source_id, source_name),
-                    (target_id, target_name),
+                    (source_id, target_id),
+                    names,
                     timestamp,
                     duration,
                 );
@@ -190,13 +184,7 @@ impl EffectTracker {
                 should_register |= def.display_targets.contains(&DisplayTarget::RaidFrames);
 
                 // Collect alert for effect start if configured
-                pending_alerts.extend(alerts::on_apply(
-                    def,
-                    timestamp,
-                    source_name,
-                    target_name,
-                    charges.unwrap_or(1),
-                ));
+                pending_alerts.extend(alerts::on_apply(def, timestamp, names, charges.unwrap_or(1)));
             }
         }
 
@@ -271,6 +259,12 @@ impl EffectTracker {
             .map(|(id, _)| *id)
             .collect();
 
+        let names = LogNames {
+            source: source_name,
+            target: target_name,
+            ability: effect_name,
+            effect: effect_name,
+        };
         for &(def_id, def) in &matching_defs {
             let key = EffectKey::for_scope(def_id, def.refresh_scope, source_id, target_id);
 
@@ -304,8 +298,7 @@ impl EffectTracker {
             } else if def.is_effect_removed_trigger() && self.matches_filters(&ctx, def, source_info, target_info) {
                 // Instant alerts: fire and skip — no ActiveEffect created
                 if def.is_alert {
-                    self.fired_alerts
-                        .push(alerts::instant(def, timestamp, source_name, target_name, 1));
+                    self.fired_alerts.push(alerts::instant(def, timestamp, names, 1));
                     continue;
                 }
 
@@ -314,16 +307,15 @@ impl EffectTracker {
                 let effect = ActiveEffect::from_definition(
                     def,
                     effect_id as u64,
-                    (source_id, source_name),
-                    (target_id, target_name),
+                    (source_id, target_id),
+                    names,
                     timestamp,
                     duration,
                 );
                 self.active_effects.insert(key, effect);
 
                 // Fire OnApply alert for new EffectRemoved-triggered effect
-                self.fired_alerts
-                    .extend(alerts::on_apply(def, timestamp, source_name, target_name, 1));
+                self.fired_alerts.extend(alerts::on_apply(def, timestamp, names, 1));
             }
         }
     }

@@ -16,6 +16,7 @@ use std::time::Duration;
 
 use chrono::NaiveDateTime;
 
+use super::log_names::LogNames;
 use super::{DefId, DisplayTarget, EffectDefinition, Lifecycle};
 use crate::context::IStr;
 use baras_types::RefreshScope;
@@ -53,6 +54,10 @@ pub struct ActiveEffect {
 
     /// Name of the target entity (from event)
     pub target_name: IStr,
+
+    /// Ability and effect names the log recorded for the triggering event
+    pub ability_name: IStr,
+    pub effect_name: IStr,
 
     // ─── Timing (game time from combat log) ─────────────────────────────────
     /// When the effect was applied (game time)
@@ -139,11 +144,11 @@ impl ActiveEffect {
     /// Create an instance of `def` from the triggering event. `game_effect_id`
     /// is the logged effect (or ability) ID, the icon fallback when the
     /// definition sets none. `duration` is the effective (alacrity-scaled) one.
-    pub fn from_definition(
+    pub(super) fn from_definition(
         def: &EffectDefinition,
         game_effect_id: u64,
-        (source_entity_id, source_name): (i64, IStr),
-        (target_entity_id, target_name): (i64, IStr),
+        (source_entity_id, target_entity_id): (i64, i64),
+        names: LogNames,
         event_timestamp: NaiveDateTime,
         duration: Option<Duration>,
     ) -> Self {
@@ -155,9 +160,11 @@ impl ActiveEffect {
             display_text: String::new(),
             display_template: None,
             source_entity_id,
-            source_name,
+            source_name: names.source,
             target_entity_id,
-            target_name,
+            target_name: names.target,
+            ability_name: names.ability,
+            effect_name: names.effect,
             applied_at: event_timestamp,
             expires_at,
             last_refreshed_at: event_timestamp,
@@ -274,7 +281,7 @@ impl ActiveEffect {
         if self.stacks != stacks
             && let Some(template) = &self.display_template
         {
-            self.display_text = Self::resolve_display(template, self.source_name, self.target_name, stacks).0;
+            self.display_text = self.log_names().format(template, stacks);
         }
         self.stacks = stacks;
     }
@@ -286,19 +293,18 @@ impl ActiveEffect {
 
     /// Replace the display text template (definition reload) and re-resolve placeholders
     pub fn set_display_template(&mut self, template: &str) {
-        (self.display_text, self.display_template) =
-            Self::resolve_display(template, self.source_name, self.target_name, self.stacks);
+        self.display_text = self.log_names().format(template, self.stacks);
+        self.display_template = template.contains("{stack}").then(|| template.to_string());
     }
 
-    /// Resolve placeholders; returns the template back only if it needs re-resolving on stack change
-    fn resolve_display(template: &str, source: IStr, target: IStr, stacks: u8) -> (String, Option<String>) {
-        let text = crate::dsl::format_placeholders(
-            template,
-            crate::context::resolve(source),
-            crate::context::resolve(target),
-            Some(stacks),
-        );
-        (text, template.contains("{stack}").then(|| template.to_string()))
+    /// Names that fill this effect's display and alert placeholders
+    pub(super) fn log_names(&self) -> LogNames {
+        LogNames {
+            source: self.source_name,
+            target: self.target_name,
+            ability: self.ability_name,
+            effect: self.effect_name,
+        }
     }
 
     /// Mark the effect as removed; the next tick drops it

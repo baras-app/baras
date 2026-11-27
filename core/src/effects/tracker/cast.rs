@@ -45,6 +45,12 @@ impl EffectTracker {
             entity_type: target_entity_type,
             name: target_name,
         };
+        let names = LogNames {
+            source: source_name,
+            target: target_name,
+            ability: ability_name,
+            effect: ability_name,
+        };
         for (def_id, def) in matching_defs {
             // Only process AbilityCast triggers here (index also contains DamageTaken/HealingTaken)
             if !def.is_ability_cast_trigger() {
@@ -62,8 +68,7 @@ impl EffectTracker {
 
             // Instant alerts: fire and skip — no ActiveEffect created
             if def.is_alert {
-                self.fired_alerts
-                    .push(alerts::instant(def, timestamp, source_name, target_name, 1));
+                self.fired_alerts.push(alerts::instant(def, timestamp, names, 1));
                 continue;
             }
 
@@ -94,24 +99,22 @@ impl EffectTracker {
                 }
 
                 // Fire OnApply alert on refresh
-                self.fired_alerts
-                    .extend(alerts::on_apply(def, timestamp, source_name, target_name, 1));
+                self.fired_alerts.extend(alerts::on_apply(def, timestamp, names, 1));
             } else {
                 // Tracked on the caster (keying, death cleanup); only the
                 // displayed name is the target resolved at cast time
                 let effect = ActiveEffect::from_definition(
                     def,
                     ability_id as u64,
-                    (source_id, source_name),
-                    (source_id, target_name),
+                    (source_id, source_id),
+                    names,
                     timestamp,
                     duration,
                 );
                 self.active_effects.insert(key, effect);
 
                 // Fire OnApply alert for new effect
-                self.fired_alerts
-                    .extend(alerts::on_apply(def, timestamp, source_name, target_name, 1));
+                self.fired_alerts.extend(alerts::on_apply(def, timestamp, names, 1));
             }
         }
     }
@@ -158,6 +161,12 @@ impl EffectTracker {
         };
         let ctx = self.filter_ctx(encounter);
 
+        let names = LogNames {
+            source: source_name,
+            target: target_name,
+            ability: ability_name,
+            effect: ability_name,
+        };
         for (def_id, def) in matching_defs {
             if !trigger_check(def) {
                 continue;
@@ -168,8 +177,7 @@ impl EffectTracker {
 
             // Instant alerts: fire and skip — no ActiveEffect created
             if def.is_alert {
-                self.fired_alerts
-                    .push(alerts::instant(def, timestamp, source_name, target_name, 1));
+                self.fired_alerts.push(alerts::instant(def, timestamp, names, 1));
                 continue;
             }
 
@@ -187,22 +195,20 @@ impl EffectTracker {
                 existing.refresh(timestamp, duration);
 
                 // Fire OnApply alert on refresh
-                self.fired_alerts
-                    .extend(alerts::on_apply(def, timestamp, source_name, target_name, 1));
+                self.fired_alerts.extend(alerts::on_apply(def, timestamp, names, 1));
             } else {
                 let effect = ActiveEffect::from_definition(
                     def,
                     ability_id as u64,
-                    (source_id, source_name),
-                    (target_id, target_name),
+                    (source_id, target_id),
+                    names,
                     timestamp,
                     duration,
                 );
                 self.active_effects.insert(key, effect);
 
                 // Fire OnApply alert for new effect
-                self.fired_alerts
-                    .extend(alerts::on_apply(def, timestamp, source_name, target_name, 1));
+                self.fired_alerts.extend(alerts::on_apply(def, timestamp, names, 1));
             }
         }
     }

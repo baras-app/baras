@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use baras_core::OverlayHealthEntry;
-use baras_core::dsl::format_placeholders;
+use baras_core::dsl::Placeholders;
 use baras_overlay::icons::IconCache;
 use baras_overlay::{
     AlertEntry, AlertsData, BossEffectIcon, BossHealthData, CooldownData, CooldownEntry, DotEntry, DotTarget,
@@ -30,9 +30,11 @@ const DEFAULT_TOTAL_SECS: f32 = 10.0;
 const LIVE_WINDOW: Duration = Duration::from_millis(150);
 const TICK: Duration = Duration::from_millis(50);
 const PREVIEW_ENTITY_ID: i64 = -1;
-/// Sample names for `{source}`/`{target}` and the source/target display options
+/// Sample names for `{source}`/`{target}`/`{ability}`/`{effect}` and the source/target display options
 const SOURCE_NAME: &str = "Source";
 const TARGET_NAME: &str = "Target";
+const ABILITY_NAME: &str = "Ability";
+const EFFECT_NAME: &str = "Effect";
 
 type Icon = Arc<(u32, u32, Vec<u8>)>;
 
@@ -312,7 +314,14 @@ pub async fn start(
     let icon_ability_id = req.icon_ability_id.unwrap_or(0);
     let icon = icon_cache.as_ref().and_then(|cache| cache.get_icon(icon_ability_id));
     let stacks = req.stacks.unwrap_or(0);
-    let resolve = |text: &str| format_placeholders(text, SOURCE_NAME, TARGET_NAME, req.stacks);
+    let placeholders = Placeholders {
+        source: Some(SOURCE_NAME),
+        target: Some(TARGET_NAME),
+        ability: Some(ABILITY_NAME),
+        effect: Some(EFFECT_NAME),
+        stacks: req.stacks,
+    };
+    let resolve = |text: &str| placeholders.format(text);
 
     let total_secs = if req.duration_secs > 0.0 {
         req.duration_secs

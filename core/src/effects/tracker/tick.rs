@@ -52,7 +52,7 @@ impl EffectTracker {
             let def = self.definitions.def(key.def);
             let alert = match &def.alert_text {
                 Some(text) if def.alert_on == AlertTrigger::OnExpire => {
-                    let text = alerts::format_text(text, effect.source_name, effect.target_name, effect.stacks);
+                    let text = effect.log_names().format(text, effect.stacks);
                     alerts::text_alert(def, text, current_time)
                 }
                 // No on-expire alert to carry the sound: send it audio-only
@@ -103,7 +103,7 @@ impl EffectTracker {
             }
 
             let raw_name = def.alert_text.as_deref().unwrap_or(&def.name);
-            let formatted = alerts::format_text(raw_name, effect.source_name, effect.target_name, effect.stacks);
+            let formatted = effect.log_names().format(raw_name, effect.stacks);
             let text = format!("{} ({:.1})", formatted, remaining_base);
             self.fired_alerts.push(FiredAlert {
                 remaining_secs: Some(remaining_base),

@@ -26,12 +26,12 @@ pub struct TriggerContext {
 
 impl TriggerContext {
     pub fn format(&self, text: &str) -> String {
-        crate::dsl::format_placeholders(
-            text,
-            crate::context::resolve(self.source_name),
-            crate::context::resolve(self.target_name),
-            None,
-        )
+        crate::dsl::Placeholders {
+            source: Some(crate::context::resolve(self.source_name)),
+            target: Some(crate::context::resolve(self.target_name)),
+            ..Default::default()
+        }
+        .format(text)
     }
 }
 
