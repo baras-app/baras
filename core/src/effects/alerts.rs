@@ -53,10 +53,16 @@ pub(super) fn instant(
 }
 
 /// On-apply alert for a created or refreshed effect, if configured
-pub(super) fn on_apply(def: &EffectDefinition, timestamp: NaiveDateTime) -> Option<FiredAlert> {
+pub(super) fn on_apply(
+    def: &EffectDefinition,
+    timestamp: NaiveDateTime,
+    source_name: IStr,
+    target_name: IStr,
+    stacks: u8,
+) -> Option<FiredAlert> {
     if def.alert_on != AlertTrigger::OnApply {
         return None;
     }
-    let text = def.alert_text.as_ref()?;
-    Some(text_alert(def, text.clone(), timestamp))
+    let text = format_text(def.alert_text.as_ref()?, source_name, target_name, stacks);
+    Some(text_alert(def, text, timestamp))
 }

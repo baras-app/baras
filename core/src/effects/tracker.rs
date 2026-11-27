@@ -1164,7 +1164,13 @@ impl EffectTracker {
                 should_register |= def.display_targets.contains(&DisplayTarget::RaidFrames);
 
                 // Collect alert for effect refresh if configured
-                pending_alerts.extend(alerts::on_apply(def, timestamp));
+                pending_alerts.extend(alerts::on_apply(
+                    def,
+                    timestamp,
+                    source_name,
+                    target_name,
+                    charges.unwrap_or(1),
+                ));
             } else {
                 // A logged application is authoritative: drop any deferred refresh for
                 // this cast so a bystander's tick can't claim it afterwards.
@@ -1189,7 +1195,13 @@ impl EffectTracker {
                 should_register |= def.display_targets.contains(&DisplayTarget::RaidFrames);
 
                 // Collect alert for effect start if configured
-                pending_alerts.extend(alerts::on_apply(def, timestamp));
+                pending_alerts.extend(alerts::on_apply(
+                    def,
+                    timestamp,
+                    source_name,
+                    target_name,
+                    charges.unwrap_or(1),
+                ));
             }
         }
 
@@ -1846,7 +1858,8 @@ impl EffectTracker {
                 }
 
                 // Fire OnApply alert on refresh
-                self.fired_alerts.extend(alerts::on_apply(def, timestamp));
+                self.fired_alerts
+                    .extend(alerts::on_apply(def, timestamp, source_name, target_name, 1));
             } else {
                 // Tracked on the caster (keying, death cleanup); only the
                 // displayed name is the target resolved at cast time
@@ -1861,7 +1874,8 @@ impl EffectTracker {
                 self.active_effects.insert(key, effect);
 
                 // Fire OnApply alert for new effect
-                self.fired_alerts.extend(alerts::on_apply(def, timestamp));
+                self.fired_alerts
+                    .extend(alerts::on_apply(def, timestamp, source_name, target_name, 1));
             }
         }
     }
@@ -1937,7 +1951,8 @@ impl EffectTracker {
                 existing.refresh(timestamp, duration);
 
                 // Fire OnApply alert on refresh
-                self.fired_alerts.extend(alerts::on_apply(def, timestamp));
+                self.fired_alerts
+                    .extend(alerts::on_apply(def, timestamp, source_name, target_name, 1));
             } else {
                 let effect = ActiveEffect::from_definition(
                     def,
@@ -1950,7 +1965,8 @@ impl EffectTracker {
                 self.active_effects.insert(key, effect);
 
                 // Fire OnApply alert for new effect
-                self.fired_alerts.extend(alerts::on_apply(def, timestamp));
+                self.fired_alerts
+                    .extend(alerts::on_apply(def, timestamp, source_name, target_name, 1));
             }
         }
     }
@@ -2063,7 +2079,8 @@ impl EffectTracker {
                 self.active_effects.insert(key, effect);
 
                 // Fire OnApply alert for new EffectRemoved-triggered effect
-                self.fired_alerts.extend(alerts::on_apply(def, timestamp));
+                self.fired_alerts
+                    .extend(alerts::on_apply(def, timestamp, source_name, target_name, 1));
             }
         }
     }
