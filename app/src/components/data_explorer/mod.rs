@@ -12,6 +12,7 @@ use crate::components::enemy_views::live_notice;
 use crate::components::mirror_names;
 use crate::components::phase_timeline::PhaseTimelineFilter;
 use crate::components::raid_debuffs::RaidDebuffsView;
+use crate::components::replay::ReplayView;
 use crate::components::threat::ThreatView;
 use crate::types::{UiSessionState, ViewMode};
 
@@ -165,8 +166,8 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                     } else if matches!(shown, ViewMode::Detailed(_) | ViewMode::Rotation | ViewMode::Usage | ViewMode::Charts | ViewMode::Uptime) {
                         // Two-column layout (Detailed breakdown, Rotation, Usage, or Charts)
                         {detailed_view(ctx, shown, eu, on_source_click)}
-                    } else if matches!(shown, ViewMode::RaidDebuffs | ViewMode::Aggro) && (ctx.live_query_active)() {
-                        // Both read the whole fight: a live one has no end yet
+                    } else if matches!(shown, ViewMode::RaidDebuffs | ViewMode::Aggro | ViewMode::Replay) && (ctx.live_query_active)() {
+                        // All read the whole fight: a live one has no end yet
                         {live_notice()}
                     } else if matches!(shown, ViewMode::RaidDebuffs) {
                         RaidDebuffsView {
@@ -187,6 +188,13 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                             duration_secs: ctx.timeline.read().as_ref().map_or(0.0, |t| t.duration_secs),
                             overview: ctx.overview_data,
                             state: ctx.enemy_views,
+                            european: eu,
+                        }
+                    } else if matches!(shown, ViewMode::Replay) {
+                        ReplayView {
+                            key: "{shown_encounter():?}",
+                            encounter_idx: shown_encounter(),
+                            phases: ctx.timeline.read().as_ref().map(|t| t.phases.clone()).unwrap_or_default(),
                             european: eu,
                         }
                     }

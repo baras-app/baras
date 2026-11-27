@@ -6,8 +6,8 @@ mod death_recap;
 mod dummy;
 mod overview_columns;
 mod raid_debuffs;
-mod rotation;
 mod replay;
+mod rotation;
 mod threat;
 
 pub use breakdown::*;
@@ -16,6 +16,6 @@ pub use death_recap::*;
 pub use dummy::*;
 pub use overview_columns::*;
 pub use raid_debuffs::*;
-pub use rotation::*;
 pub use replay::*;
+pub use rotation::*;
 pub use threat::*;

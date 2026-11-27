@@ -51,6 +51,7 @@ pub mod parsely_upload_modal;
 pub mod phase_timeline;
 pub mod raid_debuff_coverage;
 pub mod raid_debuffs;
+pub mod replay;
 pub mod rotation_view;
 pub mod session_settings;
 pub mod session_status;

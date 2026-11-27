@@ -115,6 +115,7 @@ pub enum ViewMode {
     Uptime,
     RaidDebuffs,
     Aggro,
+    Replay,
 }
 
 impl ViewMode {
