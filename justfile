@@ -29,12 +29,16 @@ dev-seed:
   echo "✓ Seeded {{dev_config}} from $src"
 
 # Type-check the backend and the WASM frontend
-check:
+check: css-check
   cargo check -p app
   cd app && cargo check --target wasm32-unknown-unknown
 
+# Fail on a CSS class name claimed by more than one feature (the stylesheets are one namespace)
+css-check:
+  python3 scripts/check_css_classes.py
+
 # Everything the Check workflow gates on: formatting, clippy with warnings as errors, and tests
-lint:
+lint: css-check
   cargo fmt --all --check
   cargo clippy --workspace --exclude app-ui --all-targets -- -D warnings
   cd app && cargo clippy --target wasm32-unknown-unknown -- -D warnings
