@@ -417,13 +417,17 @@ window.BarasReplay = (() => {
       ctx.lineWidth = 2.5;
       ctx.lineCap = "round";
       let prev = null;
-      for (let age = TRAIL_SECS; age >= 0; age -= TRAIL_STEP_SECS) {
-        const at = time - age;
-        const s = at >= 0 ? stateAt(e, at, duration, onShown) : null;
+      // Points sit at fixed moments of the fight, so the line stays put as time
+      // moves: it only grows at the head and fades at the tail
+      const first = Math.ceil(Math.max(0, time - TRAIL_SECS) / TRAIL_STEP_SECS);
+      const last = Math.floor(time / TRAIL_STEP_SECS);
+      for (let k = first; k <= last + 1; k++) {
+        const at = k > last ? time : k * TRAIL_STEP_SECS;
+        const s = stateAt(e, at, duration, onShown);
         const point = s && !s.dead && shown(s) ? s : null;
         // A teleport is not a walk
         if (prev && point && Math.hypot(point.x - prev.x, point.y - prev.y) <= SNAP_DIST) {
-          ctx.globalAlpha = 0.75 * (1 - age / TRAIL_SECS);
+          ctx.globalAlpha = 0.75 * (1 - (time - at) / TRAIL_SECS);
           ctx.beginPath();
           ctx.moveTo(v.sx(prev.x), v.sy(prev.y));
           ctx.lineTo(v.sx(point.x), v.sy(point.y));
