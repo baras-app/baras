@@ -229,3 +229,9 @@
   line-height: 18px;
   white-space: nowrap;
 }
+
+/* The map the raid is on while Auto follows it */
+.replay-map-tabs .replay-map-shown {
+  color: var(--text-primary);
+  text-decoration: underline;
+}

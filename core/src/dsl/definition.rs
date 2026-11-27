@@ -436,6 +436,10 @@ pub struct BossEncounterDefinition {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub encounter_trigger_fallback_secs: Option<f32>,
 
+    /// Replay maps: one entry per floor or room the fight uses
+    #[serde(default, alias = "map", skip_serializing_if = "Vec::is_empty")]
+    pub maps: Vec<baras_types::MapDefinition>,
+
     // ─── Mechanics ───────────────────────────────────────────────────────────
     /// Phase definitions
     #[serde(default, alias = "phase", skip_serializing_if = "Vec::is_empty")]
@@ -525,6 +529,7 @@ impl Default for BossEncounterDefinition {
             entities: Vec::new(),
             encounter_trigger: None,
             encounter_trigger_fallback_secs: None,
+            maps: Vec::new(),
             phases: Vec::new(),
             counters: Vec::new(),
             timers: Vec::new(),

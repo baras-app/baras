@@ -16,6 +16,7 @@ use crate::types::ViewMode;
 pub(super) fn use_loaders(ctx: ExplorerCtx) {
     use_local_player_name(ctx);
     use_recap_reset(ctx);
+    use_replay_maps(ctx);
     use_encounter_list(ctx);
     use_session_events(ctx);
     use_parsely_refresh(ctx);
@@ -73,6 +74,30 @@ fn use_recap_reset(ctx: ExplorerCtx) {
     use_effect(move || {
         selected_encounter();
         recap_death.set(None);
+    });
+}
+
+// Replay maps of the selected encounter's boss (operation bosses only)
+fn use_replay_maps(ctx: ExplorerCtx) {
+    let ExplorerCtx {
+        selected_encounter,
+        mut replay_maps,
+        ..
+    } = ctx;
+    use_effect(move || {
+        let idx = selected_encounter();
+        if replay_maps.peek().0 == idx {
+            return;
+        }
+        replay_maps.set((idx, Vec::new()));
+        if let Some(encounter) = idx.filter(|_| ctx.is_operation_boss(idx)) {
+            spawn(async move {
+                let maps = api::get_replay_maps(encounter).await;
+                if *selected_encounter.peek() == idx {
+                    replay_maps.set((idx, maps));
+                }
+            });
+        }
     });
 }
 
