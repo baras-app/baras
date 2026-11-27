@@ -34,6 +34,7 @@ mod definition;
 mod definition_set;
 mod filter_ctx;
 mod lifecycle;
+mod log_names;
 mod modifier_adjust;
 mod modifier_match;
 pub mod tracker;

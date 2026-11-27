@@ -127,8 +127,13 @@ impl EffectTracker {
                 let mut effect = ActiveEffect::from_definition(
                     def,
                     effect_id as u64,
-                    (source_id, source_name),
-                    (target_id, target_name),
+                    (source_id, target_id),
+                    LogNames {
+                        source: source_name,
+                        target: target_name,
+                        ability: effect_name,
+                        effect: effect_name,
+                    },
                     timestamp,
                     duration,
                 );

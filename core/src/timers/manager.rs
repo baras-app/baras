@@ -353,7 +353,12 @@ impl TimerManager {
     fn format_alert_text(&self, text: &str, ctx: Option<&TriggerContext>) -> String {
         match ctx {
             Some(ctx) => ctx.format(text),
-            None => crate::dsl::format_placeholders(text, "", "", None),
+            None => crate::dsl::Placeholders {
+                source: Some(""),
+                target: Some(""),
+                ..Default::default()
+            }
+            .format(text),
         }
     }
 

@@ -20,6 +20,7 @@ use crate::timers::FiredAlert;
 use super::alacrity::AlacrityBuffTracker;
 use super::alerts;
 use super::filter_ctx::{EntityInfo, FilterCtx};
+use super::log_names::LogNames;
 use super::modifier_adjust::ModifierAdjustment;
 use super::{
     ActiveEffect, AlertTrigger, DefId, DefinitionSet, DisplayTarget, EffectDefinition, EffectKey, RefreshTrigger,

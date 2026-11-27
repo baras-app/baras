@@ -2,19 +2,9 @@
 
 use chrono::NaiveDateTime;
 
+use super::log_names::LogNames;
 use super::{AlertTrigger, EffectDefinition};
-use crate::context::IStr;
 use crate::timers::FiredAlert;
-
-/// Resolve `{source}`, `{target}` and `{stack}` in alert text
-pub(super) fn format_text(text: &str, source_name: IStr, target_name: IStr, stacks: u8) -> String {
-    crate::dsl::format_placeholders(
-        text,
-        crate::context::resolve(source_name),
-        crate::context::resolve(target_name),
-        Some(stacks),
-    )
-}
 
 /// Text alert for `def` without audio; callers adjust fields as needed
 pub(super) fn text_alert(def: &EffectDefinition, text: String, timestamp: NaiveDateTime) -> FiredAlert {
@@ -36,19 +26,13 @@ pub(super) fn text_alert(def: &EffectDefinition, text: String, timestamp: NaiveD
 ///
 /// Without `alert_text` only audio fires: the text still carries the
 /// definition name for the TTS fallback but is not shown.
-pub(super) fn instant(
-    def: &EffectDefinition,
-    timestamp: NaiveDateTime,
-    source_name: IStr,
-    target_name: IStr,
-    stacks: u8,
-) -> FiredAlert {
+pub(super) fn instant(def: &EffectDefinition, timestamp: NaiveDateTime, names: LogNames, stacks: u8) -> FiredAlert {
     let raw_text = def.alert_text.as_deref().unwrap_or(&def.name);
     FiredAlert {
         alert_text_enabled: def.alert_text.is_some(),
         audio_enabled: def.audio.enabled,
         audio_file: def.audio.file.clone(),
-        ..text_alert(def, format_text(raw_text, source_name, target_name, stacks), timestamp)
+        ..text_alert(def, names.format(raw_text, stacks), timestamp)
     }
 }
 
@@ -56,13 +40,12 @@ pub(super) fn instant(
 pub(super) fn on_apply(
     def: &EffectDefinition,
     timestamp: NaiveDateTime,
-    source_name: IStr,
-    target_name: IStr,
+    names: LogNames,
     stacks: u8,
 ) -> Option<FiredAlert> {
     if def.alert_on != AlertTrigger::OnApply {
         return None;
     }
-    let text = format_text(def.alert_text.as_ref()?, source_name, target_name, stacks);
+    let text = names.format(def.alert_text.as_ref()?, stacks);
     Some(text_alert(def, text, timestamp))
 }
