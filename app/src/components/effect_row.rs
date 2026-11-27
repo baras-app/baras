@@ -188,30 +188,33 @@ pub(crate) fn EffectRow(
 
                 OriginBadge { origin: effect_origin(is_draft, effect.is_bundled, effect.is_user_override), kind: "effect" }
 
-                // Toggles save straight away, without opening the effect
+                // Toggles save straight away, without opening the effect; a draft
+                // has nothing saved to toggle (the cell stays for the grid)
                 div { class: "def-row-toggles",
-                    span {
-                        class: "row-toggle",
-                        class: if !effect.audio.enabled { "row-toggle-quiet" },
-                        title: if effect.audio.enabled { "Disable audio" } else { "Enable audio" },
-                        onclick: move |e| {
-                            e.stop_propagation();
-                            let mut updated = effect_for_audio.clone();
-                            updated.audio.enabled = !updated.audio.enabled;
-                            on_save.call(updated);
-                        },
-                        i { class: if effect.audio.enabled { "fa-solid fa-volume-high text-primary" } else { "fa-solid fa-volume-xmark text-muted" } }
-                    }
-                    span {
-                        class: "row-toggle",
-                        title: if effect.enabled { "Disable effect" } else { "Enable effect" },
-                        onclick: move |e| {
-                            e.stop_propagation();
-                            let mut updated = effect_for_enable.clone();
-                            updated.enabled = !updated.enabled;
-                            on_save.call(updated);
-                        },
-                        i { class: if effect.enabled { "fa-solid fa-power-off text-success" } else { "fa-solid fa-power-off text-muted" } }
+                    if !is_draft {
+                        span {
+                            class: "row-toggle",
+                            class: if !effect.audio.enabled { "row-toggle-quiet" },
+                            title: if effect.audio.enabled { "Disable audio" } else { "Enable audio" },
+                            onclick: move |e| {
+                                e.stop_propagation();
+                                let mut updated = effect_for_audio.clone();
+                                updated.audio.enabled = !updated.audio.enabled;
+                                on_save.call(updated);
+                            },
+                            i { class: if effect.audio.enabled { "fa-solid fa-volume-high text-primary" } else { "fa-solid fa-volume-xmark text-muted" } }
+                        }
+                        span {
+                            class: "row-toggle",
+                            title: if effect.enabled { "Disable effect" } else { "Enable effect" },
+                            onclick: move |e| {
+                                e.stop_propagation();
+                                let mut updated = effect_for_enable.clone();
+                                updated.enabled = !updated.enabled;
+                                on_save.call(updated);
+                            },
+                            i { class: if effect.enabled { "fa-solid fa-power-off text-success" } else { "fa-solid fa-power-off text-muted" } }
+                        }
                     }
                 }
             }

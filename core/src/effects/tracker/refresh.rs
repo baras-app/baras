@@ -150,7 +150,11 @@ impl EffectTracker {
         for r in refreshable_defs {
             // A self-only match keys on the caster; the fallback key below then
             // collapses to the primary key and late creation is skipped.
-            let target_id = if r.self_only { source_id } else { target_id };
+            let (target_id, target_name) = if r.self_only {
+                (source_id, source_name)
+            } else {
+                (target_id, target_name)
+            };
 
             // First-damage refreshes (non-AoE) defer to the next DamageTaken event.
             // Instead of refreshing immediately on AbilityActivated, set pending state

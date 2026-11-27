@@ -331,6 +331,8 @@ fn effect_removed_signal_with_source(
     GameSignal::EffectRemoved {
         effect_id,
         effect_name: empty_istr(),
+        action_id: 0,
+        action_name: empty_istr(),
         source_id,
         source_entity_type: EntityType::Player,
         source_name: empty_istr(),

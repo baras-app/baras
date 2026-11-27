@@ -73,6 +73,9 @@ pub enum GameSignal {
     EffectRemoved {
         effect_id: i64,
         effect_name: IStr,
+        /// The ability/action on the RemoveEffect line (may be blank)
+        action_id: i64,
+        action_name: IStr,
         source_id: i64,
         source_entity_type: EntityType,
         source_name: IStr,

@@ -208,6 +208,7 @@ impl EffectTracker {
         &mut self,
         effect_id: i64,
         effect_name: IStr,
+        action_name: IStr,
         source_id: i64,
         source_entity_type: EntityType,
         source_name: IStr,
@@ -262,7 +263,7 @@ impl EffectTracker {
         let names = LogNames {
             source: source_name,
             target: target_name,
-            ability: effect_name,
+            ability: action_name,
             effect: effect_name,
         };
         for &(def_id, def) in &matching_defs {

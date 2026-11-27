@@ -9,7 +9,7 @@ impl EffectTracker {
         effect_id: i64,
         effect_name: IStr,
         _action_id: i64,
-        _action_name: IStr,
+        action_name: IStr,
         source_id: i64,
         source_entity_type: EntityType,
         source_name: IStr,
@@ -131,7 +131,7 @@ impl EffectTracker {
                     LogNames {
                         source: source_name,
                         target: target_name,
-                        ability: effect_name,
+                        ability: action_name,
                         effect: effect_name,
                     },
                     timestamp,

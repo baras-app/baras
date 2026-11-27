@@ -20,5 +20,5 @@ pub use config::{
     RaidOverlaySettings, TimerOverlayConfig, overlay_colors,
 };
 pub use interner::{IStr, empty_istr, intern, resolve};
-pub use log_files::{DirectoryIndex, LogFileMetaData, parse_log_filename};
+pub use log_files::{DirectoryIndex, LogFileMetaData, extract_last_event_time, parse_log_filename};
 pub use parser::{DefinitionLoader, ParseResult, ParsingSession, parse_file, resolve_log_path};
