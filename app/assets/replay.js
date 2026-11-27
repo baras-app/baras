@@ -26,8 +26,8 @@ window.BarasReplay = (() => {
   const EDGE_MARGIN = 0.25;
   // Playback seconds a different map must stay the best before it is shown
   const MAP_HOLD_SECS = 1;
-  // Zoom range: from the whole map at half size to a few metres across
-  const MIN_SCALE = 0.5;
+  // Zoom range: far enough out to see a whole page from a framed fight, in to a few metres
+  const MIN_SCALE = 0.1;
   const MAX_SCALE = 60;
   // Zoom per wheel pixel (one notch is about 100): roughly 15% a notch
   const WHEEL_ZOOM = 0.0015;
@@ -35,6 +35,12 @@ window.BarasReplay = (() => {
   const DOT_ZOOM_POWER = 0.45;
   const DOT_MIN_ZOOM = 0.8;
   const DOT_MAX_ZOOM = 3;
+  // Opening a map framed on the fight: room around the positions, a floor on
+  // how tight it gets (metres), and skipped when it would show most of the page
+  const FOCUS_PADDING = 1.6;
+  const FOCUS_MIN_SIZE = 60;
+  const FOCUS_MAX_SHARE = 0.7;
+  const FOCUS_MIN_SAMPLES = 20;
   const TICK_MS = 100;
   const PICK_PX = 18;
   const GRID_STEPS = [1, 2, 5, 10, 20, 50, 100, 200, 500];
@@ -182,6 +188,8 @@ window.BarasReplay = (() => {
     let settleMap = true;
     // Entry the fight mostly happens on, or -1 when no single entry covers it
     let homeMap = -1;
+    // Per map entry: the area the fight used, when it is worth zooming to
+    let focus = [];
     // Screen positions of what was last drawn, for picking
     let drawn = [];
 
@@ -212,6 +220,42 @@ window.BarasReplay = (() => {
     function phaseAt(t) {
       for (const p of phases) if (t >= p.start_secs && t < p.end_secs) return p.phase_id;
       return null;
+    }
+
+    // The part of a map page the fight actually used (players and bosses),
+    // with room around it, or null when that is most of the page anyway
+    function fightArea(m) {
+      const xs = [];
+      const ys = [];
+      const page = { ...m, phases: null };
+      for (const e of entities) {
+        if (e.kind !== "Player" && !e.is_boss) continue;
+        const tr = e.track;
+        for (let i = 0; i < tr.t.length; i++) {
+          if (mapContains(page, tr.x[i], tr.y[i], tr.z[i], null)) {
+            xs.push(tr.x[i]);
+            ys.push(tr.y[i]);
+          }
+        }
+      }
+      if (xs.length < FOCUS_MIN_SAMPLES) return null;
+      const span = (values, lo, hi) => {
+        values.sort((a, b) => a - b);
+        // Ignore the odd stray position
+        const a = values[Math.floor(values.length * 0.02)];
+        const b = values[Math.ceil(values.length * 0.98) - 1];
+        const half = Math.max((b - a) * FOCUS_PADDING, FOCUS_MIN_SIZE) / 2;
+        const mid = (a + b) / 2;
+        return [Math.max(lo, mid - half), Math.min(hi, mid + half)];
+      };
+      const [px0, px1] = [Math.min(m.min_x, m.max_x), Math.max(m.min_x, m.max_x)];
+      const [py0, py1] = [Math.min(m.min_y, m.max_y), Math.max(m.min_y, m.max_y)];
+      const [x0, x1] = span(xs, px0, px1);
+      const [y0, y1] = span(ys, py0, py1);
+      // One scale for both axes: the larger need decides
+      const used = Math.max((x1 - x0) / (px1 - px0), (y1 - y0) / (py1 - py0));
+      if (used >= FOCUS_MAX_SHARE) return null;
+      return { min_x: x0, max_x: x1, min_y: y0, max_y: y1 };
     }
 
     // Which map to show while following the raid. Entries overlap (a room, the
@@ -260,7 +304,8 @@ window.BarasReplay = (() => {
       let flipX = false;
       let flipY = false;
       if (m) {
-        const r = m.view || m;
+        // A boss's own view wins; else the part of the page the fight used
+        const r = m.view || focus[shownMap] || m;
         box = {
           cx: (r.min_x + r.max_x) / 2,
           cy: (r.min_y + r.max_y) / 2,
@@ -594,6 +639,7 @@ window.BarasReplay = (() => {
         const reach = Math.max(fit.w, fit.h) * HOME_MAX_SIZE;
         const size = (m) => Math.max(Math.abs(m.max_x - m.min_x), Math.abs(m.max_y - m.min_y));
         homeMap = covered.findIndex((n, m) => total > 0 && n >= total * HOME_SHARE && size(maps[m]) <= reach);
+        focus = maps.map((m) => fightArea(m));
         settleMap = true;
         requestDraw();
       },

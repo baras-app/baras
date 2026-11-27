@@ -10,7 +10,7 @@ const SPEEDS: [f64; 4] = [0.5, 1.0, 2.0, 4.0];
 
 /// Zoom range, matching the canvas. The slider is logarithmic so each step
 /// zooms by the same factor.
-const MIN_SCALE: f64 = 0.5;
+const MIN_SCALE: f64 = 0.1;
 const MAX_SCALE: f64 = 60.0;
 
 fn slider_to_scale(position: f64) -> f64 {
