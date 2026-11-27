@@ -50,7 +50,7 @@ pub(crate) fn EffectEditForm(
     let tracked = !draft.read().is_alert;
     let body = rsx! {
         div { class: "list-item-body effect-edit-form",
-            div { class: "edit-grid effect-form-grid",
+            div { class: "edit-grid form-grid-2",
                 // Left: what it is, how it shows and announces itself
                 div { class: "edit-grid-left",
                     BasicsCard { draft, is_draft, effect_id: effect.id.clone() }

@@ -5661,7 +5661,7 @@ a.contributor-name:hover {
 
 /* The effect form's cards are short: two columns fit a default-width drawer */
 @container (min-width: 46rem) {
-  .editor-drawer .edit-grid.effect-form-grid {
+  .editor-drawer .edit-grid.form-grid-2 {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
@@ -7819,8 +7819,10 @@ a.contributor-name:hover {
   gap: var(--space-sm);
 }
 
-.field-stack-row > input {
-  flex: 1;
+/* Under .form-card to outweigh the forms' "inputs do not flex" rule: the
+   box shares the row with its button and must shrink with a narrow card */
+.form-card .field-stack-row > input {
+  flex: 1 1 0;
   min-width: 0;
 }
 
