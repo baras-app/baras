@@ -10,8 +10,6 @@ use super::card_view::{CardView, CastView, IconView};
 const NPC_LINGER_SECS: f32 = 2.0;
 /// An interrupted cast stays on the card this long
 const INTERRUPT_LINGER_SECS: f32 = 0.6;
-/// Damage and healing rates average over this many seconds
-const RATE_WINDOW_SECS: usize = 10;
 /// Buff or debuff icons per card row
 const MAX_ICONS: usize = 12;
 /// An entity this far past a map's edge (as a share of its size) is still drawn
@@ -80,11 +78,13 @@ impl Role {
     }
 }
 
+/// Average per second from the pull to `t`, over a per-second series
 fn rate(series: &[u32], t: f32) -> f32 {
     let now = t as usize;
-    let from = now.saturating_sub(RATE_WINDOW_SECS - 1);
-    let total: u64 = series.iter().skip(from).take(now + 1 - from).map(|v| *v as u64).sum();
-    total as f32 / (t - from as f32).max(1.0)
+    let done: u64 = series.iter().take(now).map(|v| *v as u64).sum();
+    // The second being played counts for as much of it as has passed
+    let current = series.get(now).map_or(0.0, |v| *v as f32 * t.fract());
+    (done as f32 + current) / t.max(1.0)
 }
 
 impl Loaded {
