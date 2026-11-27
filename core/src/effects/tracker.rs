@@ -839,12 +839,8 @@ impl EffectTracker {
         &mut self,
         action_id: i64,
         action_name: IStr,
-        source_id: i64,
-        source_name: IStr,
-        source_entity_type: EntityType,
-        target_id: i64,
-        target_name: IStr,
-        target_entity_type: EntityType,
+        source: EntityInfo,
+        target: EntityInfo,
         timestamp: NaiveDateTime,
         encounter: Option<&crate::encounter::CombatEncounter>,
         trigger_type: RefreshTrigger,
@@ -852,6 +848,17 @@ impl EffectTracker {
         // Refresh abilities with `ignore_immune_resist` skip these events.
         is_immune_or_resist: bool,
     ) {
+        let EntityInfo {
+            id: source_id,
+            name: source_name,
+            ..
+        } = source;
+        let EntityInfo {
+            id: target_id,
+            entity_type: target_entity_type,
+            name: target_name,
+            ..
+        } = target;
         // For AoE abilities (target_id == 0), we can't reliably detect which targets
         // were actually hit. Damage events from ongoing DOTs on other targets look
         // identical to first ticks from the new cast. Rather than risk false refreshes
@@ -913,24 +920,17 @@ impl EffectTracker {
             .filter(|(_, def)| def.matches_discipline(local_discipline.as_ref()))
             .filter_map(|(def_id, def)| {
                 // Only refresh/create effects whose filters match the actual entities
-                let entity = |id, entity_type, name| EntityInfo {
-                    id,
-                    npc_id: 0,
-                    entity_type,
-                    name,
-                };
-                if !self.source_ok(&ctx, def, entity(source_id, source_entity_type, source_name)) {
+                if !self.source_ok(&ctx, def, source) {
                     return None;
                 }
-                let target_ok = |id, etype, name| self.target_ok(&ctx, def, entity(id, etype, name));
                 // Self-buffs refreshed by an offensive cast: the effect lives on the
                 // caster, so retry the target filter against the caster (same
                 // condition as the self fallback key below).
-                let self_only = if target_ok(target_id, target_entity_type, target_name) {
+                let self_only = if self.target_ok(&ctx, def, target) {
                     false
                 } else if target_id != source_id
                     && target_entity_type != EntityType::Player
-                    && target_ok(source_id, source_entity_type, source_name)
+                    && self.target_ok(&ctx, def, source)
                 {
                     true
                 } else {
@@ -1325,6 +1325,7 @@ impl EffectTracker {
         target_id: i64,
         target_name: IStr,
         target_entity_type: EntityType,
+        target_npc_id: i64,
         timestamp: NaiveDateTime,
         encounter: Option<&crate::encounter::CombatEncounter>,
     ) {
@@ -1350,7 +1351,7 @@ impl EffectTracker {
         let ctx = self.filter_ctx(encounter);
         let target_info = EntityInfo {
             id: target_id,
-            npc_id: 0,
+            npc_id: target_npc_id,
             entity_type: target_entity_type,
             name: target_name,
         };
@@ -2235,37 +2236,49 @@ impl SignalHandler for EffectTracker {
                 target_id,
                 target_name,
                 target_entity_type,
+                target_npc_id,
                 timestamp,
-                ..
             } => {
-
+                let source = EntityInfo {
+                    id: *source_id,
+                    npc_id: *source_npc_id,
+                    entity_type: *source_entity_type,
+                    name: *source_name,
+                };
                 // Resolve actual target: the signal already has a resolved target from
                 // encounter state, but our local current_targets cache may be more
                 // up-to-date (works outside combat). Apply additional resolution if
-                // the signal still reports self-targeting.
+                // the signal still reports self-targeting. A target resolved from
+                // either cache has no known NPC class id.
                 let is_self_or_empty = *target_id == 0 || *target_id == *source_id;
-                let (resolved_target, resolved_target_name, resolved_entity_type) = if is_self_or_empty {
-                    if let Some((target, name, etype)) =
-                        self.current_targets.get(source_id).copied()
-                    {
-                        (target, name, etype)
-                    } else if let Some(target) =
-                        encounter.and_then(|e| e.get_current_target(*source_id))
-                    {
-                        let player_info = encounter
-                            .and_then(|e| e.players.get(&target));
-                        let name = player_info.map(|p| p.name).unwrap_or(*source_name);
-                        let etype = if player_info.is_some() {
+                let target = if !is_self_or_empty {
+                    EntityInfo {
+                        id: *target_id,
+                        npc_id: *target_npc_id,
+                        entity_type: *target_entity_type,
+                        name: *target_name,
+                    }
+                } else if let Some((id, name, entity_type)) = self.current_targets.get(source_id).copied() {
+                    EntityInfo {
+                        id,
+                        npc_id: 0,
+                        entity_type,
+                        name,
+                    }
+                } else if let Some(id) = encounter.and_then(|e| e.get_current_target(*source_id)) {
+                    let player = encounter.and_then(|e| e.players.get(&id));
+                    EntityInfo {
+                        id,
+                        npc_id: 0,
+                        entity_type: if player.is_some() {
                             EntityType::Player
                         } else {
                             EntityType::Npc
-                        };
-                        (target, name, etype)
-                    } else {
-                        (*source_id, *source_name, *source_entity_type)
+                        },
+                        name: player.map(|p| p.name).unwrap_or(*source_name),
                     }
                 } else {
-                    (*target_id, *target_name, *target_entity_type)
+                    source
                 };
 
                 // Handle AbilityCast-triggered effects (procs, cooldowns)
@@ -2276,9 +2289,10 @@ impl SignalHandler for EffectTracker {
                     *source_name,
                     *source_entity_type,
                     *source_npc_id,
-                    resolved_target,
-                    resolved_target_name,
-                    resolved_entity_type,
+                    target.id,
+                    target.name,
+                    target.entity_type,
+                    target.npc_id,
                     *timestamp,
                     encounter,
                 );
@@ -2286,12 +2300,8 @@ impl SignalHandler for EffectTracker {
                 self.refresh_effects_by_action(
                     *ability_id,
                     *ability_name,
-                    *source_id,
-                    *source_name,
-                    *source_entity_type,
-                    resolved_target,
-                    resolved_target_name,
-                    resolved_entity_type,
+                    source,
+                    target,
                     *timestamp,
                     encounter,
                     RefreshTrigger::Activation,
@@ -2299,7 +2309,7 @@ impl SignalHandler for EffectTracker {
                 );
 
                 // For AoE abilities, set up pending state for damage correlation
-                self.setup_pending_aoe_refresh(*ability_id, *source_id, *timestamp, resolved_target);
+                self.setup_pending_aoe_refresh(*ability_id, *source_id, *timestamp, target.id);
             }
             GameSignal::DamageTaken {
                 ability_id,
@@ -2327,12 +2337,18 @@ impl SignalHandler for EffectTracker {
                 self.refresh_effects_by_action(
                     *ability_id,
                     *ability_name,
-                    *source_id,
-                    *source_name,
-                    *source_entity_type,
-                    *target_id,
-                    *target_name,
-                    *target_entity_type,
+                    EntityInfo {
+                        id: *source_id,
+                        npc_id: *source_npc_id,
+                        entity_type: *source_entity_type,
+                        name: *source_name,
+                    },
+                    EntityInfo {
+                        id: *target_id,
+                        npc_id: *target_npc_id,
+                        entity_type: *target_entity_type,
+                        name: *target_name,
+                    },
                     *timestamp,
                     encounter,
                     RefreshTrigger::Damage,
@@ -2373,12 +2389,18 @@ impl SignalHandler for EffectTracker {
                 self.refresh_effects_by_action(
                     *ability_id,
                     *ability_name,
-                    *source_id,
-                    *source_name,
-                    *source_entity_type,
-                    *target_id,
-                    *target_name,
-                    *target_entity_type,
+                    EntityInfo {
+                        id: *source_id,
+                        npc_id: *source_npc_id,
+                        entity_type: *source_entity_type,
+                        name: *source_name,
+                    },
+                    EntityInfo {
+                        id: *target_id,
+                        npc_id: *target_npc_id,
+                        entity_type: *target_entity_type,
+                        name: *target_name,
+                    },
                     *timestamp,
                     encounter,
                     RefreshTrigger::Heal,

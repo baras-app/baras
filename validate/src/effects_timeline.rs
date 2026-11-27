@@ -53,11 +53,7 @@ pub fn run(log: &Path, definitions_root: Option<&Path>, out: &Path) -> Result<()
 
     let mut defs = DefinitionSet::new();
     defs.add_from_dir(&root.join("effects"));
-    eprintln!(
-        "Loaded {} effect definitions from {}",
-        defs.len(),
-        root.display()
-    );
+    eprintln!("Loaded {} effect definitions from {}", defs.len(), root.display());
 
     let mut bytes = Vec::new();
     File::open(log)?.read_to_end(&mut bytes)?;
