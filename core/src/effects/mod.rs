@@ -29,7 +29,9 @@ mod active;
 mod alacrity;
 mod alerts;
 mod audio;
+mod def_id;
 mod definition;
+mod definition_set;
 mod lifecycle;
 mod modifier_match;
 pub mod tracker;
@@ -39,9 +41,11 @@ mod tracker_tests;
 
 pub use active::{ActiveEffect, EffectKey};
 pub use audio::EffectAudio;
+pub use def_id::DefId;
 pub use definition::{
     AbilitySelector, AlertTrigger, DefinitionConfig, DisplayTarget, EFFECTS_DSL_VERSION, EffectDefinition,
     EffectSelector, EntityFilter, RefreshAbility, RefreshScope, RefreshTrigger,
 };
+pub use definition_set::DefinitionSet;
 pub use lifecycle::Lifecycle;
-pub use tracker::{DefinitionSet, EffectTracker, NewTargetInfo};
+pub use tracker::{EffectTracker, NewTargetInfo};

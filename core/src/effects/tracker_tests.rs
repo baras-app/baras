@@ -6,7 +6,7 @@
 use chrono::Local;
 
 use super::definition::EffectDefinition;
-use super::tracker::{DefinitionSet, EffectTracker};
+use super::{DefinitionSet, EffectTracker};
 use crate::combat_log::EntityType;
 use crate::context::empty_istr;
 use crate::dsl::{AudioConfig, EffectSelector, EntityFilter, Trigger};
