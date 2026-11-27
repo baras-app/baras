@@ -70,6 +70,26 @@ pub fn TextField(
     }
 }
 
+/// Free-text note about the entry, kept with it and shown in the editor only
+#[component]
+pub fn NoteField(value: Option<String>, on_input: EventHandler<Option<String>>) -> Element {
+    let text = value.unwrap_or_default();
+    rsx! {
+        Field { label: "Note", help: "A note for whoever edits this next. Shown in the editor only, never in game.", top: true,
+            textarea {
+                class: "field-note",
+                rows: "2",
+                placeholder: "(optional)",
+                value: "{text}",
+                oninput: move |e| {
+                    let v = e.value();
+                    on_input.call((!v.trim().is_empty()).then_some(v));
+                },
+            }
+        }
+    }
+}
+
 /// Number box with an optional unit after it. The raw text is passed on so
 /// callers decide how to parse (and whether blank means "none").
 #[component]

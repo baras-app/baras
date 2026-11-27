@@ -7,7 +7,7 @@ use crate::components::SoundPicker;
 use crate::components::ability_icon::use_icon_url;
 use crate::components::editor_common::FormCard;
 use crate::components::form_fields::{
-    CheckField, Deprecated, Field, NumberField, PickField, SubSection, TextField, TogglePill,
+    CheckField, Deprecated, Field, NoteField, NumberField, PickField, SubSection, TextField, TogglePill,
 };
 use crate::types::{AlertTrigger, BossTimerDefinition, TimerDisplayTarget, timer_alert_label};
 use crate::utils::parse_hex_color;
@@ -77,6 +77,7 @@ pub(super) fn BasicsCard(mut draft: Signal<BossTimerDefinition>, timer_id: Strin
                     " Disabling a timer may break phases, counters, or other timers that depend on it."
                 }
             }
+            NoteField { value: d.note.clone(), on_input: move |v| draft.write().note = v }
         }
     }
 }

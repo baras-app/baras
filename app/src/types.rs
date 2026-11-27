@@ -513,6 +513,9 @@ pub struct BossTimerDefinition {
     pub name: String,
     #[serde(default)]
     pub display_text: Option<String>,
+    /// Free-text note, shown in the editor only
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
     pub trigger: Trigger,
     #[serde(default)]
     pub duration_secs: f32,
@@ -626,6 +629,9 @@ pub struct PhaseDefinition {
     pub enabled: bool,
     #[serde(default)]
     pub display_text: Option<String>,
+    /// Free-text note, shown in the editor only
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
     #[serde(alias = "trigger")]
     pub start_trigger: Trigger,
     #[serde(default)]
@@ -652,6 +658,9 @@ pub struct CounterDefinition {
     pub enabled: bool,
     #[serde(default)]
     pub display_text: Option<String>,
+    /// Free-text note, shown in the editor only
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
     pub increment_on: Trigger,
     #[serde(default)]
     pub decrement_on: Option<Trigger>,
@@ -882,6 +891,9 @@ pub struct EffectListItem {
     pub name: String,
     #[serde(default)]
     pub display_text: Option<String>,
+    /// Free-text note, shown in the editor only
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
     /// Whether this effect has a user override (vs bundled-only)
     #[serde(default)]
     pub is_user_override: bool,

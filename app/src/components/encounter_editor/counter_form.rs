@@ -4,7 +4,9 @@ use dioxus::prelude::*;
 
 use crate::components::editor_common::{FormCard, ItemActions, Origin};
 use crate::components::editor_drawer::EditorDrawer;
-use crate::components::form_fields::{CheckField, Deprecated, Field, NumberField, SubSection, TextField, TogglePill};
+use crate::components::form_fields::{
+    CheckField, Deprecated, Field, NoteField, NumberField, SubSection, TextField, TogglePill,
+};
 use crate::types::{CounterDefinition, EffectSelector, EffectStackConfig, EntityFilter, StackAggregation, Trigger};
 
 use super::optional_trigger::OptionalTrigger;
@@ -115,6 +117,7 @@ pub(super) fn CounterEditForm(
                                 " Disabling a counter may break phases or timers that depend on it."
                             }
                         }
+                        NoteField { value: draft().note, on_input: move |v| draft.write().note = v }
                         // Options (hidden for effect stack counters)
                         if draft().track_effect_stacks.is_none() {
                             SubSection { title: "Value",

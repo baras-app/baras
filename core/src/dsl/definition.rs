@@ -566,6 +566,10 @@ pub struct BossTimerDefinition {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub display_text: Option<String>,
 
+    /// Free-text note shown in the editor only; never read at runtime
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+
     /// What triggers this timer (includes source/target filters)
     pub trigger: crate::timers::TimerTrigger,
 

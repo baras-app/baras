@@ -27,6 +27,7 @@ fn default_effect(name: String) -> EffectListItem {
         id: String::new(),
         name,
         display_text: None,
+        note: None,
         is_user_override: false,
         is_bundled: false,
         enabled: true,

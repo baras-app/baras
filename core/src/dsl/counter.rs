@@ -28,6 +28,10 @@ pub struct CounterDefinition {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub display_text: Option<String>,
 
+    /// Free-text note shown in the editor only; never read at runtime
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+
     /// What increments this counter
     pub increment_on: Trigger,
 

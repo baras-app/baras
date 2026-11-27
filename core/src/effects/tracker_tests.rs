@@ -23,6 +23,7 @@ fn make_effect(id: &str, name: &str, trigger: Trigger, duration_secs: Option<f32
         id: id.to_string(),
         name: name.to_string(),
         display_text: None,
+        note: None,
         enabled: true,
         trigger,
         ignore_effect_removed: false,

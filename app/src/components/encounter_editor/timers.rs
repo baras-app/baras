@@ -27,6 +27,7 @@ fn default_timer(name: String) -> BossTimerDefinition {
         id: String::new(), // Backend generates from name
         name,
         display_text: None,
+        note: None,
         trigger: Trigger::CombatStart,
         duration_secs: 30.0,
         is_alert: false,
