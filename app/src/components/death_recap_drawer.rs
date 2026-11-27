@@ -45,6 +45,9 @@ pub struct DeathRecapDrawerProps {
     pub on_select: EventHandler<PlayerDeath>,
     /// Payload is the recap window start (combat seconds) for the log filter
     pub on_open_combat_log: EventHandler<f32>,
+    /// Watch this death in the Replay tab; absent when the fight has no replay
+    #[props(default)]
+    pub on_replay: Option<EventHandler<()>>,
 }
 
 #[component]
@@ -122,6 +125,15 @@ pub fn DeathRecapDrawer(props: DeathRecapDrawerProps) -> Element {
                             onclick: move |_| props.on_open_combat_log.call(start),
                             i { class: "fa-solid fa-list" }
                             " Log"
+                        }
+                    }
+                    if let Some(on_replay) = props.on_replay {
+                        button {
+                            class: "btn btn-sm",
+                            title: "Watch the seconds before this death in the Replay tab",
+                            onclick: move |_| on_replay.call(()),
+                            i { class: "fa-solid fa-play" }
+                            " Replay"
                         }
                     }
                     button {

@@ -99,6 +99,8 @@ pub(super) fn EntityCard(index: usize) -> Element {
     } else {
         "HP unavailable".to_string()
     };
+    let on_recap = state.on_recap;
+    let name = entity.name.clone();
     let european = state.european;
     let compact = move |v: f32| formatting::format_compact(v as i64, european);
     let toggle = {
@@ -130,8 +132,23 @@ pub(super) fn EntityCard(index: usize) -> Element {
             div { class: "replay-hp", title: "{hp_text}",
                 div { class: "replay-hp-fill", style: "width: {pct:.1}%" }
             }
-            if !is_compact {
+            if let Some(at) = view.died_at.filter(|_| entity.kind == ReplayEntityKind::Player) {
+                div { class: "replay-card-line",
+                    button {
+                        class: "btn btn-xs",
+                        title: "What killed them: open the death recap",
+                        onclick: move |e| {
+                            e.stop_propagation();
+                            on_recap.call((name.clone(), at));
+                        },
+                        i { class: "fa-solid fa-skull" }
+                        " Recap"
+                    }
+                }
+            } else if !is_compact {
                 div { class: "replay-card-line", "{hp_text}" }
+            }
+            if !is_compact {
                 {icon_row("Buffs", &view.buffs, view.more_buffs)}
                 {icon_row("Debuffs", &view.debuffs, view.more_debuffs)}
             }

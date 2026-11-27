@@ -199,6 +199,17 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                             phases: ctx.timeline.read().as_ref().map(|t| t.phases.clone()).unwrap_or_default(),
                             maps: ctx.replay_maps.read().1.clone(),
                             european: eu,
+                            jump: (ctx.replay_jump)(),
+                            on_recap: move |(name, at): (String, f32)| {
+                                // The death in the explorer's list closest to that moment
+                                let death = player_deaths
+                                    .read()
+                                    .iter()
+                                    .filter(|d| d.name == name)
+                                    .min_by(|a, b| (a.death_time_secs - at).abs().total_cmp(&(b.death_time_secs - at).abs()))
+                                    .cloned();
+                                recap_death.set(death);
+                            },
                         }
                     }
 
@@ -220,6 +231,15 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                     roster: overview_table_data.read().rows.clone(),
                     deaths: player_deaths.read().clone(),
                     on_select: move |d: PlayerDeath| recap_death.set(Some(d)),
+                    on_replay: ctx.replay_available(shown_encounter()).then(|| {
+                        EventHandler::new(move |_| {
+                            if let Some(d) = recap_death() {
+                                let mut jump = ctx.replay_jump;
+                                jump.set(Some((d.name.clone(), d.death_time_secs)));
+                                view_mode.set(ViewMode::Replay);
+                            }
+                        })
+                    }),
                     on_open_combat_log: move |window_start: f32| {
                         if let Some(d) = recap_death() {
                             time_range.set(TimeRange {

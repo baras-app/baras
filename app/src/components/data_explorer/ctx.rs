@@ -107,6 +107,8 @@ pub(super) struct ExplorerCtx {
     pub preloaded_detail: Signal<Option<(Option<u32>, ViewMode, TimeRange)>>,
     pub death_target_filter: Signal<Option<String>>,
     pub recap_death: Signal<Option<PlayerDeath>>,
+    /// A player and a moment the Replay tab should open on (set from a death recap)
+    pub replay_jump: Signal<Option<(String, f32)>>,
     /// Replay maps of the selected encounter's boss, with the encounter they are for
     pub replay_maps: Signal<(Option<u32>, Vec<baras_types::MapDefinition>)>,
     pub dt_summary: Signal<Option<DamageTakenSummary>>,
@@ -226,6 +228,7 @@ pub(super) fn use_explorer_ctx(state: Signal<UiSessionState>) -> ExplorerCtx {
     // Death whose recap modal is open (None = closed)
     let recap_death = use_signal(|| None::<PlayerDeath>);
     let replay_maps = use_signal(|| (None, Vec::new()));
+    let replay_jump = use_signal(|| None::<(String, f32)>);
 
     // DamageTaken summary (shown above the ability table for a selected source)
     let dt_summary: Signal<Option<DamageTakenSummary>> = use_signal(|| None);
@@ -350,6 +353,7 @@ pub(super) fn use_explorer_ctx(state: Signal<UiSessionState>) -> ExplorerCtx {
         death_target_filter,
         recap_death,
         replay_maps,
+        replay_jump,
         dt_summary,
         overview_table_data,
         filtered_history,

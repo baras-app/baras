@@ -85,10 +85,6 @@
   font-size: 0.85em;
 }
 
-.replay-scrubber {
-  flex: 1;
-  min-width: 120px;
-}
 
 .replay-option {
   display: flex;
@@ -337,4 +333,73 @@
   font-size: 9px;
   font-weight: 600;
   line-height: 11px;
+}
+
+/* ─── Timeline ───────────────────────────────────────────────────────────── */
+
+.replay-timeline {
+  position: relative;
+  flex: 1;
+  min-width: 160px;
+  height: 26px;
+  border: 1px solid var(--border-medium);
+  border-radius: 3px;
+  background: var(--bg-dark);
+  overflow: hidden;
+  cursor: pointer;
+  user-select: none;
+}
+
+.replay-phase {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  overflow: hidden;
+  background: var(--border-subtle);
+  border-left: 1px solid var(--border-medium);
+  color: var(--text-muted);
+  font-size: 0.7em;
+  line-height: 26px;
+  white-space: nowrap;
+}
+
+.replay-phase.alt {
+  background: var(--border-light);
+}
+
+.replay-phase span {
+  padding: 0 4px;
+}
+
+.replay-mark-cast {
+  position: absolute;
+  bottom: 0;
+  width: 1px;
+  height: 7px;
+  background: var(--swtor-orange);
+  opacity: 0.8;
+}
+
+.replay-mark-death {
+  position: absolute;
+  top: 0;
+  width: 5px;
+  height: 100%;
+  margin-left: -2px;
+  background: var(--color-error);
+  opacity: 0.85;
+}
+
+.replay-mark-death:hover {
+  opacity: 1;
+}
+
+.replay-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--text-primary);
+  pointer-events: none;
 }
