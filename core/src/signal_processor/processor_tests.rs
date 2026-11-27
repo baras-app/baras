@@ -924,6 +924,7 @@ fn test_counter_phase_entered_trigger() {
                 name: "Phase 1".to_string(),
                 enabled: true,
                 display_text: None,
+                note: None,
                 start_trigger: Trigger::CombatStart,
                 end_trigger: None,
                 preceded_by: None,
@@ -937,6 +938,7 @@ fn test_counter_phase_entered_trigger() {
                 name: "Phase 2".to_string(),
                 enabled: true,
                 display_text: None,
+                note: None,
                 start_trigger: Trigger::EntityDeath {
                     selector: vec![crate::dsl::triggers::EntitySelector::Name("Add".to_string())],
                     position: vec![],
@@ -955,6 +957,7 @@ fn test_counter_phase_entered_trigger() {
                 name: "Phase Enter Counter".to_string(),
                 enabled: true,
                 display_text: None,
+                note: None,
                 increment_on: Trigger::PhaseEntered {
                     phase_id: "p2".to_string(),
                 },
@@ -970,6 +973,7 @@ fn test_counter_phase_entered_trigger() {
                 name: "Phase End Counter".to_string(),
                 enabled: true,
                 display_text: None,
+                note: None,
                 increment_on: Trigger::PhaseEnded {
                     phase_id: "p1".to_string(),
                 },
@@ -1178,6 +1182,7 @@ fn test_phase_cascade_in_single_event() {
                 name: "Phase 1".to_string(),
                 enabled: true,
                 display_text: None,
+                note: None,
                 start_trigger: Trigger::CombatStart,
                 end_trigger: Some(Trigger::EntityDeath {
                     selector: vec![crate::dsl::triggers::EntitySelector::Name("Add".to_string())],
@@ -1194,6 +1199,7 @@ fn test_phase_cascade_in_single_event() {
                 name: "Phase 2 (transient)".to_string(),
                 enabled: true,
                 display_text: None,
+                note: None,
                 start_trigger: Trigger::PhaseEnded {
                     phase_id: "p1".to_string(),
                 },
@@ -1213,6 +1219,7 @@ fn test_phase_cascade_in_single_event() {
                 name: "Phase 3 (final)".to_string(),
                 enabled: true,
                 display_text: None,
+                note: None,
                 start_trigger: Trigger::PhaseEnded {
                     phase_id: "p2".to_string(),
                 },
@@ -1229,6 +1236,7 @@ fn test_phase_cascade_in_single_event() {
             name: "Cascade Counter".to_string(),
             enabled: true,
             display_text: None,
+            note: None,
             increment_on: Trigger::AnyPhaseChange,
             decrement_on: None,
             reset_on: Trigger::CombatEnd,
@@ -1418,6 +1426,7 @@ fn test_counter_reaches_enables_phase() {
                 name: "Phase 1".to_string(),
                 enabled: true,
                 display_text: None,
+                note: None,
                 start_trigger: Trigger::CombatStart,
                 end_trigger: None,
                 preceded_by: None,
@@ -1431,6 +1440,7 @@ fn test_counter_reaches_enables_phase() {
                 name: "Phase 2 (after 3 kills)".to_string(),
                 enabled: true,
                 display_text: None,
+                note: None,
                 start_trigger: Trigger::EntityDeath {
                     selector: vec![crate::dsl::triggers::EntitySelector::Name("Add".to_string())],
                     position: vec![],
@@ -1452,6 +1462,7 @@ fn test_counter_reaches_enables_phase() {
             name: "Kill Count".to_string(),
             enabled: true,
             display_text: None,
+            note: None,
             increment_on: Trigger::EntityDeath {
                 selector: vec![crate::dsl::triggers::EntitySelector::Name("Add".to_string())],
                 position: vec![],
@@ -1633,6 +1644,7 @@ fn test_phase_ended_counter_no_double_increment() {
                 name: "Tanks".to_string(),
                 enabled: true,
                 display_text: None,
+                note: None,
                 start_trigger: Trigger::PhaseEnded {
                     phase_id: "shield".to_string(),
                 },
@@ -1648,6 +1660,7 @@ fn test_phase_ended_counter_no_double_increment() {
                 name: "Shield".to_string(),
                 enabled: true,
                 display_text: None,
+                note: None,
                 start_trigger: Trigger::EffectApplied {
                     effects: vec![EffectSelector::Id(SHIELD_EFFECT_ID as u64)],
                     source: baras_types::EntityFilter::Any,
@@ -1672,6 +1685,7 @@ fn test_phase_ended_counter_no_double_increment() {
             name: "Shield Count".to_string(),
             enabled: true,
             display_text: None,
+            note: None,
             increment_on: Trigger::PhaseEnded {
                 phase_id: "shield".to_string(),
             },

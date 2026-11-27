@@ -29,6 +29,10 @@ pub struct PhaseDefinition {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub display_text: Option<String>,
 
+    /// Free-text note shown in the editor only; never read at runtime
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+
     /// What triggers this phase to start
     #[serde(alias = "trigger")]
     pub start_trigger: Trigger,
@@ -84,6 +88,7 @@ mod tests {
             name: id.to_string(),
             enabled,
             display_text: None,
+            note: None,
             start_trigger: trigger,
             end_trigger: None,
             preceded_by: None,

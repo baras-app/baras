@@ -4,7 +4,7 @@ use dioxus::prelude::*;
 
 use crate::components::editor_common::{FormCard, ItemActions, Origin};
 use crate::components::editor_drawer::EditorDrawer;
-use crate::components::form_fields::{CheckField, Field, SubSection, TextField};
+use crate::components::form_fields::{CheckField, Field, NoteField, SubSection, TextField};
 use crate::types::{Condition, PhaseDefinition, Trigger};
 
 use super::DifficultiesEditor;
@@ -93,6 +93,7 @@ pub(super) fn PhaseEditForm(
                                 " Disabling a phase may break timers or other phases that depend on it."
                             }
                         }
+                        NoteField { value: draft().note, on_input: move |v| draft.write().note = v }
                     }
                     FormCard { icon: "fa-rotate-left", title: "On Start",
                         SubSection { title: "Resets Counters", help: "Counters to reset when this phase starts",

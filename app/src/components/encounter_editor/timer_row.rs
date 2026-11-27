@@ -5,7 +5,7 @@ use dioxus::prelude::*;
 
 use crate::api;
 use crate::components::ability_icon::ColorIcon;
-use crate::components::def_list::Column;
+use crate::components::def_list::{Column, NoteMark};
 use crate::components::editor_common::{Origin, OriginBadge};
 use crate::types::{BossTimerDefinition, BossWithPath, EncounterItem};
 
@@ -94,6 +94,7 @@ pub(super) fn TimerRow(
 
                 span { class: "col-name",
                     span { class: "def-name truncate", "{timer.name}" }
+                    NoteMark { note: timer.note.clone() }
                     if expanded && is_dirty() {
                         span { class: "unsaved-indicator", title: "Unsaved changes" }
                     }

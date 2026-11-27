@@ -35,7 +35,7 @@ pub struct ChallengeDefinition {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub display_text: Option<String>,
 
-    /// Optional description for UI tooltips
+    /// Free-text note shown in the editor only
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
 

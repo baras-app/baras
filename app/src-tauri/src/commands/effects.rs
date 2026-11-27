@@ -32,6 +32,8 @@ pub struct EffectListItem {
     pub id: String,
     pub name: String,
     pub display_text: Option<String>,
+    #[serde(default)]
+    pub note: Option<String>,
     /// Whether this effect has a user override (vs bundled-only)
     pub is_user_override: bool,
     /// Whether this effect exists in the bundled defaults
@@ -121,6 +123,7 @@ impl EffectListItem {
             id: def.id.clone(),
             name: def.name.clone(),
             display_text: def.display_text.clone(),
+            note: def.note.clone(),
             is_user_override,
             is_bundled,
             enabled: def.enabled,
@@ -170,6 +173,7 @@ impl EffectListItem {
             id: self.id.clone(),
             name: self.name.clone(),
             display_text: self.display_text.clone(),
+            note: self.note.clone(),
             enabled: self.enabled,
             trigger: self.trigger.clone(),
             ignore_effect_removed: self.ignore_effect_removed,

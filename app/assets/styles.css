@@ -4885,6 +4885,18 @@ a.contributor-name:hover {
   flex-shrink: 0;
 }
 
+/* Row has a note: hover for the text */
+.def-note {
+  flex-shrink: 0;
+  margin-left: 0.5em;
+  font-size: 0.8em;
+  color: var(--text-muted);
+}
+
+.def-row:hover .def-note {
+  color: var(--text-secondary);
+}
+
 .def-row .col-id {
   font-family: var(--font-mono, monospace);
   font-size: 0.8em;
@@ -7676,6 +7688,21 @@ a.contributor-name:hover {
 
 .form-card textarea {
   background-color: var(--bg-card-input);
+}
+
+/* Drawn like the form's text boxes: the native textarea border is a thick
+   light inset */
+.form-card .field-note {
+  flex: 1 1 12em;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.35em 0.6em;
+  resize: vertical;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
 }
 
 /* Checkboxes drawn by hand: the native unchecked box is a bright white square.

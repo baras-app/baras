@@ -6,7 +6,7 @@
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::components::def_list::{ColSort, Column, ListCount, ListHead, sort_by_column};
+use crate::components::def_list::{ColSort, Column, ListCount, ListHead, NoteMark, sort_by_column};
 use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
 use crate::components::editor_drawer::use_drawer_guard;
 use crate::types::{BossWithPath, ChallengeColumns, ChallengeDefinition, ChallengeMetric, EncounterItem};
@@ -206,6 +206,7 @@ fn ChallengeRow(
 
                 span { class: "col-name", title: "{challenge.id}",
                     span { class: "def-name truncate", "{challenge.name}" }
+                    NoteMark { note: challenge.description.clone() }
                     if expanded && is_dirty() {
                         span { class: "unsaved-indicator", title: "Unsaved changes" }
                     }

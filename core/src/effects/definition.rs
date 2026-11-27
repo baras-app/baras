@@ -70,6 +70,10 @@ pub struct EffectDefinition {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub display_text: Option<String>,
 
+    /// Free-text note shown in the editor only; never read at runtime
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+
     /// Whether this definition is currently enabled
     #[serde(
         default = "crate::serde_defaults::default_true",

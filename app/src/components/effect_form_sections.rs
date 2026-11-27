@@ -9,7 +9,9 @@ use super::effect_trigger::effect_icon_id;
 use super::sound_picker::SoundPicker;
 use crate::components::ability_icon::use_icon_url;
 use crate::components::editor_common::FormCard;
-use crate::components::form_fields::{CheckField, Field, NumberField, PickField, SubSection, TextField, TogglePill};
+use crate::components::form_fields::{
+    CheckField, Field, NoteField, NumberField, PickField, SubSection, TextField, TogglePill,
+};
 use crate::types::{AlertTrigger, DisplayTarget, EffectListItem, effect_alert_label};
 use crate::utils::parse_hex_color;
 
@@ -84,6 +86,7 @@ pub(super) fn BasicsCard(mut draft: Signal<EffectListItem>, is_draft: bool, effe
                 }
             }
             CheckField { label: "Enabled", checked: d.enabled, on_change: move |v| draft.write().enabled = v }
+            NoteField { value: d.note.clone(), on_input: move |v| draft.write().note = v }
         }
     }
 }

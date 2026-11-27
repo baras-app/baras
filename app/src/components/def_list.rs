@@ -70,6 +70,16 @@ pub fn sort_by_column<T>(items: &mut [T], sort: ColSort, text: impl Fn(usize, &T
     }
 }
 
+/// Marks a row whose entry has a note; the note is the tooltip
+#[component]
+pub fn NoteMark(note: Option<String>) -> Element {
+    rsx! {
+        if let Some(note) = note {
+            i { class: "fa-regular fa-note-sticky def-note", title: "{note}" }
+        }
+    }
+}
+
 /// How many entries the list holds, and how many of them the filters leave
 #[component]
 pub fn ListCount(shown: usize, total: usize, noun: &'static str) -> Element {

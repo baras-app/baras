@@ -6,7 +6,7 @@
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::components::def_list::{ColSort, Column, HideDisabled, ListCount, ListHead, sort_by_column};
+use crate::components::def_list::{ColSort, Column, HideDisabled, ListCount, ListHead, NoteMark, sort_by_column};
 use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
 use crate::components::editor_drawer::use_drawer_guard;
 use crate::types::{BossWithPath, CounterDefinition, EncounterItem, EntityFilter, Trigger};
@@ -26,6 +26,7 @@ fn default_counter(name: String) -> CounterDefinition {
         name,
         enabled: true,
         display_text: None,
+        note: None,
         increment_on: Trigger::AbilityCast {
             abilities: vec![],
             source: EntityFilter::default(),
@@ -239,6 +240,7 @@ fn CounterRow(
 
                 span { class: "col-name", title: "{counter.id}",
                     span { class: "def-name truncate", "{counter.name}" }
+                    NoteMark { note: counter.note.clone() }
                     if expanded && is_dirty() {
                         span { class: "unsaved-indicator", title: "Unsaved changes" }
                     }

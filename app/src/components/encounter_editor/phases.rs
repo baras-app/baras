@@ -6,7 +6,7 @@
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::components::def_list::{ColSort, Column, HideDisabled, ListCount, ListHead, sort_by_column};
+use crate::components::def_list::{ColSort, Column, HideDisabled, ListCount, ListHead, NoteMark, sort_by_column};
 use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
 use crate::components::editor_drawer::use_drawer_guard;
 use crate::types::{BossWithPath, EncounterItem, PhaseDefinition, Trigger};
@@ -26,6 +26,7 @@ fn default_phase(name: String) -> PhaseDefinition {
         name,
         enabled: true,
         display_text: None,
+        note: None,
         start_trigger: Trigger::CombatStart,
         end_trigger: None,
         preceded_by: None,
@@ -215,6 +216,7 @@ fn PhaseRow(
 
                 span { class: "col-name", title: "{phase.id}",
                     span { class: "def-name truncate", "{phase.name}" }
+                    NoteMark { note: phase.note.clone() }
                     if expanded && is_dirty() {
                         span { class: "unsaved-indicator", title: "Unsaved changes" }
                     }

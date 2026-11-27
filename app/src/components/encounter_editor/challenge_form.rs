@@ -4,7 +4,7 @@ use dioxus::prelude::*;
 
 use crate::components::editor_common::{FormCard, ItemActions, Origin};
 use crate::components::editor_drawer::EditorDrawer;
-use crate::components::form_fields::{CheckField, Field, SubSection, TextField};
+use crate::components::form_fields::{CheckField, Field, NoteField, SubSection, TextField};
 use crate::types::{
     ChallengeColumns, ChallengeCondition, ChallengeDefinition, ChallengeMetric, ComparisonOp, EntityFilter,
 };
@@ -105,12 +105,7 @@ pub(super) fn ChallengeEditForm(
                             }
                         }
                         CheckField { label: "Enabled", checked: draft().enabled, on_change: move |v| draft.write().enabled = v }
-                        TextField {
-                            label: "Description",
-                            value: draft().description.unwrap_or_default(),
-                            placeholder: "(optional)",
-                            on_input: move |v: String| draft.write().description = (!v.is_empty()).then_some(v),
-                        }
+                        NoteField { value: draft().description, on_input: move |v| draft.write().description = v }
                     }
                     FormCard { icon: "fa-display", title: "Display",
                         TextField {

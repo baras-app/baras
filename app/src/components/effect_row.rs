@@ -10,7 +10,7 @@ use super::effect_form::EffectEditForm;
 use super::effect_trigger::{effect_icon_id, get_trigger_filters};
 use crate::components::ability_icon::ColorIcon;
 use crate::components::class_icons::get_class_icon;
-use crate::components::def_list::Column;
+use crate::components::def_list::{Column, NoteMark};
 use crate::components::editor_common::OriginBadge;
 use crate::types::{DisplayTarget, EffectListItem, EntityFilter};
 
@@ -147,6 +147,7 @@ pub(crate) fn EffectRow(
 
                 span { class: "col-name", title: if is_draft { "" } else { "{effect.id}" },
                     span { class: "effect-name def-name truncate", "{effect.name}" }
+                    NoteMark { note: effect.note.clone() }
                     if expanded && is_dirty() {
                         span { class: "unsaved-indicator", title: "Unsaved changes" }
                     }
