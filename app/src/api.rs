@@ -1116,6 +1116,24 @@ pub async fn update_boss_notes(boss_id: &str, file_path: &str, notes: Option<Str
     Ok(())
 }
 
+/// Replace a boss definition's replay maps
+pub async fn update_boss_maps(
+    boss_id: &str,
+    file_path: &str,
+    maps: &[baras_types::MapDefinition],
+) -> Result<(), String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "bossId", &JsValue::from_str(boss_id));
+    js_set(&obj, "filePath", &JsValue::from_str(file_path));
+    js_set(
+        &obj,
+        "maps",
+        &serde_wasm_bindgen::to_value(maps).unwrap_or(JsValue::NULL),
+    );
+    try_invoke("update_boss_maps", obj.into()).await?;
+    Ok(())
+}
+
 /// Update a boss definition's enabled state
 pub async fn update_boss_enabled(boss_id: &str, file_path: &str, enabled: bool) -> Result<(), String> {
     let obj = js_sys::Object::new();

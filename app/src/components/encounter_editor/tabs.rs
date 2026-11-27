@@ -1,6 +1,6 @@
 //! Tab navigation for boss editing
 //!
-//! Each boss expands to show tabs: [Timers] [Phases] [Counters] [Challenges] [Entities]
+//! Each boss expands to show tabs: [Timers] [Phases] [Counters] [Challenges] [Entities] [Maps] [Notes]
 //! All encounter data comes from BossWithPath - no additional loading needed.
 
 use crate::components::editor_drawer::{EmptyDrawer, use_drawer_guard};
@@ -13,6 +13,7 @@ use crate::types::{
 use super::challenges::ChallengesTab;
 use super::counters::CountersTab;
 use super::entities::EntitiesTab;
+use super::maps::MapsTab;
 use super::notes::NotesTab;
 use super::phases::PhasesTab;
 use super::timers::TimersTab;
@@ -25,6 +26,7 @@ pub enum BossTab {
     Counters,
     Challenges,
     Entities,
+    Maps,
     Notes,
 }
 
@@ -36,6 +38,7 @@ impl BossTab {
             Self::Counters => "Counters",
             Self::Challenges => "Challenges",
             Self::Entities => "Entities",
+            Self::Maps => "Maps",
             Self::Notes => "Notes",
         }
     }
@@ -47,6 +50,7 @@ impl BossTab {
             Self::Counters => "fa-solid fa-hashtag",
             Self::Challenges => "fa-solid fa-trophy",
             Self::Entities => "fa-solid fa-users",
+            Self::Maps => "fa-solid fa-map",
             Self::Notes => "fa-solid fa-note-sticky",
         }
     }
@@ -58,6 +62,7 @@ impl BossTab {
             Self::Counters,
             Self::Challenges,
             Self::Entities,
+            Self::Maps,
             Self::Notes,
         ]
     }
@@ -75,6 +80,7 @@ impl BossTab {
             "Counters" => Self::Counters,
             "Challenges" => Self::Challenges,
             "Entities" => Self::Entities,
+            "Maps" => Self::Maps,
             "Notes" => Self::Notes,
             _ => Self::Timers, // Default
         }
@@ -220,7 +226,7 @@ pub fn BossTabs(
     let entity_count = boss_with_path.boss.entities.len();
 
     // The active list's open item, if it still exists on this boss (the
-    // open ids are shared across bosses); Notes has no drawer
+    // open ids are shared across bosses); Maps and Notes have no list
     let boss = &boss_with_path.boss;
     let empty_hint = match active_tab_enum() {
         BossTab::Timers if !open(expanded_timer, boss.timers.iter().map(|t| &t.id)) => Some("Select a timer to edit"),
@@ -251,6 +257,7 @@ pub fn BossTabs(
                             BossTab::Counters => Some(counter_count),
                             BossTab::Challenges => Some(challenge_count),
                             BossTab::Entities => Some(entity_count),
+                            BossTab::Maps => Some(boss_with_path.boss.maps.len()),
                             BossTab::Notes => None,
                         };
 
@@ -342,6 +349,17 @@ pub fn BossTabs(
                             on_change: move |updated_entities: Vec<EntityDefinition>| {
                                 let mut bwp = boss_with_path.clone();
                                 bwp.boss.entities = updated_entities;
+                                on_boss_change.call(bwp);
+                            },
+                            on_status: on_status,
+                        }
+                    },
+                    BossTab::Maps => rsx! {
+                        MapsTab {
+                            boss_with_path: boss_with_path.clone(),
+                            on_change: move |updated_maps: Vec<baras_types::MapDefinition>| {
+                                let mut bwp = boss_with_path.clone();
+                                bwp.boss.maps = updated_maps;
                                 on_boss_change.call(bwp);
                             },
                             on_status: on_status,

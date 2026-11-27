@@ -14,6 +14,7 @@ mod entities;
 mod entity_form;
 mod import_preview;
 mod log_limits;
+mod maps;
 mod new_forms;
 mod notes;
 mod optional_trigger;

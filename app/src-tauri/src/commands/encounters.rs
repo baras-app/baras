@@ -1453,6 +1453,18 @@ pub async fn update_boss_notes(
     patch_boss(&app_handle, &service, boss_id, file_path, |b| b.notes = notes.clone()).await
 }
 
+/// Replace a boss definition's replay maps
+#[tauri::command]
+pub async fn update_boss_maps(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    boss_id: String,
+    file_path: String,
+    maps: Vec<baras_types::MapDefinition>,
+) -> Result<(), String> {
+    patch_boss(&app_handle, &service, boss_id, file_path, |b| b.maps = maps.clone()).await
+}
+
 /// Toggle a boss definition's enabled state
 #[tauri::command]
 pub async fn update_boss_enabled(
