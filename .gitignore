@@ -12,3 +12,4 @@ design/*
 test-log-files/large/*.txt
 .vscode
 docs/superpowers/
+.claude/
