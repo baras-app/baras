@@ -1553,7 +1553,11 @@ pub async fn clear_replay_maps() {
 pub async fn get_boss_map_pages(file_path: &str, maps: &[baras_types::MapDefinition]) -> baras_types::BossMapPages {
     let obj = js_sys::Object::new();
     js_set(&obj, "filePath", &JsValue::from_str(file_path));
-    js_set(&obj, "maps", &serde_wasm_bindgen::to_value(maps).unwrap_or(JsValue::NULL));
+    js_set(
+        &obj,
+        "maps",
+        &serde_wasm_bindgen::to_value(maps).unwrap_or(JsValue::NULL),
+    );
     from_js(invoke("get_boss_map_pages", obj.into()).await).unwrap_or_default()
 }
 

@@ -32,6 +32,9 @@ pub struct ReplayEntity {
     pub discipline_id: Option<i64>,
     pub class_icon: Option<String>,
     pub role_icon: Option<String>,
+    /// Side of a PvP match, relative to the local player; None in PvE or when not yet known
+    #[serde(default)]
+    pub faction: Option<crate::PvpFaction>,
     pub track: ReplayTrack,
     /// Target changes in time order; None = target cleared
     pub targets: Vec<(f32, Option<i64>)>,

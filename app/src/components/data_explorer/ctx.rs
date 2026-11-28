@@ -392,6 +392,17 @@ impl ExplorerCtx {
         })
     }
 
+    /// Encounters the replay covers: operation bosses and PvP matches
+    pub(super) fn has_replay(self, idx: Option<u32>) -> bool {
+        self.is_operation_boss(idx)
+            || idx.is_some_and(|idx| {
+                self.encounters
+                    .read()
+                    .iter()
+                    .any(|e| e.encounter_id == idx as u64 && e.encounter_type == "PvP")
+            })
+    }
+
     /// Where the maps of `idx` stand; `Loading` until its own answer is in
     pub(super) fn replay_map_status(self, idx: Option<u32>) -> ReplayMapStatus {
         let maps = self.replay_maps.read();
@@ -406,7 +417,7 @@ impl ExplorerCtx {
     pub(super) fn replay_available(self, idx: Option<u32>) -> bool {
         let known_mapless =
             self.replay_map_status(idx) == ReplayMapStatus::Ready && self.replay_maps.read().1.maps.is_empty();
-        self.is_operation_boss(idx) && (cfg!(debug_assertions) || !known_mapless)
+        self.has_replay(idx) && (cfg!(debug_assertions) || !known_mapless)
     }
 
     /// Ask for the maps of `idx`; `allow` agrees to downloading them
@@ -417,7 +428,7 @@ impl ExplorerCtx {
             ..
         } = self;
         replay_maps.set((idx, baras_types::ReplayMaps::default()));
-        if let Some(encounter) = idx.filter(|_| self.is_operation_boss(idx)) {
+        if let Some(encounter) = idx.filter(|_| self.has_replay(idx)) {
             spawn(async move {
                 let maps = api::get_replay_maps(encounter, allow).await;
                 if *selected_encounter.peek() == idx {

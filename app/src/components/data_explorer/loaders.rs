@@ -85,11 +85,11 @@ fn use_replay_maps(ctx: ExplorerCtx) {
         ..
     } = ctx;
     // What the last run handled. The encounter list can arrive after a restored
-    // selection, so "is a boss fight" is part of it.
+    // selection, so "has a replay" is part of it.
     let mut handled = use_signal(|| None::<(Option<u32>, bool)>);
     use_effect(move || {
         let idx = selected_encounter();
-        let is_boss = ctx.is_operation_boss(idx);
+        let is_boss = ctx.has_replay(idx);
         if *handled.peek() == Some((idx, is_boss)) {
             return;
         }

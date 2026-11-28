@@ -1,15 +1,16 @@
-//! Replay tab: the maps of the boss an encounter was fought on, and their images.
+//! Replay tab: the maps of the boss or PvP zone an encounter was fought on, and their images.
 
 use base64::Engine;
 use tauri::{AppHandle, State};
 
 use baras_core::boss::{build_area_index, load_area_config, load_bosses_with_custom};
+use baras_core::game_data::is_pvp_area;
 use baras_types::{BossMapPages, MapDefinition, MapPage, ReplayMapStatus, ReplayMaps};
 
 use super::encounters::{get_bundled_encounters_dir, get_user_encounters_dir};
 use crate::service::{ServiceHandle, map_store};
 
-/// Maps of the boss fought in an encounter, downloading the images that are
+/// Maps of the boss or PvP zone of an encounter, downloading the images that are
 /// not on disk yet. `allow` records the user's agreement to those downloads.
 #[tauri::command]
 pub async fn get_replay_maps(
@@ -33,10 +34,11 @@ pub async fn get_replay_maps(
                     .find(|s| s.encounter_id == encounter_idx as u64)
             })
             .ok_or("Encounter not found")?;
-        let Some(boss_name) = summary.boss_name.clone() else {
+        // A PvP match has no boss: it is replayed on the pages of its zone
+        if summary.boss_name.is_none() && !is_pvp_area(summary.area_id) {
             return Ok(ready(Vec::new()));
-        };
-        (summary.area_id, boss_name)
+        }
+        (summary.area_id, summary.boss_name.clone())
     };
 
     let user_dir = get_user_encounters_dir();
@@ -60,7 +62,7 @@ pub async fn get_replay_maps(
     let own = match file {
         Some(file) => load_bosses_with_custom(&file, user_dir.as_deref())?
             .into_iter()
-            .find(|b| b.name == boss_name && !b.maps.is_empty())
+            .find(|b| Some(&b.name) == boss_name.as_ref() && !b.maps.is_empty())
             .map(|b| b.maps),
         None => None,
     };

@@ -147,6 +147,14 @@
   cursor: pointer;
 }
 
+.replay-card.team-friendly {
+  border-left: 3px solid var(--swtor-blue);
+}
+
+.replay-card.team-enemy {
+  border-left: 3px solid var(--swtor-red);
+}
+
 .replay-card.selected {
   border-color: var(--swtor-gold);
 }

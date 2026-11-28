@@ -15,7 +15,7 @@ use std::rc::Rc;
 
 use dioxus::prelude::*;
 
-use baras_types::{MapDefinition, PhaseSegment, ReplayEntityKind};
+use baras_types::{MapDefinition, PhaseSegment, PvpFaction, ReplayEntityKind};
 
 use crate::api;
 use crate::components::class_icons::get_class_icon;
@@ -274,13 +274,21 @@ fn ReplayStage(
         .filter(|(_, e)| e.kind != ReplayEntityKind::Npc)
         .collect();
     players.sort_by_key(|(_, e)| (e.kind != ReplayEntityKind::Player, Role::of(e)));
+    // A PvP match puts the enemy team in the enemies column, above its NPCs;
+    // players whose side is not known yet stay on the left, after the friends
+    let is_pvp = players.iter().any(|(_, e)| e.faction.is_some());
+    let (enemy_players, mut players): (Vec<_>, Vec<_>) = players
+        .into_iter()
+        .partition(|(_, e)| e.faction == Some(PvpFaction::Enemy));
+    players.sort_by_key(|(_, e)| is_pvp && e.faction.is_none());
+    let players_title = if is_pvp { "Friends" } else { "Players" };
 
     rsx! {
         // Shown instead of the stage when the tab is too narrow for it (CSS)
         div { class: "replay-too-narrow uptime-empty", "Widen the window to watch the replay" }
         div { class: "replay-layout fade-in",
             div { class: "replay-cards",
-                div { class: "replay-cards-title", "Players" }
+                div { class: "replay-cards-title", "{players_title}" }
                 for (index, entity) in players {
                     EntityCard { key: "{entity.id}", index }
                 }
@@ -295,6 +303,9 @@ fn ReplayStage(
             }
             div { class: "replay-cards",
                 div { class: "replay-cards-title", "Enemies" }
+                for (index, entity) in enemy_players {
+                    EntityCard { key: "{entity.id}", index }
+                }
                 for index in present() {
                     EntityCard { key: "{data.entities[index].id}", index }
                 }

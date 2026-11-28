@@ -1267,6 +1267,7 @@ impl ServiceHandle {
                     entity.discipline_id = pm.discipline.map(Discipline::guid);
                     entity.class_icon = pm.class_icon.clone();
                     entity.role_icon = pm.role_icon.clone();
+                    entity.faction = pm.pvp_faction;
                 }
             }
         }

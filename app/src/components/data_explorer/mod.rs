@@ -193,7 +193,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                             european: eu,
                         }
                     } else if matches!(shown, ViewMode::Replay) && !ctx.replay_available(shown_encounter()) {
-                        div { class: "uptime-empty", "Replay is available for operation boss fights that have a map" }
+                        div { class: "uptime-empty", "Replay is available for operation boss fights and PvP matches that have a map" }
                     } else if matches!(shown, ViewMode::Replay) && ctx.replay_map_status(shown_encounter()) == ReplayMapStatus::Loading {
                         {loading()}
                     } else if matches!(shown, ViewMode::Replay)

@@ -7,8 +7,8 @@ use dioxus::prelude::*;
 
 use baras_types::{MapDefinition, MapRect};
 
-use crate::api;
 use super::map_pages::MapPagesTable;
+use crate::api;
 use crate::components::editor_common::FormCard;
 use crate::components::editor_drawer::EditorDrawer;
 use crate::components::form_fields::{CheckField, NumberField, PickField, TextField};

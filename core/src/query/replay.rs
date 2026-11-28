@@ -42,6 +42,7 @@ impl Builder {
                 discipline_id: None,
                 class_icon: None,
                 role_icon: None,
+                faction: None,
                 track: ReplayTrack::default(),
                 targets: Vec::new(),
                 dead: Vec::new(),
