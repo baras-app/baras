@@ -65,12 +65,19 @@
   touch-action: none;
 }
 
-/* The game's maps are drawn for a dark backdrop: the canvas keeps the dark theme's colours in light mode */
-:root[data-theme="light"] .replay-canvas {
-  --bg-dark: #1a1a1f;
+/* The game's maps are drawn for a dark backdrop: the canvas and the strip over it keep the
+   dark theme's colours in light mode (the light theme's gold and blue are too dark on it) */
+:root[data-theme="light"] .replay-canvas-wrap {
   --border-light: rgba(255, 255, 255, 0.1);
+  --bg-dark: #1a1a1f;
+  --text-primary: #f6f6f6;
   --text-secondary: #ccc;
   --text-muted: #888;
+  --swtor-gold: #c9a227;
+  --swtor-blue: #4a9eff;
+  --swtor-red: #ff4a4a;
+  --swtor-orange: #ff8c42;
+  --color-success: #5fd98e;
 }
 
 /* ─── Controls ───────────────────────────────────────────────────────────── */
