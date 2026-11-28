@@ -2,7 +2,7 @@
 
 use dioxus::prelude::*;
 
-use baras_types::{ReplayEntityKind, formatting};
+use baras_types::{PvpFaction, ReplayEntityKind, formatting};
 
 use super::card_view::IconView;
 use super::loaded::Role;
@@ -115,6 +115,8 @@ pub(super) fn EntityCard(index: usize) -> Element {
             class: if selected { "selected" },
             class: if view.dead { "dead" },
             class: if elsewhere { "elsewhere" },
+            class: if entity.faction == Some(PvpFaction::Friendly) { "team-friendly" },
+            class: if entity.faction == Some(PvpFaction::Enemy) { "team-enemy" },
             onclick: toggle,
             div { class: "replay-card-head",
                 if let Some(src) = class_icon {

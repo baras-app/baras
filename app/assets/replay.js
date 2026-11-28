@@ -180,6 +180,8 @@ window.BarasReplay = (() => {
     }
     const numbers = meta.numbers || {};
     const roles = meta.roles || {};
+    // A PvP match: its players carry a side (the local player always does)
+    const teams = entities.some((e) => e.faction);
     const byId = new Map(entities.map((e, i) => [e.id, i]));
     const fit = fitBounds(entities);
 
@@ -461,8 +463,10 @@ window.BarasReplay = (() => {
       // Facing arc: world direction (-sin f, -cos f)
       const f = (s.facing * Math.PI) / 180;
       const dir = Math.atan2((v.flipY ? 1 : -1) * Math.cos(f), (v.flipX ? 1 : -1) * Math.sin(f));
-      // Players are ringed by role: tank, healer or damage
-      const tint = npc ? colors.npc : colors[roles[e.id]] || colors.player;
+      // Players are ringed by role (tank, healer or damage); in PvP by side
+      // instead: friends blue, enemies red, grey until the side is known
+      const side = e.faction === "friendly" ? colors.player : e.faction === "enemy" ? colors.npc : colors.muted;
+      const tint = npc ? colors.npc : teams ? side : colors[roles[e.id]] || colors.player;
       ctx.strokeStyle = tint;
       ctx.lineWidth = 3 * zoom;
       ctx.lineCap = "round";
@@ -774,7 +778,8 @@ window.BarasReplay = (() => {
         const reach = Math.max(fit.w, fit.h) * HOME_MAX_SIZE;
         const size = (m) => Math.max(Math.abs(m.max_x - m.min_x), Math.abs(m.max_y - m.min_y));
         homeMap = covered.findIndex((n, m) => total > 0 && n >= total * HOME_SHARE && size(maps[m]) <= reach);
-        focus = maps.map((m) => fightArea(m));
+        // PvP shows the whole page: the match ranges over all of the zone
+        focus = maps.map((m) => (teams ? null : fightArea(m)));
         settleMap = true;
         requestDraw();
       },
