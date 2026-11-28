@@ -394,11 +394,31 @@ pub fn OverviewColumnMenu(
             }
         });
     });
+    let show_percentiles = !state.read().data_explorer.hide_percentiles;
 
     rsx! {
            if open() {
                 div { class: "nav-menu-backdrop", onclick: move |_| open.set(false) }
                    div { class: "nav-menu-list overview-columns-list",
+                       // Parsely ratings: the badges in this table, on boss rows and on the encounter strip
+                       if state.read().parsely_percentiles {
+                           button {
+                               class: if show_percentiles { "nav-menu-item active" } else { "nav-menu-item" },
+                               title: "Show Parsely percentile badges",
+                               onclick: move |_| {
+                                   let hide = show_percentiles;
+                                   state.write().data_explorer.hide_percentiles = hide;
+                                   spawn(async move {
+                                       if let Err(err) = api::patch_config(move |cfg| cfg.hide_percentiles = hide).await {
+                                           toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                       }
+                                   });
+                               },
+                               i { class: if show_percentiles { "fa-solid fa-square-check" } else { "fa-regular fa-square" } }
+                               " Parsely percentiles"
+                           }
+                           div { class: "nav-menu-divider" }
+                       }
                        div { class: "multi-select-group", if pvp { "Columns — PvP" } else { "Columns — PvE" } }
                        for (i, id) in shown.iter().copied().enumerate() {
                            {

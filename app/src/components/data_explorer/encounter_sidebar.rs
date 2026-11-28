@@ -86,24 +86,6 @@ pub(super) fn encounter_sidebar(ctx: ExplorerCtx) -> Element {
                                 });
                             },
                         }
-                        ToggleSwitch {
-                            label: "Percentiles",
-                            title: "Show Parsely percentile badges",
-                            class: "boss-filter-toggle",
-                            checked: !state.read().data_explorer.hide_percentiles,
-                            on_change: move |checked: bool| {
-                                if let Ok(mut state) = state.try_write() {
-                                    state.data_explorer.hide_percentiles = !checked;
-                                }
-                                spawn(async move {
-                                    if let Err(err) = api::patch_config(|cfg| {
-                                        cfg.hide_percentiles = !checked;
-                                    }).await {
-                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                    }
-                                });
-                            },
-                        }
                         span { class: "encounter-count", title: "Encounters shown / total in this log",
                             "{filtered_history().len()}"
                             if *show_only_bosses.read() { " / {encounters().len()}" }
