@@ -103,16 +103,6 @@ pub fn MapsTab(
                 maps: boss_with_path.boss.maps.clone(),
                 boss_pages: boss_with_path.boss.map_pages.clone(),
             }
-            div { class: "text-sm text-muted",
-                p {
-                    "A boss without its own entries is drawn on its area's pages from the map repository, downloaded when first needed. "
-                    "Own entries replace them: one per floor or room, images from the definitions/maps folder of the config directory."
-                }
-                p {
-                    "An entity is on the first entry whose bounds, height range and phases contain it, so order matters. "
-                    "Bounds are the world area the whole image covers; Min X is the image's left edge and Min Y its top edge."
-                }
-            }
         }
         EditorDrawer {
             title: "Replay Maps".to_string(),
