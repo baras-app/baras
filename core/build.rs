@@ -148,6 +148,7 @@ fn readable_name(fqn: &str) -> String {
 /// Ability or effect ID → a name for the ones the game shows none for (boss
 /// mechanics, hidden helpers), as `INTERNAL_NAMES`. Abilities take it from
 /// their internal name; effects from their own hidden name when they have one.
+/// Every name is wrapped in brackets.
 /// Columns used: fqn(0), global_combat_id(1), name(2); in effect_data.csv
 /// effect_id(0), ability_fqn(2), name(4).
 fn generate_internal_names_map(out_dir: &str) {
@@ -184,7 +185,11 @@ fn generate_internal_names_map(out_dir: &str) {
 
     let mut file = BufWriter::new(fs::File::create(Path::new(out_dir).join("internal_names.rs")).unwrap());
     let mut builder = phf_codegen::Map::new();
-    let quoted: Vec<(i64, String)> = entries.iter().map(|(id, name)| (*id, format!("{name:?}"))).collect();
+    // In brackets, so a name the log did not write is told apart from one it did
+    let quoted: Vec<(i64, String)> = entries
+        .iter()
+        .map(|(id, name)| (*id, format!("{:?}", format!("[{name}]"))))
+        .collect();
     for (id, name) in &quoted {
         builder.entry(*id, name);
     }

@@ -6,7 +6,7 @@ use super::base_ability_id;
 
 include!(concat!(env!("OUT_DIR"), "/internal_names.rs"));
 
-/// A readable name for an ability or effect the log writes without one
+/// A readable name, in brackets, for an ability or effect the log writes without one
 pub fn internal_name(id: i64) -> Option<&'static str> {
     INTERNAL_NAMES
         .get(&id)
