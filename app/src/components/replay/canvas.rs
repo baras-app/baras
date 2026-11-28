@@ -37,7 +37,9 @@ extern "C" {
     #[wasm_bindgen(method, js_name = setHighlight)]
     fn set_highlight(this: &Handle, id: JsValue);
     #[wasm_bindgen(method, js_name = setMaps)]
-    fn set_maps(this: &Handle, entries: &JsValue, urls: &JsValue, phases: &JsValue);
+    fn set_maps(this: &Handle, entries: &JsValue, phases: &JsValue);
+    #[wasm_bindgen(method, js_name = setMapImage)]
+    fn set_map_image(this: &Handle, index: usize, url: &str);
     #[wasm_bindgen(method, js_name = setPinnedMap)]
     fn set_pinned_map(this: &Handle, index: JsValue);
     #[wasm_bindgen(method, js_name = onTick)]
@@ -171,8 +173,12 @@ impl Player {
 
     /// Map entries, one image URL per entry (None until it is loaded) and the
     /// fight's phases
-    pub fn set_maps(&self, maps: &[MapDefinition], urls: &[Option<String>], phases: &[PhaseSegment]) {
-        self.handle.set_maps(&to_js(&maps), &to_js(&urls), &to_js(&phases));
+    pub fn set_maps(&self, maps: &[MapDefinition], phases: &[PhaseSegment]) {
+        self.handle.set_maps(&to_js(&maps), &to_js(&phases));
+    }
+
+    pub fn set_map_image(&self, index: usize, url: &str) {
+        self.handle.set_map_image(index, url);
     }
 
     /// Pin a map entry; None follows the raid
