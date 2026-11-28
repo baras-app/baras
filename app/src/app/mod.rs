@@ -776,44 +776,47 @@ pub fn App() -> Element {
                                     }); },
                                     i { class: if is_move_mode { "fa-solid fa-lock-open" } else { "fa-solid fa-lock" } }
                                 }
-                                button {
-                                    class: if is_rearrange { "btn btn-header-overlay active" } else { "btn btn-header-overlay" },
-                                    title: "Rearrange raid frames",
-                                    disabled: !is_visible || !raid_on || is_move_mode || overlays_auto_hidden,
-                                    onclick: move |_| { let mut toast = use_toast(); spawn(async move {
-                                        match api::toggle_raid_rearrange().await {
-                                            Ok(new_mode) => {
-                                                rearrange_mode.set(new_mode);
-                                            }
-                                            Err(err) => toast.show(format!("Couldn't rearrange raid frames: {err}"), ToastSeverity::Normal),
-                                        }
-                                    }); },
-                                    i { class: "fa-solid fa-grip" }
-                                }
-                                if raid_on && ocr_enabled() {
+                                // Raid frame tools: only with the raid frames overlay enabled
+                                if raid_on {
+                                    span { class: "header-controls-divider" }
                                     button {
-                                        class: "btn btn-header-overlay",
-                                        title: "Read player names off the game's raid frames (OCR)",
-                                        disabled: !is_visible || overlays_auto_hidden,
+                                        class: if is_rearrange { "btn btn-header-overlay active" } else { "btn btn-header-overlay" },
+                                        title: "Rearrange raid frames",
+                                        disabled: !is_visible || is_move_mode || overlays_auto_hidden,
                                         onclick: move |_| {
-                                        let mut toast = use_toast();
-                                        spawn(async move {
-                                            if let Err(err) = api::detect_raid_names().await {
-                                                toast.show(format!("Couldn't run name recognition: {err}"), ToastSeverity::Normal);
-                                            }
-                                        });
-                                    },
-                                        i { class: "fa-solid fa-users-viewfinder" }
+                                            let mut toast = use_toast();
+                                            spawn(async move {
+                                                match api::toggle_raid_rearrange().await {
+                                                    Ok(new_mode) => rearrange_mode.set(new_mode),
+                                                    Err(err) => toast.show(format!("Couldn't rearrange raid frames: {err}"), ToastSeverity::Normal),
+                                                }
+                                            });
+                                        },
+                                        i { class: "fa-solid fa-grip" }
                                     }
-                                }
-                                if is_rearrange {
+                                    if ocr_enabled() {
+                                        button {
+                                            class: "btn btn-header-overlay",
+                                            title: "Read player names off the game's raid frames (OCR)",
+                                            disabled: !is_visible || overlays_auto_hidden,
+                                            onclick: move |_| {
+                                                let mut toast = use_toast();
+                                                spawn(async move {
+                                                    if let Err(err) = api::detect_raid_names().await {
+                                                        toast.show(format!("Couldn't run name recognition: {err}"), ToastSeverity::Normal);
+                                                    }
+                                                });
+                                            },
+                                            i { class: "fa-solid fa-users-viewfinder" }
+                                        }
+                                    }
                                     button {
                                         class: "btn btn-header-overlay",
                                         title: "Clear raid frame assignments",
-                                        disabled: !raid_on,
                                         onclick: move |_| { spawn(async move { api::clear_raid_registry().await; }); },
                                         i { class: "fa-solid fa-eraser" }
                                     }
+                                    span { class: "header-controls-divider" }
                                 }
                                 // Profile selector
                                 // Re-keyed when a switch is held or settled, so the
