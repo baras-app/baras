@@ -2814,6 +2814,8 @@ details[open] .collapsible-summary::before {
 }
 
 .save-status {
+  /* Lights up green, then settles */
+  animation: saved-flash 0.6s ease-out;
   font-size: 0.85em;
   color: var(--lt-green, #4a4);
   padding: 0.2em 0.5em;
@@ -3065,6 +3067,7 @@ details[open] .collapsible-summary::before {
 }
 
 .profile-status {
+  animation: saved-flash 0.6s ease-out;
   margin: 0.4em 0 0;
   padding: 0.3em 0.6em;
   background: var(--color-success-bg);
@@ -5731,6 +5734,12 @@ a.contributor-name:hover {
 
 .nav-menu-item.danger {
   color: var(--color-error);
+}
+
+/* An item's edit form, each time a row opens it in the drawer (and when a
+   folded drawer is unfolded) */
+.editor-drawer-body {
+  animation: drop-in var(--transition-normal);
 }
 
 /* Notes: the textarea fills the drawer */
@@ -8958,17 +8967,6 @@ a.contributor-name:hover {
   animation: fade-in var(--transition-normal);
 }
 
-/* An item's edit form, each time a row opens it in the drawer (and when a
-   folded drawer is unfolded) */
-.editor-drawer-body {
-  animation: drop-in var(--transition-normal);
-}
-
-/* Save confirmations light up green, then settle */
-.save-status,
-.profile-status {
-  animation: saved-flash 0.6s ease-out;
-}
 
 @keyframes saved-flash {
   from {
@@ -8998,9 +8996,7 @@ a.contributor-name:hover {
 
 /* Statistics, Logs and Characters: the page chrome shows at once and the
    entries fade in as they arrive. Rows a re-render keeps never replay it */
-.pull-history-table tbody tr,
-.sidebar-encounter-list > *,
-.history-card {
+.sidebar-encounter-list > * {
   animation: fade-in var(--transition-normal);
 }
 
@@ -9009,28 +9005,31 @@ a.contributor-name:hover {
     transition: none;
   }
 
-  .modal-overlay,
-  .modal-backdrop,
-  .modal-overlay > *,
-  .modal-backdrop > *,
-  .nav-menu-list,
-  .log-context-menu,
-  .combat-log-host:not(.pending),
-  .tab-content > *,
-  .kept-page > *,
-  .overview-section,
-  .explorer-content > *,
-  .fade-in,
-  .pull-history-table tbody tr,
-  .sidebar-encounter-list > *,
-  .history-card,
-  .editor-drawer-body,
-  .save-status,
-  .profile-status,
-  .drawer,
-  .death-recap-drawer,
-  .toast,
-  [_echarts_instance_] > div:first-child {
+  /* One :is() list: naming another feature's class here must not claim it */
+  :is(
+    .modal-overlay,
+    .modal-backdrop,
+    .modal-overlay > *,
+    .modal-backdrop > *,
+    .nav-menu-list,
+    .log-context-menu,
+    .combat-log-host:not(.pending),
+    .tab-content > *,
+    .kept-page > *,
+    .overview-section,
+    .explorer-content > *,
+    .fade-in,
+    .pull-history-table tbody tr,
+    .sidebar-encounter-list > *,
+    .history-card,
+    .editor-drawer-body,
+    .save-status,
+    .profile-status,
+    .drawer,
+    .death-recap-drawer,
+    .toast,
+    [_echarts_instance_] > div:first-child
+  ) {
     animation: none;
   }
 }

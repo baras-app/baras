@@ -200,6 +200,10 @@
   border-radius: var(--radius-md);
 }
 
+.pull-history-table tbody tr {
+  animation: fade-in var(--transition-normal);
+}
+
 .pull-history-table {
   width: 100%;
   border-collapse: collapse;
@@ -391,6 +395,8 @@
 
 /* Value boxes sit a shade below the page panels (between --bg-mid and --bg-dark) */
 .history-card {
+  /* Fades in as it arrives; a card a re-render keeps never replays it */
+  animation: fade-in var(--transition-normal);
   flex: 1 1 8.125rem;
   min-width: 0;
   padding: 0.6em 0.9em;
