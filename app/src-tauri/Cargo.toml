@@ -50,6 +50,7 @@ baras-raid-ocr = { path = "../../raid-ocr" }
 [target.'cfg(target_os = "linux")'.dependencies]
 ashpd = { version = "0.14", default-features = false, features = ["tokio", "global_shortcuts", "open_uri"] }
 futures-util = "0.3"
+sha2 = "0.10"
 
 [target.'cfg(not(target_os = "linux"))'.dependencies]
 tts = "0.26"

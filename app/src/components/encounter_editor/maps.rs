@@ -70,6 +70,10 @@ pub fn MapsTab(
             return;
         }
         let to_save = maps();
+        if let Some((index, problem)) = to_save.iter().enumerate().find_map(|(i, m)| Some((i, m.problem()?))) {
+            on_status.call((format!("Map {} {problem}", index + 1), true));
+            return;
+        }
         let (boss_id, file_path) = (boss_id.clone(), file_path.clone());
         is_saving.set(true);
         spawn(async move {

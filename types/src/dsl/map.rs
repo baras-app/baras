@@ -38,3 +38,24 @@ pub struct MapDefinition {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub phases: Vec<String>,
 }
+
+impl MapRect {
+    pub fn has_area(&self) -> bool {
+        self.max_x > self.min_x && self.max_y > self.min_y
+    }
+}
+
+impl MapDefinition {
+    /// Why the replay could not draw this entry, if it could not
+    pub fn problem(&self) -> Option<&'static str> {
+        if self.image.trim().is_empty() {
+            Some("has no image")
+        } else if !self.bounds.has_area() {
+            Some("needs Max X above Min X and Max Y above Min Y")
+        } else if self.view.is_some_and(|v| !v.has_area()) {
+            Some("has an empty zoomed-in area")
+        } else {
+            None
+        }
+    }
+}
