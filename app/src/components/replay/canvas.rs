@@ -67,6 +67,8 @@ pub struct DotMeta {
     pub numbers: std::collections::HashMap<String, u8>,
     /// "tank" | "heal" | "dps", for the ring colour
     pub roles: std::collections::HashMap<String, &'static str>,
+    /// A PvP match: rings show the side instead of the role, and maps are not framed
+    pub teams: bool,
 }
 
 /// A mounted canvas player. Dropping it does not stop it: call `destroy`.

@@ -180,8 +180,8 @@ window.BarasReplay = (() => {
     }
     const numbers = meta.numbers || {};
     const roles = meta.roles || {};
-    // A PvP match: its players carry a side (the local player always does)
-    const teams = entities.some((e) => e.faction);
+    // A PvP match: rings show each player's side, and maps open unframed
+    const teams = !!meta.teams;
     const byId = new Map(entities.map((e, i) => [e.id, i]));
     const fit = fitBounds(entities);
 

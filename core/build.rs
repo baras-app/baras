@@ -85,9 +85,14 @@ fn generate_pvp_areas(out_dir: &str) {
     let rows: Vec<(i64, &str)> = csv
         .lines()
         .skip(1)
-        .filter_map(|line| {
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| {
             let mut fields = line.split(',');
-            Some((fields.next()?.parse().ok()?, fields.next()?))
+            let id = fields.next().and_then(|id| id.parse().ok());
+            match (id, fields.next()) {
+                (Some(id), Some(kind @ ("warzone" | "arena"))) => (id, kind),
+                _ => panic!("pvp_areas.csv: bad row (id,kind,slug,name; kind warzone|arena): {line}"),
+            }
         })
         .collect();
     let mut file = BufWriter::new(fs::File::create(Path::new(out_dir).join("pvp_areas.rs")).unwrap());

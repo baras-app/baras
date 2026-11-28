@@ -83,6 +83,7 @@ impl PartialEq for LoadedProp {
 #[component]
 pub fn ReplayView(
     encounter_idx: Option<u32>,
+    is_pvp: bool,
     phases: Vec<PhaseSegment>,
     maps: Vec<MapDefinition>,
     european: bool,
@@ -103,7 +104,7 @@ pub fn ReplayView(
     let loaded = fight.read();
     match loaded.as_ref() {
         Some(Some(loaded)) => rsx! {
-            ReplayStage { loaded: loaded.clone(), phases, maps, european, jump, range, on_recap }
+            ReplayStage { loaded: loaded.clone(), is_pvp, phases, maps, european, jump, range, on_recap }
         },
         Some(None) => rsx! { LoadFailed { on_retry: move |_| fight.restart() } },
         None => loading(),
@@ -113,6 +114,7 @@ pub fn ReplayView(
 #[component]
 fn ReplayStage(
     loaded: LoadedProp,
+    is_pvp: bool,
     phases: Vec<PhaseSegment>,
     maps: Vec<MapDefinition>,
     european: bool,
@@ -154,7 +156,10 @@ fn ReplayStage(
             return;
         }
         let data = &mount_state.loaded.data;
-        let mut meta = DotMeta::default();
+        let mut meta = DotMeta {
+            teams: is_pvp,
+            ..Default::default()
+        };
         for e in &data.entities {
             if let Some(icon) = e.class_icon.as_deref().and_then(get_class_icon) {
                 meta.icons.insert(e.id.to_string(), icon.to_string());
@@ -201,8 +206,12 @@ fn ReplayStage(
     let mut map_set = use_signal(|| 0u32);
     use_effect(use_reactive!(|maps| {
         let Some(player) = player.read().clone() else { return };
-        // An area lists every room of the instance: keep the ones this fight used
-        let maps = map_loaded.maps_in_use(&maps);
+        // An area lists every room of the instance: keep the ones this fight used.
+        // A PvP match is shown on the one page that holds the whole zone.
+        let maps = match is_pvp {
+            true => map_loaded.zone_page(&maps),
+            false => map_loaded.maps_in_use(&maps),
+        };
         state_maps.set(maps.clone());
         player.set_maps(&maps, &map_phases);
         let set = *map_set.peek() + 1;
@@ -281,7 +290,6 @@ fn ReplayStage(
     players.sort_by_key(|(_, e)| (e.kind != ReplayEntityKind::Player, Role::of(e)));
     // A PvP match puts the enemy team in the enemies column, above its NPCs;
     // players whose side is not known yet stay on the left, after the friends
-    let is_pvp = players.iter().any(|(_, e)| e.faction.is_some());
     let (enemy_players, mut players): (Vec<_>, Vec<_>) = players
         .into_iter()
         .partition(|(_, e)| e.faction == Some(PvpFaction::Enemy));
