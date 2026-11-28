@@ -683,6 +683,12 @@ window.BarasReplay = (() => {
     canvas.addEventListener("pointerup", onUp);
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
+    // The theme toggle swaps the colours the canvas reads
+    const themeObserver = new MutationObserver(() => {
+      readColors();
+      requestDraw();
+    });
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     resize();
 
     return {
@@ -713,7 +719,8 @@ window.BarasReplay = (() => {
       },
       // Play only from..to, over and over; null for the whole fight
       setLoop(from, to) {
-        loop = from == null || to == null || to <= from ? null : { from: Math.max(0, from), to: Math.min(duration, to) };
+        const clamped = from == null || to == null ? null : { from: Math.max(0, from), to: Math.min(duration, to) };
+        loop = clamped && clamped.to > clamped.from ? clamped : null;
         if (loop && (time < loop.from || time > loop.to)) {
           time = loop.from;
           settleMap = true;
@@ -794,6 +801,7 @@ window.BarasReplay = (() => {
         playing = false;
         cancelAnimationFrame(raf);
         observer.disconnect();
+        themeObserver.disconnect();
         canvas.removeEventListener("wheel", onWheel);
         canvas.removeEventListener("pointerdown", onDown);
         canvas.removeEventListener("pointermove", onMove);
