@@ -62,6 +62,12 @@ impl UserEffects {
 
         match file.version {
             EFFECTS_DSL_VERSION => Ok(Self { entries: file.entries }),
+            // Without bundled definitions every v1 copy would migrate as a full
+            // custom effect: use them as they are and migrate on a later load
+            1 if bundled.is_empty() => {
+                tracing::warn!("Bundled effects missing, deferring the user effects migration");
+                Ok(Self { entries: file.entries })
+            }
             1 => {
                 let migrated = Self::migrate_v1(file.entries, bundled);
                 std::fs::copy(path, path.with_extension("toml.v1.bak"))
@@ -194,21 +200,47 @@ fn to_table(def: &EffectDefinition) -> Option<Table> {
         .ok()
 }
 
-/// Top-level keys of `def` that differ from `bundled`; `None` when identical
+/// Tables diffed one level down (cleared sub-keys reset as `key.sub`), so the
+/// `audio.enabled` toggle does not pin the bundled sound, offset and countdown
+const NESTED_KEYS: &[&str] = &["audio"];
+
+/// Keys of `user` that differ from `base`, and the keys of `base` that `user` cleared
+fn diff_table(user: &Table, base: &Table, prefix: &str, out: &mut Table, reset: &mut Vec<Value>) {
+    for (k, v) in user.iter().filter(|(k, _)| *k != "id") {
+        match (v, base.get(k)) {
+            (Value::Table(sub), Some(Value::Table(base_sub)))
+                if prefix.is_empty() && NESTED_KEYS.contains(&k.as_str()) =>
+            {
+                let mut sub_out = Table::new();
+                diff_table(sub, base_sub, k, &mut sub_out, reset);
+                if !sub_out.is_empty() {
+                    out.insert(k.clone(), Value::Table(sub_out));
+                }
+            }
+            (v, b) if b != Some(v) => {
+                out.insert(k.clone(), v.clone());
+            }
+            _ => {}
+        }
+    }
+    let path = |k: &str| match prefix {
+        "" => k.to_string(),
+        p => format!("{p}.{k}"),
+    };
+    reset.extend(
+        base.keys()
+            .filter(|k| !user.contains_key(*k))
+            .map(|k| Value::String(path(k))),
+    );
+}
+
+/// Keys of `def` that differ from `bundled`; `None` when identical
 fn diff(def: &EffectDefinition, bundled: &EffectDefinition) -> Option<Table> {
     let (user, base) = (to_table(def)?, to_table(bundled)?);
     let mut out = Table::new();
     out.insert("id".into(), Value::String(def.id.clone()));
-    for (k, v) in user.iter().filter(|(k, _)| *k != "id") {
-        if base.get(k) != Some(v) {
-            out.insert(k.clone(), v.clone());
-        }
-    }
-    let reset: Vec<Value> = base
-        .keys()
-        .filter(|k| !user.contains_key(*k))
-        .map(|k| Value::String(k.clone()))
-        .collect();
+    let mut reset = Vec::new();
+    diff_table(&user, &base, "", &mut out, &mut reset);
     if out.len() == 1 && reset.is_empty() {
         return None;
     }
@@ -222,11 +254,27 @@ fn merge(entry: &Table, bundled: Option<&EffectDefinition>) -> Result<EffectDefi
     let mut table = bundled.and_then(to_table).unwrap_or_default();
     if let Some(reset) = entry.get(RESET_KEY).and_then(Value::as_array) {
         for key in reset.iter().filter_map(Value::as_str) {
-            table.remove(key);
+            match key.split_once('.') {
+                Some((k, sub)) => {
+                    if let Some(Value::Table(t)) = table.get_mut(k) {
+                        t.remove(sub);
+                    }
+                }
+                None => {
+                    table.remove(key);
+                }
+            }
         }
     }
     for (k, v) in entry.iter().filter(|(k, _)| *k != RESET_KEY) {
-        table.insert(k.clone(), v.clone());
+        match (table.get_mut(k), v) {
+            (Some(Value::Table(base)), Value::Table(sub)) if NESTED_KEYS.contains(&k.as_str()) => {
+                base.extend(sub.clone());
+            }
+            _ => {
+                table.insert(k.clone(), v.clone());
+            }
+        }
     }
     Value::Table(table).try_into()
 }
