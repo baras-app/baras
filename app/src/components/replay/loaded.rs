@@ -16,6 +16,8 @@ const MAX_ICONS: usize = 12;
 const EDGE_MARGIN: f32 = 0.25;
 /// A map entry is offered when it covers at least 1/N of the players' samples
 const MAP_SHARE_DIVISOR: usize = 20;
+/// A PvP match is shown on the smallest page holding this share of the positions
+const ZONE_PAGE_PERCENT: usize = 95;
 
 pub struct Loaded {
     pub data: ReplayData,
@@ -198,6 +200,29 @@ impl Loaded {
             .filter(|(_, n)| *n * MAP_SHARE_DIVISOR >= total.max(1))
             .map(|(m, _)| m.clone())
             .collect()
+    }
+
+    /// The page a PvP match is shown on: the smallest one (they are listed
+    /// smallest first) holding nearly all of where the players stood, else
+    /// the one holding the most. Both teams roam the zone, so no page is
+    /// followed or dropped as in a boss fight.
+    pub fn zone_page(&self, maps: &[MapDefinition]) -> Vec<MapDefinition> {
+        let mut counts = vec![0usize; maps.len()];
+        let mut total = 0usize;
+        for e in self.data.entities.iter().filter(|e| e.kind == ReplayEntityKind::Player) {
+            let t = &e.track;
+            for i in 0..t.t.len() {
+                total += 1;
+                let at = (t.x[i], t.y[i], t.z[i]);
+                for (m, map) in maps.iter().enumerate() {
+                    counts[m] += Self::covers(map, at, None) as usize;
+                }
+            }
+        }
+        let whole = counts.iter().position(|n| *n * 100 >= total * ZONE_PAGE_PERCENT);
+        // `max_by_key` keeps the last of equals: reversed, that is the smallest page
+        let most = (0..maps.len()).rev().max_by_key(|m| counts[*m]);
+        whole.or(most).map(|m| vec![maps[m].clone()]).unwrap_or_default()
     }
 
     pub fn card(

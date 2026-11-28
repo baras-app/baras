@@ -394,13 +394,16 @@ impl ExplorerCtx {
 
     /// Encounters the replay covers: operation bosses and PvP matches
     pub(super) fn has_replay(self, idx: Option<u32>) -> bool {
-        self.is_operation_boss(idx)
-            || idx.is_some_and(|idx| {
-                self.encounters
-                    .read()
-                    .iter()
-                    .any(|e| e.encounter_id == idx as u64 && e.encounter_type == "PvP")
-            })
+        self.is_operation_boss(idx) || self.is_pvp(idx)
+    }
+
+    pub(super) fn is_pvp(self, idx: Option<u32>) -> bool {
+        idx.is_some_and(|idx| {
+            self.encounters
+                .read()
+                .iter()
+                .any(|e| e.encounter_id == idx as u64 && e.encounter_type == "PvP")
+        })
     }
 
     /// Where the maps of `idx` stand; `Loading` until its own answer is in
