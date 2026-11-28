@@ -5,7 +5,7 @@
 
 use dioxus::prelude::*;
 
-use super::def_list::{ListHead, sort_by_column};
+use super::def_list::{ListHead, name_sort, sort_by_column};
 use super::discipline_selector::class_of;
 use super::effect_bulk::{BulkAction, BulkMenu};
 use super::effect_import_modal::EffectImportPreviewModal;
@@ -212,7 +212,7 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
     let rank = use_stable_rank(effects.read().iter().map(|e| (e.id.as_str(), e.name.as_str())), true);
     let mut shown_effects = filtered_effects();
     apply_rank(&mut shown_effects, &rank.read(), |e| &e.id);
-    let sort = use_signal(|| None);
+    let sort = use_signal(|| name_sort(&effect_row::COLUMNS));
     sort_by_column(&mut shown_effects, sort(), effect_row::sort_text);
     let disabled_count = effects.read().iter().filter(|e| !e.enabled).count();
 

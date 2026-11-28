@@ -6,7 +6,7 @@
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::components::def_list::{ColSort, Column, ListCount, ListHead, NoteMark, sort_by_column};
+use crate::components::def_list::{ColSort, Column, ListCount, ListHead, NoteMark, name_sort, sort_by_column};
 use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
 use crate::components::editor_drawer::use_drawer_guard;
 use crate::types::{BossWithPath, ChallengeColumns, ChallengeDefinition, ChallengeMetric, EncounterItem};
@@ -57,7 +57,7 @@ fn sort_text(col: usize, c: &ChallengeDefinition) -> String {
 }
 
 /// Column the challenges list is sorted by (session-wide)
-static CHALLENGE_SORT: GlobalSignal<ColSort> = Signal::global(|| None);
+static CHALLENGE_SORT: GlobalSignal<ColSort> = Signal::global(|| name_sort(&COLUMNS));
 
 #[component]
 pub fn ChallengesTab(

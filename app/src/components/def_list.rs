@@ -6,6 +6,11 @@ use dioxus::prelude::*;
 /// (column index, descending); `None` keeps the list's own order
 pub type ColSort = Option<(usize, bool)>;
 
+/// Lists open sorted A–Z by their Name column, so the header reads as sortable
+pub fn name_sort(columns: &[Column]) -> ColSort {
+    columns.iter().position(|c| c.label == "Name").map(|i| (i, false))
+}
+
 /// One cell of the column header. A blank label holds the place of a column
 /// that has no name (icon, origin dot, toggles) and does not sort
 #[derive(Clone, Copy, PartialEq)]

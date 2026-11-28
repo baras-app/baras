@@ -7,7 +7,7 @@
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::components::def_list::{ColSort, Column, ListCount, ListHead, sort_by_column};
+use crate::components::def_list::{ColSort, Column, ListCount, ListHead, name_sort, sort_by_column};
 use crate::components::editor_drawer::use_drawer_guard;
 use crate::types::{BossWithPath, EncounterItem, EntityDefinition};
 
@@ -76,7 +76,7 @@ fn sort_text(col: usize, e: &EntityDefinition) -> String {
 }
 
 /// Column the entities list is sorted by (session-wide)
-static ENTITY_SORT: GlobalSignal<ColSort> = Signal::global(|| None);
+static ENTITY_SORT: GlobalSignal<ColSort> = Signal::global(|| name_sort(&COLUMNS));
 
 #[component]
 pub fn EntitiesTab(

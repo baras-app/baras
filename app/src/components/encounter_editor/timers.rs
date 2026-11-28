@@ -6,7 +6,7 @@
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::components::def_list::{ColSort, HideDisabled, ListCount, ListHead, sort_by_column};
+use crate::components::def_list::{ColSort, HideDisabled, ListCount, ListHead, name_sort, sort_by_column};
 use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginFilter, origin_counts};
 use crate::components::editor_drawer::use_drawer_guard;
 use crate::types::{
@@ -66,7 +66,7 @@ fn default_timer(name: String) -> BossTimerDefinition {
 }
 
 /// Column the timers list is sorted by (session-wide)
-static TIMER_SORT: GlobalSignal<ColSort> = Signal::global(|| None);
+static TIMER_SORT: GlobalSignal<ColSort> = Signal::global(|| name_sort(&timer_row::COLUMNS));
 
 #[component]
 pub fn TimersTab(
