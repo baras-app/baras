@@ -6,7 +6,9 @@
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::components::def_list::{ColSort, Column, HideDisabled, ListCount, ListHead, NoteMark, sort_by_column};
+use crate::components::def_list::{
+    ColSort, Column, HideDisabled, ListCount, ListHead, NoteMark, name_sort, sort_by_column,
+};
 use crate::components::editor_common::{ENCOUNTER_ORIGIN, Origin, OriginBadge, OriginFilter, origin_counts};
 use crate::components::editor_drawer::use_drawer_guard;
 use crate::types::{BossWithPath, CounterDefinition, EncounterItem, EntityFilter, Trigger};
@@ -83,7 +85,7 @@ fn sort_text(col: usize, c: &CounterDefinition) -> String {
 }
 
 /// Column the counters list is sorted by (session-wide)
-static COUNTER_SORT: GlobalSignal<ColSort> = Signal::global(|| None);
+static COUNTER_SORT: GlobalSignal<ColSort> = Signal::global(|| name_sort(&COLUMNS));
 
 #[component]
 pub fn CountersTab(
