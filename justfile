@@ -74,8 +74,14 @@ bundle: build-parse-worker
 build-app:
   cd app && cargo tauri build --no-bundle
 
-run-app-image:
-  {{justfile_directory()}}/target/release/bundle/appimage/*.AppImage
+# Run the newest AppImage `just bundle` produced, passing any args through
+run-app-image *args:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  img=$(ls -t "{{justfile_directory()}}"/target/release/bundle/appimage/*.AppImage 2>/dev/null | head -n 1 || true)
+  [[ -n "$img" ]] || { echo "No AppImage found: run 'just bundle' first"; exit 1; }
+  echo "▶ ${img##*/}"
+  exec "$img" {{args}}
 
 # Replay a log against a boss definition, e.g. `just validate revan test-log-files/operations/hm_tos_revan.txt`
 validate boss log *args:

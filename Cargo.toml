@@ -36,6 +36,17 @@ codegen-units = 16
 inherits = "release"
 strip = false
 
+# `dx serve` builds the frontend with this profile. Optimized dependencies
+# (Dioxus diffing, serde, wasm-bindgen) keep dev rendering and animations close
+# to release, while app-ui itself stays unoptimized for fast rebuilds. Only the
+# wasm frontend uses it, so native dev builds are unaffected.
+[profile.wasm-dev]
+inherits = "dev"
+
+[profile.wasm-dev.package."*"]
+opt-level = 2
+debug = false
+
 [workspace.dependencies]
 # Pin swash to 0.2.6: version 0.2.8 has a hinting cache bug where LRU-evicted
 # entries keep stale size/coords fields, causing glyphs to be hinted at the
