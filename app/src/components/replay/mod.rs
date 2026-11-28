@@ -197,19 +197,24 @@ fn ReplayStage(
     let mut state_maps = state.maps;
     let map_phases = state.phases.clone();
     let map_loaded = state.loaded.clone();
+    // Counts map sets, so images still loading for an earlier set are dropped
+    let mut map_set = use_signal(|| 0u32);
     use_effect(use_reactive!(|maps| {
         let Some(player) = player.read().clone() else { return };
         // An area lists every room of the instance: keep the ones this fight used
         let maps = map_loaded.maps_in_use(&maps);
         state_maps.set(maps.clone());
-        let mut urls: Vec<Option<String>> = vec![None; maps.len()];
-        player.set_maps(&maps, &urls, &map_phases);
-        let phases = map_phases.clone();
+        player.set_maps(&maps, &map_phases);
+        let set = *map_set.peek() + 1;
+        map_set.set(set);
         spawn(async move {
             for (i, map) in maps.iter().enumerate() {
-                urls[i] = api::get_replay_map_image(&map.image).await;
-                if urls[i].is_some() {
-                    player.set_maps(&maps, &urls, &phases);
+                let url = api::get_replay_map_image(&map.image).await;
+                if *map_set.peek() != set {
+                    return;
+                }
+                if let Some(url) = url {
+                    player.set_map_image(i, &url);
                 }
             }
         });

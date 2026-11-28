@@ -749,17 +749,11 @@ window.BarasReplay = (() => {
         highlight = id;
         requestDraw();
       },
-      // Map entries with one image URL each (null until loaded) and the phase spans
-      setMaps(entries, urls, phaseSpans) {
+      // Map entries and the phase spans; images follow one by one (setMapImage)
+      setMaps(entries, phaseSpans) {
         maps = entries || [];
         phases = phaseSpans || [];
-        mapImages = (urls || []).map((url) => {
-          if (!url) return null;
-          const img = new Image();
-          img.onload = requestDraw;
-          img.src = url;
-          return img;
-        });
+        mapImages = maps.map(() => null);
         if (shownMap >= maps.length) shownMap = -1;
         // Home: the smallest entry covering nearly all of where the players stood
         let total = 0;
@@ -782,6 +776,15 @@ window.BarasReplay = (() => {
         focus = maps.map((m) => (teams ? null : fightArea(m)));
         settleMap = true;
         requestDraw();
+      },
+      // The image of one entry of the maps last set. Decoded once: a page is
+      // megabytes as a data URL and far more as a bitmap.
+      setMapImage(index, url) {
+        if (index >= maps.length) return;
+        const img = new Image();
+        img.onload = requestDraw;
+        img.src = url;
+        mapImages[index] = img;
       },
       // Pin a map entry, or null to follow the raid
       setPinnedMap(index) {
