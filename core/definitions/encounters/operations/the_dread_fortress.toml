@@ -21,6 +21,9 @@ id = "nefra"
 parsely_slug = "nefra"
 name = "Nefra, Who Bars The Way"
 difficulties = ["story", "veteran", "master"]
+map_pages = [
+    "the_dread_fortress__map_nefra.webp",
+]
 
 [[boss.entities]]
 name = "Nefra, Who Bars The Way"
@@ -218,6 +221,10 @@ id = "draxus"
 parsely_slug = "gate-commander-draxus"
 name = "Gate Commander Draxus"
 difficulties = ["story", "veteran", "master"]
+map_pages = [
+    "the_dread_fortress__map_gatekeeper_antichamber.webp",
+    "the_dread_fortress__map_gatekeeper.webp",
+]
 
 [[boss.entities]]
 name = "Draxus"
@@ -442,6 +449,10 @@ id = "grobthok"
 parsely_slug = "grobthok"
 name = "Grob'thok, Who Feeds The Forge"
 difficulties = ["story", "veteran", "master"]
+map_pages = [
+    "the_dread_fortress__map_silo_approach.webp",
+    "the_dread_fortress__map_grobthok.webp",
+]
 
 [[boss.entities]]
 name = "Grob'thok, Who Feeds The Forge"
@@ -561,6 +572,9 @@ id = "corruptor_zero"
 parsely_slug = "corruptor-zero"
 name = "Corruptor Zero"
 difficulties = ["story", "veteran", "master"]
+map_pages = [
+    "the_dread_fortress__map_silo.webp",
+]
 
 [[boss.entities]]
 name = "Corruptor Zero"
@@ -731,6 +745,9 @@ parsely_slug = "dread-master-brontes"
 name = "Dread Master Brontes"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true
+map_pages = [
+    "the_dread_fortress__map_brontes.webp",
+]
 
 [[boss.entities]]
 name = "Dread Master Brontes"

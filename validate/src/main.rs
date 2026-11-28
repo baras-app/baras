@@ -5,6 +5,7 @@
 //! - Accelerated mode: Fast CI validation with checkpoints
 
 mod effects_timeline;
+mod map_pages;
 mod output;
 mod replay;
 mod verification;
@@ -62,8 +63,13 @@ struct Args {
     log: PathBuf,
 
     /// Boss ID to validate (e.g., "sword_squadron")
-    #[arg(short, long, required_unless_present = "effects_timeline")]
+    #[arg(short, long, required_unless_present_any = ["effects_timeline", "map_pages"])]
     boss: Option<String>,
+
+    /// Print the map pages each boss fight in the log used, as `boss id<TAB>image`
+    /// lines (no boss needed). Takes the maps repository's `pages.toml`.
+    #[arg(long)]
+    map_pages: Option<PathBuf>,
 
     /// Replay the whole log through the effect tracker and write its timeline
     /// here (no boss needed). `--definitions` then points at the definitions
@@ -192,6 +198,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     if let Some(out) = &args.effects_timeline {
         return effects_timeline::run(&args.log, args.definitions.as_deref(), out);
+    }
+    if let Some(index) = &args.map_pages {
+        return map_pages::run(&args.log, args.definitions.as_deref(), index);
     }
     let boss_id = args.boss.clone().unwrap_or_default();
 

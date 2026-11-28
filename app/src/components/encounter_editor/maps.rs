@@ -98,7 +98,11 @@ pub fn MapsTab(
 
     rsx! {
         div { class: "map-pages-tab",
-            MapPagesTable { file_path: boss_with_path.file_path.clone(), maps: boss_with_path.boss.maps.clone() }
+            MapPagesTable {
+                file_path: boss_with_path.file_path.clone(),
+                maps: boss_with_path.boss.maps.clone(),
+                boss_pages: boss_with_path.boss.map_pages.clone(),
+            }
             div { class: "text-sm text-muted",
                 p {
                     "A boss without its own entries is drawn on its area's pages from the map repository, downloaded when first needed. "

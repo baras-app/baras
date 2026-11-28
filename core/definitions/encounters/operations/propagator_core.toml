@@ -13,6 +13,9 @@ parsely_slug = "propagator-core"
 name = "Propagator Core XR-53"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true
+map_pages = [
+    "propagator_core__boss_area.webp",
+]
 
 [[boss.entities]]
 name = "Defender Construct"

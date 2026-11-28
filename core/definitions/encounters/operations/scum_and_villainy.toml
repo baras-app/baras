@@ -18,6 +18,9 @@ id = "dashroode"
 parsely_slug = "dashroode"
 name = "Dash'Roode"
 difficulties = ["story", "veteran", "master"]
+map_pages = [
+    "scum_and_villainy__map_dunes.webp",
+]
 
 [[boss.entities]]
 name = "Dash'Roode"
@@ -95,6 +98,9 @@ id = "titan6"
 parsely_slug = "titan-6"
 name = "Titan 6"
 difficulties = ["story", "veteran", "master"]
+map_pages = [
+    "scum_and_villainy__map_city.webp",
+]
 
 [[boss.entities]]
 name = "Titan 6"
@@ -301,6 +307,9 @@ id = "thrasher"
 parsely_slug = "thrasher"
 name = "Thrasher"
 difficulties = ["story", "veteran", "master"]
+map_pages = [
+    "scum_and_villainy__map_darvannis_arena.webp",
+]
 
 [[boss.entities]]
 name = "Thrasher"
@@ -461,6 +470,9 @@ id = "operations_chief"
 parsely_slug = "operations-chief"
 name = "Operations Chief"
 difficulties = ["story", "veteran", "master"]
+map_pages = [
+    "scum_and_villainy__map_city_warehouse.webp",
+]
 
 [[boss.entities]]
 name = "Operations Chief"
@@ -531,6 +543,9 @@ id = "olok"
 parsely_slug = "olok-the-shadow"
 name = "Olok the Shadow"
 difficulties = ["story", "veteran", "master"]
+map_pages = [
+    "scum_and_villainy__map_spaceport2.webp",
+]
 
 [[boss.entities]]
 name = "Wealthy Buyer"
@@ -700,6 +715,9 @@ id = "cartel_warlords"
 parsely_slug = "cartel-warlords"
 name = "Cartel Warlords"
 difficulties = ["story", "veteran", "master"]
+map_pages = [
+    "scum_and_villainy__map_spaceport_access_tunnels.webp",
+]
 
 [[boss.entities]]
 name = "Horic"
@@ -893,6 +911,9 @@ parsely_slug = "dread-master-styrak"
 name = "Dread Master Styrak"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true
+map_pages = [
+    "scum_and_villainy__map_under_cave02.webp",
+]
 
 [[boss.entities]]
 name = "Kell Dragon"

@@ -13,6 +13,9 @@ id = "malaphar"
 parsely_slug = "malaphar-the-savage"
 name = "Malaphar the Savage"
 difficulties = ["story", "veteran"]
+map_pages = [
+    "temple_of_sacrifice__entrance_hall.webp",
+]
 
 [[boss.entities]]
 name = "Malaphar the Savage"
@@ -106,6 +109,9 @@ id = "sword_squadron"
 parsely_slug = "sword-squadron"
 name = "Sword Squadron"
 difficulties = ["story", "veteran"]
+map_pages = [
+    "temple_of_sacrifice__exterior_forest.webp",
+]
 
 [[boss.entities]]
 name = "Sword Squadron Unit 1"
@@ -273,6 +279,9 @@ id = "underlurker"
 parsely_slug = "the-underlurker"
 name = "The Underlurker"
 difficulties = ["story", "veteran"]
+map_pages = [
+    "temple_of_sacrifice__interior_cave.webp",
+]
 
 [[boss.entities]]
 name = "The Underlurker"
@@ -365,6 +374,9 @@ name = "Sano"
 ids = [3456894622498816]
 is_boss = true
 is_kill_target = true
+map_pages = [
+    "temple_of_sacrifice__temple_interior.webp",
+]
 
 [[boss.entities]]
 name = "Deer Jerker"
@@ -394,6 +406,9 @@ is_final_boss = true
 has_victory_trigger = true
 victory_trigger = { type = "entity_death", selector = ["Machine Core"] }
 victory_trigger_difficulties = ["veteran"]
+map_pages = [
+    "temple_of_sacrifice__revan_boss_lvl_2.webp",
+]
 
 # -- Entities --
 [[boss.entities]]

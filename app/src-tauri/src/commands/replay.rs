@@ -58,16 +58,19 @@ pub async fn get_replay_maps(
         false => None,
     };
 
-    // The boss's own maps win; otherwise every page the game has for the area
-    let own = match file {
+    // The boss's own maps win; otherwise the area's pages it is fought on
+    let boss = match file {
         Some(file) => load_bosses_with_custom(&file, user_dir.as_deref())?
             .into_iter()
-            .find(|b| Some(&b.name) == boss_name.as_ref() && !b.maps.is_empty())
-            .map(|b| b.maps),
+            .find(|b| Some(&b.name) == boss_name.as_ref()),
         None => None,
     };
-    let has_own = own.is_some();
-    let maps = own.unwrap_or_else(|| map_store::area_pages(area_id));
+    let (own, pages) = boss.map(|b| (b.maps, b.map_pages)).unwrap_or_default();
+    let has_own = !own.is_empty();
+    let maps = match has_own {
+        true => own,
+        false => boss_pages(map_store::area_pages(area_id), &pages),
+    };
     let missing = map_store::missing_images(&maps);
     let status = if !has_own && !map_store::has_index() {
         // Without the index there is no telling whether the area has maps
@@ -88,6 +91,15 @@ pub async fn get_replay_maps(
     Ok(ReplayMaps { maps, status })
 }
 
+/// An area's pages narrowed to the ones a boss is fought on (`map_pages`).
+/// All of them when the boss lists none, or none it lists is in the index.
+fn boss_pages(area: Vec<MapDefinition>, pages: &[String]) -> Vec<MapDefinition> {
+    match area.iter().any(|m| pages.contains(&m.image)) {
+        true => area.into_iter().filter(|m| pages.contains(&m.image)).collect(),
+        false => area,
+    }
+}
+
 fn ready(maps: Vec<MapDefinition>) -> ReplayMaps {
     ReplayMaps {
         maps,
@@ -101,14 +113,18 @@ fn unavailable(error: String) -> ReplayMapStatus {
 }
 
 /// What the replay draws a boss on, for the editor's Maps tab: `maps` (the boss's
-/// own entries), else the pages the repository has for the area of `file_path`.
-/// Nothing is downloaded here.
+/// own entries), else the pages the repository has for the area of `file_path`,
+/// narrowed to the boss's `pages`. Nothing is downloaded here.
 #[tauri::command]
-pub async fn get_boss_map_pages(file_path: String, maps: Vec<MapDefinition>) -> Result<BossMapPages, String> {
+pub async fn get_boss_map_pages(
+    file_path: String,
+    maps: Vec<MapDefinition>,
+    pages: Vec<String>,
+) -> Result<BossMapPages, String> {
     let from_area = maps.is_empty();
     let maps = match from_area {
         true => load_area_config(std::path::Path::new(&file_path))?
-            .map(|area| map_store::area_pages(area.area_id))
+            .map(|area| boss_pages(map_store::area_pages(area.area_id), &pages))
             .unwrap_or_default(),
         false => maps,
     };

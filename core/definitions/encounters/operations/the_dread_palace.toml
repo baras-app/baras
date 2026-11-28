@@ -9,6 +9,9 @@ id = "bestia"
 parsely_slug = "dread-master-bestia"
 area_type = "operation"
 name = "Dread Master Bestia"
+map_pages = [
+    "the_dread_palace__map_room1.webp",
+]
 
 [[boss.entities]]
 name = "Dread Master Bestia"
@@ -738,6 +741,9 @@ id = "tyrans"
 parsely_slug = "dread-master-tyrans"
 area_type = "operation"
 name = "Dread Master Tyrans"
+map_pages = [
+    "the_dread_palace__map_room4.webp",
+]
 
 [[boss.entities]]
 name = "Dread Master Tyrans"
@@ -1075,6 +1081,11 @@ id = "calphayus"
 parsely_slug = "dread-master-calphayus"
 name = "Dread Master Calphayus"
 area_type = "operation"
+map_pages = [
+    "the_dread_palace__map_room2.webp",
+    "the_dread_palace__map_room6.webp",
+    "the_dread_palace__map_room7.webp",
+]
 
 [[boss.entities]]
 name = "Dread Master Calphayus (Past)"
@@ -1575,6 +1586,9 @@ id = "raptus"
 parsely_slug = "dread-master-raptus"
 name = "Dread Master Raptus"
 area_type = "operation"
+map_pages = [
+    "the_dread_palace__map_room8.webp",
+]
 
 [[boss.entities]]
 name = "Dread Master Raptus"
@@ -2290,6 +2304,9 @@ parsely_slug = "dread-council"
 name = "Dread Council"
 area_type = "operation"
 is_final_boss = true
+map_pages = [
+    "the_dread_palace__map_room5.webp",
+]
 
 [[boss.entities]]
 name = "Dread Master Bestia"

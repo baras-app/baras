@@ -21,6 +21,9 @@ id = "ip_cpt"
 parsely_slug = "ip-cpt"
 name = "IP-CPT"
 difficulties = ["story", "veteran"]
+map_pages = [
+    "r4_anomaly__upper_storage_area.webp",
+]
 
 [[boss.entities]]
 name = "Inferno Enforcer"
@@ -466,6 +469,9 @@ id = "watchdog"
 parsely_slug = "watchdog"
 name = "Watchdog"
 difficulties = ["story", "veteran"]
+map_pages = [
+    "r4_anomaly__boss2_arena.webp",
+]
 
 [[boss.entities]]
 name = "Watchdog"
@@ -741,6 +747,9 @@ area_name = "R4"
 area_id = 833571547775799
 area_type = "operation"
 difficulties = ["story", "veteran"]
+map_pages = [
+    "r4_anomaly__creep_room.webp",
+]
 
 [[boss.entities]]
 name = "Kanoth"
@@ -1578,6 +1587,9 @@ name = "Hallway"
 difficulties = ["story", "veteran"]
 # A trash gauntlet, not a boss: never part of a clear or the timed run
 is_optional_boss = true
+map_pages = [
+    "r4_anomaly__creep_hallway.webp",
+]
 
 [[boss.entities]]
 name = "Attractor"
@@ -1597,6 +1609,9 @@ parsely_slug = "lady-dominique"
 name = "Lady Dominique"
 difficulties = ["story", "veteran"]
 is_final_boss = true
+map_pages = [
+    "r4_anomaly__descent_shaft.webp",
+]
 
 [[boss.entities]]
 name = "Lady Dominique"

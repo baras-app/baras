@@ -16,6 +16,10 @@ id = "bonethrasher"
 parsely_slug = "bonethrasher"
 name = "Bonethrasher"
 difficulties = ["story", "veteran"]
+map_pages = [
+    "karaggas_palace__map_huttpalace_interior_north.webp",
+    "karaggas_palace__map_huttpalace_rancor.webp",
+]
 
 [[boss.entities]]
 name = "Bonethrasher"
@@ -40,6 +44,10 @@ id = "jarg_sorno"
 parsely_slug = "jarg-and-sorno"
 name = "Jarg & Sorno"
 difficulties = ["story", "veteran"]
+map_pages = [
+    "karaggas_palace__map_huttpalace_interior_north.webp",
+    "karaggas_palace__map_huttpalace_rancor.webp",
+]
 
 [[boss.entities]]
 name = "Jarg"
@@ -66,6 +74,9 @@ id = "foreman_crusher"
 parsely_slug = "foreman-crusher"
 name = "Foreman Crusher"
 difficulties = ["story", "veteran"]
+map_pages = [
+    "karaggas_palace__map_huttpalace_swamp.webp",
+]
 
 [[boss.entities]]
 name = "Foreman Crusher"
@@ -152,6 +163,9 @@ id = "g4b3"
 parsely_slug = "heavy-fabricator"
 name = "G4-B3 Heavy Fabricator"
 difficulties = ["story", "veteran"]
+map_pages = [
+    "karaggas_palace__map_huttpalace_factory.webp",
+]
 
 [[boss.entities]]
 name = "G4-B3 Heavy Fabricator"
@@ -196,6 +210,9 @@ parsely_slug = "karagga-the-unyielding"
 name = "Karagga the Unyielding"
 difficulties = ["story", "veteran"]
 is_final_boss = true
+map_pages = [
+    "karaggas_palace__map_huttpalace_factory_roof.webp",
+]
 
 [[boss.entities]]
 name = "Karagga the Unyielding"

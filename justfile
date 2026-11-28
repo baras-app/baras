@@ -170,6 +170,12 @@ extract-maps:
     --encounters "{{justfile_directory()}}/core/definitions/encounters/operations" \
     --areas "{{justfile_directory()}}/core/data/pvp_areas.csv"
 
+# Bake the map pages each boss is fought on into the operation definitions, from the logs in test-log-files/operations (env: BARAS_MAPS_DIR)
+bake-boss-maps:
+  cargo build -q --release -p baras-validate
+  python3 scripts/bake_boss_map_pages.py --validate target/release/baras-validate --index "{{maps_repo}}/pages.toml" \
+    --encounters core/definitions/encounters/operations --logs test-log-files/operations
+
 # Run the SWTOR ability extractor and copy ability_data.csv + effect_data.csv into core/data (env: SWTOR_EXTRACTOR, SWTOR_ASSETS; args pass to main.py, e.g. --no-npc)
 extract-abilities *args:
   #!/usr/bin/env bash

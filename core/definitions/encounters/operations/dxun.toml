@@ -30,6 +30,9 @@ id = "red"
 parsely_slug = "the-pack-leader"
 name = "Red"
 difficulties = ["story", "veteran", "master"]
+map_pages = [
+    "dxun__ext_jungle.webp",
+]
 
 [[boss.entities]]
 name = "Red"
@@ -163,6 +166,10 @@ victory_trigger = { type = "any_of", conditions = [
     4340614208421888,
   ] } },
 ] }
+map_pages = [
+    "dxun__holding_pens_power_shed.webp",
+    "dxun__holding_pens_exterior.webp",
+]
 
 [boss.encounter_trigger]
 type = "threat_modified"
@@ -306,6 +313,10 @@ id = "breach"
 parsely_slug = "encounter-two"
 name = "According To Plan"
 encounter_trigger_fallback_secs = 5.0
+map_pages = [
+    "dxun__holding_pens_security_room.webp",
+    "dxun__holding_pens_exterior.webp",
+]
 
 [boss.encounter_trigger]
 type = "threat_modified"
@@ -365,6 +376,9 @@ victory_trigger = { type = "any_of", conditions = [
 victory_trigger_difficulties = ["master"]
 # He stops at 1% and casts Dying Light: the group must outlive the cast
 wipe_revokes_victory = true
+map_pages = [
+    "dxun__int_lab_boss3_mid.webp",
+]
 
 [[boss.entities]]
 name = "Titax"
@@ -672,6 +686,9 @@ victory_conditions = [
     ] },
   ] },
   { type = "counter_compare", counter_id = "shelleigh_engaged", operator = "eq", value = 0 },
+]
+map_pages = [
+    "dxun__int_boss_4_arena.webp",
 ]
 
 # Toxic Cloud only lands on players when Shelleigh survives the bird insta-kill. Once it has,
@@ -1039,6 +1056,9 @@ parsely_slug = "apex-vanguard"
 name = "Apex Vanguard"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true
+map_pages = [
+    "dxun__int_gene_forge.webp",
+]
 
 [[boss.entities]]
 name = "Apex Vanguard"

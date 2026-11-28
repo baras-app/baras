@@ -18,6 +18,9 @@ id = "xrr3"
 parsely_slug = "annihilation-droid"
 name = "Annihilation Droid XRR-3"
 difficulties = ["story", "veteran"]
+map_pages = [
+    "eternity_vault__map_eternity_vault_surface.webp",
+]
 
 [[boss.entities]]
 name = "Annihilation Droid XRR-3"
@@ -88,6 +91,9 @@ id = "gharj"
 parsely_slug = "gharj"
 name = "Gharj"
 difficulties = ["story", "veteran"]
+map_pages = [
+    "eternity_vault__map_eternity_vault_lava_cave.webp",
+]
 
 [[boss.entities]]
 name = "Gharj"
@@ -166,6 +172,10 @@ difficulties = ["veteran"]
 id = "pylons"
 name = "Pylons"
 difficulties = ["story", "veteran"]
+map_pages = [
+    "eternity_vault__map_eternity_infernal_prison.webp",
+    "eternity_vault__map_eternity_vault_jungle.webp",
+]
 
 [boss.encounter_trigger]
 type = "any_of"
@@ -205,6 +215,9 @@ id = "infernal_council"
 parsely_slug = "infernal-council"
 name = "Infernal Council"
 difficulties = ["story", "veteran"]
+map_pages = [
+    "eternity_vault__map_eternity_infernal_prison.webp",
+]
 
 [[boss.entities]]
 name = "Infernal Council"
@@ -229,6 +242,9 @@ parsely_slug = "soa"
 name = "Soa"
 difficulties = ["story", "veteran"]
 is_final_boss = true
+map_pages = [
+    "eternity_vault__map_eternity_infernal_prison.webp",
+]
 
 [[boss.entities]]
 name = "Soa"
