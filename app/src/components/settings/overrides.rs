@@ -29,7 +29,9 @@ pub fn OverridesSection(
                     span { class: "settings-check-note", if customized { "customized" } else { "following Global" } }
                 }
                 p { class: "hint",
-                    "Ticked options apply to this overlay only. The rest show and follow the "
+                    "Changing an option here sets it for this overlay only; "
+                    i { class: "fa-solid fa-rotate-left" }
+                    " puts it back. Muted options follow the "
                     button { class: "link-btn", onclick: move |_| on_open_global.call(()), "Global tab" }
                     "."
                 }

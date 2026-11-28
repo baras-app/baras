@@ -241,7 +241,7 @@ pub fn SettingsPanel(
     };
     // Says where the changes go
     let save_label = match active_profile() {
-        Some(profile) if draft.has_changes() => format!("Save to '{profile}'"),
+        Some(profile) => format!("Save to '{profile}'"),
         _ => "Save".to_string(),
     };
     // The prompts' buttons stay short, so their text names the profile

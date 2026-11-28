@@ -9,7 +9,7 @@ use baras_types::{MAX_BAR_GAP, MAX_BAR_RADIUS};
 
 use super::draft::{SettingsDraft, appearance_for, edit_appearance};
 use super::widgets::{
-    Check, ColorRow, DynamicBackground, FontScale, Group, OnOff, Override, PercentSlider, Section, SelectRow,
+    Check, ColorRow, DynamicBackground, FontScale, Group, Override, PercentSlider, Section, SelectRow,
 };
 
 /// The eight class colours: label and field
@@ -110,67 +110,65 @@ pub fn MetricOverrideRows(draft: SettingsDraft, tab_key: Signal<String>) -> Elem
     rsx! {
         Override {
             custom: o.dynamic_background.is_some(),
-            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.overrides.dynamic_background = on.then_some(m.dynamic_background)),
-            OnOff { label: "Dynamic Background", value: m.dynamic_background, disabled: o.dynamic_background.is_none(), on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.dynamic_background = Some(v)) }
+            on_reset: move |_| edit_appearance(draft, &tab_key(), |a| a.overrides.dynamic_background = None),
+            Check { label: "Dynamic Background", checked: m.dynamic_background, on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.dynamic_background = Some(v)) }
         }
         Override {
             custom: o.show_background_bar.is_some(),
-            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.overrides.show_background_bar = on.then_some(m.show_background_bar)),
-            OnOff { label: "Show Background Bar", value: m.show_background_bar, disabled: o.show_background_bar.is_none(), on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.show_background_bar = Some(v)) }
+            on_reset: move |_| edit_appearance(draft, &tab_key(), |a| a.overrides.show_background_bar = None),
+            Check { label: "Show Background Bar", checked: m.show_background_bar, on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.show_background_bar = Some(v)) }
         }
         Override {
             custom: o.gradient_intensity.is_some(),
-            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.overrides.gradient_intensity = on.then_some(m.gradient_intensity)),
-            PercentSlider { label: "Gradient Intensity", value: m.gradient_intensity, min: 0.0, max: 60.0, step: 2.0, disabled: o.gradient_intensity.is_none(), on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.gradient_intensity = Some(v)) }
+            on_reset: move |_| edit_appearance(draft, &tab_key(), |a| a.overrides.gradient_intensity = None),
+            PercentSlider { label: "Gradient Intensity", value: m.gradient_intensity, min: 0.0, max: 60.0, step: 2.0, on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.gradient_intensity = Some(v)) }
         }
         Override {
             custom: a.bar_radius.is_some(),
-            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.bar_radius = on.then_some(radius)),
+            on_reset: move |_| edit_appearance(draft, &tab_key(), |a| a.bar_radius = None),
             Slider {
                 label: "Bar Corner Radius",
                 value: radius as f64,
                 min: 0.0,
                 max: MAX_BAR_RADIUS as f64,
                 suffix: "px",
-                disabled: a.bar_radius.is_none(),
                 on_change: move |v: f64| edit_appearance(draft, &tab_key(), |a| a.bar_radius = Some(v as f32)),
             }
         }
         Override {
             custom: o.scaling_factor.is_some(),
-            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.overrides.scaling_factor = on.then_some(m.scaling_factor)),
-            PercentSlider { label: "Bar Thickness", value: m.scaling_factor, min: 30.0, max: 200.0, disabled: o.scaling_factor.is_none(), on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.scaling_factor = Some(v)) }
+            on_reset: move |_| edit_appearance(draft, &tab_key(), |a| a.overrides.scaling_factor = None),
+            PercentSlider { label: "Bar Thickness", value: m.scaling_factor, min: 30.0, max: 200.0, on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.scaling_factor = Some(v)) }
         }
         Override {
             custom: a.bar_gap.is_some(),
-            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.bar_gap = on.then_some(spacing)),
-            Slider { label: "Bar Spacing", value: spacing as f64, min: 0.0, max: MAX_BAR_GAP as f64, suffix: "px", disabled: a.bar_gap.is_none(), on_change: move |v: f64| edit_appearance(draft, &tab_key(), |a| a.bar_gap = Some(v as f32)) }
+            on_reset: move |_| edit_appearance(draft, &tab_key(), |a| a.bar_gap = None),
+            Slider { label: "Bar Spacing", value: spacing as f64, min: 0.0, max: MAX_BAR_GAP as f64, suffix: "px", on_change: move |v: f64| edit_appearance(draft, &tab_key(), |a| a.bar_gap = Some(v as f32)) }
         }
         Override {
             custom: o.stack_from_bottom.is_some(),
-            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.overrides.stack_from_bottom = on.then_some(m.stack_from_bottom)),
-            OnOff { label: "Stack from Bottom", value: m.stack_from_bottom, disabled: o.stack_from_bottom.is_none(), on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.stack_from_bottom = Some(v)) }
+            on_reset: move |_| edit_appearance(draft, &tab_key(), |a| a.overrides.stack_from_bottom = None),
+            Check { label: "Stack from Bottom", checked: m.stack_from_bottom, on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.stack_from_bottom = Some(v)) }
         }
         Override {
             custom: o.show_empty_bars.is_some(),
-            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.overrides.show_empty_bars = on.then_some(m.show_empty_bars)),
-            OnOff { label: "Show Empty Bars", value: m.show_empty_bars, disabled: o.show_empty_bars.is_none(), on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.show_empty_bars = Some(v)) }
+            on_reset: move |_| edit_appearance(draft, &tab_key(), |a| a.overrides.show_empty_bars = None),
+            Check { label: "Show Empty Bars", checked: m.show_empty_bars, on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.show_empty_bars = Some(v)) }
         }
         Override {
             custom: o.class_icon_mode.is_some(),
-            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.overrides.class_icon_mode = on.then_some(m.class_icon_mode)),
+            on_reset: move |_| edit_appearance(draft, &tab_key(), |a| a.overrides.class_icon_mode = None),
             SelectRow {
                 label: "Icon Type",
                 value: icon_mode_key(m.class_icon_mode),
                 options: ICON_MODES.to_vec(),
-                disabled: o.class_icon_mode.is_none(),
                 on_change: move |v: String| edit_appearance(draft, &tab_key(), |a| a.overrides.class_icon_mode = Some(icon_mode_from(&v))),
             }
         }
         Override {
             custom: o.font_scale.is_some(),
-            on_toggle: move |on: bool| edit_appearance(draft, &tab_key(), |a| a.overrides.font_scale = on.then_some(m.font_scale)),
-            FontScale { value: m.font_scale, disabled: o.font_scale.is_none(), on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.font_scale = Some(v)) }
+            on_reset: move |_| edit_appearance(draft, &tab_key(), |a| a.overrides.font_scale = None),
+            FontScale { value: m.font_scale, on_change: move |v| edit_appearance(draft, &tab_key(), |a| a.overrides.font_scale = Some(v)) }
         }
     }
 }

@@ -13,6 +13,17 @@ use super::widgets::{Check, ColorRow, Group, NumberRow, ResetRow, Row, Section, 
 /// Preset dropdown value when the template matches none of `PRESETS`
 const CUSTOM: &str = "custom";
 
+/// The placeholder group for this overlay's own metric, listed after "This overlay"
+fn own_placeholder_group(tab_key: &str) -> &'static str {
+    match tab_key {
+        "dps" | "edps" | "bossdps" => "Damage",
+        "hps" | "ehps" => "Healing",
+        "dtps" | "incoming_damage" => "Damage taken",
+        "abs" => "Healing received",
+        _ => "Other",
+    }
+}
+
 #[component]
 pub fn MetricTab(draft: SettingsDraft, tab_key: String, actions: Element) -> Element {
     let settings = draft.current();
@@ -27,10 +38,14 @@ pub fn MetricTab(draft: SettingsDraft, tab_key: String, actions: Element) -> Ele
     };
     let (tab_max, tab_reset) = (tab_key.clone(), tab_key.clone());
     let (tab_template, tab_preset) = (tab_key.clone(), tab_key.clone());
+    // Custom picked on this tab: keep the template field open even while it matches a preset
+    let mut custom_for: Signal<Option<String>> = use_signal(|| None);
     let preset = PRESETS
         .iter()
         .find(|(t, _)| *t == a.template)
         .map_or(CUSTOM, |(t, _)| *t);
+    let is_custom = preset == CUSTOM || custom_for().as_deref() == Some(tab_key.as_str());
+    let own_group = own_placeholder_group(&tab_key);
     let tab_insert = tab_key.clone();
 
     rsx! {
@@ -50,45 +65,50 @@ pub fn MetricTab(draft: SettingsDraft, tab_key: String, actions: Element) -> Ele
                 }
             }
             Section { group: Group::Content,
-                Row {
-                    label: "Values",
-                    tooltip: "Text shown beside each name. Placeholders in braces are replaced with values; a | splits it into a centre and a right column.",
-                    input {
-                        r#type: "text",
-                        class: "template-input",
-                        value: "{a.template}",
-                        oninput: move |e: Event<FormData>| edit_appearance(draft, &tab_template, |a| a.template = e.value()),
-                    }
-                }
                 SelectRow {
-                    label: "Preset",
-                    value: preset.to_string(),
+                    label: "Values",
+                    value: (if is_custom { CUSTOM } else { preset }).to_string(),
                     options: PRESETS.iter().copied().chain([(CUSTOM, "Custom")]).collect::<Vec<_>>(),
                     on_change: move |v: String| {
-                        if v != CUSTOM {
+                        if v == CUSTOM {
+                            custom_for.set(Some(tab_preset.clone()));
+                        } else {
+                            custom_for.set(None);
                             edit_appearance(draft, &tab_preset, |a| a.template = v);
                         }
                     },
                 }
-                details { class: "collapsible",
-                    summary { class: "collapsible-summary", "Placeholders" }
-                    p { class: "hint", "Click one to add it to Values. Example: {{total}} | {{rate}} ({{ehps_pct}})" }
-                    for (group, vars) in MetricVar::GROUPS {
-                        h5 { class: "placeholder-group", "{group}" }
-                        div { class: "placeholder-list",
-                            for (name, _, description) in vars.iter() {
-                                button {
-                                    class: "placeholder-name",
-                                    title: "Add to Values",
-                                    onclick: {
-                                        let tab = tab_insert.clone();
-                                        move |_| edit_appearance(draft, &tab, |a| {
-                                            a.template.push_str(&format!("{{{name}}}"));
-                                        })
-                                    },
-                                    "{{{name}}}"
+                if is_custom {
+                    Row {
+                        label: "Template",
+                        tooltip: "Text shown beside each name. Placeholders in braces are replaced with values; a | splits it into a centre and a right column.",
+                        input {
+                            r#type: "text",
+                            class: "template-input",
+                            value: "{a.template}",
+                            oninput: move |e: Event<FormData>| edit_appearance(draft, &tab_template, |a| a.template = e.value()),
+                        }
+                    }
+                    details { class: "collapsible",
+                        summary { class: "collapsible-summary", "Placeholders" }
+                        p { class: "hint", "Click one to add it to the template. Example: {{total}} | {{rate}} ({{pct}})" }
+                        for (group, vars) in MetricVar::GROUPS.iter().filter(|(g, _)| *g == "This overlay" || *g == own_group) {
+                            h5 { class: "placeholder-group", "{group}" }
+                            div { class: "placeholder-list",
+                                for (name, _, description) in vars.iter() {
+                                    button {
+                                        class: "placeholder-name",
+                                        title: "Add to the template",
+                                        onclick: {
+                                            let tab = tab_insert.clone();
+                                            move |_| edit_appearance(draft, &tab, |a| {
+                                                a.template.push_str(&format!("{{{name}}}"));
+                                            })
+                                        },
+                                        "{{{name}}}"
+                                    }
+                                    span { class: "placeholder-description", "{description}" }
                                 }
-                                span { class: "placeholder-description", "{description}" }
                             }
                         }
                     }

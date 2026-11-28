@@ -118,7 +118,7 @@ pub fn ProfilesSection(
                                                     if confirming { "Overwrite?" }
                                                     button {
                                                         class: "btn btn-small btn-update",
-                                                        title: "Overwrite profile with current settings",
+                                                        title: "Save the current overlays, positions and styles into this profile",
                                                         onclick: {
                                                             let pname = profile_name.clone();
                                                             move |_| {
@@ -138,7 +138,12 @@ pub fn ProfilesSection(
                                                                 });
                                                             }
                                                         },
-                                                        if confirming { "Yes" } else { "Save" }
+                                                        if confirming {
+                                                            "Yes"
+                                                        } else {
+                                                            i { class: "fa-solid fa-floppy-disk" }
+                                                            " Save to profile"
+                                                        }
                                                     }
                                                     if confirming {
                                                         button {
@@ -235,7 +240,7 @@ pub fn ProfilesSection(
                             input {
                                 r#type: "text",
                                 class: "profile-name-input",
-                                placeholder: "{suggested_name}",
+                                placeholder: "New profile name…",
                                 maxlength: "32",
                                 value: new_profile_name,
                                 oninput: move |e| new_profile_name.set(e.value()),

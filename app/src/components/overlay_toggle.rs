@@ -42,7 +42,7 @@ pub fn OverlayToggle(props: OverlayToggleProps) -> Element {
         (false, false) => "btn btn-overlay-gear",
     };
     rsx! {
-        div { class: "overlay-toggle",
+        div { class: if gear_open { "overlay-toggle editing" } else { "overlay-toggle" },
             button {
                 class: if active { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
                 title: "{title}",
