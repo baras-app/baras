@@ -1,0 +1,109 @@
+# Powertech / Vanguard buffs (Imperial and Republic effect IDs in one entry).
+# All new entries ship disabled; users opt in from the effect editor.
+
+version = 1
+
+# ─── Pyrotech / Plasmatech ─────────────────────────────────────────────────
+
+# Every hit taken refills it to 10 s, capped at 30 s from application; no ICD (measured)
+[[effect]]
+id = "thermal_yield_buff"
+name = "Thermal Yield / Durasteel Armor"
+display_text = "{effect}"
+enabled = false
+trigger = { type = "effect_applied", effects = [4502478640906508, 4546987386994952], source = "local_player", target = "any" }
+duration_secs = 10.0
+is_affected_by_alacrity = false
+color = [230, 180, 40, 255]
+display_targets = ["effects_a"]
+disciplines = ["Plasmatech", "Pyrotech"]
+modifiers = [
+  { refill_duration = true, max_duration_secs = 30.0, trigger = { type = "damage_taken" } },
+]
+
+# Each non-immune/resist Flaming Fist hit refreshes the 20 s duration, also at max stacks where the log shows nothing
+[[effect]]
+id = "heatstroke_buff"
+name = "Heatstroke / Suppressive Heat"
+display_text = "{effect}"
+enabled = false
+trigger = { type = "effect_applied", effects = [4499532293341445, 4546910077583621], source = "local_player", target = "any" }
+refresh_scope = "source"
+refresh_abilities = [
+  { ability = 3384704812187648, trigger = "damage", ignore_immune_resist = true },
+  { ability = 3391447910842368, trigger = "damage", ignore_immune_resist = true },
+]
+duration_secs = 20.0
+is_affected_by_alacrity = false
+show_single_stack = true
+color = [230, 180, 40, 255]
+display_targets = ["effects_a"]
+disciplines = ["Plasmatech", "Pyrotech"]
+
+# Power Yield (Advanced Prototype / Tactics) is power_yield_buff in dcds.toml
+
+# ─── Shield Tech / Shield Specialist ───────────────────────────────────────
+
+[[effect]]
+id = "energy_yield_buff"
+name = "Energy Yield / Tactical Armor"
+display_text = "{effect}"
+enabled = false
+trigger = { type = "effect_applied", effects = [4504089253642508, 4547060401438996], source = "local_player", target = "any" }
+duration_secs = 15.0
+is_affected_by_alacrity = false
+color = [230, 180, 40, 255]
+display_targets = ["effects_a"]
+disciplines = ["ShieldSpecialist", "ShieldTech"]
+
+[[effect]]
+id = "coolant_buff"
+name = "Coolant / Soldier's Grit"
+display_text = "{effect}"
+enabled = false
+trigger = { type = "effect_applied", effects = [986266225082627, 1003974375244044], source = "local_player", target = "any" }
+duration_secs = 15.0
+is_affected_by_alacrity = false
+color = [230, 180, 40, 255]
+display_targets = ["effects_a"]
+disciplines = ["ShieldSpecialist", "ShieldTech"]
+
+# No buff on the player: timed from the cast
+[[effect]]
+id = "oil_slick_buff"
+name = "Oil Slick / Riot Gas"
+display_text = "{ability}"
+enabled = false
+trigger = { type = "ability_cast", abilities = [2264298168516608, 3396893929373696], source = "local_player", target = "any" }
+duration_secs = 10.0
+is_affected_by_alacrity = false
+color = [230, 180, 40, 255]
+display_targets = ["effects_a"]
+disciplines = ["ShieldSpecialist", "ShieldTech"]
+
+# ─── All disciplines ───────────────────────────────────────────────────────
+
+# 15 s for Powertech/Vanguard; Mercenary/Commando keep 12 s (energy_shield_buff in dcds.toml)
+[[effect]]
+id = "energy_shield_pt_buff"
+name = "Energy Shield / Reactive Shield (Powertech)"
+display_text = "{effect}"
+enabled = false
+trigger = { type = "effect_applied", effects = [814218425139459, 801329228284194], source = "local_player", target = "any" }
+duration_secs = 15.0
+is_affected_by_alacrity = false
+color = [3, 207, 252, 255]
+display_targets = ["effects_a"]
+disciplines = ["AdvancedPrototype", "Plasmatech", "Pyrotech", "ShieldSpecialist", "ShieldTech", "Tactics"]
+
+[[effect]]
+id = "hydraulic_overrides_buff"
+name = "Hydraulic Overrides / Hold the Line"
+display_text = "{effect}"
+enabled = false
+trigger = { type = "effect_applied", effects = [4516080802332672, 4559408432414720], source = "local_player", target = "any" }
+duration_secs = 8.0
+is_affected_by_alacrity = false
+color = [230, 180, 40, 255]
+display_targets = ["effects_a"]
+disciplines = ["AdvancedPrototype", "Plasmatech", "Pyrotech", "ShieldSpecialist", "ShieldTech", "Tactics"]
