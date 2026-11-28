@@ -41,8 +41,11 @@ impl EffectTracker {
             // End-of-effect alert and expiration sound (any reason except a
             // silent discard). The single owner of expiration audio: the
             // effect may be dropped below before any audio poll could see it.
-            let remaining_total = effect.remaining_secs(interp_time).unwrap_or(0.0);
-            if effect.on_end_alert_fired || !(effect.has_base_duration_ended(remaining_total) || effect.is_removed()) {
+            // An effect with no duration only ends when it is removed.
+            let base_ended = effect
+                .remaining_secs(interp_time)
+                .is_some_and(|remaining| effect.has_base_duration_ended(remaining));
+            if effect.on_end_alert_fired || !(base_ended || effect.is_removed()) {
                 continue;
             }
             effect.on_end_alert_fired = true;
