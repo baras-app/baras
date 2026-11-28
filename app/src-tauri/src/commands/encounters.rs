@@ -1462,6 +1462,12 @@ pub async fn update_boss_maps(
     file_path: String,
     maps: Vec<baras_types::MapDefinition>,
 ) -> Result<(), String> {
+    for (i, map) in maps.iter().enumerate() {
+        if let Some(problem) = map.problem() {
+            return Err(format!("Map {} {problem}", i + 1));
+        }
+        crate::service::map_store::image_mime(&map.image)?;
+    }
     patch_boss(&app_handle, &service, boss_id, file_path, |b| b.maps = maps.clone()).await
 }
 
