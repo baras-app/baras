@@ -11,6 +11,8 @@ use crate::components::effect_uptime::{UptimeAxis, UptimeGrid};
 #[derive(Clone, PartialEq)]
 pub struct AggroMark {
     pub time: f32,
+    /// Chart series of the taunter; 0 for the plain colour
+    pub series: u8,
     pub text: String,
 }
 
@@ -91,7 +93,7 @@ pub fn AggroTimeline(
                         for m in lane.marks.iter() {
                             span {
                                 class: "aggro-mark",
-                                style: "left: {pos(m.time)}%",
+                                style: "left: {pos(m.time)}%; {series_color(m.series)}",
                                 title: "{m.text}",
                             }
                         }
