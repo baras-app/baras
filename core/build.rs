@@ -24,7 +24,9 @@ fn main() {
     generate_defensive_cooldown_sets(&out_dir, &mirrors);
     generate_raid_debuffs_map(&out_dir);
     generate_taunt_effects_map(&out_dir);
+    generate_pvp_areas(&out_dir);
 
+    println!("cargo:rerun-if-changed=data/pvp_areas.csv");
     println!("cargo:rerun-if-changed=data/off_gcd_extra.txt");
     println!("cargo:rerun-if-changed=data/defensive_cooldowns.txt");
     println!("cargo:rerun-if-changed=data/attack_types.csv");
@@ -74,6 +76,28 @@ fn write_id_set(out_dir: &str, file_name: &str, static_name: &str, mut ids: Vec<
         builder.entry(*id);
     }
     writeln!(file, "pub static {static_name}: phf::Set<i64> = {};", builder.build()).unwrap();
+}
+
+/// PvP instance area ids by kind, from `data/pvp_areas.csv` (`id,kind,slug,name`).
+/// The map extractor reads the same file for the areas to extract.
+fn generate_pvp_areas(out_dir: &str) {
+    let csv = fs::read_to_string("data/pvp_areas.csv").expect("failed to read pvp_areas.csv");
+    let rows: Vec<(i64, &str)> = csv
+        .lines()
+        .skip(1)
+        .filter_map(|line| {
+            let mut fields = line.split(',');
+            Some((fields.next()?.parse().ok()?, fields.next()?))
+        })
+        .collect();
+    let mut file = BufWriter::new(fs::File::create(Path::new(out_dir).join("pvp_areas.rs")).unwrap());
+    for (kind, name, doc) in [
+        ("warzone", "WARZONE_AREA_IDS", "8-player warzones"),
+        ("arena", "ARENA_AREA_IDS", "4-player arenas"),
+    ] {
+        let ids: Vec<i64> = rows.iter().filter(|(_, k)| *k == kind).map(|(id, _)| *id).collect();
+        writeln!(file, "/// {doc}\npub const {name}: [i64; {}] = {ids:?};", ids.len()).unwrap();
+    }
 }
 
 /// Dedicated interrupts: abilities that interrupt and are off the GCD. Abilities that

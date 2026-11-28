@@ -9,29 +9,8 @@ pub enum PvpAreaKind {
     Arena,
 }
 
-/// 8-player warzones
-pub const WARZONE_AREA_IDS: [i64; 9] = [
-    137438956902,    // The Civil War (Alderaan)
-    945872057669561, // Yavin Ruins
-    137438992654,    // Novare Coast
-    137438993104,    // Ancient Hypergate
-    137438989517,    // The Voidstar
-    833571547775744, // Odessen Proving Grounds
-    137438988866,    // The Pit (Nar Shaddaa Huttball)
-    137438953518,    // Quesh Huttball Pit
-    833571547775746, // Vandin Huttball (The Sky Shredder)
-];
-
-/// 4-player arenas
-pub const ARENA_AREA_IDS: [i64; 7] = [
-    137438993370,    // Corellia Square
-    137438993381,    // Makeb Mesa Arena
-    945872057669563, // Mandalorian Battle Ring
-    137438993376,    // Orbital Station
-    833571547775745, // Rishi Cove
-    137438993374,    // Tatooine Canyon
-    945872057669629, // Onderon Palatial Ruins
-];
+// `WARZONE_AREA_IDS` and `ARENA_AREA_IDS`, generated from `data/pvp_areas.csv`
+include!(concat!(env!("OUT_DIR"), "/pvp_areas.rs"));
 
 /// Every PvP instance id (for indexes that otherwise only know defined areas)
 pub fn pvp_area_ids() -> impl Iterator<Item = i64> {
