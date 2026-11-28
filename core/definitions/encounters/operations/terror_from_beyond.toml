@@ -18,6 +18,9 @@ id = "writhing_horror"
 parsely_slug = "the-writhing-horror"
 name = "The Writhing Horror"
 difficulties = ["story", "veteran", "master"]
+map_pages = [
+    "terror_from_beyond__map_asation_facility_taxi.webp",
+]
 
 [[boss.entities]]
 name = "The Writhing Horror"
@@ -135,6 +138,10 @@ id = "dread_guard"
 parsely_slug = "dread-guards"
 name = "The Dread Guard"
 difficulties = ["story", "veteran", "master"]
+map_pages = [
+    "terror_from_beyond__map_asation_temple.webp",
+    "terror_from_beyond__map_asation_ruins.webp",
+]
 
 [[boss.entities]]
 name = "Heirad"
@@ -461,6 +468,9 @@ id = "op_ix"
 parsely_slug = "operator-ix"
 name = "Operator IX"
 difficulties = ["story", "veteran", "master"]
+map_pages = [
+    "terror_from_beyond__map_asation_temple.webp",
+]
 
 [[boss.entities]]
 name = "Operator IX"
@@ -701,6 +711,9 @@ id = "kephess_the_undying"
 parsely_slug = "kephess-the-undying"
 name = "Kephess"
 difficulties = ["story", "veteran", "master"]
+map_pages = [
+    "terror_from_beyond__map_asation_marsh.webp",
+]
 
 [[boss.entities]]
 name = "Kephess"
@@ -996,6 +1009,9 @@ victory_trigger = { type = "any_of", conditions = [
     "Terror (P2)",
   ] },
 ] }
+map_pages = [
+    "terror_from_beyond__map_asation_hypergate.webp",
+]
 
 # ─── Phases ─────────────────────────────────────────────────────────────────────
 [[boss.phases]]

@@ -8,9 +8,15 @@ use baras_types::MapDefinition;
 use crate::api;
 
 #[component]
-pub fn MapPagesTable(file_path: String, maps: Vec<MapDefinition>) -> Element {
-    let pages = use_resource(use_reactive!(|(file_path, maps)| async move {
-        api::get_boss_map_pages(&file_path, &maps).await
+pub fn MapPagesTable(
+    file_path: String,
+    maps: Vec<MapDefinition>,
+    /// The boss's `map_pages`: the area's pages it is fought on
+    boss_pages: Vec<String>,
+) -> Element {
+    let narrowed = !boss_pages.is_empty();
+    let pages = use_resource(use_reactive!(|(file_path, maps, boss_pages)| async move {
+        api::get_boss_map_pages(&file_path, &maps, &boss_pages).await
     }));
     // (title, image as a data URL; None while it loads or when it is missing)
     let mut preview = use_signal(|| None::<(String, Option<String>)>);
@@ -18,7 +24,9 @@ pub fn MapPagesTable(file_path: String, maps: Vec<MapDefinition>) -> Element {
     let Some(pages) = pages() else {
         return rsx! {};
     };
-    let source = if pages.from_area {
+    let source = if pages.from_area && narrowed {
+        "From the map repository: the pages of this area the boss is fought on"
+    } else if pages.from_area {
         "From the map repository: every page the game has for this area"
     } else {
         "From this boss's own entries"

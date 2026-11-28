@@ -440,6 +440,12 @@ pub struct BossEncounterDefinition {
     #[serde(default, alias = "map", skip_serializing_if = "Vec::is_empty")]
     pub maps: Vec<baras_types::MapDefinition>,
 
+    /// Images of the area's map pages this boss is fought on (`just bake-boss-maps`).
+    /// Without own `maps`, the replay draws the boss on these instead of on
+    /// every page of the area; empty = every page.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub map_pages: Vec<String>,
+
     // ─── Mechanics ───────────────────────────────────────────────────────────
     /// Phase definitions
     #[serde(default, alias = "phase", skip_serializing_if = "Vec::is_empty")]
@@ -530,6 +536,7 @@ impl Default for BossEncounterDefinition {
             encounter_trigger: None,
             encounter_trigger_fallback_secs: None,
             maps: Vec::new(),
+            map_pages: Vec::new(),
             phases: Vec::new(),
             counters: Vec::new(),
             timers: Vec::new(),

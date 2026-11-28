@@ -16,6 +16,9 @@ id = "sparky"
 parsely_slug = "sparky"
 name = "Sparky"
 difficulties = ["story", "veteran"]
+map_pages = [
+    "the_ravagers__map_section_01_a.webp",
+]
 
 [[boss.entities]]
 name = "Sparky"
@@ -130,6 +133,9 @@ id = "bulo"
 parsely_slug = "quartermaster-bulo"
 name = "Quartermaster Bulo"
 difficulties = ["story", "veteran"]
+map_pages = [
+    "the_ravagers__map_section_01_b.webp",
+]
 
 [[boss.entities]]
 name = "Quartermaster Bulo"
@@ -310,6 +316,9 @@ id = "torque"
 parsely_slug = "torque"
 name = "Torque"
 difficulties = ["story", "veteran"]
+map_pages = [
+    "the_ravagers__map_section_02.webp",
+]
 
 [[boss.entities]]
 name = "Torque"
@@ -455,6 +464,9 @@ name = "Master & Blaster"
 difficulties = ["story", "veteran"]
 has_victory_trigger = true
 victory_trigger = { type = "effect_removed", effects = [3391331946725697] }
+map_pages = [
+    "the_ravagers__map_section_03.webp",
+]
 
 
 [[boss.entities]]
@@ -1466,6 +1478,10 @@ difficulties = ["story", "veteran"]
 has_victory_trigger = true
 is_final_boss = true
 victory_trigger = { type = "ability_cast", abilities = [3502391211065344] }
+map_pages = [
+    "the_ravagers__int_map_section_04c.webp",
+    "the_ravagers__int_map_section_04b.webp",
+]
 
 [[boss.entities]]
 name = "Coratanni"

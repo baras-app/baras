@@ -110,6 +110,14 @@ covers are extracted from the game client into the [baras-maps](https://github.c
 repository (`pages.toml` plus one image per page). The app downloads an operation's pages the first time one of
 its fights is replayed, so a boss normally needs nothing here.
 
+Bundled bosses carry `map_pages`, the images of the area's pages the boss is fought on. The replay and the
+editor's Maps tab then use only those pages instead of the whole operation's. The list is generated from real
+fights (`just bake-boss-maps`); a boss without it is drawn on every page of its area.
+
+```toml
+map_pages = ["the_dread_fortress__map_brontes.webp"]
+```
+
 A boss can list its own maps instead, which then replace the area's pages for that boss:
 
 ```toml

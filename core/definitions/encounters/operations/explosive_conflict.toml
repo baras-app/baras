@@ -18,6 +18,10 @@ name = "Zorn & Toth"
 difficulties = ["story", "veteran", "master"]
 has_victory_trigger = true
 victory_trigger = { type = "entity_death", selector = ["Handler Murdok"] }
+map_pages = [
+    "explosive_conflict__map_denova_forest.webp",
+    "explosive_conflict__map_denova_beach.webp",
+]
 
 [[boss.entities]]
 name = "Handler Murdok"
@@ -602,6 +606,9 @@ id = "firebrand_stormcaller"
 parsely_slug = "firebrand-and-stormcaller"
 name = "Firebrand & Stormcaller"
 difficulties = ["story", "veteran", "master"]
+map_pages = [
+    "explosive_conflict__map_denova_forest.webp",
+]
 
 [[boss.entities]]
 name = "Firebrand"
@@ -989,6 +996,9 @@ id = "colonel_vorgath"
 parsely_slug = "colonel-vorgath"
 name = "Colonel Vorgath"
 difficulties = ["story", "veteran", "master"]
+map_pages = [
+    "explosive_conflict__map_denova_battlefield.webp",
+]
 
 [[boss.entities]]
 name = "Colonel Vorgath"
@@ -1153,6 +1163,9 @@ parsely_slug = "warlord-kephess"
 name = "Warlord Kephess"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true
+map_pages = [
+    "explosive_conflict__map_denova_battlefield.webp",
+]
 
 [[boss.entities]]
 name = "Warlord Kephess"
