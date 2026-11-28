@@ -155,7 +155,7 @@ sync-defs:
 build-validate-windows:
   cross build --release -p baras-validate --target x86_64-pc-windows-gnu
 
-# Extract every operation's replay maps (images + world bounds) from the game client into the maps repository checkout (env: BARAS_MAPS_DIR, SWTOR_EXTRACTOR, SWTOR_ASSETS; needs ImageMagick)
+# Extract every operation's and PvP zone's replay maps (images + world bounds) from the game client into the maps repository checkout (env: BARAS_MAPS_DIR, SWTOR_EXTRACTOR, SWTOR_ASSETS; needs ImageMagick)
 extract-maps:
   #!/usr/bin/env bash
   set -euo pipefail
@@ -167,7 +167,8 @@ extract-maps:
   command -v magick >/dev/null || { echo "ImageMagick (magick) not found"; exit 1; }
   [[ -f "{{maps_repo}}/extract_maps.py" ]] || { echo "No maps repository checkout at {{maps_repo}} (git clone git@github.com:baras-app/baras-maps.git)"; exit 1; }
   "$PY" "{{maps_repo}}/extract_maps.py" --assets "$ASSETS" --extractor "$EXTRACTOR" \
-    --encounters "{{justfile_directory()}}/core/definitions/encounters/operations"
+    --encounters "{{justfile_directory()}}/core/definitions/encounters/operations" \
+    --areas "{{justfile_directory()}}/core/data/pvp_areas.csv"
 
 # Run the SWTOR ability extractor and copy ability_data.csv + effect_data.csv into core/data (env: SWTOR_EXTRACTOR, SWTOR_ASSETS; args pass to main.py, e.g. --no-npc)
 extract-abilities *args:
