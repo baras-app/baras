@@ -149,10 +149,12 @@ fn is_taunt(e: &&ThreatEvent) -> bool {
     e.kind != ThreatEventKind::Drop
 }
 
-fn mark(e: &ThreatEvent) -> AggroMark {
+/// A taunt's mark, in the chart series of the player who pressed it
+fn mark(e: &ThreatEvent, series: u8) -> AggroMark {
     let targets: Vec<&str> = e.targets.iter().map(|t| t.name.as_str()).collect();
     AggroMark {
         time: e.time_secs,
+        series,
         text: format!(
             "{} {}: {} → {}",
             mmss(e.time_secs),
@@ -226,6 +228,8 @@ pub fn ThreatView(
     };
 
     let (palette, lanes, title) = if by_player {
+        // Each lane is the taunter's own and the colours belong to targets,
+        // so the marks keep the plain colour
         let lanes = report
             .players
             .iter()
@@ -237,7 +241,7 @@ pub fn ThreatView(
                     .iter()
                     .filter(is_taunt)
                     .filter(|e| e.source == p.name)
-                    .map(mark)
+                    .map(|e| mark(e, 0))
                     .collect(),
             })
             .collect();
@@ -247,6 +251,7 @@ pub fn ThreatView(
             "Who each player was targeting".to_string(),
         )
     } else {
+        let palette = Palette::by_role(&holders, &roster);
         let lanes: Vec<AggroLane> = enemies
             .iter()
             .filter(picked)
@@ -258,12 +263,12 @@ pub fn ThreatView(
                     .iter()
                     .filter(is_taunt)
                     .filter(|e| e.targets.iter().any(|t| t.name == r.name))
-                    .map(mark)
+                    .map(|e| mark(e, palette.key(&e.source).1))
                     .collect(),
             })
             .collect();
         let title = enemy.map_or("Who each enemy was on".to_string(), |e| format!("Who {e} was on"));
-        (Palette::by_role(&holders, &roster), lanes, title)
+        (palette, lanes, title)
     };
     let mut set_by_player = move |on: bool| {
         state.with_mut(|s| s.aggro_by_player = on);

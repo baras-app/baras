@@ -3795,13 +3795,14 @@ button.aggro-key:hover {
 
 .uptime-lane-track .aggro-mark {
   position: absolute;
+  background: var(--c, var(--text-primary));
   top: 0;
   z-index: 2;
   transform: translateX(-50%);
 }
 
 .uptime-lane-track .aggro-mark:hover {
-  background: var(--swtor-blue);
+  filter: brightness(1.4);
 }
 
 .aggro-key-marks {
