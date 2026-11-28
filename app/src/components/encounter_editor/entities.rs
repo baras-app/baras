@@ -213,8 +213,8 @@ fn EntityRow(
                     for (label, class) in flags(&entity) {
                         span { class: "tag {class}", "{label}" }
                     }
-                span { class: "col-dim col-num", "{id_count}" }
                 }
+                span { class: "col-dim col-num", "{id_count}" }
             }
 
             // Expanded content

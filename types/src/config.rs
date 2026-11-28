@@ -222,6 +222,11 @@ pub struct AppConfig {
     #[serde(default)]
     pub ocr_debug_dump: bool,
 
+    /// Raid frame OCR name recognition as a whole: its hotkey, its buttons
+    /// and its settings. Off hides all of it.
+    #[serde(default = "default_true")]
+    pub ocr_enabled: bool,
+
     /// How many detections to keep. The oldest dumps are pruned before a new
     /// one is written, so leaving the option on cannot fill a disk.
     #[serde(default = "default_ocr_debug_max_dumps")]
@@ -286,6 +291,7 @@ impl AppConfig {
             overview_columns: Default::default(),
             default_profile_per_role: std::collections::HashMap::new(),
             ocr_debug_dump: false,
+            ocr_enabled: true,
             ocr_debug_max_dumps: 100,
             log_limits_seen: false,
         }

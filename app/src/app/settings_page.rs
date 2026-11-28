@@ -21,6 +21,8 @@ pub(super) fn SettingsPage(
     mut is_watching: Signal<bool>,
     mut european_number_format: Signal<bool>,
     light_theme: Signal<bool>,
+    /// Raid frame OCR name recognition is on (always false on macOS)
+    mut ocr_enabled: Signal<bool>,
     parsely_guilds: Signal<Vec<String>>,
     parsely_selected_guild: Signal<Option<String>>,
 ) -> Element {
@@ -287,14 +289,16 @@ pub(super) fn SettingsPage(
                             },
                         }
                     }
-                    div { class: "setting-row",
-                        label { "Run Raid Frame OCR Name Recognition" }
-                        HotkeyInput {
-                            value: hotkey_detect_raid(),
-                            on_change: move |v: String| {
-                                hotkey_detect_raid.set(v.clone());
-                                save_setting("hotkey", move |cfg| cfg.hotkeys.detect_raid_names = (!v.is_empty()).then_some(v));
-                            },
+                    if ocr_enabled() {
+                        div { class: "setting-row",
+                            label { "Run Raid Frame OCR Name Recognition" }
+                            HotkeyInput {
+                                value: hotkey_detect_raid(),
+                                on_change: move |v: String| {
+                                    hotkey_detect_raid.set(v.clone());
+                                    save_setting("hotkey", move |cfg| cfg.hotkeys.detect_raid_names = (!v.is_empty()).then_some(v));
+                                },
+                            }
                         }
                     }
                     div { class: "setting-row",
@@ -306,12 +310,6 @@ pub(super) fn SettingsPage(
                                 save_setting("hotkey", move |cfg| cfg.hotkeys.toggle_live_mode = (!v.is_empty()).then_some(v));
                             },
                         }
-                    }
-                }
-                if is_macos() {
-                    p { class: "hint hint-warning",
-                        i { class: "fa-solid fa-triangle-exclamation" }
-                        " Raid Frame OCR Name Recognition is not supported on macOS."
                     }
                 }
                 div { class: "app-shortcuts",
@@ -436,13 +434,28 @@ pub(super) fn SettingsPage(
             }
 
             div { class: "settings-section",
-                h4 { "Name Detection" }
-                if is_macos() {
-                    p { class: "hint hint-warning",
-                        i { class: "fa-solid fa-triangle-exclamation" }
-                        " Name detection is not supported on macOS."
+                h4 { "Raid Frame OCR Name Recognition" }
+                label { class: "settings-check",
+                    input {
+                        r#type: "checkbox",
+                        checked: ocr_enabled(),
+                        disabled: is_macos(),
+                        onchange: move |e| {
+                            let checked = e.checked();
+                            ocr_enabled.set(checked);
+                            save_setting("settings", move |cfg| cfg.ocr_enabled = checked);
+                        }
+                    }
+                    "Enable name recognition"
+                }
+                p { class: "hint",
+                    if is_macos() {
+                        "Not supported on macOS."
+                    } else {
+                        "Reads player names off the game's raid frames to fill the raid frames overlay. Off hides its hotkey, buttons and options."
                     }
                 }
+                if ocr_enabled() {
                 label { class: "settings-check",
                     input {
                         r#type: "checkbox",
@@ -455,7 +468,7 @@ pub(super) fn SettingsPage(
                     }
                     "Save detection images"
                 }
-                p { class: "hint", "Saves what name detection saw to baras/ocr-debug, so misread names can be diagnosed." }
+                p { class: "hint", "Saves what name recognition saw to baras/ocr-debug, so misread names can be diagnosed." }
                 div { class: "setting-row",
                     label { "Detections to keep" }
                     NumberInput {
@@ -470,6 +483,7 @@ pub(super) fn SettingsPage(
                     }
                 }
                 p { class: "hint", "The oldest images are removed once this limit is reached." }
+                } // ocr_enabled
             }
 
             } // settings-col

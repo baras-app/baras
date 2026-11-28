@@ -884,12 +884,15 @@ select optgroup {
   cursor: not-allowed;
 }
 
-/* Auto-hide indicator badge (shown when overlays are auto-hidden) */
+/* Auto-hide indicator badge (shown when overlays are auto-hidden): as tall
+   as the buttons it sits between, at every size they take */
 .auto-hide-indicator {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 0.3em;
-  padding: 0.2em 0.5em;
+  height: 30px;
+  padding: 0 0.5em;
   font-size: 0.7em;
   font-weight: 600;
   text-transform: uppercase;
@@ -903,6 +906,15 @@ select optgroup {
 
 .auto-hide-indicator i {
   font-size: 0.85em;
+}
+
+/* The header buttons shrink at this width (see the status row rules) */
+@media (max-width: 53.125rem) {
+  .auto-hide-indicator {
+    height: 26px;
+    padding: 0 0.4em;
+    font-size: 0.65em;
+  }
 }
 
 /* Big entry point to the same modal on the Overlays tab: the header
@@ -4320,23 +4332,24 @@ a.contributor-name:hover {
 
 /* Breakpoints are the header row's own content width in em, so they scale with
    the text (desktop "Large Text", WebKitGTK text zoom or page zoom alike).
-   Measured nav widths at 1em: roomy pills ~78em, compact ~59em, inactive
-   labels hidden ~32em; the brand takes up to ~10.6em, the meta block ~3em
-   (files button) or ~8.5em with the short update button, plus 1.5em of grid
+   Nav widths at 1em: roomy pills ~71em, compact ~53em, inactive labels
+   hidden ~29em (measured with a Settings pill, less that pill's estimated
+   width); the brand takes up to ~10.6em, the meta block ~5.6em (files and
+   settings buttons) or ~11em with the short update button, plus 1.5em of grid
    gaps. An available update takes the second, wider set of breakpoints. */
 
-@container header-bar (max-width: 108em) {
+@container header-bar (max-width: 104em) {
   .app-header .header-version .update-long {
     display: none;
   }
 }
 
-@container header-bar (max-width: 89em) {
+@container header-bar (max-width: 85em) {
   .header-tabs .tab-btn {
     padding: 0.4em 0.7em;
   }
 }
-@container header-bar (max-width: 95em) {
+@container header-bar (max-width: 91em) {
   .header-bar:has(.update-available) .header-tabs .tab-btn {
     padding: 0.4em 0.7em;
   }
@@ -4344,7 +4357,7 @@ a.contributor-name:hover {
 
 /* Pills that are not the open view drop to icon + caret (their tooltip and
    the menu still name them), so the open view's name stays whole */
-@container header-bar (max-width: 70em) {
+@container header-bar (max-width: 67em) {
   .header-tabs .tab-btn:not(.active) .tab-label {
     display: none;
   }
@@ -4355,7 +4368,7 @@ a.contributor-name:hover {
     margin-left: 0.1em;
   }
 }
-@container header-bar (max-width: 75em) {
+@container header-bar (max-width: 72em) {
   .header-bar:has(.update-available) .header-tabs .tab-btn:not(.active) .tab-label {
     display: none;
   }
