@@ -36,7 +36,7 @@ impl Default for FrameStyle {
             border_color: [128, 128, 128, 255],
             border_width: 0.0,
             corner_radius: 6.0,
-            element_radius: 3.0,
+            element_radius: 2.0,
         }
     }
 }
