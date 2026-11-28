@@ -46,7 +46,7 @@ pub struct BossHealthConfig {
     pub show_shield: bool,
     /// When true, show boss-effect icons; their strip's space is always
     /// reserved so entries never resize when effects land
-    #[serde(default = "default_true")]
+    #[serde(default)]
     pub show_icons: bool,
     /// Which side of the bar the effect-icon strip occupies
     #[serde(default)]
@@ -101,7 +101,7 @@ impl Default for BossHealthConfig {
             show_hp_value: true,
             show_hp_markers: true,
             show_shield: true,
-            show_icons: true,
+            show_icons: false,
             icon_position: IconPosition::Bottom,
             font_scale: 1.0,
             lower_bar_scale: 1.0,

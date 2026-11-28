@@ -273,7 +273,7 @@ pub(crate) fn unmigrated_bar_gap() -> f32 {
 pub const MAX_BAR_RADIUS: f32 = 16.0;
 
 pub(crate) fn default_bar_radius() -> f32 {
-    4.0
+    2.0
 }
 
 pub(crate) fn default_font_color() -> Color {
