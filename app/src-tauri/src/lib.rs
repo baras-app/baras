@@ -265,6 +265,7 @@ pub fn run() {
             commands::preview_overlay_entry,
             commands::set_web_overlay_enabled,
             commands::clear_raid_registry,
+            commands::detect_raid_names,
             commands::start_operation_timer,
             commands::stop_operation_timer,
             commands::reset_operation_timer,

@@ -25,7 +25,7 @@ mod parsely_settings;
 mod replay_map_settings;
 mod settings_page;
 
-use helpers::{OVERLAY_CATEGORIES, apply_status, set_light_theme, set_overlay_enabled};
+use helpers::{OVERLAY_CATEGORIES, apply_status, is_macos, set_light_theme, set_overlay_enabled};
 use settings_page::SettingsPage;
 
 const FILE_LIST: &str = "file-browser-list";
@@ -129,6 +129,8 @@ pub fn App() -> Element {
     // Application settings
     let mut european_number_format = use_signal(|| false);
     let mut light_theme = use_signal(|| false);
+    // Raid frame OCR name recognition, as set in Settings (never available on macOS)
+    let mut ocr_enabled = use_signal(|| false);
     use_context_provider(|| crate::utils::LightTheme(light_theme));
     let mut app_version = use_signal(String::new);
 
@@ -170,6 +172,7 @@ pub fn App() -> Element {
             hide_small_log_files.set(config.hide_small_log_files);
             european_number_format.set(config.european_number_format);
             light_theme.set(config.light_theme);
+            ocr_enabled.set(config.ocr_enabled && !is_macos());
             crate::utils::apply_theme(config.light_theme);
             parsely_guilds.set(config.parsely.guilds);
             parsely_selected_guild.set(config.parsely.selected_guild);
@@ -622,7 +625,6 @@ pub fn App() -> Element {
                             for (tab, icon, label, tip) in [
                                 (MainTab::LogManagement, "fa-solid fa-folder-tree", "Logs", "Manage log files"),
                                 (MainTab::Characters, "fa-solid fa-users", "Characters", "Track character information and lockouts"),
-                                (MainTab::Settings, "fa-solid fa-gear", "Settings", "Log directory, hotkeys, audio and application options"),
                             ] {
                                 button {
                                     class: if active_tab() == tab { "tab-btn active" } else { "tab-btn" },
@@ -667,7 +669,7 @@ pub fn App() -> Element {
                             }
                         }
                     }
-                    // Update notice and the log files drawer
+                    // Update notice, the log files drawer and Settings
                     div { class: "header-meta",
                         div { class: "header-version-group",
                             // Only an available update earns header space; the version and
@@ -717,6 +719,12 @@ pub fn App() -> Element {
                                     });
                                 },
                                 i { class: "fa-solid fa-folder-open" }
+                            }
+                            button {
+                                class: if active_tab() == MainTab::Settings { "header-files-btn active" } else { "header-files-btn" },
+                                title: "Settings: log directory, hotkeys, audio and application options",
+                                onclick: move |_| ui_state.write().active_tab = MainTab::Settings,
+                                i { class: "fa-solid fa-gear" }
                             }
                         }
                     }
@@ -781,6 +789,22 @@ pub fn App() -> Element {
                                         }
                                     }); },
                                     i { class: "fa-solid fa-grip" }
+                                }
+                                if raid_on && ocr_enabled() {
+                                    button {
+                                        class: "btn btn-header-overlay",
+                                        title: "Read player names off the game's raid frames (OCR)",
+                                        disabled: !is_visible || overlays_auto_hidden,
+                                        onclick: move |_| {
+                                        let mut toast = use_toast();
+                                        spawn(async move {
+                                            if let Err(err) = api::detect_raid_names().await {
+                                                toast.show(format!("Couldn't run name recognition: {err}"), ToastSeverity::Normal);
+                                            }
+                                        });
+                                    },
+                                        i { class: "fa-solid fa-users-viewfinder" }
+                                    }
                                 }
                                 if is_rearrange {
                                     button {
@@ -940,7 +964,6 @@ pub fn App() -> Element {
                                                                 }
                                                             },
                                                             i { class: "fa-solid fa-cloud-arrow-up" }
-                                                            " Parsely"
                                                         }
                                                         if let Some((success, ref msg)) = upload_result {
                                                             if success {
@@ -1078,6 +1101,23 @@ pub fn App() -> Element {
                                 }); },
                                 i { class: "fa-solid fa-grip" }
                                 span { " Rearrange" }
+                            }
+                            if ocr_enabled() {
+                                button {
+                                    class: "btn btn-control",
+                                    title: "Read player names off the game's raid frames (OCR)",
+                                    disabled: !is_visible || !raid_on || overlays_auto_hidden,
+                                    onclick: move |_| {
+                                    let mut toast = use_toast();
+                                    spawn(async move {
+                                        if let Err(err) = api::detect_raid_names().await {
+                                            toast.show(format!("Couldn't run name recognition: {err}"), ToastSeverity::Normal);
+                                        }
+                                    });
+                                },
+                                    i { class: "fa-solid fa-users-viewfinder" }
+                                    span { " Detect Names" }
+                                }
                             }
                             button {
                                 class: "btn btn-control btn-clear-frames",
@@ -1247,6 +1287,7 @@ pub fn App() -> Element {
                         is_watching,
                         european_number_format,
                         light_theme,
+                        ocr_enabled,
                         parsely_guilds,
                         parsely_selected_guild,
                     }

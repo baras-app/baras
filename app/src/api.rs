@@ -403,6 +403,12 @@ pub async fn preview_overlay_settings(settings: &crate::types::OverlaySettings) 
     result.as_bool().unwrap_or(false)
 }
 
+/// Run raid frame OCR name recognition on the raid frames overlay
+pub async fn detect_raid_names() -> Result<(), String> {
+    try_invoke("detect_raid_names", JsValue::NULL).await?;
+    Ok(())
+}
+
 /// Clear all players from raid registry
 pub async fn clear_raid_registry() {
     let _ = invoke("clear_raid_registry", JsValue::NULL).await;

@@ -268,6 +268,22 @@ pub async fn reset_operation_timer(service: State<'_, ServiceHandle>) -> Result<
 // Raid Registry Commands
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Read the names off the game's raid frames (raid frame OCR name recognition)
+#[tauri::command]
+pub async fn detect_raid_names(
+    state: State<'_, SharedOverlayState>,
+    service: State<'_, ServiceHandle>,
+) -> Result<(), String> {
+    if cfg!(target_os = "macos") {
+        return Err("Raid frame OCR name recognition is not supported on macOS".into());
+    }
+    if !service.config().await.ocr_enabled {
+        return Err("Raid frame OCR name recognition is turned off in Settings".into());
+    }
+    crate::hotkeys::request_raid_name_detection(&state).await;
+    Ok(())
+}
+
 /// Clear all players from the raid frame registry
 #[tauri::command]
 pub async fn clear_raid_registry(service: State<'_, ServiceHandle>) -> Result<(), String> {

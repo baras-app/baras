@@ -190,7 +190,7 @@ async fn try_portal_shortcuts(
                         }
                         "detect-raid-names" => {
                             tauri::async_runtime::spawn(async move {
-                                detect_raid_names_hotkey(state).await;
+                                detect_raid_names_hotkey(state, handle).await;
                             });
                         }
                         _ => {
@@ -377,12 +377,14 @@ pub fn spawn_register_hotkeys(
         if let Some(ref key_str) = hotkeys.detect_raid_names {
             if let Ok(shortcut) = key_str.parse::<Shortcut>() {
                 let state = overlay_state.clone();
+                let handle = service_handle.clone();
 
                 if let Err(e) = global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
                     if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
                         let state = state.clone();
+                        let handle = handle.clone();
                         tauri::async_runtime::spawn(async move {
-                            detect_raid_names_hotkey(state).await;
+                            detect_raid_names_hotkey(state, handle).await;
                         });
                     }
                 }) {
@@ -482,20 +484,22 @@ async fn toggle_live_mode_hotkey(service: ServiceHandle) {
 }
 
 #[cfg(not(target_os = "macos"))]
-async fn detect_raid_names_hotkey(overlay_state: SharedOverlayState) {
-    let raid_tx = {
-        let state = match overlay_state.lock() {
-            Ok(s) => s,
-            Err(_) => return,
-        };
+async fn detect_raid_names_hotkey(overlay_state: SharedOverlayState, service: ServiceHandle) {
+    if service.config().await.ocr_enabled {
+        request_raid_name_detection(&overlay_state).await;
+    }
+}
 
+/// Ask the raid frames overlay to read the names off the game's raid frames.
+/// Nothing happens while that overlay is not running.
+pub async fn request_raid_name_detection(overlay_state: &SharedOverlayState) {
+    let raid_tx = {
+        let state = overlay_state.lock().unwrap_or_else(|p| p.into_inner());
         if !state.is_running(OverlayType::Raid) {
             return;
         }
-
         state.get_tx(OverlayType::Raid).cloned()
     };
-
     if let Some(tx) = raid_tx {
         let _ = tx.send(OverlayCommand::DetectRaidNames).await;
     }
