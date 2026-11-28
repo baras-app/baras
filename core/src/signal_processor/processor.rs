@@ -456,12 +456,14 @@ impl EventProcessor {
             // Check if this is a battle rez (pending) or OOC revive for the local player
             let is_local_player = event.source_entity.log_id == cache.player.id;
             if is_local_player {
-                let battle_rez_pending = cache.current_encounter().is_some_and(|enc| enc.battle_rez_pending);
+                let battle_rez_pending = cache
+                    .current_encounter()
+                    .is_some_and(|enc| !enc.battle_rez_casters.is_empty());
 
                 if let Some(enc) = cache.current_encounter_mut() {
                     if battle_rez_pending {
-                        // Battle rez landed — clear pending flag, combat continues
-                        enc.battle_rez_pending = false;
+                        // Battle rez landed — clear pending casters, combat continues
+                        enc.battle_rez_casters.clear();
                         tracing::debug!("[BATTLE_REZ] Battle rez landed on local player at {}", event.timestamp);
                     } else if enc.state == EncounterState::InCombat {
                         // No battle rez pending — this is an OOC revive (medcenter/probe)
@@ -525,9 +527,9 @@ impl EventProcessor {
                 // Track timestamp for local player (soft-timeout wipe detection)
                 if is_local_player {
                     enc.local_player_revive_immunity_time = Some(event.timestamp);
-                    // Player chose medcenter over a pending battle rez — clear the flag
+                    // Player chose medcenter over a pending battle rez — clear the casters
                     // so the revive immunity fallback handles it correctly
-                    enc.battle_rez_pending = false;
+                    enc.battle_rez_casters.clear();
                 }
             }
         }
@@ -1233,8 +1235,8 @@ impl EventProcessor {
 
     /// Track battle rez casts targeting the local player.
     ///
-    /// Sets `battle_rez_pending` when a battle rez is activated targeting the local player,
-    /// and clears it on interrupt/cancel. The REVIVED handler in `handle_entity_lifecycle`
+    /// Records the caster in `battle_rez_casters` when a battle rez is activated targeting
+    /// the local player, and drops that caster on their own interrupt/cancel. The REVIVED handler in `handle_entity_lifecycle`
     /// checks this flag to distinguish battle rez (combat continues) from OOC revive
     /// (combat should end).
     fn handle_battle_rez_tracking(&self, event: &CombatEvent, cache: &mut SessionCache) {
@@ -1247,20 +1249,24 @@ impl EventProcessor {
             if let Some(enc) = cache.current_encounter_mut()
                 && (enc.get_current_target(caster) == Some(local) || enc.battle_rez_implies_local(caster, local))
             {
-                enc.battle_rez_pending = true;
+                if !enc.battle_rez_casters.contains(&caster) {
+                    enc.battle_rez_casters.push(caster);
+                }
                 tracing::debug!("[BATTLE_REZ] Pending battle rez on local player at {}", event.timestamp);
             }
             return;
         }
 
-        // B) Battle rez interrupted or canceled — clear pending flag
+        // B) Battle rez interrupted or canceled — drop that caster only; another
+        // caster's rez may still be pending (the game cancels the redundant cast)
         if (eid == effect_id::ABILITYINTERRUPT || eid == effect_id::ABILITYCANCEL)
             && BATTLE_REZ_ABILITY_IDS.contains(&event.action.action_id)
         {
+            let caster = event.source_entity.log_id;
             if let Some(enc) = cache.current_encounter_mut()
-                && enc.battle_rez_pending
+                && let Some(idx) = enc.battle_rez_casters.iter().position(|&c| c == caster)
             {
-                enc.battle_rez_pending = false;
+                enc.battle_rez_casters.swap_remove(idx);
                 tracing::debug!("[BATTLE_REZ] Battle rez canceled/interrupted at {}", event.timestamp);
             }
             return;
@@ -1272,7 +1278,10 @@ impl EventProcessor {
             && event.source_entity.log_id == cache.player.id
             && let Some(enc) = cache.current_encounter_mut()
         {
-            enc.battle_rez_pending = true;
+            // Scripted revives have no caster to cancel; key them by the effect id
+            if !enc.battle_rez_casters.contains(&eid) {
+                enc.battle_rez_casters.push(eid);
+            }
             tracing::debug!(
                 "[BATTLE_REZ] Scripted revive effect on local player at {}",
                 event.timestamp

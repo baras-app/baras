@@ -144,8 +144,10 @@ pub struct CombatEncounter {
     /// Timestamp when local player received RECENTLY_REVIVED effect (medcenter/probe revive)
     /// Used to trigger soft-timeout wipe detection for boss encounters
     pub local_player_revive_immunity_time: Option<NaiveDateTime>,
-    /// Battle rez is being cast targeting the local player (activated, not yet interrupted/completed)
-    pub battle_rez_pending: bool,
+    /// Casters with a battle rez pending on the local player (activated, not yet
+    /// interrupted/canceled). Per caster: overlapping rezzes are routine, and the
+    /// game cancels the later cast while the earlier one still lands.
+    pub battle_rez_casters: Vec<i64>,
     /// Local player revived out of combat (no battle rez) — triggers immediate combat end
     pub local_player_ooc_revive_time: Option<NaiveDateTime>,
     /// Most recent ExitCombat timestamp (warzones only). Warzone matches never
@@ -268,7 +270,7 @@ impl CombatEncounter {
             victory_triggered: false,
             victory_triggered_at: None,
             local_player_revive_immunity_time: None,
-            battle_rez_pending: false,
+            battle_rez_casters: Vec::new(),
             local_player_ooc_revive_time: None,
             last_exit_combat_time: None,
             pvp_factions: PvpFactionTracker::default(),
