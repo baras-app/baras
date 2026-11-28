@@ -282,6 +282,42 @@
   margin-top: 6px;
 }
 
+/* Encounter editor, Maps tab: the pages the replay draws on, then the notes */
+.map-pages-tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md);
+}
+
+.map-pages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.map-pages-table td:last-child {
+  width: 1%;
+  text-align: right;
+}
+
+.map-pages-tab p {
+  margin: 0 0 var(--space-xs);
+}
+
+/* A map page at full width of the window */
+.modal-content.map-preview {
+  max-width: 90vw;
+  width: auto;
+}
+
+.map-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 75vh;
+  margin: 0 auto;
+}
+
 .replay-card .class-icon {
   width: 18px;
   height: 18px;

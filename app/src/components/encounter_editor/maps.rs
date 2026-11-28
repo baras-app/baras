@@ -8,8 +8,10 @@ use dioxus::prelude::*;
 use baras_types::{MapDefinition, MapRect};
 
 use crate::api;
+use super::map_pages::MapPagesTable;
+use crate::components::editor_common::FormCard;
 use crate::components::editor_drawer::EditorDrawer;
-use crate::components::form_fields::{CheckField, NumberField, PickField, SubSection, TextField};
+use crate::components::form_fields::{CheckField, NumberField, PickField, TextField};
 use crate::types::BossWithPath;
 
 /// A number box's text for an optional value
@@ -95,13 +97,18 @@ pub fn MapsTab(
     let count = maps.read().len();
 
     rsx! {
-        div { class: "notes-tab text-sm text-muted",
-            p { "Maps are what the Replay tab draws this fight on: one entry per floor or room." }
-            p {
-                "An entity is on the first entry whose bounds, height range and phases contain it, so order matters. "
-                "Bounds are the world area the whole image covers; Min X is the image's left edge and Min Y its top edge."
+        div { class: "map-pages-tab",
+            MapPagesTable { file_path: boss_with_path.file_path.clone(), maps: boss_with_path.boss.maps.clone() }
+            div { class: "text-sm text-muted",
+                p {
+                    "A boss without its own entries is drawn on its area's pages from the map repository, downloaded when first needed. "
+                    "Own entries replace them: one per floor or room, images from the definitions/maps folder of the config directory."
+                }
+                p {
+                    "An entity is on the first entry whose bounds, height range and phases contain it, so order matters. "
+                    "Bounds are the world area the whole image covers; Min X is the image's left edge and Min Y its top edge."
+                }
             }
-            p { "Images are the game's map pages (downloaded when first needed) or your own files in the definitions/maps folder of the config directory." }
         }
         EditorDrawer {
             title: "Replay Maps".to_string(),
@@ -126,7 +133,7 @@ pub fn MapsTab(
                 div { class: "text-sm text-muted", "No maps. Replay is not offered for this boss until it has one." }
             }
             for (index, map) in maps().into_iter().enumerate() {
-                SubSection { key: "{index}", title: "Map",
+                FormCard { key: "{index}", icon: "fa-map", title: "Map",
                     TextField {
                         label: "Image",
                         help: "File name in the definitions/maps folder, e.g. dp_tyrans.png",

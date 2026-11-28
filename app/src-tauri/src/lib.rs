@@ -390,6 +390,7 @@ pub fn run() {
             commands::query_replay,
             commands::get_replay_maps,
             commands::get_replay_map_image,
+            commands::get_boss_map_pages,
             commands::get_replay_map_storage,
             commands::clear_replay_maps,
             commands::query_threat_report,
