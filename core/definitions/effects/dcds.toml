@@ -97,6 +97,8 @@ trigger = { type = "effect_applied", effects = [
 duration_secs = 12.0
 is_affected_by_alacrity = false
 color = [3, 207, 252, 255]
+# Powertech's 15 s version is energy_shield_pt_buff (powertech_vanguard.toml)
+disciplines = ["Arsenal", "InnovativeOrdnance", "Bodyguard", "Gunnery", "AssaultSpecialist", "CombatMedic"]
 
 [[effect]]
 id = "enraged_defense_cd"
@@ -242,8 +244,8 @@ name = "Power Yield Cooldown"
 display_text = "Power Yield"
 display_target = "cooldowns"
 trigger = { type = "effect_applied", effects = [
-  4325603297722368,
-  4329447293452288,
+  4498514386092300,
+  4543706031980812,
 ], source = "local_player", target = "any" }
 duration_secs = 60.0
 is_affected_by_alacrity = false
@@ -254,8 +256,8 @@ color = [235, 207, 52, 255]
 id = "power_yield_buff"
 name = "Power Yield"
 trigger = { type = "effect_applied", effects = [
-  4325603297722368,
-  4329447293452288,
+  4498514386092300,
+  4543706031980812,
 ], source = "local_player", target = "any" }
 duration_secs = 10.0
 is_affected_by_alacrity = false
@@ -283,6 +285,8 @@ trigger = { type = "effect_applied", effects = [
 duration_secs = 12.0
 is_affected_by_alacrity = false
 color = [89, 106, 117, 255]
+# Vanguard's 15 s version is energy_shield_pt_buff (powertech_vanguard.toml)
+disciplines = ["Arsenal", "InnovativeOrdnance", "Bodyguard", "Gunnery", "AssaultSpecialist", "CombatMedic"]
 
 [[effect]]
 id = "resilience_cd"
