@@ -327,7 +327,7 @@ pub fn SimpleTriggerEditor(
                     }
                     option { value: "boss_hp_below", selected: trigger_type == "boss_hp_below", "Boss HP Below" }
                 }
-                optgroup { label: "Abilities & Effects",
+                optgroup { label: "Abilities and Effects",
                     option { value: "ability_cast", selected: trigger_type == "ability_cast", "Ability Cast" }
                     option { value: "effect_applied", selected: trigger_type == "effect_applied", "Effect Applied" }
                     option { value: "effect_removed", selected: trigger_type == "effect_removed", "Effect Removed" }
@@ -343,7 +343,7 @@ pub fn SimpleTriggerEditor(
                     option { value: "timer_started", selected: trigger_type == "timer_started", "Timer Started" }
                     option { value: "timer_canceled", selected: trigger_type == "timer_canceled", "Timer Canceled" }
                 }
-                optgroup { label: "Phases & Counters",
+                optgroup { label: "Phases and Counters",
                     option { value: "phase_entered", selected: trigger_type == "phase_entered", "Phase Entered" }
                     option { value: "phase_ended", selected: trigger_type == "phase_ended", "Phase Ended" }
                     option { value: "any_phase_change", selected: trigger_type == "any_phase_change", "Any Phase Change" }
