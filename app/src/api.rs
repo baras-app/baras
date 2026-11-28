@@ -1549,6 +1549,14 @@ pub async fn clear_replay_maps() {
     let _ = try_invoke("clear_replay_maps", JsValue::NULL).await;
 }
 
+/// The pages a boss's replay draws on: `maps`, else its area's downloaded pages
+pub async fn get_boss_map_pages(file_path: &str, maps: &[baras_types::MapDefinition]) -> baras_types::BossMapPages {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "filePath", &JsValue::from_str(file_path));
+    js_set(&obj, "maps", &serde_wasm_bindgen::to_value(maps).unwrap_or(JsValue::NULL));
+    from_js(invoke("get_boss_map_pages", obj.into()).await).unwrap_or_default()
+}
+
 /// A replay map image as a data URL; None when the file is missing.
 pub async fn get_replay_map_image(image: &str) -> Option<String> {
     from_js(invoke("get_replay_map_image", build_args("image", image)).await)

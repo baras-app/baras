@@ -111,3 +111,20 @@ pub enum ReplayMapStatus {
     /// The download failed
     Unavailable,
 }
+
+/// One page a boss's replay draws on, and whether its image is on this machine
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MapPage {
+    pub map: crate::MapDefinition,
+    pub on_disk: bool,
+}
+
+/// The pages of a boss's replay: its own entries, else every page of its area
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct BossMapPages {
+    pub pages: Vec<MapPage>,
+    /// From the map repository's index, not the boss definition
+    pub from_area: bool,
+    /// The repository's index is on disk, so the area's pages are known
+    pub has_index: bool,
+}

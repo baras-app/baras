@@ -3,8 +3,8 @@
 use base64::Engine;
 use tauri::{AppHandle, State};
 
-use baras_core::boss::{build_area_index, load_bosses_with_custom};
-use baras_types::{ReplayMapStatus, ReplayMaps};
+use baras_core::boss::{build_area_index, load_area_config, load_bosses_with_custom};
+use baras_types::{BossMapPages, MapDefinition, MapPage, ReplayMapStatus, ReplayMaps};
 
 use super::encounters::{get_bundled_encounters_dir, get_user_encounters_dir};
 use crate::service::{ServiceHandle, map_store};
@@ -86,7 +86,7 @@ pub async fn get_replay_maps(
     Ok(ReplayMaps { maps, status })
 }
 
-fn ready(maps: Vec<baras_types::MapDefinition>) -> ReplayMaps {
+fn ready(maps: Vec<MapDefinition>) -> ReplayMaps {
     ReplayMaps {
         maps,
         status: ReplayMapStatus::Ready,
@@ -96,6 +96,32 @@ fn ready(maps: Vec<baras_types::MapDefinition>) -> ReplayMaps {
 fn unavailable(error: String) -> ReplayMapStatus {
     tracing::warn!(error = %error, "Replay maps unavailable");
     ReplayMapStatus::Unavailable
+}
+
+/// What the replay draws a boss on, for the editor's Maps tab: `maps` (the boss's
+/// own entries), else the pages the repository has for the area of `file_path`.
+/// Nothing is downloaded here.
+#[tauri::command]
+pub async fn get_boss_map_pages(file_path: String, maps: Vec<MapDefinition>) -> Result<BossMapPages, String> {
+    let from_area = maps.is_empty();
+    let maps = match from_area {
+        true => load_area_config(std::path::Path::new(&file_path))?
+            .map(|area| map_store::area_pages(area.area_id))
+            .unwrap_or_default(),
+        false => maps,
+    };
+    let pages = maps
+        .into_iter()
+        .map(|map| MapPage {
+            on_disk: map_store::find_image(&map.image).is_some(),
+            map,
+        })
+        .collect();
+    Ok(BossMapPages {
+        pages,
+        from_area,
+        has_index: map_store::has_index(),
+    })
 }
 
 /// A map image as a data URL
