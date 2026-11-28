@@ -119,7 +119,6 @@ pub fn FrameOverrideRows(draft: SettingsDraft, tab_key: Signal<String>) -> Eleme
     let o = s.frame_overrides.get(&key).cloned().unwrap_or_default();
     let style = s.frame_style_for(&key);
     let font = s.font_family_for(&key).to_string();
-    let toggle_font = font.clone();
 
     let mut system_fonts: Signal<Vec<String>> = use_signal(Vec::new);
     use_future(move || async move {
@@ -129,85 +128,75 @@ pub fn FrameOverrideRows(draft: SettingsDraft, tab_key: Signal<String>) -> Eleme
     rsx! {
         Override {
             custom: o.opacity.is_some(),
-            on_toggle: move |on: bool| edit_override(draft, &tab_key(), |o| o.opacity = on.then_some(style.opacity)),
+            on_reset: move |_| edit_override(draft, &tab_key(), |o| o.opacity = None),
             Slider {
                 label: "Background Opacity",
                 value: style.opacity as f64,
                 min: 0.0,
                 max: 255.0,
-                disabled: o.opacity.is_none(),
                 on_change: move |v: f64| edit_override(draft, &tab_key(), |o| o.opacity = Some(v.round() as u8)),
             }
         }
         Override {
             custom: o.background_color.is_some(),
-            on_toggle: move |on: bool| edit_override(draft, &tab_key(), |o| o.background_color = on.then_some(style.background_color)),
+            on_reset: move |_| edit_override(draft, &tab_key(), |o| o.background_color = None),
             ColorRow {
                 label: "Background Color",
                 value: style.background_color,
-                disabled: o.background_color.is_none(),
                 on_change: move |v| edit_override(draft, &tab_key(), |o| o.background_color = Some(v)),
             }
         }
         Override {
             custom: o.corner_radius.is_some(),
-            on_toggle: move |on: bool| edit_override(draft, &tab_key(), |o| o.corner_radius = on.then_some(style.corner_radius)),
+            on_reset: move |_| edit_override(draft, &tab_key(), |o| o.corner_radius = None),
             Slider {
                 label: "Window Corner Radius",
                 value: style.corner_radius as f64,
                 min: 0.0,
                 max: MAX_CORNER_RADIUS as f64,
                 suffix: "px",
-                disabled: o.corner_radius.is_none(),
                 on_change: move |v: f64| edit_override(draft, &tab_key(), |o| o.corner_radius = Some(v as f32)),
             }
         }
         Override {
             custom: o.element_radius.is_some(),
-            on_toggle: move |on: bool| edit_override(draft, &tab_key(), |o| o.element_radius = on.then_some(style.element_radius)),
+            on_reset: move |_| edit_override(draft, &tab_key(), |o| o.element_radius = None),
             Slider {
                 label: "Element Corner Radius",
                 value: style.element_radius as f64,
                 min: 0.0,
                 max: MAX_CORNER_RADIUS as f64,
                 suffix: "px",
-                disabled: o.element_radius.is_none(),
                 on_change: move |v: f64| edit_override(draft, &tab_key(), |o| o.element_radius = Some(v as f32)),
             }
         }
         Override {
             custom: o.border_width.is_some(),
-            on_toggle: move |on: bool| edit_override(draft, &tab_key(), |o| o.border_width = on.then_some(style.border_width)),
+            on_reset: move |_| edit_override(draft, &tab_key(), |o| o.border_width = None),
             Slider {
                 label: "Border Width",
                 value: style.border_width as f64,
                 min: 0.0,
                 max: MAX_BORDER_WIDTH as f64,
                 suffix: "px",
-                disabled: o.border_width.is_none(),
                 on_change: move |v: f64| edit_override(draft, &tab_key(), |o| o.border_width = Some(v as f32)),
             }
         }
         Override {
             custom: o.border_color.is_some(),
-            on_toggle: move |on: bool| edit_override(draft, &tab_key(), |o| o.border_color = on.then_some(style.border_color)),
+            on_reset: move |_| edit_override(draft, &tab_key(), |o| o.border_color = None),
             ColorRow {
                 label: "Border Color",
                 value: style.border_color,
-                disabled: o.border_color.is_none(),
                 on_change: move |v| edit_override(draft, &tab_key(), |o| o.border_color = Some(v)),
             }
         }
         Override {
             custom: o.font_family.is_some(),
-            on_toggle: move |on: bool| {
-                let font = toggle_font.clone();
-                edit_override(draft, &tab_key(), |o| o.font_family = on.then_some(font));
-            },
+            on_reset: move |_| edit_override(draft, &tab_key(), |o| o.font_family = None),
             Row { label: "Font",
                 select {
                     value: "{font}",
-                    disabled: o.font_family.is_none(),
                     onchange: move |e: Event<FormData>| edit_override(draft, &tab_key(), |o| o.font_family = Some(e.value())),
                     for f in system_fonts().iter() {
                         option { key: "{f}", value: "{f}", selected: *f == font, "{f}" }

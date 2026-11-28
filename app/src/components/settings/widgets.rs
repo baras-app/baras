@@ -230,33 +230,20 @@ pub(super) fn FontScale(value: f32, #[props(default = false)] disabled: bool, on
 // Per-overlay overrides of a global option
 // ─────────────────────────────────────────────────────────────────────────
 
-/// One overridable option. Ticked: the overlay has its own value. Unticked:
-/// the child control is passed `disabled` and shows the global value.
+/// One overridable option. Editing the control sets this overlay's own value;
+/// the reset button (shown once customized) goes back to the global value.
 #[component]
-pub(super) fn Override(custom: bool, on_toggle: EventHandler<bool>, children: Element) -> Element {
+pub(super) fn Override(custom: bool, on_reset: EventHandler<()>, children: Element) -> Element {
     rsx! {
         div { class: if custom { "override-row custom" } else { "override-row" },
-            input {
-                r#type: "checkbox",
-                title: if custom { "Set for this overlay only. Untick to follow the global value." } else { "Following the global value. Tick to set it for this overlay only." },
-                checked: custom,
-                onchange: move |e: Event<FormData>| on_toggle.call(e.checked()),
-            }
             {children}
-        }
-    }
-}
-
-/// A boolean as an On/Off dropdown, for override rows where the checkbox is taken
-#[component]
-pub(super) fn OnOff(label: &'static str, value: bool, disabled: bool, on_change: EventHandler<bool>) -> Element {
-    rsx! {
-        SelectRow {
-            label,
-            value: (if value { "on" } else { "off" }).to_string(),
-            options: vec![("on", "On"), ("off", "Off")],
-            disabled,
-            on_change: move |v: String| on_change.call(v == "on"),
+            button {
+                class: "override-reset",
+                title: "Follow the Global value again",
+                disabled: !custom,
+                onclick: move |_| on_reset.call(()),
+                i { class: "fa-solid fa-rotate-left" }
+            }
         }
     }
 }
