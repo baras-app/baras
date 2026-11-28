@@ -446,9 +446,8 @@ select optgroup {
   border: 1px solid var(--blue-alpha-20);
   border-radius: var(--radius-xl) 0 0 var(--radius-xl);
   box-shadow: none;
-  /* Fades in with the control panel beside it; leaving `display: none`
-     (parked) restarts it on every return to the page */
-  animation: fade-in var(--transition-normal);
+  /* Docked, not a drawer: no slide-in */
+  animation: none;
 }
 
 /* App header */
@@ -2199,6 +2198,7 @@ details[open] .collapsible-summary::before {
 .override-row > :first-child {
   flex: 1;
   min-width: 0;
+  transition: opacity var(--transition-normal);
 }
 
 .override-row:not(.custom) > :first-child {
@@ -8946,19 +8946,69 @@ a.contributor-name:hover {
   animation: fade-in var(--transition-normal);
 }
 
-/* Navigation: whatever a page, history view, explorer view or encounter change
-   mounts. Hidden editors restart theirs when they are shown again. `.fade-in`
-   marks content re-keyed on navigation (see `ability_table`). */
-.tab-content > *,
+/* Navigation: pages that wait on data (explorer, editors) fade in as they mount.
+   Hidden editors restart theirs when they are shown again. `.fade-in` marks
+   content re-keyed on navigation (see `ability_table`). The Overlays and
+   Settings pages render at once, so they skip it */
+.tab-content > :not(.overlay-controls, .settings-page, .history-panel),
 .kept-page > *,
-.history-panel > *,
 .overview-section,
 .explorer-content > *,
 .fade-in {
   animation: fade-in var(--transition-normal);
 }
 
+/* An item's edit form, each time a row opens it in the drawer (and when a
+   folded drawer is unfolded) */
+.editor-drawer-body {
+  animation: drop-in var(--transition-normal);
+}
+
+/* Save confirmations light up green, then settle */
+.save-status,
+.profile-status {
+  animation: saved-flash 0.6s ease-out;
+}
+
+@keyframes saved-flash {
+  from {
+    background: rgba(74, 170, 74, 0.28);
+  }
+}
+
+/* Collapsible sections slide open where the engine can size to `auto`
+   (Chromium/WebView2); elsewhere they open at once as before */
+@supports (interpolate-size: allow-keywords) {
+  details.collapsible {
+    interpolate-size: allow-keywords;
+  }
+
+  details.collapsible::details-content {
+    block-size: 0;
+    overflow: hidden;
+    transition:
+      block-size var(--transition-slow),
+      content-visibility var(--transition-slow) allow-discrete;
+  }
+
+  details.collapsible[open]::details-content {
+    block-size: auto;
+  }
+}
+
+/* Statistics, Logs and Characters: the page chrome shows at once and the
+   entries fade in as they arrive. Rows a re-render keeps never replay it */
+.pull-history-table tbody tr,
+.sidebar-encounter-list > *,
+.history-card {
+  animation: fade-in var(--transition-normal);
+}
+
 @media (prefers-reduced-motion: reduce) {
+  details.collapsible::details-content {
+    transition: none;
+  }
+
   .modal-overlay,
   .modal-backdrop,
   .modal-overlay > *,
@@ -8968,12 +9018,16 @@ a.contributor-name:hover {
   .combat-log-host:not(.pending),
   .tab-content > *,
   .kept-page > *,
-  .history-panel > *,
   .overview-section,
   .explorer-content > *,
   .fade-in,
+  .pull-history-table tbody tr,
+  .sidebar-encounter-list > *,
+  .history-card,
+  .editor-drawer-body,
+  .save-status,
+  .profile-status,
   .drawer,
-  .container:has(> .settings-panel) > .settings-panel,
   .death-recap-drawer,
   .toast,
   [_echarts_instance_] > div:first-child {
